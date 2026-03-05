@@ -1,0 +1,47 @@
+.toolbar-app-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.toolbar-leading-icon {
+  width: 16px;
+  height: 16px;
+  color: #4f4f4f;
+}
+
+.toolbar-caret-icon {
+  width: 16px;
+  height: 16px;
+  color: #858585;
+  transform: rotate(90deg);
+}
+
+.toolbar-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+  color: #8f8f8f;
+}
+
+.toolbar-icon-btn {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  padding: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #8f8f8f;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.toolbar-icon-btn:hover {
+  background: #ececec;
+}
+
