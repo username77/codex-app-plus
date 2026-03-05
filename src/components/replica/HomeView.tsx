@@ -1,6 +1,7 @@
-import { FolderIcon, SidebarIcon, TopActionIcon, CodexGlyph } from "./icons";
+import { FolderIcon, SidebarIcon, TopActionIcon } from "./icons";
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
 import { SettingsPopover } from "./SettingsPopover";
+import { useState } from "react";
 
 interface HomeViewProps {
   readonly roots: ReadonlyArray<WorkspaceRoot>;
@@ -14,19 +15,20 @@ interface HomeViewProps {
   onAddRoot: () => void;
 }
 
-function Sidebar(
-  props: Pick<HomeViewProps, "roots" | "selectedRootId" | "onSelectRoot" | "onAddRoot" | "settingsMenuOpen" | "onToggleSettingsMenu" | "onDismissSettingsMenu" | "onOpenSettings">
-): JSX.Element {
-  const { roots, selectedRootId, onSelectRoot, onAddRoot, settingsMenuOpen, onToggleSettingsMenu, onDismissSettingsMenu, onOpenSettings } = props;
+interface SidebarProps extends Pick<HomeViewProps, "roots" | "selectedRootId" | "onSelectRoot" | "onAddRoot" | "settingsMenuOpen" | "onToggleSettingsMenu" | "onDismissSettingsMenu" | "onOpenSettings"> {
+  collapsed: boolean;
+}
+
+function Sidebar(props: SidebarProps): JSX.Element {
+  const { roots, selectedRootId, onSelectRoot, onAddRoot, settingsMenuOpen, onToggleSettingsMenu, onDismissSettingsMenu, onOpenSettings, collapsed } = props;
+
+  if (collapsed) {
+    return <aside className="replica-sidebar sidebar-collapsed" />;
+  }
 
   return (
     <aside className="replica-sidebar">
       {settingsMenuOpen ? <button type="button" className="settings-backdrop" onClick={onDismissSettingsMenu} aria-label="关闭菜单" /> : null}
-      <header className="sidebar-header">
-        <CodexGlyph className="brand-logo" />
-        <span className="brand-name">Codex</span>
-      </header>
-      <button type="button" className="sidebar-collapse" aria-label="折叠边栏">◻</button>
       <nav className="sidebar-nav">
         <button type="button" className="sidebar-nav-item"><SidebarIcon kind="new-thread" /><span>新线程</span></button>
         <button type="button" className="sidebar-nav-item"><SidebarIcon kind="automation" /><span>自动化</span></button>
@@ -60,10 +62,19 @@ function Sidebar(
   );
 }
 
-function MainContent({ selectedRootName }: { readonly selectedRootName: string }): JSX.Element {
+interface MainContentProps {
+  readonly selectedRootName: string;
+  readonly collapsed: boolean;
+  readonly onToggleCollapse: () => void;
+}
+
+function MainContent({ selectedRootName, collapsed, onToggleCollapse }: MainContentProps): JSX.Element {
   return (
     <div className="replica-main">
       <header className="main-toolbar">
+        <button type="button" className="sidebar-toggle-btn" onClick={onToggleCollapse} aria-label={collapsed ? "展开边栏" : "折叠边栏"}>
+          {collapsed ? "▶" : "◀"}
+        </button>
         <h1 className="toolbar-title">新线程</h1>
         <div className="toolbar-actions">
           <button type="button" className="toolbar-pill"><TopActionIcon /><span>打开</span><span className="toolbar-caret">⌄</span></button>
@@ -83,7 +94,10 @@ function MainContent({ selectedRootName }: { readonly selectedRootName: string }
       </main>
       <footer className="composer-area">
         <div className="composer-card">
-          <textarea className="composer-input" readOnly value="ui完全复刻此页面，完全完全复刻，解包数据在E:\\code\\codex-official-deconstructed" />
+          <textarea
+            className="composer-input"
+            placeholder="Codex 任意提问，@ 添加文件，/ 调出命令"
+          />
           <div className="composer-bar">
             <div className="composer-left">
               <button type="button" className="composer-mini-btn" aria-label="添加">+</button>
@@ -94,9 +108,11 @@ function MainContent({ selectedRootName }: { readonly selectedRootName: string }
           </div>
         </div>
         <div className="composer-footer">
-          <span className="composer-footer-item">⌂ 本地 ⌄</span>
-          <span className="composer-footer-item footer-warning">⊘ 完全访问权限 ⌄</span>
-          <span className="composer-footer-item">⎇ main ⌄</span>
+          <div className="composer-footer-left">
+            <button type="button" className="composer-footer-item">⌂ 本地 ⌄</button>
+            <button type="button" className="composer-footer-item footer-warning">⊘ 完全访问权限 ⌄</button>
+          </div>
+          <button type="button" className="composer-footer-item">⎇ main ⌄</button>
         </div>
       </footer>
     </div>
@@ -104,10 +120,12 @@ function MainContent({ selectedRootName }: { readonly selectedRootName: string }
 }
 
 export function HomeView(props: HomeViewProps): JSX.Element {
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
     <div className="replica-app">
-      <Sidebar {...props} />
-      <MainContent selectedRootName={props.selectedRootName} />
+      <Sidebar {...props} collapsed={collapsed} />
+      <MainContent selectedRootName={props.selectedRootName} collapsed={collapsed} onToggleCollapse={() => setCollapsed(!collapsed)} />
     </div>
   );
 }
