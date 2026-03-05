@@ -1,5 +1,4 @@
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
-import { CodexGlyph } from "./icons";
 
 export type SettingsSection =
   | "general"
@@ -78,10 +77,6 @@ function SettingsSidebar(props: {
   const { section, onBackHome, onSelectSection } = props;
   return (
     <aside className="settings-sidebar">
-      <header className="sidebar-header">
-        <CodexGlyph className="brand-logo" />
-        <span className="brand-name">Codex</span>
-      </header>
       <button type="button" className="settings-back-app" onClick={onBackHome}>
         ← 返回应用
       </button>

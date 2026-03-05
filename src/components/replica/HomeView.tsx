@@ -1,19 +1,20 @@
 import {
-  OfficialAlertCircleIcon,
   OfficialArrowTopRightIcon,
   OfficialChevronRightIcon,
   OfficialCloseIcon,
   OfficialCodexMarkIcon,
   OfficialFolderIcon,
+  OfficialFolderPlusIcon,
   OfficialPlusIcon,
+  OfficialSidebarToggleIcon,
+  OfficialSortIcon,
   OfficialSettingsGearIcon,
-  OfficialWorktreeIcon
 } from "./officialIcons";
 import { SidebarIcon } from "./icons";
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
 import { SettingsPopover } from "./SettingsPopover";
+import { ComposerFooter } from "./ComposerFooter";
 import { useState } from "react";
-import appIconUrl from "../../assets/official/app.png";
 import vscodeIconUrl from "../../assets/official/apps/vscode.png";
 
 interface HomeViewProps {
@@ -29,35 +30,33 @@ interface HomeViewProps {
 }
 
 interface SidebarProps extends Pick<HomeViewProps, "roots" | "selectedRootId" | "onSelectRoot" | "onAddRoot" | "settingsMenuOpen" | "onToggleSettingsMenu" | "onDismissSettingsMenu" | "onOpenSettings"> {
+  readonly collapsed: boolean;
 }
 
 function Sidebar(props: SidebarProps): JSX.Element {
-  const { roots, selectedRootId, onSelectRoot, onAddRoot, settingsMenuOpen, onToggleSettingsMenu, onDismissSettingsMenu, onOpenSettings } = props;
+  const { roots, selectedRootId, onSelectRoot, onAddRoot, settingsMenuOpen, onToggleSettingsMenu, onDismissSettingsMenu, onOpenSettings, collapsed } = props;
+  const sidebarClassName = collapsed ? "replica-sidebar sidebar-collapsed" : "replica-sidebar";
 
   return (
-    <aside className="replica-sidebar">
+    <aside className={sidebarClassName}>
       {settingsMenuOpen ? <button type="button" className="settings-backdrop" onClick={onDismissSettingsMenu} aria-label="关闭菜单" /> : null}
-      <div className="sidebar-header">
-        <button type="button" className="sidebar-app-btn" aria-label="Codex">
-          <img className="sidebar-app-icon" src={appIconUrl} alt="" />
-        </button>
-      </div>
+      <div className="sidebar-header" aria-hidden="true" />
       <nav className="sidebar-nav">
-        <button type="button" className="sidebar-nav-item sidebar-nav-item-active"><SidebarIcon kind="new-thread" /><span>新线程</span></button>
+        <button type="button" className="sidebar-nav-item"><SidebarIcon kind="new-thread" /><span>新线程</span></button>
         <button type="button" className="sidebar-nav-item"><SidebarIcon kind="automation" /><span>自动化</span></button>
         <button type="button" className="sidebar-nav-item"><SidebarIcon kind="skills" /><span>技能</span></button>
       </nav>
       <section className="thread-section">
-        <div className="thread-section-title">线程</div>
-        <div className="thread-header-actions">
-          <button type="button" className="thread-header-btn" onClick={onAddRoot} aria-label="添加项目">
-            <OfficialPlusIcon className="thread-header-icon" />
-          </button>
-          <button type="button" className="thread-header-btn" aria-label="更多选项">
-            <span className="thread-header-ellipsis" aria-hidden="true">
-              ⋯
-            </span>
-          </button>
+        <div className="thread-section-header">
+          <div className="thread-section-title">线程</div>
+          <div className="thread-header-actions">
+            <button type="button" className="thread-header-btn" onClick={onAddRoot} aria-label="添加项目">
+              <OfficialFolderPlusIcon className="thread-header-icon" />
+            </button>
+            <button type="button" className="thread-header-btn" aria-label="排序">
+              <OfficialSortIcon className="thread-header-icon" />
+            </button>
+          </div>
         </div>
         <ul className="thread-list">
           {roots.map((root) => (
@@ -168,45 +167,52 @@ function ComposerCard(): JSX.Element {
           </button>
         </div>
         <button type="button" className="send-btn" aria-label="发送">
-          ↑
+          <SendArrowIcon className="send-icon" />
         </button>
       </div>
     </div>
   );
 }
 
-function ComposerFooter(): JSX.Element {
+function SendArrowIcon({ className }: { readonly className?: string }): JSX.Element {
   return (
-    <div className="composer-footer">
-      <div className="composer-footer-left">
-        <button type="button" className="composer-footer-item">
-          <span className="footer-icon" aria-hidden="true">
-            ⌂
-          </span>
-          本地 <OfficialChevronRightIcon className="footer-caret" />
-        </button>
-        <button type="button" className="composer-footer-item footer-warning">
-          <OfficialAlertCircleIcon className="footer-alert-icon" />
-          完全访问权限 <OfficialChevronRightIcon className="footer-caret" />
-        </button>
-      </div>
-      <button type="button" className="composer-footer-item">
-        <OfficialWorktreeIcon className="footer-branch-icon" />
-        main <OfficialChevronRightIcon className="footer-caret" />
-      </button>
-    </div>
+    <svg className={className} viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M8 13.3V2.8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M3.2 7.1L8 2.3l4.8 4.8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
 export function HomeView(props: HomeViewProps): JSX.Element {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(true);
 
   return (
     <div className="replica-app">
-      <Sidebar {...props} />
+      <Sidebar {...props} collapsed={sidebarCollapsed} />
       <MainContent selectedRootName={props.selectedRootName} />
       {terminalOpen ? <TerminalPanel onClose={() => setTerminalOpen(false)} /> : null}
+      <SidebarCollapseButton collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((value) => !value)} />
     </div>
+  );
+}
+
+function SidebarCollapseButton({
+  collapsed,
+  onToggle
+}: {
+  readonly collapsed: boolean;
+  readonly onToggle: () => void;
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      className="sidebar-collapse-toggle"
+      onClick={onToggle}
+      aria-label={collapsed ? "展开边栏" : "折叠边栏"}
+    >
+      <OfficialSidebarToggleIcon className="sidebar-collapse-icon" />
+    </button>
   );
 }
 

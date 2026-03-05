@@ -4,14 +4,10 @@ import { useWorkspaceRoots } from "./app/useWorkspaceRoots";
 import type { HostBridge } from "./bridge/types";
 import { HomeView } from "./components/replica/HomeView";
 import { SettingsView, type SettingsSection } from "./components/replica/SettingsView";
+import { open } from "@tauri-apps/plugin-dialog";
 
 interface AppProps {
   readonly hostBridge: HostBridge;
-}
-
-interface WorkspacePromptResult {
-  readonly name: string;
-  readonly path: string;
 }
 
 function inferNameFromPath(path: string): string {
@@ -20,19 +16,23 @@ function inferNameFromPath(path: string): string {
   return parts[parts.length - 1] ?? path;
 }
 
-function requestWorkspaceFolder(): WorkspacePromptResult | null {
-  const input = window.prompt("输入项目文件夹路径（或项目名称）", "");
-  if (input === null) {
+async function requestWorkspaceFolder(): Promise<{ readonly name: string; readonly path: string } | null> {
+  const selection = await open({
+    title: "选择项目文件夹",
+    directory: true,
+    multiple: false
+  });
+  if (selection === null) {
     return null;
   }
-  const path = input.trim();
+  if (Array.isArray(selection)) {
+    throw new Error("选择项目文件夹不支持多选");
+  }
+  const path = selection.trim();
   if (path.length === 0) {
     return null;
   }
-  return {
-    name: inferNameFromPath(path),
-    path
-  };
+  return { name: inferNameFromPath(path), path };
 }
 
 export function App({ hostBridge }: AppProps): JSX.Element {
@@ -46,8 +46,8 @@ export function App({ hostBridge }: AppProps): JSX.Element {
     setSettingsMenuOpen(false);
   }, []);
 
-  const addRoot = useCallback(() => {
-    const root = requestWorkspaceFolder();
+  const addRoot = useCallback(async () => {
+    const root = await requestWorkspaceFolder();
     if (root !== null) {
       workspace.addRoot(root);
     }

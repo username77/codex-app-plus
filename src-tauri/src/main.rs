@@ -15,6 +15,7 @@ use process_manager::ProcessManager;
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(ProcessManager::new())
         .invoke_handler(tauri::generate_handler![
             app_server_start,

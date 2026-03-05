@@ -1,6 +1,6 @@
 .toolbar-app-icon {
-  width: 16px;
-  height: 16px;
+  width: 32px;
+  height: 32px;
   display: block;
 }
 
@@ -45,3 +45,29 @@
   background: #ececec;
 }
 
+.sidebar-collapse-toggle {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  padding: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #8f8f8f;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+
+.sidebar-collapse-toggle:hover {
+  background: #ececec;
+}
+
+.sidebar-collapse-icon {
+  width: 18px;
+  height: 18px;
+}

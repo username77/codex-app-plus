@@ -9,3 +9,4 @@ src-tauri/.cargo
 
 .omc/
 .claude/
+output/

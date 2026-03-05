@@ -1,6 +1,6 @@
 export function CodexGlyph({ className }: { readonly className?: string }): JSX.Element {
   return (
-    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+    <svg className={className} viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
       <defs>
         <linearGradient id="codex-glyph-gradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
           <stop offset="0" stopColor="#8a8cff" />

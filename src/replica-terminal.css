@@ -1,5 +1,5 @@
 .replica-terminal {
-  grid-column: 1 / -1;
+  grid-column: 2 / -1;
   grid-row: 2;
   height: 280px;
   display: flex;
@@ -69,4 +69,3 @@
   color: #1f1f1f;
   background: #ffffff;
 }
-
