@@ -13,11 +13,19 @@ interface ComposerPickerState {
   readonly defaultEffort: ReasoningEffort | null;
 }
 
-export function useComposerPicker(hostBridge: HostBridge, configSnapshot: unknown): ComposerPickerState {
+export function useComposerPicker(
+  hostBridge: HostBridge,
+  configSnapshot: unknown,
+  ready: boolean
+): ComposerPickerState {
   const [models, setModels] = useState<ReadonlyArray<ComposerModelOption>>([]);
   const defaults = useMemo(() => readComposerSelectionFromConfig(configSnapshot), [configSnapshot]);
 
   useEffect(() => {
+    if (!ready) {
+      return;
+    }
+
     let cancelled = false;
 
     const loadModels = async () => {
@@ -35,7 +43,7 @@ export function useComposerPicker(hostBridge: HostBridge, configSnapshot: unknow
     return () => {
       cancelled = true;
     };
-  }, [hostBridge]);
+  }, [hostBridge, ready]);
 
   return {
     models,

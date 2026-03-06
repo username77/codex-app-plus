@@ -40,7 +40,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
   const controller = useAppController(hostBridge);
   const preferences = useAppPreferences();
   const codexSessions = useCodexSessionCatalog(hostBridge);
-  const composerPicker = useComposerPicker(hostBridge, controller.state.configSnapshot);
+  const composerPicker = useComposerPicker(hostBridge, controller.state.configSnapshot, controller.state.initialized);
   const workspace = useWorkspaceRoots();
   const [screen, setScreen] = useState<"home" | SettingsSection>("home");
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
