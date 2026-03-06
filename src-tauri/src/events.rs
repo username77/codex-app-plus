@@ -23,7 +23,11 @@ pub fn emit_connection_changed(app: &AppHandle, status: &str) -> AppResult<()> {
         .map_err(|e| crate::error::AppError::Protocol(e.to_string()))
 }
 
-pub fn emit_notification(app: &AppHandle, method: String, params: serde_json::Value) -> AppResult<()> {
+pub fn emit_notification(
+    app: &AppHandle,
+    method: String,
+    params: serde_json::Value,
+) -> AppResult<()> {
     let payload = NotificationPayload { method, params };
     app.emit(EVENT_NOTIFICATION_RECEIVED, payload)
         .map_err(|e| crate::error::AppError::Protocol(e.to_string()))

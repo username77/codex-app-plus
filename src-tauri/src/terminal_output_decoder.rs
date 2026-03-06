@@ -15,8 +15,10 @@ impl Utf8ChunkDecoder {
                 self.carry.clear();
                 Some(output)
             }
-            Err(error) if error.error_len().is_none() => self.take_valid_prefix(error.valid_up_to()),
-            Err(_) => self.take_lossy_buffer()
+            Err(error) if error.error_len().is_none() => {
+                self.take_valid_prefix(error.valid_up_to())
+            }
+            Err(_) => self.take_lossy_buffer(),
         }
     }
 

@@ -123,12 +123,21 @@ pub struct OpenWorkspaceInput {
     pub opener: WorkspaceOpener,
 }
 
+#[derive(Debug, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum EmbeddedTerminalShell {
+    PowerShell,
+    CommandPrompt,
+    GitBash,
+}
+
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TerminalCreateInput {
     pub cwd: Option<String>,
     pub cols: Option<u16>,
     pub rows: Option<u16>,
+    pub shell: Option<EmbeddedTerminalShell>,
 }
 
 #[derive(Debug, Serialize)]

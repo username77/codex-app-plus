@@ -1,10 +1,31 @@
-import type { ThreadSummary } from "../domain/types";
+﻿import type { ThreadSummary } from "../domain/types";
 import type { CodexSessionSummaryOutput } from "../bridge/types";
 import { mapThreadListResponse } from "../protocol/mappers";
 import type { ThreadListParams } from "../protocol/generated/v2/ThreadListParams";
 import type { ThreadListResponse } from "../protocol/generated/v2/ThreadListResponse";
 
 const THREAD_PAGE_SIZE = 100;
+
+function hasThreadText(value: string | null | undefined): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function toUpdatedAtTimestamp(updatedAt: string): number {
+  const timestamp = Date.parse(updatedAt);
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function mergeThreadSummary(primary: ThreadSummary, secondary: ThreadSummary): ThreadSummary {
+  return {
+    ...primary,
+    title: hasThreadText(primary.title) ? primary.title : secondary.title,
+    cwd: hasThreadText(primary.cwd) ? primary.cwd : secondary.cwd,
+    updatedAt:
+      toUpdatedAtTimestamp(primary.updatedAt) >= toUpdatedAtTimestamp(secondary.updatedAt)
+        ? primary.updatedAt
+        : secondary.updatedAt
+  };
+}
 
 export interface ThreadCatalogRequester {
   request: (method: "thread/list", params: ThreadListParams) => Promise<unknown>;
@@ -49,9 +70,12 @@ export function mergeThreadCatalogs(
 ): ReadonlyArray<ThreadSummary> {
   const merged = new Map<string, ThreadSummary>();
   for (const thread of [...primary, ...secondary]) {
-    if (!merged.has(thread.id)) {
+    const existing = merged.get(thread.id);
+    if (existing === undefined) {
       merged.set(thread.id, thread);
+      continue;
     }
+    merged.set(thread.id, mergeThreadSummary(existing, thread));
   }
   return [...merged.values()];
 }

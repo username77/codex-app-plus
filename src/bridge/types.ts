@@ -29,6 +29,7 @@ export interface TerminalCreateInput {
   readonly cwd?: string;
   readonly cols?: number;
   readonly rows?: number;
+  readonly shell?: EmbeddedTerminalShell;
 }
 
 export interface TerminalCreateOutput {
@@ -143,6 +144,8 @@ export type WorkspaceOpener =
   | "explorer"
   | "terminal"
   | "gitBash";
+
+export type EmbeddedTerminalShell = "powerShell" | "commandPrompt" | "gitBash";
 
 export interface OpenWorkspaceInput {
   readonly path: string;

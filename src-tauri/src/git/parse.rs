@@ -41,18 +41,30 @@ pub(crate) fn parse_status_output(output: &str) -> AppResult<ParsedGitStatus> {
             continue;
         }
         if line.starts_with("1 ") {
-            classify_entry(parse_ordinary_entry(line)?, &mut staged, &mut unstaged, &mut conflicted);
+            classify_entry(
+                parse_ordinary_entry(line)?,
+                &mut staged,
+                &mut unstaged,
+                &mut conflicted,
+            );
             continue;
         }
         if line.starts_with("2 ") {
-            classify_entry(parse_rename_entry(line)?, &mut staged, &mut unstaged, &mut conflicted);
+            classify_entry(
+                parse_rename_entry(line)?,
+                &mut staged,
+                &mut unstaged,
+                &mut conflicted,
+            );
             continue;
         }
         if line.starts_with("u ") {
             conflicted.push(parse_unmerged_entry(line)?);
             continue;
         }
-        return Err(AppError::Protocol(format!("unsupported git status line: {line}")));
+        return Err(AppError::Protocol(format!(
+            "unsupported git status line: {line}"
+        )));
     }
 
     Ok(ParsedGitStatus {
@@ -130,7 +142,9 @@ fn parse_ordinary_entry(line: &str) -> AppResult<GitStatusEntry> {
         .ok_or_else(|| AppError::Protocol(format!("invalid ordinary status line: {line}")))?;
     let parts = rest.splitn(ORDINARY_PART_COUNT, ' ').collect::<Vec<_>>();
     if parts.len() != ORDINARY_PART_COUNT {
-        return Err(AppError::Protocol(format!("invalid ordinary status line: {line}")));
+        return Err(AppError::Protocol(format!(
+            "invalid ordinary status line: {line}"
+        )));
     }
     build_entry(parts[0], parts[ORDINARY_PART_COUNT - 1], None)
 }
@@ -141,7 +155,9 @@ fn parse_rename_entry(line: &str) -> AppResult<GitStatusEntry> {
         .ok_or_else(|| AppError::Protocol(format!("invalid rename status line: {line}")))?;
     let parts = rest.splitn(RENAME_PART_COUNT, ' ').collect::<Vec<_>>();
     if parts.len() != RENAME_PART_COUNT {
-        return Err(AppError::Protocol(format!("invalid rename status line: {line}")));
+        return Err(AppError::Protocol(format!(
+            "invalid rename status line: {line}"
+        )));
     }
     let (path, original_path) = parts[RENAME_PART_COUNT - 1]
         .split_once('\t')
@@ -155,7 +171,9 @@ fn parse_unmerged_entry(line: &str) -> AppResult<GitStatusEntry> {
         .ok_or_else(|| AppError::Protocol(format!("invalid unmerged status line: {line}")))?;
     let parts = rest.splitn(UNMERGED_PART_COUNT, ' ').collect::<Vec<_>>();
     if parts.len() != UNMERGED_PART_COUNT {
-        return Err(AppError::Protocol(format!("invalid unmerged status line: {line}")));
+        return Err(AppError::Protocol(format!(
+            "invalid unmerged status line: {line}"
+        )));
     }
     build_entry(parts[0], parts[UNMERGED_PART_COUNT - 1], None)
 }

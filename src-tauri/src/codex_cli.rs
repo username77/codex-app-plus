@@ -92,8 +92,9 @@ fn resolve_codex_path(input: &AppServerStartInput) -> AppResult<PathBuf> {
         return Ok(path);
     }
 
-    search_path_candidates()
-        .ok_or_else(|| AppError::InvalidInput("未检测到已安装 Codex，请先确保 codex 已加入 PATH".to_string()))
+    search_path_candidates().ok_or_else(|| {
+        AppError::InvalidInput("未检测到已安装 Codex，请先确保 codex 已加入 PATH".to_string())
+    })
 }
 
 fn resolve_custom_path(input: &AppServerStartInput) -> AppResult<Option<PathBuf>> {

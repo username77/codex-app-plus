@@ -35,7 +35,11 @@ pub fn spawn_writer_task(
     })
 }
 
-pub fn spawn_reader_task(app: AppHandle, stdout: ChildStdout, pending: PendingMap) -> JoinHandle<()> {
+pub fn spawn_reader_task(
+    app: AppHandle,
+    stdout: ChildStdout,
+    pending: PendingMap,
+) -> JoinHandle<()> {
     tokio::spawn(async move {
         let mut lines = BufReader::new(stdout).lines();
         loop {
@@ -80,7 +84,11 @@ async fn write_line(stdin: &mut tokio::process::ChildStdin, line: &str) -> AppRe
     Ok(())
 }
 
-async fn handle_incoming_line(app: &AppHandle, pending: &PendingMap, line: String) -> AppResult<()> {
+async fn handle_incoming_line(
+    app: &AppHandle,
+    pending: &PendingMap,
+    line: String,
+) -> AppResult<()> {
     match parse_incoming_line(&line)? {
         IncomingMessage::Notification { method, params } => emit_notification(app, method, params)?,
         IncomingMessage::ServerRequest { id, method, params } => {

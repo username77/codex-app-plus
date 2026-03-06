@@ -108,7 +108,11 @@ impl ProcessManager {
         let request_id = runtime.next_id.fetch_add(1, Ordering::SeqCst).to_string();
         let line = build_request_line(&request_id, &input.method, input.params)?;
         let (sender, receiver) = oneshot::channel();
-        runtime.pending.lock().await.insert(request_id.clone(), sender);
+        runtime
+            .pending
+            .lock()
+            .await
+            .insert(request_id.clone(), sender);
         send_line(&runtime.writer, line, "写入 app-server stdin 失败")?;
 
         await_request_response(&runtime, request_id, receiver, input.timeout_ms).await
@@ -163,12 +167,17 @@ async fn await_request_response(
     receiver: oneshot::Receiver<PendingOutcome>,
     timeout_ms: Option<u64>,
 ) -> AppResult<RpcRequestOutput> {
-    let outcome = timeout(Duration::from_millis(timeout_ms.unwrap_or(60_000)), receiver).await;
+    let outcome = timeout(
+        Duration::from_millis(timeout_ms.unwrap_or(60_000)),
+        receiver,
+    )
+    .await;
     match outcome {
         Ok(Ok(PendingOutcome::Result(result))) => Ok(RpcRequestOutput { request_id, result }),
-        Ok(Ok(PendingOutcome::Error(error))) => {
-            Err(AppError::Protocol(format!("[{}] {}", error.code, error.message)))
-        }
+        Ok(Ok(PendingOutcome::Error(error))) => Err(AppError::Protocol(format!(
+            "[{}] {}",
+            error.code, error.message
+        ))),
         Ok(Err(_)) => Err(AppError::Protocol("RPC 响应通道已关闭".to_string())),
         Err(_) => {
             runtime.pending.lock().await.remove(&request_id);

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { ComposerModelOption, ComposerSelection } from "../../app/composerPreferences";
 import { useComposerSelection } from "../../app/useComposerSelection";
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
-import type { HostBridge } from "../../bridge/types";
+import type { EmbeddedTerminalShell, HostBridge, WorkspaceOpener } from "../../bridge/types";
 import type {
   AuthStatus,
   ConnectionStatus,
@@ -13,6 +13,7 @@ import type {
 import { TerminalPanel } from "../terminal/TerminalPanel";
 import { ComposerFooter } from "./ComposerFooter";
 import { ComposerModelControls } from "./ComposerModelControls";
+import { HomeConversationCanvas } from "./HomeConversationCanvas";
 import { HomeMainToolbar } from "./HomeMainToolbar";
 import { HomeSidebar } from "./HomeSidebar";
 import { WorkspaceDiffSidebar } from "./git/WorkspaceDiffSidebar";
@@ -35,11 +36,16 @@ interface HomeViewProps {
   readonly selectedRootName: string;
   readonly selectedRootPath: string | null;
   readonly threads: ReadonlyArray<ThreadSummary>;
+  readonly codexSessions: ReadonlyArray<ThreadSummary>;
+  readonly codexSessionsLoading: boolean;
+  readonly codexSessionsError: string | null;
   readonly selectedThreadId: string | null;
   readonly messages: ReadonlyArray<ConversationMessage>;
   readonly models: ReadonlyArray<ComposerModelOption>;
   readonly defaultModel: string | null;
   readonly defaultEffort: ComposerSelection["effort"];
+  readonly workspaceOpener: WorkspaceOpener;
+  readonly embeddedTerminalShell: EmbeddedTerminalShell;
   readonly pendingServerRequests: ReadonlyArray<ReceivedServerRequest>;
   readonly connectionStatus: ConnectionStatus;
   readonly fatalError: string | null;
@@ -50,8 +56,9 @@ interface HomeViewProps {
   readonly onToggleSettingsMenu: () => void;
   readonly onDismissSettingsMenu: () => void;
   readonly onOpenSettings: () => void;
+  readonly onSelectWorkspaceOpener: (opener: WorkspaceOpener) => void;
   readonly onSelectRoot: (rootId: string) => void;
-  readonly onSelectThread: (threadId: string) => void;
+  readonly onSelectThread: (threadId: string | null) => void;
   readonly onInputChange: (text: string) => void;
   readonly onCreateThread: () => Promise<void>;
   readonly onSendTurn: (selection: ComposerSelection) => Promise<void>;
@@ -68,13 +75,17 @@ interface MainContentProps {
   readonly hostBridge: HostBridge;
   readonly gitController: WorkspaceGitController;
   readonly inputText: string;
+  readonly messages: ReadonlyArray<ConversationMessage>;
   readonly models: ReadonlyArray<ComposerModelOption>;
   readonly defaultModel: string | null;
   readonly defaultEffort: ComposerSelection["effort"];
+  readonly workspaceOpener: WorkspaceOpener;
   readonly selectedRootName: string;
   readonly selectedRootPath: string | null;
+  readonly selectedThread: ThreadSummary | null;
   readonly terminalOpen: boolean;
   readonly diffOpen: boolean;
+  readonly onSelectWorkspaceOpener: (opener: WorkspaceOpener) => void;
   readonly onInputChange: (text: string) => void;
   readonly onSendTurn: (selection: ComposerSelection) => Promise<void>;
   readonly onToggleDiff: () => void;
@@ -82,19 +93,29 @@ interface MainContentProps {
 }
 
 function MainContent(props: MainContentProps): JSX.Element {
+  const conversationActive = props.selectedThread !== null || props.messages.length > 0;
+
   return (
     <div className="replica-main">
       <HomeMainToolbar
         hostBridge={props.hostBridge}
         gitController={props.gitController}
+        conversationActive={conversationActive}
+        workspaceOpener={props.workspaceOpener}
         selectedRootName={props.selectedRootName}
         selectedRootPath={props.selectedRootPath}
+        selectedThreadTitle={props.selectedThread?.title ?? null}
         terminalOpen={props.terminalOpen}
         diffOpen={props.diffOpen}
+        onSelectWorkspaceOpener={props.onSelectWorkspaceOpener}
         onToggleDiff={props.onToggleDiff}
         onToggleTerminal={props.onToggleTerminal}
       />
-      <EmptyCanvas selectedRootName={props.selectedRootName} selectedRootPath={props.selectedRootPath} />
+      {conversationActive ? (
+        <HomeConversationCanvas messages={props.messages} selectedThread={props.selectedThread} />
+      ) : (
+        <EmptyCanvas selectedRootName={props.selectedRootName} selectedRootPath={props.selectedRootPath} />
+      )}
       <ComposerArea
         busy={props.busy}
         inputText={props.inputText}
@@ -148,7 +169,9 @@ function ComposerArea(props: ComposerAreaProps): JSX.Element {
 
 function ComposerCard(props: ComposerAreaProps): JSX.Element {
   const canSend = !props.busy && props.selectedRootPath !== null && props.inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH;
-  const placeholder = props.selectedRootPath === null ? "向 Codex 提任意问题，或添加文件、调出命令" : "输入问题，后续对话会固定在当前工作区";
+  const placeholder = props.selectedRootPath === null
+    ? "向 Codex 提问，或先添加文件、调用命令"
+    : "输入问题，后续对话会固定在当前工作区";
   const composerSelection = useComposerSelection(props.models, props.defaultModel, props.defaultEffort);
 
   return (
@@ -206,6 +229,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
   const [diffSidebarOpen, setDiffSidebarOpen] = useState(false);
   const gitController = useWorkspaceGit({ hostBridge: props.hostBridge, selectedRootPath: props.selectedRootPath });
   const canShowDiffSidebar = diffSidebarOpen && props.selectedRootPath !== null;
+  const selectedThread = props.threads.find((thread) => thread.id === props.selectedThreadId) ?? null;
 
   useEffect(() => {
     if (props.selectedRootPath === null) {
@@ -220,7 +244,9 @@ export function HomeView(props: HomeViewProps): JSX.Element {
     <div className={createReplicaAppClassName(canShowDiffSidebar)}>
       <HomeSidebar
         roots={props.roots}
-        threads={props.threads}
+        codexSessions={props.codexSessions}
+        codexSessionsLoading={props.codexSessionsLoading}
+        codexSessionsError={props.codexSessionsError}
         selectedRootId={props.selectedRootId}
         selectedThreadId={props.selectedThreadId}
         settingsMenuOpen={props.settingsMenuOpen}
@@ -239,13 +265,17 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         hostBridge={props.hostBridge}
         gitController={gitController}
         inputText={props.inputText}
+        messages={props.messages}
         models={props.models}
         defaultModel={props.defaultModel}
         defaultEffort={props.defaultEffort}
+        workspaceOpener={props.workspaceOpener}
         selectedRootName={props.selectedRootName}
         selectedRootPath={props.selectedRootPath}
+        selectedThread={selectedThread}
         terminalOpen={terminalOpen}
         diffOpen={canShowDiffSidebar}
+        onSelectWorkspaceOpener={props.onSelectWorkspaceOpener}
         onInputChange={props.onInputChange}
         onSendTurn={props.onSendTurn}
         onToggleDiff={toggleDiffSidebar}
@@ -258,7 +288,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         controller={gitController}
         onClose={() => setDiffSidebarOpen(false)}
       />
-      <TerminalPanel hostBridge={props.hostBridge} open={terminalOpen} cwd={props.selectedRootPath} cwdLabel={props.selectedRootName} onClose={() => setTerminalOpen(false)} />
+      <TerminalPanel hostBridge={props.hostBridge} open={terminalOpen} cwd={props.selectedRootPath} cwdLabel={props.selectedRootName} shell={props.embeddedTerminalShell} onClose={() => setTerminalOpen(false)} />
       <SidebarCollapseButton collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((value) => !value)} />
     </div>
   );

@@ -1,13 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { HostBridge } from "../bridge/types";
 import type { AppAction, AppState, AuthStatus } from "../domain/types";
 import type { GetAuthStatusResponse } from "../protocol/generated/GetAuthStatusResponse";
 import type { InitializeParams } from "../protocol/generated/InitializeParams";
 import type { AgentMessageDeltaNotification } from "../protocol/generated/v2/AgentMessageDeltaNotification";
+import type { ConfigBatchWriteParams } from "../protocol/generated/v2/ConfigBatchWriteParams";
+import type { ConfigReadResponse } from "../protocol/generated/v2/ConfigReadResponse";
+import type { ConfigValueWriteParams } from "../protocol/generated/v2/ConfigValueWriteParams";
+import type { McpServerStatus } from "../protocol/generated/v2/McpServerStatus";
 import type { ServerRequestResolvedNotification } from "../protocol/generated/v2/ServerRequestResolvedNotification";
 import type { ThreadStartedNotification } from "../protocol/generated/v2/ThreadStartedNotification";
 import type { TurnCompletedNotification } from "../protocol/generated/v2/TurnCompletedNotification";
-import { listAllThreads, mapCodexSessionsToThreads, mergeThreadCatalogs } from "./threadCatalog";
+import {
+  batchWriteConfigAndRefresh,
+  type ConfigMutationResult,
+  listAllMcpServerStatuses,
+  readConfigSnapshot,
+  refreshMcpData,
+  type McpRefreshResult,
+  writeConfigValueAndRefresh
+} from "./configOperations";
+import { listAllThreads } from "./threadCatalog";
 import { ProtocolClient } from "../protocol/client";
 import { mapThreadToSummary } from "../protocol/mappers";
 import { useAppStore } from "../state/store";
@@ -19,6 +32,11 @@ interface AppController {
   readonly state: AppState;
   setInput: (text: string) => void;
   retryConnection: () => Promise<void>;
+  refreshConfigSnapshot: () => Promise<ConfigReadResponse>;
+  refreshMcpData: () => Promise<McpRefreshResult>;
+  listMcpServerStatuses: () => Promise<ReadonlyArray<McpServerStatus>>;
+  writeConfigValue: (params: ConfigValueWriteParams) => Promise<ConfigMutationResult>;
+  batchWriteConfig: (params: ConfigBatchWriteParams) => Promise<ConfigMutationResult>;
   login: () => Promise<void>;
   approveRequest: (requestId: string) => Promise<void>;
   rejectRequest: (requestId: string) => Promise<void>;
@@ -55,12 +73,13 @@ function mapAuthStatus(response: GetAuthStatusResponse): { status: AuthStatus; m
 
 async function loadBootstrapSnapshot(
   client: ProtocolClient,
-  hostBridge: HostBridge,
   dispatch: (action: AppAction) => void
 ): Promise<void> {
-  await loadAuthStatus(client, dispatch);
-  await loadThreads(client, hostBridge, dispatch);
-  const config = await client.request("config/read", { includeLayers: true });
+  const [, , config] = await Promise.all([
+    loadAuthStatus(client, dispatch),
+    loadThreads(client, dispatch),
+    client.request("config/read", { includeLayers: true })
+  ]);
   dispatch({ type: "config/loaded", config });
 }
 
@@ -79,12 +98,9 @@ async function loadAuthStatus(client: ProtocolClient, dispatch: (action: AppActi
 
 async function loadThreads(
   client: ProtocolClient,
-  hostBridge: HostBridge,
   dispatch: (action: AppAction) => void
 ): Promise<void> {
-  const remoteThreads = await listAllThreads({ request: (method, params) => client.request(method, params) });
-  const codexSessions = await hostBridge.app.listCodexSessions();
-  const threads = mergeThreadCatalogs(remoteThreads, mapCodexSessionsToThreads(codexSessions));
+  const threads = await listAllThreads({ request: (method, params) => client.request(method, params) });
   dispatch({ type: "threads/loaded", threads });
 }
 
@@ -123,7 +139,7 @@ async function startOrReuseAppServer(client: ProtocolClient): Promise<void> {
   try {
     await client.startAppServer();
   } catch (error) {
-    if (!toErrorMessage(error).includes("已在运行")) {
+    if (!toErrorMessage(error).includes("宸插湪杩愯")) {
       throw error;
     }
   }
@@ -197,7 +213,7 @@ export function useAppController(hostBridge: HostBridge): AppController {
         }
         await client.initializeConnection(createInitializeParams());
         dispatch({ type: "initialized/changed", ready: true });
-        await loadBootstrapSnapshot(client, hostBridge, dispatch);
+        await loadBootstrapSnapshot(client, dispatch);
       } catch (error) {
         dispatch({ type: "fatal/error", message: toErrorMessage(error) });
         scheduleRetry();
@@ -228,10 +244,10 @@ export function useAppController(hostBridge: HostBridge): AppController {
   }, [bootstrap]);
 
   const runBusy = useCallback(
-    async (runner: () => Promise<void>) => {
+    async <T>(runner: () => Promise<T>): Promise<T> => {
       dispatch({ type: "busy/changed", busy: true });
       try {
-        await runner();
+        return await runner();
       } finally {
         dispatch({ type: "busy/changed", busy: false });
       }
@@ -244,6 +260,24 @@ export function useAppController(hostBridge: HostBridge): AppController {
       await client.request("account/login/start", { type: "chatgpt" });
     });
   }, [client, runBusy]);
+
+  const refreshConfig = useCallback(() => readConfigSnapshot(client, dispatch), [client, dispatch]);
+
+  const refreshMcp = useCallback(() => refreshMcpData(client, dispatch), [client, dispatch]);
+
+  const listStatuses = useCallback(() => listAllMcpServerStatuses(client), [client]);
+
+  const writeConfigValue = useCallback(
+    (params: ConfigValueWriteParams) =>
+      runBusy(() => writeConfigValueAndRefresh(client, dispatch, params)),
+    [client, dispatch, runBusy]
+  );
+
+  const batchWriteConfig = useCallback(
+    (params: ConfigBatchWriteParams) =>
+      runBusy(() => batchWriteConfigAndRefresh(client, dispatch, params)),
+    [client, dispatch, runBusy]
+  );
 
   const approveRequest = useCallback(
     async (requestId: string) => {
@@ -269,9 +303,15 @@ export function useAppController(hostBridge: HostBridge): AppController {
     state,
     setInput: (text) => dispatch({ type: "input/changed", value: text }),
     retryConnection: () => bootstrap(true),
+    refreshConfigSnapshot: refreshConfig,
+    refreshMcpData: refreshMcp,
+    listMcpServerStatuses: listStatuses,
+    writeConfigValue,
+    batchWriteConfig,
     login,
     approveRequest,
     rejectRequest,
     selectThread: (threadId) => dispatch({ type: "thread/selected", threadId })
   };
 }
+

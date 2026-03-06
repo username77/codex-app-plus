@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import type { HostBridge } from "../../bridge/types";
+import type { HostBridge, WorkspaceOpener } from "../../bridge/types";
 import { WorkspaceOpenButton } from "./WorkspaceOpenButton";
 
 function createHostBridge(overrides?: {
@@ -15,6 +16,7 @@ function createHostBridge(overrides?: {
     },
     rpc: {
       request: vi.fn(),
+      notify: vi.fn(),
       cancel: vi.fn()
     },
     serverRequest: {
@@ -26,7 +28,22 @@ function createHostBridge(overrides?: {
       openCodexConfigToml: vi.fn(),
       showNotification: vi.fn(),
       showContextMenu: vi.fn(),
-      importOfficialData: vi.fn()
+      importOfficialData: vi.fn(),
+      listCodexSessions: vi.fn(),
+      readCodexSession: vi.fn()
+    },
+    git: {
+      getStatus: vi.fn(),
+      getDiff: vi.fn(),
+      initRepository: vi.fn(),
+      stagePaths: vi.fn(),
+      unstagePaths: vi.fn(),
+      discardPaths: vi.fn(),
+      commit: vi.fn(),
+      fetch: vi.fn(),
+      pull: vi.fn(),
+      push: vi.fn(),
+      checkout: vi.fn()
     },
     terminal: {
       createSession: vi.fn(),
@@ -38,9 +55,29 @@ function createHostBridge(overrides?: {
   } as unknown as HostBridge;
 }
 
+function renderControlledButton(props: {
+  readonly hostBridge: HostBridge;
+  readonly selectedRootPath: string | null;
+  readonly initialOpener?: WorkspaceOpener;
+}): void {
+  function Wrapper(): JSX.Element {
+    const [selectedOpener, setSelectedOpener] = useState<WorkspaceOpener>(props.initialOpener ?? "vscode");
+    return (
+      <WorkspaceOpenButton
+        hostBridge={props.hostBridge}
+        selectedRootPath={props.selectedRootPath}
+        selectedOpener={selectedOpener}
+        onSelectOpener={setSelectedOpener}
+      />
+    );
+  }
+
+  render(<Wrapper />);
+}
+
 describe("WorkspaceOpenButton", () => {
   it("disables the main button when no workspace is selected", () => {
-    render(<WorkspaceOpenButton hostBridge={createHostBridge()} selectedRootPath={null} />);
+    renderControlledButton({ hostBridge: createHostBridge(), selectedRootPath: null });
 
     expect(screen.getByRole("button", { name: "使用 VS Code 打开当前工作区" })).toBeDisabled();
   });
@@ -48,12 +85,10 @@ describe("WorkspaceOpenButton", () => {
   it("opens the selected workspace in VS Code by default", async () => {
     const openExternal = vi.fn().mockResolvedValue(undefined);
 
-    render(
-      <WorkspaceOpenButton
-        hostBridge={createHostBridge({ openExternal })}
-        selectedRootPath="E:\code\My Project"
-      />
-    );
+    renderControlledButton({
+      hostBridge: createHostBridge({ openExternal }),
+      selectedRootPath: "E:/code/My Project"
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "使用 VS Code 打开当前工作区" }));
 
@@ -65,12 +100,10 @@ describe("WorkspaceOpenButton", () => {
   it("switches the main action after choosing File Explorer", async () => {
     const openExternal = vi.fn().mockResolvedValue(undefined);
 
-    render(
-      <WorkspaceOpenButton
-        hostBridge={createHostBridge({ openExternal })}
-        selectedRootPath="E:/code/project"
-      />
-    );
+    renderControlledButton({
+      hostBridge: createHostBridge({ openExternal }),
+      selectedRootPath: "E:/code/project"
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "选择打开方式" }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "File Explorer" }));
@@ -84,12 +117,10 @@ describe("WorkspaceOpenButton", () => {
   it("switches the main action after choosing Terminal", async () => {
     const openWorkspace = vi.fn().mockResolvedValue(undefined);
 
-    render(
-      <WorkspaceOpenButton
-        hostBridge={createHostBridge({ openWorkspace })}
-        selectedRootPath="E:/code/project"
-      />
-    );
+    renderControlledButton({
+      hostBridge: createHostBridge({ openWorkspace }),
+      selectedRootPath: "E:/code/project"
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "选择打开方式" }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Terminal" }));

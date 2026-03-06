@@ -30,6 +30,77 @@
   padding-bottom: 14px;
 }
 
+.settings-row-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.settings-row-control {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.settings-row-note {
+  margin: 6px 0 0;
+  color: #8a6a12;
+  font-size: 13px;
+}
+
+.settings-select-trigger {
+  min-width: 190px;
+  height: 32px;
+  border: 0;
+  border-radius: 10px;
+  background: #e6e6e6;
+  color: #4f4f4f;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.settings-select-trigger:hover,
+.settings-select-trigger[aria-expanded="true"] {
+  background: #dddddd;
+}
+
+.settings-select-trigger:focus-visible {
+  outline: 2px solid #7aa2ff;
+  outline-offset: 1px;
+}
+
+.settings-select-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-select-caret {
+  width: 16px;
+  height: 16px;
+  color: #858585;
+  transform: rotate(90deg);
+  flex-shrink: 0;
+}
+
+.settings-select-caret-open {
+  transform: rotate(270deg);
+}
+
+.settings-select-menu {
+  min-width: 240px;
+}
+
+.settings-select-check {
+  width: 14px;
+  color: #4d4d4d;
+  text-align: center;
+  flex-shrink: 0;
+}
+
 .settings-inline-action {
   display: inline-flex;
   align-items: center;
@@ -151,6 +222,22 @@
 
 .settings-action-btn:hover {
   background: #dbdbdb;
+}
+
+.settings-action-btn:disabled,
+.settings-mini-btn:disabled,
+.settings-toggle:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+}
+
+.settings-action-btn-primary {
+  background: #3f98e2;
+  color: #fff;
+}
+
+.settings-action-btn-primary:hover {
+  background: #2f87d0;
 }
 
 .settings-action-btn-sm {
@@ -278,6 +365,151 @@
   padding: 16px;
   color: #666;
   font-size: 14px;
+}
+
+.mcp-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mcp-error-note {
+  color: #b33131;
+}
+
+.mcp-server-row {
+  border-top: 1px solid #e1e1e1;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mcp-server-main {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.mcp-server-title-row,
+.mcp-server-meta-row,
+.mcp-server-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mcp-server-title-row strong {
+  font-size: 16px;
+  color: #2d2d2d;
+}
+
+.mcp-chip,
+.mcp-runtime-badge,
+.mcp-readonly-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #ececec;
+  color: #606060;
+  font-size: 12px;
+}
+
+.mcp-readonly-label {
+  background: #e7eef8;
+  color: #3b5f85;
+}
+
+.mcp-danger-btn {
+  color: #9e2f2f;
+}
+
+.mcp-dialog {
+  width: min(860px, 100%);
+}
+
+.mcp-form {
+  display: grid;
+  gap: 14px;
+}
+
+.mcp-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.mcp-form-field {
+  display: grid;
+  gap: 6px;
+  color: #444;
+  font-size: 14px;
+}
+
+.mcp-form-label {
+  font-weight: 600;
+}
+
+.mcp-form-input,
+.mcp-form-select,
+.mcp-form-textarea {
+  width: 100%;
+  border: 1px solid #d8d8d8;
+  border-radius: 10px;
+  background: #eeeeee;
+  color: #444;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.mcp-form-textarea {
+  resize: vertical;
+  min-height: 92px;
+}
+
+.mcp-form-toggle-row {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #444;
+  font-size: 14px;
+}
+
+.mcp-form-error,
+.mcp-form-submit-error {
+  color: #b33131;
+  font-size: 13px;
+}
+
+.mcp-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.mcp-confirm-dialog {
+  width: min(520px, 100%);
+}
+
+.mcp-confirm-body {
+  display: grid;
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .mcp-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mcp-server-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 1080px) {

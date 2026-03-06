@@ -12,14 +12,23 @@ import type { TurnStartParams } from "../protocol/generated/v2/TurnStartParams";
 import type { TurnStartResponse } from "../protocol/generated/v2/TurnStartResponse";
 import { mapThreadToSummary } from "../protocol/mappers";
 import { useAppStore } from "../state/store";
+import { mergeThreadCatalogs } from "./threadCatalog";
 import { listThreadsForWorkspace } from "./workspaceThread";
 
 interface WorkspaceConversationController {
   readonly selectedThreadId: string | null;
   readonly workspaceThreads: ReadonlyArray<ThreadSummary>;
   createThread: (model?: string | null) => Promise<string>;
-  selectThread: (threadId: string) => void;
+  selectThread: (threadId: string | null) => void;
   sendTurn: (selection: ComposerSelection) => Promise<void>;
+}
+
+interface UseWorkspaceConversationOptions {
+  readonly hostBridge: HostBridge;
+  readonly threads: ReadonlyArray<ThreadSummary>;
+  readonly codexSessions: ReadonlyArray<ThreadSummary>;
+  readonly selectedRootPath: string | null;
+  readonly reloadCodexSessions: () => Promise<void>;
 }
 
 function mapCodexSessionMessages(threadId: string, response: CodexSessionReadOutput): ReadonlyArray<ConversationMessage> {
@@ -36,25 +45,37 @@ function mapCodexSessionMessages(threadId: string, response: CodexSessionReadOut
     }));
 }
 
-export function useWorkspaceConversation(
-  hostBridge: HostBridge,
-  threads: ReadonlyArray<ThreadSummary>,
-  selectedRootPath: string | null
-): WorkspaceConversationController {
+function createLoadedThreadKey(thread: ThreadSummary): string {
+  return `${thread.source ?? "rpc"}:${thread.id}`;
+}
+
+export function useWorkspaceConversation(options: UseWorkspaceConversationOptions): WorkspaceConversationController {
   const { dispatch, state } = useAppStore();
-  const loadedThreadIds = useRef(new Set<string>());
+  const loadedThreadKeys = useRef(new Set<string>());
   const resumedThreadIds = useRef(new Set<string>());
-  const workspaceThreads = useMemo(() => listThreadsForWorkspace(threads, selectedRootPath), [threads, selectedRootPath]);
+  const workspaceThreads = useMemo(
+    () => listThreadsForWorkspace(options.codexSessions, options.selectedRootPath),
+    [options.codexSessions, options.selectedRootPath]
+  );
+  const knownThreads = useMemo(
+    () => mergeThreadCatalogs(options.threads, options.codexSessions),
+    [options.codexSessions, options.threads]
+  );
+  const selectableThreads = useMemo(
+    () => listThreadsForWorkspace(knownThreads, options.selectedRootPath),
+    [knownThreads, options.selectedRootPath]
+  );
   const selectedThreadId = useMemo(() => {
-    if (state.selectedThreadId !== null && workspaceThreads.some((thread) => thread.id === state.selectedThreadId)) {
+    if (state.selectedThreadId !== null && selectableThreads.some((thread) => thread.id === state.selectedThreadId)) {
       return state.selectedThreadId;
     }
-    return workspaceThreads[0]?.id ?? null;
-  }, [state.selectedThreadId, workspaceThreads]);
+    return null;
+  }, [selectableThreads, state.selectedThreadId]);
   const selectedThread = useMemo(
-    () => workspaceThreads.find((thread) => thread.id === selectedThreadId) ?? null,
-    [selectedThreadId, workspaceThreads]
+    () => knownThreads.find((thread) => thread.id === selectedThreadId) ?? null,
+    [knownThreads, selectedThreadId]
   );
+  const lastNotification = state.notifications[state.notifications.length - 1] ?? null;
 
   useEffect(() => {
     if (state.selectedThreadId !== selectedThreadId) {
@@ -64,25 +85,25 @@ export function useWorkspaceConversation(
 
   const loadThreadHistory = useCallback(
     async (thread: ThreadSummary) => {
+      const threadKey = createLoadedThreadKey(thread);
       if (thread.source === "codexData") {
-        const response = await hostBridge.app.readCodexSession({ threadId: thread.id });
+        const response = await options.hostBridge.app.readCodexSession({ threadId: thread.id });
         dispatch({ type: "thread/messagesLoaded", threadId: thread.id, messages: mapCodexSessionMessages(thread.id, response) });
-        loadedThreadIds.current.add(thread.id);
+        loadedThreadKeys.current.add(threadKey);
         return;
       }
 
-      const threadId = thread.id;
-      const params: ThreadReadParams = { threadId, includeTurns: true };
-      const response = (await hostBridge.rpc.request({ method: "thread/read", params })).result as ThreadReadResponse;
+      const params: ThreadReadParams = { threadId: thread.id, includeTurns: true };
+      const response = (await options.hostBridge.rpc.request({ method: "thread/read", params })).result as ThreadReadResponse;
       dispatch({ type: "thread/upserted", thread: mapThreadToSummary(response.thread) });
-      dispatch({ type: "thread/messagesLoaded", threadId, messages: mapThreadHistoryToMessages(response.thread) });
-      loadedThreadIds.current.add(threadId);
+      dispatch({ type: "thread/messagesLoaded", threadId: thread.id, messages: mapThreadHistoryToMessages(response.thread) });
+      loadedThreadKeys.current.add(threadKey);
     },
-    [dispatch, hostBridge.app, hostBridge.rpc]
+    [dispatch, options.hostBridge.app, options.hostBridge.rpc]
   );
 
   useEffect(() => {
-    if (selectedThread === null || loadedThreadIds.current.has(selectedThread.id)) {
+    if (selectedThread === null || loadedThreadKeys.current.has(createLoadedThreadKey(selectedThread))) {
       return;
     }
     void loadThreadHistory(selectedThread).catch((error) => {
@@ -90,16 +111,23 @@ export function useWorkspaceConversation(
     });
   }, [dispatch, loadThreadHistory, selectedThread]);
 
+  useEffect(() => {
+    if (lastNotification?.method !== "turn/completed") {
+      return;
+    }
+    void options.reloadCodexSessions();
+  }, [lastNotification, options.reloadCodexSessions]);
+
   const ensureThreadResumed = useCallback(
     async (threadId: string) => {
       if (resumedThreadIds.current.has(threadId)) {
         return;
       }
       const params: ThreadResumeParams = { threadId, persistExtendedHistory: true };
-      await hostBridge.rpc.request({ method: "thread/resume", params });
+      await options.hostBridge.rpc.request({ method: "thread/resume", params });
       resumedThreadIds.current.add(threadId);
     },
-    [hostBridge.rpc]
+    [options.hostBridge.rpc]
   );
 
   const runBusy = useCallback(
@@ -115,26 +143,27 @@ export function useWorkspaceConversation(
   );
 
   const createThread = useCallback(async (model: string | null = null) => {
-    if (selectedRootPath === null) {
+    if (options.selectedRootPath === null) {
       throw new Error("请先选择一个工作区文件夹");
     }
     return runBusy(async () => {
       const params: ThreadStartParams = {
         model: model ?? undefined,
-        cwd: selectedRootPath,
+        cwd: options.selectedRootPath,
         experimentalRawEvents: false,
         persistExtendedHistory: true
       };
-      const response = (await hostBridge.rpc.request({ method: "thread/start", params })).result as ThreadStartResponse;
+      const response = (await options.hostBridge.rpc.request({ method: "thread/start", params })).result as ThreadStartResponse;
       const summary = mapThreadToSummary(response.thread);
       dispatch({ type: "thread/upserted", thread: summary });
       dispatch({ type: "thread/selected", threadId: response.thread.id });
       dispatch({ type: "thread/messagesLoaded", threadId: response.thread.id, messages: [] });
-      loadedThreadIds.current.add(response.thread.id);
+      loadedThreadKeys.current.add(createLoadedThreadKey(summary));
       resumedThreadIds.current.add(response.thread.id);
+      await options.reloadCodexSessions();
       return response.thread.id;
     });
-  }, [dispatch, hostBridge.rpc, runBusy, selectedRootPath]);
+  }, [dispatch, options.hostBridge.rpc, options.reloadCodexSessions, options.selectedRootPath, runBusy]);
 
   const sendTurn = useCallback(async (selection: ComposerSelection) => {
     const text = state.inputText.trim();
@@ -148,22 +177,39 @@ export function useWorkspaceConversation(
         threadId,
         model: selection.model ?? undefined,
         effort: selection.effort ?? undefined,
-        cwd: selectedRootPath ?? undefined,
+        cwd: options.selectedRootPath ?? undefined,
         input: [{ type: "text", text, text_elements: [] }]
       };
-      const response = (await hostBridge.rpc.request({ method: "turn/start", params })).result as TurnStartResponse;
+      const response = (await options.hostBridge.rpc.request({ method: "turn/start", params })).result as TurnStartResponse;
       dispatch({ type: "thread/selected", threadId });
       dispatch({ type: "thread/touched", threadId, updatedAt: new Date().toISOString() });
       dispatch({ type: "message/added", message: createUserConversationMessage(threadId, response.turn.id, text) });
       dispatch({ type: "input/changed", value: "" });
+      await options.reloadCodexSessions();
     });
-  }, [createThread, dispatch, ensureThreadResumed, hostBridge.rpc, runBusy, selectedRootPath, selectedThreadId, state.inputText]);
+  }, [createThread, dispatch, ensureThreadResumed, options.hostBridge.rpc, options.reloadCodexSessions, options.selectedRootPath, runBusy, selectedThreadId, state.inputText]);
+
+  const selectThread = useCallback(
+    (threadId: string | null) => {
+      if (threadId === null) {
+        dispatch({ type: "thread/selected", threadId: null });
+        return;
+      }
+      const localThread = options.codexSessions.find((thread) => thread.id === threadId);
+      const nextThread = localThread ?? knownThreads.find((thread) => thread.id === threadId);
+      if (nextThread !== undefined) {
+        dispatch({ type: "thread/upserted", thread: nextThread });
+      }
+      dispatch({ type: "thread/selected", threadId });
+    },
+    [dispatch, knownThreads, options.codexSessions]
+  );
 
   return {
     selectedThreadId,
     workspaceThreads,
     createThread,
-    selectThread: (threadId) => dispatch({ type: "thread/selected", threadId }),
+    selectThread,
     sendTurn
   };
 }

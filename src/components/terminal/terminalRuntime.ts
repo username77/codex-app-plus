@@ -3,7 +3,7 @@ import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { useCallback, useEffect, useRef } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import type { HostBridge } from "../../bridge/types";
+import type { EmbeddedTerminalShell, HostBridge } from "../../bridge/types";
 
 const DEFAULT_COLUMNS = 120;
 const DEFAULT_ROWS = 32;
@@ -49,6 +49,7 @@ interface UseTerminalOpenActionOptions {
   readonly setErrorMessage: Dispatch<SetStateAction<string | null>>;
   readonly setShellLabel: Dispatch<SetStateAction<string>>;
   readonly setStatus: Dispatch<SetStateAction<TerminalStatus>>;
+  readonly shell: EmbeddedTerminalShell;
   readonly syncTerminalSize: () => Promise<void>;
   readonly terminalRef: MutableRefObject<Terminal | null>;
 }
@@ -224,6 +225,7 @@ export function useTerminalOpenAction(options: UseTerminalOpenActionOptions) {
     setErrorMessage,
     setShellLabel,
     setStatus,
+    shell,
     syncTerminalSize,
     terminalRef
   } = options;
@@ -238,7 +240,7 @@ export function useTerminalOpenAction(options: UseTerminalOpenActionOptions) {
     try {
       const terminal = terminalRef.current;
       const size = terminal === null ? { cols: DEFAULT_COLUMNS, rows: DEFAULT_ROWS } : readTerminalSize(terminal);
-      const result = await hostBridge.terminal.createSession({ cwd: cwd ?? undefined, cols: size.cols, rows: size.rows });
+      const result = await hostBridge.terminal.createSession({ cwd: cwd ?? undefined, cols: size.cols, rows: size.rows, shell });
       if (!mountedRef.current) {
         await hostBridge.terminal.closeSession({ sessionId: result.sessionId });
         return;
@@ -252,7 +254,7 @@ export function useTerminalOpenAction(options: UseTerminalOpenActionOptions) {
     } finally {
       creatingRef.current = false;
     }
-  }, [creatingRef, cwd, hostBridge.terminal, mountedRef, open, reportError, sessionIdRef, setErrorMessage, setShellLabel, setStatus, syncTerminalSize, terminalRef]);
+  }, [creatingRef, cwd, hostBridge.terminal, mountedRef, open, reportError, sessionIdRef, setErrorMessage, setShellLabel, setStatus, shell, syncTerminalSize, terminalRef]);
 }
 
 export function useScheduledLayout(options: UseScheduledLayoutOptions): () => void {

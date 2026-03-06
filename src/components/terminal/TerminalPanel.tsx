@@ -1,4 +1,4 @@
-import type { HostBridge } from "../../bridge/types";
+import type { EmbeddedTerminalShell, HostBridge } from "../../bridge/types";
 import { OfficialCloseIcon } from "../replica/officialIcons";
 import { useEmbeddedTerminal } from "./useEmbeddedTerminal";
 
@@ -7,6 +7,7 @@ interface TerminalPanelProps {
   readonly open: boolean;
   readonly cwd: string | null;
   readonly cwdLabel: string;
+  readonly shell: EmbeddedTerminalShell;
   readonly onClose: () => void;
 }
 

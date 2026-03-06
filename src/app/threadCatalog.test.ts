@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+﻿import { describe, expect, it, vi } from "vitest";
 import { listAllThreads, mapCodexSessionsToThreads, mergeThreadCatalogs } from "./threadCatalog";
 
 describe("listAllThreads", () => {
@@ -114,6 +114,15 @@ describe("listAllThreads", () => {
       mergeThreadCatalogs(
         [{ id: "same", title: "rpc", cwd: "E:/code/project-a", archived: false, updatedAt: "2026-03-06T10:00:00.000Z", source: "rpc" }],
         [{ id: "same", title: "local", cwd: "E:/code/project-a", archived: false, updatedAt: "2026-03-06T09:00:00.000Z", source: "codexData" }]
+      )
+    ).toEqual([{ id: "same", title: "rpc", cwd: "E:/code/project-a", archived: false, updatedAt: "2026-03-06T10:00:00.000Z", source: "rpc" }]);
+  });
+
+  it("keeps local cwd when rpc entry is missing it", () => {
+    expect(
+      mergeThreadCatalogs(
+        [{ id: "same", title: "rpc", cwd: null, archived: false, updatedAt: "2026-03-06T09:00:00.000Z", source: "rpc" }],
+        [{ id: "same", title: "local", cwd: "E:/code/project-a", archived: false, updatedAt: "2026-03-06T10:00:00.000Z", source: "codexData" }]
       )
     ).toEqual([{ id: "same", title: "rpc", cwd: "E:/code/project-a", archived: false, updatedAt: "2026-03-06T10:00:00.000Z", source: "rpc" }]);
   });

@@ -108,3 +108,17 @@
 .workspace-thread-empty {
   padding: 4px 8px 8px;
 }
+
+.workspace-thread-toggle {
+  margin: 2px 0 0 28px;
+  padding: 4px 8px 8px;
+  border: 0;
+  background: transparent;
+  color: #6e6e6e;
+  font-size: 12px;
+  text-align: left;
+}
+
+.workspace-thread-toggle:hover {
+  color: #2f2f2f;
+}

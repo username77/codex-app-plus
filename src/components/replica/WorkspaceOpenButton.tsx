@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { RefObject } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { HostBridge, WorkspaceOpener } from "../../bridge/types";
 import terminalIconUrl from "../../assets/official/apps/microsoft-terminal.png";
 import vscodeIconUrl from "../../assets/official/apps/vscode.png";
 import { OfficialChevronRightIcon } from "./officialIcons";
+import { useToolbarMenuDismissal } from "./useToolbarMenuDismissal";
 
 const OPEN_TEXT = "\u6253\u5f00";
 const OPEN_METHODS_TEXT = "\u6253\u5f00\u65b9\u5f0f";
@@ -14,6 +14,8 @@ const WINDOWS_DRIVE_SEGMENT_PATTERN = /^[A-Za-z]:$/;
 interface WorkspaceOpenButtonProps {
   readonly hostBridge: HostBridge;
   readonly selectedRootPath: string | null;
+  readonly selectedOpener: WorkspaceOpener;
+  readonly onSelectOpener: (opener: WorkspaceOpener) => void;
 }
 
 interface WorkspaceOpenerOption {
@@ -132,36 +134,6 @@ function findWorkspaceOpenerOption(opener: WorkspaceOpener): WorkspaceOpenerOpti
   return WORKSPACE_OPENER_OPTIONS.find((option) => option.id === opener) ?? WORKSPACE_OPENER_OPTIONS[0];
 }
 
-function useMenuDismissal(
-  menuOpen: boolean,
-  containerRef: RefObject<HTMLDivElement>,
-  onDismiss: () => void
-): void {
-  useEffect(() => {
-    if (!menuOpen) {
-      return undefined;
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        onDismiss();
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onDismiss();
-      }
-    };
-
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [containerRef, menuOpen, onDismiss]);
-}
-
 function WorkspaceOpenMenu(props: {
   readonly selectedOpener: WorkspaceOpener;
   readonly onSelectOpener: (opener: WorkspaceOpener) => void;
@@ -195,42 +167,41 @@ function WorkspaceOpenMenu(props: {
 
 export function WorkspaceOpenButton(props: WorkspaceOpenButtonProps): JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [selectedOpener, setSelectedOpener] = useState<WorkspaceOpener>("vscode");
   const containerRef = useRef<HTMLDivElement>(null);
   const canOpenWorkspace = props.selectedRootPath !== null;
-  const selectedOption = findWorkspaceOpenerOption(selectedOpener);
+  const selectedOption = findWorkspaceOpenerOption(props.selectedOpener);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
-  useMenuDismissal(menuOpen, containerRef, closeMenu);
+  useToolbarMenuDismissal(menuOpen, containerRef, closeMenu);
 
   const openSelectedWorkspace = useCallback(async () => {
     const selectedRootPath = assertSelectedRootPath(props.selectedRootPath);
 
     try {
-      if (selectedOpener === "vscode") {
+      if (props.selectedOpener === "vscode") {
         await props.hostBridge.app.openExternal(createVsCodeWorkspaceUrl(selectedRootPath));
         return;
       }
-      if (selectedOpener === "explorer") {
+      if (props.selectedOpener === "explorer") {
         await props.hostBridge.app.openExternal(selectedRootPath);
         return;
       }
       await props.hostBridge.app.openWorkspace({
         path: selectedRootPath,
-        opener: selectedOpener
+        opener: props.selectedOpener
       });
     } catch (error) {
       console.error(`Failed to open workspace with ${selectedOption.label}`, error);
       window.alert(`${selectedOption.label}\u6253\u5f00\u5931\u8d25\uff1a${String(error)}`);
     }
-  }, [props.hostBridge.app, props.selectedRootPath, selectedOpener, selectedOption.label]);
+  }, [props.hostBridge.app, props.selectedOpener, props.selectedRootPath, selectedOption.label]);
 
   const selectOpener = useCallback(
     (opener: WorkspaceOpener) => {
-      setSelectedOpener(opener);
+      props.onSelectOpener(opener);
       closeMenu();
     },
-    [closeMenu]
+    [closeMenu, props.onSelectOpener]
   );
 
   return (
@@ -238,7 +209,7 @@ export function WorkspaceOpenButton(props: WorkspaceOpenButtonProps): JSX.Elemen
       <button
         type="button"
         className="toolbar-split-main"
-        data-opener={selectedOpener}
+        data-opener={props.selectedOpener}
         disabled={!canOpenWorkspace}
         aria-label={`\u4f7f\u7528 ${selectedOption.label} ${OPEN_TEXT}${CURRENT_WORKSPACE_TEXT}`}
         onClick={() => void openSelectedWorkspace()}
@@ -256,7 +227,7 @@ export function WorkspaceOpenButton(props: WorkspaceOpenButtonProps): JSX.Elemen
       >
         <OfficialChevronRightIcon className="toolbar-caret-icon" />
       </button>
-      {menuOpen ? <WorkspaceOpenMenu selectedOpener={selectedOpener} onSelectOpener={selectOpener} /> : null}
+      {menuOpen ? <WorkspaceOpenMenu selectedOpener={props.selectedOpener} onSelectOpener={selectOpener} /> : null}
     </div>
   );
 }

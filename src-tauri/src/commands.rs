@@ -7,10 +7,10 @@ use crate::error::{AppError, AppResult};
 use crate::events::{EVENT_CONTEXT_MENU_REQUESTED, EVENT_NOTIFICATION_REQUESTED};
 use crate::models::{
     AppServerStartInput, CodexSessionReadInput, CodexSessionReadOutput, CodexSessionSummary,
-    ImportOfficialDataInput, OpenWorkspaceInput, RpcCancelInput, RpcNotifyInput,
-    RpcRequestInput, RpcRequestOutput, ServerRequestResolveInput, ShowContextMenuInput,
-    ShowNotificationInput, TerminalCloseInput, TerminalCreateInput, TerminalCreateOutput,
-    TerminalResizeInput, TerminalWriteInput, WorkspaceOpener,
+    ImportOfficialDataInput, OpenWorkspaceInput, RpcCancelInput, RpcNotifyInput, RpcRequestInput,
+    RpcRequestOutput, ServerRequestResolveInput, ShowContextMenuInput, ShowNotificationInput,
+    TerminalCloseInput, TerminalCreateInput, TerminalCreateOutput, TerminalResizeInput,
+    TerminalWriteInput, WorkspaceOpener,
 };
 use crate::process_manager::ProcessManager;
 use crate::terminal_manager::TerminalManager;
@@ -29,7 +29,10 @@ pub async fn app_server_start(
 }
 
 #[tauri::command]
-pub async fn app_server_stop(app: AppHandle, state: State<'_, ProcessManager>) -> Result<(), String> {
+pub async fn app_server_stop(
+    app: AppHandle,
+    state: State<'_, ProcessManager>,
+) -> Result<(), String> {
     to_result(state.stop(app).await)
 }
 
@@ -51,12 +54,18 @@ pub async fn rpc_request(
 }
 
 #[tauri::command]
-pub async fn rpc_notify(state: State<'_, ProcessManager>, input: RpcNotifyInput) -> Result<(), String> {
+pub async fn rpc_notify(
+    state: State<'_, ProcessManager>,
+    input: RpcNotifyInput,
+) -> Result<(), String> {
     to_result(state.rpc_notify(input).await)
 }
 
 #[tauri::command]
-pub async fn rpc_cancel(state: State<'_, ProcessManager>, input: RpcCancelInput) -> Result<(), String> {
+pub async fn rpc_cancel(
+    state: State<'_, ProcessManager>,
+    input: RpcCancelInput,
+) -> Result<(), String> {
     to_result(state.rpc_cancel(input).await)
 }
 
@@ -120,7 +129,9 @@ pub fn app_list_codex_sessions() -> Result<Vec<CodexSessionSummary>, String> {
 }
 
 #[tauri::command]
-pub fn app_read_codex_session(input: CodexSessionReadInput) -> Result<CodexSessionReadOutput, String> {
+pub fn app_read_codex_session(
+    input: CodexSessionReadInput,
+) -> Result<CodexSessionReadOutput, String> {
     to_result(read_codex_session(input))
 }
 
@@ -180,7 +191,10 @@ fn open_workspace(input: OpenWorkspaceInput) -> AppResult<()> {
 
     let path = PathBuf::from(&input.path);
     if !path.exists() {
-        return Err(AppError::InvalidInput(format!("path 不存在: {}", path.display())));
+        return Err(AppError::InvalidInput(format!(
+            "path 不存在: {}",
+            path.display()
+        )));
     }
 
     match input.opener {
@@ -200,7 +214,10 @@ fn open_workspace(input: OpenWorkspaceInput) -> AppResult<()> {
                 .map_err(|error| AppError::Io(error.to_string()))?;
         }
         WorkspaceOpener::GithubDesktop => {
-            let uri = format!("github-desktop://openRepo/{}", input.path.replace('\\', "/"));
+            let uri = format!(
+                "github-desktop://openRepo/{}",
+                input.path.replace('\\', "/")
+            );
             open::that_detached(uri).map_err(|error| AppError::Io(error.to_string()))?;
         }
         WorkspaceOpener::GitBash => {

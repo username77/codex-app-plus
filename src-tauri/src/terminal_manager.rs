@@ -3,22 +3,20 @@ use std::collections::HashMap;
 mod terminal_output_decoder;
 #[path = "terminal_shell.rs"]
 mod terminal_shell;
-use std::io::{Read, Write};
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard};
-use portable_pty::{
-    native_pty_system, Child, ChildKiller, MasterPty, PtySize,
-};
-use terminal_output_decoder::Utf8ChunkDecoder;
-use terminal_shell::{build_shell_command, resolve_shell_config, ShellConfig};
-use tauri::AppHandle;
 use crate::error::{AppError, AppResult};
 use crate::events::{emit_fatal, emit_terminal_exit, emit_terminal_output};
 use crate::models::{
     TerminalCloseInput, TerminalCreateInput, TerminalCreateOutput, TerminalResizeInput,
     TerminalWriteInput,
 };
+use portable_pty::{native_pty_system, Child, ChildKiller, MasterPty, PtySize};
+use std::io::{Read, Write};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard};
+use tauri::AppHandle;
+use terminal_output_decoder::Utf8ChunkDecoder;
+use terminal_shell::{build_shell_command, resolve_shell_config, ShellConfig};
 const DEFAULT_COLUMNS: u16 = 120;
 const DEFAULT_ROWS: u16 = 32;
 const OUTPUT_BUFFER_SIZE: usize = 4096;
@@ -59,7 +57,7 @@ impl TerminalManager {
         input: TerminalCreateInput,
     ) -> AppResult<TerminalCreateOutput> {
         let session_id = self.allocate_session_id();
-        let shell = resolve_shell_config();
+        let shell = resolve_shell_config(input.shell)?;
         let pty_pair = create_pty_pair(input.cols, input.rows)?;
         let reader = pty_pair
             .master
@@ -68,11 +66,7 @@ impl TerminalManager {
         let writer = pty_pair.master.take_writer().map_err(map_terminal_error)?;
         let child = spawn_shell_process(pty_pair.slave, &shell, input.cwd)?;
         let killer = child.clone_killer();
-        let session = Arc::new(TerminalSession::new(
-            pty_pair.master,
-            writer,
-            killer,
-        ));
+        let session = Arc::new(TerminalSession::new(pty_pair.master, writer, killer));
         insert_session(&self.sessions, session_id.clone(), session);
         spawn_output_thread(app.clone(), session_id.clone(), reader);
         spawn_wait_thread(app, self.sessions.clone(), session_id.clone(), child);
@@ -126,8 +120,13 @@ impl Drop for TerminalManager {
 }
 
 fn create_pty_pair(cols: Option<u16>, rows: Option<u16>) -> AppResult<portable_pty::PtyPair> {
-    let size = to_pty_size(cols.unwrap_or(DEFAULT_COLUMNS), rows.unwrap_or(DEFAULT_ROWS));
-    native_pty_system().openpty(size).map_err(map_terminal_error)
+    let size = to_pty_size(
+        cols.unwrap_or(DEFAULT_COLUMNS),
+        rows.unwrap_or(DEFAULT_ROWS),
+    );
+    native_pty_system()
+        .openpty(size)
+        .map_err(map_terminal_error)
 }
 
 fn spawn_shell_process(
@@ -136,7 +135,7 @@ fn spawn_shell_process(
     cwd: Option<String>,
 ) -> AppResult<Box<dyn Child + Send + Sync>> {
     let cwd = normalize_cwd(cwd)?;
-    let mut command = build_shell_command(shell, cwd.as_ref());
+    let mut command = build_shell_command(shell);
     if let Some(path) = cwd {
         command.cwd(path);
     }
@@ -219,7 +218,10 @@ fn insert_session(sessions: &SessionMap, session_id: String, session: Arc<Termin
     }
 }
 
-fn take_session(sessions: &SessionMap, session_id: &str) -> AppResult<Option<Arc<TerminalSession>>> {
+fn take_session(
+    sessions: &SessionMap,
+    session_id: &str,
+) -> AppResult<Option<Arc<TerminalSession>>> {
     let mut map = lock_mutex(sessions, "terminal session map")?;
     Ok(map.remove(session_id))
 }

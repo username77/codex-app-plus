@@ -1,11 +1,13 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { useCallback, useMemo, useState } from "react";
 import type { ComposerSelection } from "./app/composerPreferences";
-import { useComposerPicker } from "./app/useComposerPicker";
 import { useAppController } from "./app/useAppController";
-import { inferWorkspaceNameFromPath } from "./app/workspacePath";
+import { useAppPreferences } from "./app/useAppPreferences";
+import { useCodexSessionCatalog } from "./app/useCodexSessionCatalog";
+import { useComposerPicker } from "./app/useComposerPicker";
 import { useWorkspaceConversation } from "./app/useWorkspaceConversation";
 import { useWorkspaceRoots } from "./app/useWorkspaceRoots";
+import { inferWorkspaceNameFromPath } from "./app/workspacePath";
 import type { HostBridge } from "./bridge/types";
 import { HomeView } from "./components/replica/HomeView";
 import { SettingsView, type SettingsSection } from "./components/replica/SettingsView";
@@ -26,6 +28,7 @@ async function requestWorkspaceFolder(): Promise<{ readonly name: string; readon
   if (Array.isArray(selection)) {
     throw new Error("当前只支持选择一个工作区文件夹");
   }
+
   const path = selection.trim();
   if (path.length === 0) {
     return null;
@@ -35,15 +38,23 @@ async function requestWorkspaceFolder(): Promise<{ readonly name: string; readon
 
 export function App({ hostBridge }: AppProps): JSX.Element {
   const controller = useAppController(hostBridge);
+  const preferences = useAppPreferences();
+  const codexSessions = useCodexSessionCatalog(hostBridge);
   const composerPicker = useComposerPicker(hostBridge, controller.state.configSnapshot);
-  const workspace = useWorkspaceRoots(controller.state.threads);
+  const workspace = useWorkspaceRoots();
   const [screen, setScreen] = useState<"home" | SettingsSection>("home");
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
 
   const selectedRoot = workspace.roots.find((root) => root.id === workspace.selectedRootId) ?? null;
   const selectedRootName = selectedRoot?.name ?? "选择工作区";
   const selectedRootPath = selectedRoot?.path ?? null;
-  const conversation = useWorkspaceConversation(hostBridge, controller.state.threads, selectedRootPath);
+  const conversation = useWorkspaceConversation({
+    hostBridge,
+    threads: controller.state.threads,
+    codexSessions: codexSessions.sessions,
+    selectedRootPath,
+    reloadCodexSessions: codexSessions.reload
+  });
   const messages = useMemo(
     () => controller.state.messages.filter((message) => message.threadId === conversation.selectedThreadId),
     [controller.state.messages, conversation.selectedThreadId]
@@ -98,10 +109,16 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       <SettingsView
         section={screen}
         roots={workspace.roots}
+        preferences={preferences}
+        configSnapshot={controller.state.configSnapshot}
+        busy={controller.state.busy}
         onBackHome={() => setScreen("home")}
         onSelectSection={setScreen}
         onAddRoot={addRoot}
         onOpenConfigToml={openConfigToml}
+        refreshMcpData={controller.refreshMcpData}
+        writeConfigValue={controller.writeConfigValue}
+        batchWriteConfig={controller.batchWriteConfig}
       />
     );
   }
@@ -115,12 +132,17 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       selectedRootId={workspace.selectedRootId}
       selectedRootName={selectedRootName}
       selectedRootPath={selectedRootPath}
-      threads={conversation.workspaceThreads}
+      threads={controller.state.threads}
+      codexSessions={codexSessions.sessions}
+      codexSessionsLoading={codexSessions.loading}
+      codexSessionsError={codexSessions.error}
       selectedThreadId={conversation.selectedThreadId}
       messages={messages}
       models={composerPicker.models}
       defaultModel={composerPicker.defaultModel}
       defaultEffort={composerPicker.defaultEffort}
+      workspaceOpener={preferences.workspaceOpener}
+      embeddedTerminalShell={preferences.embeddedTerminalShell}
       pendingServerRequests={controller.state.pendingServerRequests}
       connectionStatus={controller.state.connectionStatus}
       fatalError={controller.state.fatalError}
@@ -131,6 +153,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       onToggleSettingsMenu={() => setSettingsMenuOpen((openValue) => !openValue)}
       onDismissSettingsMenu={() => setSettingsMenuOpen(false)}
       onOpenSettings={openSettings}
+      onSelectWorkspaceOpener={preferences.setWorkspaceOpener}
       onSelectRoot={workspace.selectRoot}
       onSelectThread={conversation.selectThread}
       onInputChange={controller.setInput}
