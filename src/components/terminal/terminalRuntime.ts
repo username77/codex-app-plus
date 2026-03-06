@@ -7,7 +7,7 @@ import type { HostBridge } from "../../bridge/types";
 
 const DEFAULT_COLUMNS = 120;
 const DEFAULT_ROWS = 32;
-const STARTUP_MESSAGE = "[正在启动内置终端…]";
+const STARTUP_MESSAGE = "[starting embedded terminal...]";
 
 export type TerminalStatus = "idle" | "starting" | "ready" | "exited" | "error";
 
@@ -60,13 +60,6 @@ interface UseScheduledLayoutOptions {
   readonly syncTerminalSize: () => Promise<void>;
 }
 
-function normalizeErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-}
-
 function createTerminalInstance(): { readonly terminal: Terminal; readonly fitAddon: FitAddon } {
   const terminal = new Terminal({
     allowTransparency: false,
@@ -90,27 +83,18 @@ function readTerminalSize(terminal: Terminal): { readonly cols: number; readonly
 }
 
 export function getStatusLabel(status: TerminalStatus): string {
-  if (status === "starting") return "启动中";
-  if (status === "ready") return "运行中";
-  if (status === "exited") return "已退出";
-  if (status === "error") return "异常";
-  return "未启动";
+  if (status === "starting") return "Starting";
+  if (status === "ready") return "Running";
+  if (status === "exited") return "Exited";
+  if (status === "error") return "Error";
+  return "Idle";
 }
 
 export function buildSubTitle(shellLabel: string, cwdLabel: string): string {
   if (cwdLabel.trim().length === 0) {
     return shellLabel;
   }
-  return `${shellLabel} · ${cwdLabel}`;
-}
-
-export function useReportTerminalError(terminalRef: MutableRefObject<Terminal | null>, setErrorMessage: Dispatch<SetStateAction<string | null>>, setStatus: Dispatch<SetStateAction<TerminalStatus>>) {
-  return useCallback((title: string, error: unknown) => {
-    const message = `${title}: ${normalizeErrorMessage(error)}`;
-    setStatus("error");
-    setErrorMessage(message);
-    terminalRef.current?.writeln(`\r\n${message}`);
-  }, [setErrorMessage, setStatus, terminalRef]);
+  return `${shellLabel} - ${cwdLabel}`;
 }
 
 export function useMountedTerminal(options: UseMountedTerminalOptions) {
@@ -132,7 +116,7 @@ export function useMountedTerminal(options: UseMountedTerminalOptions) {
       if (sessionId === null) {
         return;
       }
-      void hostBridge.terminal.write({ data, sessionId }).catch((error) => reportError("写入终端失败", error));
+      void hostBridge.terminal.write({ data, sessionId }).catch((error) => reportError("failed to write terminal input", error));
     });
     terminal.open(container);
     fitAddonRef.current = fitAddon;
@@ -164,23 +148,23 @@ export function useTerminalEvents(options: UseTerminalEventOptions): void {
     let unlistenExit: (() => void) | null = null;
 
     async function subscribe(): Promise<void> {
-      unlistenOutput = await hostBridge.subscribe("terminal.output", (payload) => {
+      unlistenOutput = await hostBridge.subscribe("terminal-output", (payload) => {
         if (active && payload.sessionId === sessionIdRef.current) {
           terminalRef.current?.write(payload.data);
         }
       });
-      unlistenExit = await hostBridge.subscribe("terminal.exit", (payload) => {
+      unlistenExit = await hostBridge.subscribe("terminal-exit", (payload) => {
         if (!active || payload.sessionId !== sessionIdRef.current) {
           return;
         }
         sessionIdRef.current = null;
         setStatus("exited");
-        const suffix = payload.exitCode == null ? "" : `，退出码 ${payload.exitCode}`;
-        terminalRef.current?.writeln(`\r\n\r\n[终端进程已退出${suffix}]`);
+        const suffix = payload.exitCode == null ? "" : `, exit code ${payload.exitCode}`;
+        terminalRef.current?.writeln(`\r\n\r\n[terminal exited${suffix}]`);
       });
     }
 
-    void subscribe().catch((error) => reportError("订阅终端事件失败", error));
+    void subscribe().catch((error) => reportError("failed to subscribe terminal events", error));
     return () => {
       active = false;
       unlistenOutput?.();
@@ -225,7 +209,7 @@ export function useTerminalSyncSize(options: UseTerminalSyncSizeOptions) {
     try {
       await hostBridge.terminal.resize({ cols, rows, sessionId });
     } catch (error) {
-      reportError("同步终端尺寸失败", error);
+      reportError("failed to sync terminal size", error);
     }
   }, [fitAddonRef, hostBridge.terminal, open, reportError, sessionIdRef, terminalRef]);
 }
@@ -267,7 +251,7 @@ export function useTerminalOpenAction(options: UseTerminalOpenActionOptions) {
       setStatus("ready");
       await syncTerminalSize();
     } catch (error) {
-      reportError("启动终端失败", error);
+      reportError("failed to start terminal", error);
     } finally {
       creatingRef.current = false;
     }

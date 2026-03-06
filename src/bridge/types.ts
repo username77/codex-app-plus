@@ -3,8 +3,8 @@ export type BridgeEventName =
   | "notification.received"
   | "serverRequest.received"
   | "fatal.error"
-  | "terminal.output"
-  | "terminal.exit";
+  | "terminal-output"
+  | "terminal-exit";
 
 export interface ConnectionChangedPayload {
   readonly status: "disconnected" | "connecting" | "connected" | "error";
@@ -113,8 +113,8 @@ export type BridgeEventPayloadMap = {
   "notification.received": NotificationEventPayload;
   "serverRequest.received": ServerRequestEventPayload;
   "fatal.error": FatalErrorPayload;
-  "terminal.output": TerminalOutputEventPayload;
-  "terminal.exit": TerminalExitEventPayload;
+  "terminal-output": TerminalOutputEventPayload;
+  "terminal-exit": TerminalExitEventPayload;
 };
 
 export interface HostBridge {

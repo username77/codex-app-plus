@@ -1,6 +1,8 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { useCallback, useState } from "react";
 import { useAppController } from "./app/useAppController";
+import { inferWorkspaceNameFromPath } from "./app/workspacePath";
+import { useWorkspaceConversation } from "./app/useWorkspaceConversation";
 import { useWorkspaceRoots } from "./app/useWorkspaceRoots";
 import type { HostBridge } from "./bridge/types";
 import { HomeView } from "./components/replica/HomeView";
@@ -10,15 +12,9 @@ interface AppProps {
   readonly hostBridge: HostBridge;
 }
 
-function inferNameFromPath(path: string): string {
-  const normalized = path.replaceAll("\\", "/");
-  const parts = normalized.split("/").filter((part) => part.length > 0);
-  return parts[parts.length - 1] ?? path;
-}
-
 async function requestWorkspaceFolder(): Promise<{ readonly name: string; readonly path: string } | null> {
   const selection = await open({
-    title: "选择项目文件夹",
+    title: "选择工作区文件夹",
     directory: true,
     multiple: false
   });
@@ -26,13 +22,13 @@ async function requestWorkspaceFolder(): Promise<{ readonly name: string; readon
     return null;
   }
   if (Array.isArray(selection)) {
-    throw new Error("选择项目文件夹时不支持多选");
+    throw new Error("当前只支持选择一个工作区文件夹");
   }
   const path = selection.trim();
   if (path.length === 0) {
     return null;
   }
-  return { name: inferNameFromPath(path), path };
+  return { name: inferWorkspaceNameFromPath(path), path };
 }
 
 export function App({ hostBridge }: AppProps): JSX.Element {
@@ -62,8 +58,8 @@ export function App({ hostBridge }: AppProps): JSX.Element {
         workspace.addRoot(root);
       }
     } catch (error) {
-      console.error("选择项目文件夹失败", error);
-      window.alert(`选择项目文件夹失败：${String(error)}`);
+      console.error("选择工作区文件夹失败", error);
+      window.alert(`选择工作区文件夹失败：${String(error)}`);
     }
   }, [workspace]);
 
@@ -81,12 +77,33 @@ export function App({ hostBridge }: AppProps): JSX.Element {
   }
 
   const selectedRoot = workspace.roots.find((root) => root.id === workspace.selectedRootId) ?? null;
-  const selectedRootName = selectedRoot?.name ?? "选择项目";
+  const selectedRootName = selectedRoot?.name ?? "选择工作区";
   const selectedRootPath = selectedRoot?.path ?? null;
+  const conversation = useWorkspaceConversation(hostBridge, controller.state.threads, selectedRootPath);
+
+  const createWorkspaceThread = useCallback(async () => {
+    try {
+      await conversation.createThread();
+    } catch (error) {
+      console.error("创建工作区会话失败", error);
+      window.alert(`创建工作区会话失败：${String(error)}`);
+    }
+  }, [conversation]);
+
+  const sendWorkspaceTurn = useCallback(async () => {
+    try {
+      await conversation.sendTurn();
+    } catch (error) {
+      console.error("发送工作区消息失败", error);
+      window.alert(`发送工作区消息失败：${String(error)}`);
+    }
+  }, [conversation]);
 
   return (
     <HomeView
       hostBridge={hostBridge}
+      busy={controller.state.busy}
+      inputText={controller.state.inputText}
       roots={workspace.roots}
       selectedRootId={workspace.selectedRootId}
       selectedRootName={selectedRootName}
@@ -96,6 +113,9 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       onDismissSettingsMenu={() => setSettingsMenuOpen(false)}
       onOpenSettings={openSettings}
       onSelectRoot={workspace.selectRoot}
+      onInputChange={controller.setInput}
+      onCreateThread={createWorkspaceThread}
+      onSendTurn={sendWorkspaceTurn}
       onAddRoot={addRoot}
       onRemoveRoot={workspace.removeRoot}
     />

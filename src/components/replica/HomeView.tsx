@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react";
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
 import type { HostBridge } from "../../bridge/types";
-import vscodeIconUrl from "../../assets/official/apps/vscode.png";
 import { TerminalPanel } from "../terminal/TerminalPanel";
 import { ComposerFooter } from "./ComposerFooter";
 import { HomeSidebar } from "./HomeSidebar";
+import { WorkspaceOpenButton } from "./WorkspaceOpenButton";
 import {
   OfficialArrowTopRightIcon,
   OfficialChevronRightIcon,
@@ -16,6 +16,8 @@ const MIN_TRIMMED_MESSAGE_LENGTH = 1;
 
 interface HomeViewProps {
   readonly hostBridge: HostBridge;
+  readonly busy: boolean;
+  readonly inputText: string;
   readonly roots: ReadonlyArray<WorkspaceRoot>;
   readonly selectedRootId: string | null;
   readonly selectedRootName: string;
@@ -25,45 +27,66 @@ interface HomeViewProps {
   readonly onDismissSettingsMenu: () => void;
   readonly onOpenSettings: () => void;
   readonly onSelectRoot: (rootId: string) => void;
+  readonly onInputChange: (text: string) => void;
+  readonly onCreateThread: () => Promise<void>;
+  readonly onSendTurn: () => Promise<void>;
   readonly onAddRoot: () => void;
   readonly onRemoveRoot: (rootId: string) => void;
 }
 
 interface MainContentProps {
+  readonly busy: boolean;
+  readonly hostBridge: HostBridge;
+  readonly inputText: string;
   readonly selectedRootName: string;
   readonly selectedRootPath: string | null;
   readonly terminalOpen: boolean;
+  readonly onInputChange: (text: string) => void;
+  readonly onSendTurn: () => Promise<void>;
   readonly onToggleTerminal: () => void;
 }
 
 function MainContent(props: MainContentProps): JSX.Element {
   return (
     <div className="replica-main">
-      <MainToolbar terminalOpen={props.terminalOpen} onToggleTerminal={props.onToggleTerminal} />
+      <MainToolbar
+        hostBridge={props.hostBridge}
+        selectedRootName={props.selectedRootName}
+        selectedRootPath={props.selectedRootPath}
+        terminalOpen={props.terminalOpen}
+        onToggleTerminal={props.onToggleTerminal}
+      />
       <EmptyCanvas selectedRootName={props.selectedRootName} selectedRootPath={props.selectedRootPath} />
-      <ComposerArea />
+      <ComposerArea
+        busy={props.busy}
+        inputText={props.inputText}
+        selectedRootPath={props.selectedRootPath}
+        onInputChange={props.onInputChange}
+        onSendTurn={props.onSendTurn}
+      />
     </div>
   );
 }
 
 interface MainToolbarProps {
+  readonly hostBridge: HostBridge;
+  readonly selectedRootName: string;
+  readonly selectedRootPath: string | null;
   readonly terminalOpen: boolean;
   readonly onToggleTerminal: () => void;
 }
 
 function MainToolbar(props: MainToolbarProps): JSX.Element {
+  const title = props.selectedRootPath === null ? "工作区会话" : props.selectedRootName;
+
   return (
     <header className="main-toolbar">
-      <h1 className="toolbar-title">新线程</h1>
+      <h1 className="toolbar-title">{title}</h1>
       <div className="toolbar-actions">
-        <button type="button" className="toolbar-pill">
-          <img className="toolbar-app-icon" src={vscodeIconUrl} alt="" />
-          <span>打开</span>
-          <OfficialChevronRightIcon className="toolbar-caret-icon" />
-        </button>
+        <WorkspaceOpenButton hostBridge={props.hostBridge} selectedRootPath={props.selectedRootPath} />
         <button type="button" className="toolbar-pill">
           <OfficialArrowTopRightIcon className="toolbar-leading-icon" />
-          <span>推送</span>
+          <span>分享</span>
           <OfficialChevronRightIcon className="toolbar-caret-icon" />
         </button>
         <div className="toolbar-icon-row" aria-label="快捷操作">
@@ -88,11 +111,12 @@ function EmptyCanvas(props: {
 }): JSX.Element {
   const selectorClassName =
     props.selectedRootPath === null ? "workspace-selector workspace-selector-placeholder" : "workspace-selector";
+  const title = props.selectedRootPath === null ? "先选择工作区" : "当前工作区";
 
   return (
     <main className="main-canvas">
       <div className="empty-state" aria-label="欢迎界面">
-        <h2 className="empty-title">开始构建</h2>
+        <h2 className="empty-title">{title}</h2>
         <button type="button" className={selectorClassName}>
           <span className="workspace-selector-label">{props.selectedRootName}</span>
           <OfficialChevronRightIcon className="workspace-selector-caret" />
@@ -102,26 +126,36 @@ function EmptyCanvas(props: {
   );
 }
 
-function ComposerArea(): JSX.Element {
+interface ComposerAreaProps {
+  readonly busy: boolean;
+  readonly inputText: string;
+  readonly selectedRootPath: string | null;
+  readonly onInputChange: (text: string) => void;
+  readonly onSendTurn: () => Promise<void>;
+}
+
+function ComposerArea(props: ComposerAreaProps): JSX.Element {
   return (
     <footer className="composer-area">
-      <ComposerCard />
+      <ComposerCard {...props} />
       <ComposerFooter />
     </footer>
   );
 }
 
-function ComposerCard(): JSX.Element {
-  const [draft, setDraft] = useState("");
-  const canSend = draft.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH;
+function ComposerCard(props: ComposerAreaProps): JSX.Element {
+  const canSend =
+    !props.busy && props.selectedRootPath !== null && props.inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH;
+  const placeholder =
+    props.selectedRootPath === null ? "先在左侧选择工作区文件夹" : "输入问题，后续对话会固定在当前工作区";
 
   return (
     <div className="composer-card">
       <textarea
         className="composer-input"
-        placeholder="向 Codex 任意提问，或 添加文件 / 运行命令"
-        value={draft}
-        onChange={(event) => setDraft(event.currentTarget.value)}
+        placeholder={placeholder}
+        value={props.inputText}
+        onChange={(event) => props.onInputChange(event.currentTarget.value)}
       />
       <div className="composer-bar">
         <div className="composer-left">
@@ -132,10 +166,10 @@ function ComposerCard(): JSX.Element {
             GPT-5.2 <OfficialChevronRightIcon className="chip-caret" />
           </button>
           <button type="button" className="composer-chip">
-            超高 <OfficialChevronRightIcon className="chip-caret" />
+            高 <OfficialChevronRightIcon className="chip-caret" />
           </button>
         </div>
-        <button type="button" className="send-btn" aria-label="发送" disabled={!canSend}>
+        <button type="button" className="send-btn" aria-label="发送消息" disabled={!canSend} onClick={() => void props.onSendTurn()}>
           <SendArrowIcon className="send-icon" />
         </button>
       </div>
@@ -180,13 +214,19 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         onDismissSettingsMenu={props.onDismissSettingsMenu}
         onOpenSettings={props.onOpenSettings}
         onSelectRoot={props.onSelectRoot}
+        onCreateThread={props.onCreateThread}
         onAddRoot={props.onAddRoot}
         onRemoveRoot={props.onRemoveRoot}
       />
       <MainContent
+        busy={props.busy}
+        hostBridge={props.hostBridge}
+        inputText={props.inputText}
         selectedRootName={props.selectedRootName}
         selectedRootPath={props.selectedRootPath}
         terminalOpen={terminalOpen}
+        onInputChange={props.onInputChange}
+        onSendTurn={props.onSendTurn}
         onToggleTerminal={toggleTerminal}
       />
       <TerminalPanel
@@ -210,7 +250,7 @@ function SidebarCollapseButton(props: {
       type="button"
       className="sidebar-collapse-toggle"
       onClick={props.onToggle}
-      aria-label={props.collapsed ? "展开边栏" : "折叠边栏"}
+      aria-label={props.collapsed ? "展开侧边栏" : "折叠侧边栏"}
     >
       <OfficialSidebarToggleIcon className="sidebar-collapse-icon" />
     </button>

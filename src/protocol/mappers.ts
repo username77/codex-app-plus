@@ -1,4 +1,5 @@
 import type { ThreadSummary } from "../domain/types";
+import type { Thread } from "./generated/v2/Thread";
 import type { ModelListResponse } from "./generated/v2/ModelListResponse";
 import type { ThreadListResponse } from "./generated/v2/ThreadListResponse";
 
@@ -7,13 +8,17 @@ function toIsoFromUnixSeconds(unixSeconds: number): string {
 }
 
 export function mapThreadListResponse(response: ThreadListResponse): ReadonlyArray<ThreadSummary> {
-  return response.data.map((thread) => ({
+  return response.data.map(mapThreadToSummary);
+}
+
+export function mapThreadToSummary(thread: Thread): ThreadSummary {
+  return {
     id: thread.id,
     title: thread.name ?? thread.preview,
     cwd: thread.cwd,
     archived: false,
     updatedAt: toIsoFromUnixSeconds(thread.updatedAt)
-  }));
+  };
 }
 
 export function mapModelListResponse(response: ModelListResponse): ReadonlyArray<string> {

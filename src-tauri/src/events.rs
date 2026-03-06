@@ -10,8 +10,8 @@ pub const EVENT_CONNECTION_CHANGED: &str = "connection.changed";
 pub const EVENT_NOTIFICATION_RECEIVED: &str = "notification.received";
 pub const EVENT_SERVER_REQUEST_RECEIVED: &str = "serverRequest.received";
 pub const EVENT_FATAL_ERROR: &str = "fatal.error";
-pub const EVENT_TERMINAL_OUTPUT: &str = "terminal.output";
-pub const EVENT_TERMINAL_EXIT: &str = "terminal.exit";
+pub const EVENT_TERMINAL_OUTPUT: &str = "terminal-output";
+pub const EVENT_TERMINAL_EXIT: &str = "terminal-exit";
 pub const EVENT_CONTEXT_MENU_REQUESTED: &str = "app.context-menu.requested";
 pub const EVENT_NOTIFICATION_REQUESTED: &str = "app.notification.requested";
 

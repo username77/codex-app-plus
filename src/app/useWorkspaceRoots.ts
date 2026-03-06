@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ThreadSummary } from "../domain/types";
+import { inferWorkspaceNameFromPath, normalizeWorkspacePath, trimWorkspaceText } from "./workspacePath";
 
 const ROOTS_STORAGE_KEY = "codex-app-plus.workspace-roots";
 const DISMISSED_ROOT_KEYS_STORAGE_KEY = "codex-app-plus.workspace-root-dismissed-keys";
@@ -17,16 +18,6 @@ export interface AddWorkspaceRootInput {
   readonly path: string;
 }
 
-function trimText(value: string): string {
-  return value.trim();
-}
-
-function inferNameFromPath(path: string): string {
-  const normalized = path.replaceAll("\\", "/");
-  const parts = normalized.split("/").filter((part) => part.length > 0);
-  return parts[parts.length - 1] ?? path;
-}
-
 function normalizeStoredRoot(value: unknown): WorkspaceRoot | null {
   if (typeof value !== "object" || value === null) {
     return null;
@@ -39,12 +30,12 @@ function normalizeStoredRoot(value: unknown): WorkspaceRoot | null {
   if (typeof rawPath !== "string") {
     return null;
   }
-  const path = trimText(rawPath);
+  const path = trimWorkspaceText(rawPath);
   if (path.length === 0) {
     return null;
   }
-  const rawName = typeof record.name === "string" ? record.name : inferNameFromPath(path);
-  const name = trimText(rawName);
+  const rawName = typeof record.name === "string" ? record.name : inferWorkspaceNameFromPath(path);
+  const name = trimWorkspaceText(rawName);
   if (name.length === 0) {
     return null;
   }
@@ -77,7 +68,7 @@ function normalizeStoredKey(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
   }
-  const normalized = trimText(value).toLowerCase();
+  const normalized = trimWorkspaceText(value).toLowerCase();
   return normalized.length > 0 ? normalized : null;
 }
 
@@ -104,20 +95,20 @@ function parseStoredKeys(raw: string | null): ReadonlyArray<string> {
 }
 
 function rootKey(root: Pick<WorkspaceRoot, "path" | "name">): string {
-  const pathKey = trimText(root.path).toLowerCase();
+  const pathKey = normalizeWorkspacePath(root.path);
   if (pathKey.length > 0) {
     return pathKey;
   }
-  return trimText(root.name).toLowerCase();
+  return trimWorkspaceText(root.name).toLowerCase();
 }
 
 function createRootFromThread(thread: ThreadSummary): WorkspaceRoot | null {
-  const path = trimText(thread.cwd ?? thread.title);
+  const path = trimWorkspaceText(thread.cwd ?? thread.title);
   if (path.length === 0) {
     return null;
   }
-  const title = trimText(thread.title);
-  const name = title.length > 0 ? title : inferNameFromPath(path);
+  const title = trimWorkspaceText(thread.title);
+  const name = title.length > 0 ? title : inferWorkspaceNameFromPath(path);
   return { id: `thread-${rootKey({ name, path })}`, name, path };
 }
 
@@ -139,12 +130,12 @@ function mergeRoots(
 }
 
 function sanitizeInput(input: AddWorkspaceRootInput): WorkspaceRoot | null {
-  const path = trimText(input.path);
+  const path = trimWorkspaceText(input.path);
   if (path.length === 0) {
     return null;
   }
-  const explicitName = trimText(input.name);
-  const name = explicitName.length > 0 ? explicitName : inferNameFromPath(path);
+  const explicitName = trimWorkspaceText(input.name);
+  const name = explicitName.length > 0 ? explicitName : inferWorkspaceNameFromPath(path);
   if (name.length === 0) {
     return null;
   }
@@ -230,15 +221,20 @@ export function useWorkspaceRoots(
     setSelectedRootId(roots[0]?.id ?? null);
   }, [roots, selectedRootId]);
 
-  const addRoot = useCallback((input: AddWorkspaceRootInput) => {
-    const root = sanitizeInput(input);
-    if (root === null) {
-      return;
-    }
-    const key = rootKey(root);
-    setManualRoots((current) => mergeRoots(current, [root]));
-    setDismissedRootKeys((current) => removeStoredRootKey(current, key));
-  }, []);
+  const addRoot = useCallback(
+    (input: AddWorkspaceRootInput) => {
+      const root = sanitizeInput(input);
+      if (root === null) {
+        return;
+      }
+      const key = rootKey(root);
+      const existingManualRoot = manualRoots.find((item) => rootKey(item) === key);
+      setManualRoots((current) => mergeRoots(current, [root]));
+      setDismissedRootKeys((current) => removeStoredRootKey(current, key));
+      setSelectedRootId(existingManualRoot?.id ?? root.id);
+    },
+    [manualRoots]
+  );
 
   const removeRoot = useCallback(
     (rootId: string) => {

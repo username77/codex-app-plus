@@ -14,20 +14,20 @@ export function TerminalPanel(props: TerminalPanelProps): JSX.Element {
   const terminal = useEmbeddedTerminal(props);
 
   return (
-    <section className={terminal.className} aria-label="终端">
+    <section className={terminal.className} aria-label="Terminal">
       <header className="terminal-toolbar">
         <div className="terminal-title">
-          <span className="terminal-title-main">终端</span>
+          <span className="terminal-title-main">Terminal</span>
           <span className="terminal-title-sub">{terminal.subtitle}</span>
           <span className={`terminal-status terminal-status-${terminal.status}`}>{terminal.statusLabel}</span>
         </div>
         <div className="terminal-actions">
           {terminal.showRestartAction ? (
             <button type="button" className="terminal-action-btn" onClick={() => void terminal.openTerminal()}>
-              重新打开
+              Reopen
             </button>
           ) : null}
-          <button type="button" className="terminal-close-btn" aria-label="关闭终端" onClick={props.onClose}>
+          <button type="button" className="terminal-close-btn" aria-label="Close terminal" onClick={props.onClose}>
             <OfficialCloseIcon className="terminal-close-icon" />
           </button>
         </div>

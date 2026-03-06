@@ -34,8 +34,10 @@ export interface EmbeddedTerminalController {
 
 export function useEmbeddedTerminal(options: UseEmbeddedTerminalOptions): EmbeddedTerminalController {
   const { cwd, cwdLabel, hostBridge, open } = options;
+  const cwdKey = cwd ?? "";
   const sessionIdRef = useRef<string | null>(null);
   const creatingRef = useRef(false);
+  const lastCwdRef = useRef(cwdKey);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [shellLabel, setShellLabel] = useState("PowerShell");
   const [status, setStatus] = useState<TerminalStatus>("idle");
@@ -57,11 +59,26 @@ export function useEmbeddedTerminal(options: UseEmbeddedTerminalOptions): Embedd
   useResizeObserver({ containerRef, open, scheduleTerminalLayout });
 
   useEffect(() => {
+    if (lastCwdRef.current === cwdKey) {
+      return;
+    }
+    lastCwdRef.current = cwdKey;
+    setErrorMessage(null);
+    setStatus("idle");
+    terminalRef.current?.reset();
+    const sessionId = sessionIdRef.current;
+    sessionIdRef.current = null;
+    if (sessionId !== null) {
+      void hostBridge.terminal.closeSession({ sessionId }).catch((error) => reportError("关闭旧终端会话失败", error));
+    }
+  }, [cwdKey, hostBridge.terminal, reportError, terminalRef]);
+
+  useEffect(() => {
     if (open) {
       scheduleTerminalLayout();
       void openTerminal();
     }
-  }, [open, openTerminal, scheduleTerminalLayout]);
+  }, [cwdKey, open, openTerminal, scheduleTerminalLayout]);
 
   return {
     className: open ? "replica-terminal" : "replica-terminal replica-terminal-hidden",

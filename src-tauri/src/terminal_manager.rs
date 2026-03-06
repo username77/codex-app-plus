@@ -1,28 +1,27 @@
 use std::collections::HashMap;
+#[path = "terminal_output_decoder.rs"]
+mod terminal_output_decoder;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
-
 use portable_pty::{
     native_pty_system, Child, ChildKiller, CommandBuilder, MasterPty, PtySize,
 };
+use terminal_output_decoder::Utf8ChunkDecoder;
 use tauri::AppHandle;
-
 use crate::error::{AppError, AppResult};
 use crate::events::{emit_fatal, emit_terminal_exit, emit_terminal_output};
 use crate::models::{
     TerminalCloseInput, TerminalCreateInput, TerminalCreateOutput, TerminalResizeInput,
     TerminalWriteInput,
 };
-
 const DEFAULT_COLUMNS: u16 = 120;
 const DEFAULT_ROWS: u16 = 32;
 const OUTPUT_BUFFER_SIZE: usize = 4096;
 const ZERO_PIXELS: u16 = 0;
-
+const WINDOWS_POWERSHELL_UTF8_INIT: &str = "[Console]::InputEncoding = [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $OutputEncoding = [Console]::OutputEncoding; chcp.com 65001 > $null";
 type SessionMap = Arc<Mutex<HashMap<String, Arc<TerminalSession>>>>;
-
 struct TerminalSession {
     master: Mutex<Box<dyn MasterPty + Send>>,
     writer: Mutex<Box<dyn Write + Send>>,
@@ -183,7 +182,12 @@ fn resolve_shell_config() -> ShellConfig {
     if cfg!(target_os = "windows") {
         return ShellConfig {
             program: "powershell.exe".to_string(),
-            args: vec!["-NoLogo".to_string()],
+            args: vec![
+                "-NoLogo".to_string(),
+                "-NoExit".to_string(),
+                "-Command".to_string(),
+                WINDOWS_POWERSHELL_UTF8_INIT.to_string(),
+            ],
             label: "PowerShell".to_string(),
         };
     }
@@ -204,16 +208,21 @@ fn resolve_shell_config() -> ShellConfig {
 fn spawn_output_thread(app: AppHandle, session_id: String, mut reader: Box<dyn Read + Send>) {
     std::thread::spawn(move || {
         let mut buffer = [0_u8; OUTPUT_BUFFER_SIZE];
+        let mut decoder = Utf8ChunkDecoder::new();
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) => break,
                 Ok(bytes_read) => {
-                    let chunk = String::from_utf8_lossy(&buffer[..bytes_read]).into_owned();
-                    let _ = emit_terminal_output(&app, session_id.clone(), chunk);
+                    if let Some(chunk) = decoder.decode(&buffer[..bytes_read]) {
+                        let _ = emit_terminal_output(&app, session_id.clone(), chunk);
+                    }
                 }
                 Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
                 Err(_) => break,
             }
+        }
+        if let Some(chunk) = decoder.finish() {
+            let _ = emit_terminal_output(&app, session_id, chunk);
         }
     });
 }
@@ -286,3 +295,6 @@ fn to_pty_size(cols: u16, rows: u16) -> PtySize {
         pixel_height: ZERO_PIXELS,
     }
 }
+
+
+

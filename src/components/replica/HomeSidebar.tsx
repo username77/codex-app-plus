@@ -19,6 +19,7 @@ export interface HomeSidebarProps {
   readonly onDismissSettingsMenu: () => void;
   readonly onOpenSettings: () => void;
   readonly onSelectRoot: (rootId: string) => void;
+  readonly onCreateThread: () => Promise<void>;
   readonly onAddRoot: () => void;
   readonly onRemoveRoot: (rootId: string) => void;
 }
@@ -50,8 +51,8 @@ function WorkspaceRootItem(props: WorkspaceRootItemProps): JSX.Element {
         <button
           type="button"
           className="thread-item-tools"
-          aria-label={`删除项目 ${root.name}`}
-          title={`删除项目 ${root.name}`}
+          aria-label={`移除工作区 ${root.name}`}
+          title={`移除工作区 ${root.name}`}
           onClick={handleRemove}
         >
           <OfficialCloseIcon className="thread-item-tools-icon" />
@@ -71,15 +72,24 @@ export function HomeSidebar(props: HomeSidebarProps): JSX.Element {
       ) : null}
       <div className="sidebar-header" aria-hidden="true" />
       <nav className="sidebar-nav">
-        <button type="button" className="sidebar-nav-item"><SidebarIcon kind="new-thread" /><span>新线程</span></button>
-        <button type="button" className="sidebar-nav-item"><SidebarIcon kind="automation" /><span>自动化</span></button>
-        <button type="button" className="sidebar-nav-item"><SidebarIcon kind="skills" /><span>技能</span></button>
+        <button type="button" className="sidebar-nav-item" onClick={() => void props.onCreateThread()}>
+          <SidebarIcon kind="new-thread" />
+          <span>新会话</span>
+        </button>
+        <button type="button" className="sidebar-nav-item">
+          <SidebarIcon kind="automation" />
+          <span>自动化</span>
+        </button>
+        <button type="button" className="sidebar-nav-item">
+          <SidebarIcon kind="skills" />
+          <span>技能</span>
+        </button>
       </nav>
       <section className="thread-section">
         <div className="thread-section-header">
-          <div className="thread-section-title">线程</div>
+          <div className="thread-section-title">工作区</div>
           <div className="thread-header-actions">
-            <button type="button" className="thread-header-btn" onClick={props.onAddRoot} aria-label="添加项目">
+            <button type="button" className="thread-header-btn" onClick={props.onAddRoot} aria-label="添加工作区">
               <OfficialFolderPlusIcon className="thread-header-icon" />
             </button>
             <button type="button" className="thread-header-btn" aria-label="排序">
@@ -97,7 +107,7 @@ export function HomeSidebar(props: HomeSidebarProps): JSX.Element {
               onRemove={props.onRemoveRoot}
             />
           ))}
-          {props.roots.length === 0 ? <li className="thread-empty">暂无项目，点击左上角添加</li> : null}
+          {props.roots.length === 0 ? <li className="thread-empty">暂无工作区，点击左上角添加</li> : null}
         </ul>
       </section>
       <div className="settings-slot">
