@@ -27,7 +27,6 @@ struct TerminalSession {
     writer: Mutex<Box<dyn Write + Send>>,
     killer: Mutex<Box<dyn ChildKiller + Send + Sync>>,
 }
-
 impl TerminalSession {
     fn new(
         master: Box<dyn MasterPty + Send>,
@@ -41,18 +40,15 @@ impl TerminalSession {
         }
     }
 }
-
 struct ShellConfig {
     program: String,
     args: Vec<String>,
     label: String,
 }
-
 pub struct TerminalManager {
     next_session_id: AtomicU64,
     sessions: SessionMap,
 }
-
 impl TerminalManager {
     pub fn new() -> Self {
         Self {
@@ -60,7 +56,6 @@ impl TerminalManager {
             sessions: Arc::new(Mutex::new(HashMap::new())),
         }
     }
-
     pub fn create_session(
         &self,
         app: AppHandle,
@@ -81,17 +76,14 @@ impl TerminalManager {
             writer,
             killer,
         ));
-
         insert_session(&self.sessions, session_id.clone(), session);
         spawn_output_thread(app.clone(), session_id.clone(), reader);
         spawn_wait_thread(app, self.sessions.clone(), session_id.clone(), child);
-
         Ok(TerminalCreateOutput {
             session_id,
             shell: shell.label,
         })
     }
-
     pub fn write(&self, input: TerminalWriteInput) -> AppResult<()> {
         if input.data.is_empty() {
             return Ok(());
@@ -102,18 +94,17 @@ impl TerminalManager {
         writer.flush()?;
         Ok(())
     }
-
     pub fn resize(&self, input: TerminalResizeInput) -> AppResult<()> {
         let session = get_session(&self.sessions, &input.session_id)?;
         let size = to_pty_size(input.cols, input.rows);
         let master = lock_mutex(&session.master, "terminal master")?;
         master.resize(size).map_err(map_terminal_error)
     }
-
     pub fn close(&self, input: TerminalCloseInput) -> AppResult<()> {
-        let session = remove_session(&self.sessions, &input.session_id)?;
-        let mut killer = lock_mutex(&session.killer, "terminal killer")?;
-        killer.kill().map_err(map_terminal_error)
+        let Some(session) = take_session(&self.sessions, &input.session_id)? else {
+            return Ok(());
+        };
+        kill_session(session)
     }
 
     fn allocate_session_id(&self) -> String {
@@ -258,10 +249,9 @@ fn insert_session(sessions: &SessionMap, session_id: String, session: Arc<Termin
     }
 }
 
-fn remove_session(sessions: &SessionMap, session_id: &str) -> AppResult<Arc<TerminalSession>> {
+fn take_session(sessions: &SessionMap, session_id: &str) -> AppResult<Option<Arc<TerminalSession>>> {
     let mut map = lock_mutex(sessions, "terminal session map")?;
-    map.remove(session_id)
-        .ok_or_else(|| AppError::InvalidInput(format!("terminal session not found: {session_id}")))
+    Ok(map.remove(session_id))
 }
 
 fn remove_session_if_present(sessions: &SessionMap, session_id: &str) {
@@ -287,6 +277,19 @@ fn map_terminal_error(error: impl std::fmt::Display) -> AppError {
     AppError::Io(error.to_string())
 }
 
+fn kill_session(session: Arc<TerminalSession>) -> AppResult<()> {
+    let mut killer = lock_mutex(&session.killer, "terminal killer")?;
+    match killer.kill() {
+        Ok(()) => Ok(()),
+        Err(error) if is_terminal_closed_error(&error) => Ok(()),
+        Err(error) => Err(map_terminal_error(error)),
+    }
+}
+
+fn is_terminal_closed_error(error: &std::io::Error) -> bool {
+    error.kind() == std::io::ErrorKind::NotFound || error.raw_os_error() == Some(0)
+}
+
 fn to_pty_size(cols: u16, rows: u16) -> PtySize {
     PtySize {
         cols: cols.max(1),
@@ -295,6 +298,3 @@ fn to_pty_size(cols: u16, rows: u16) -> PtySize {
         pixel_height: ZERO_PIXELS,
     }
 }
-
-
-

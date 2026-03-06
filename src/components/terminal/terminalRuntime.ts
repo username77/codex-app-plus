@@ -7,8 +7,6 @@ import type { HostBridge } from "../../bridge/types";
 
 const DEFAULT_COLUMNS = 120;
 const DEFAULT_ROWS = 32;
-const STARTUP_MESSAGE = "[starting embedded terminal...]";
-
 export type TerminalStatus = "idle" | "starting" | "ready" | "exited" | "error";
 
 interface UseMountedTerminalOptions {
@@ -237,7 +235,6 @@ export function useTerminalOpenAction(options: UseTerminalOpenActionOptions) {
     creatingRef.current = true;
     setStatus("starting");
     setErrorMessage(null);
-    terminalRef.current?.writeln(STARTUP_MESSAGE);
     try {
       const terminal = terminalRef.current;
       const size = terminal === null ? { cols: DEFAULT_COLUMNS, rows: DEFAULT_ROWS } : readTerminalSize(terminal);
