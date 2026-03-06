@@ -1,14 +1,17 @@
 use std::collections::HashMap;
 #[path = "terminal_output_decoder.rs"]
 mod terminal_output_decoder;
+#[path = "terminal_shell.rs"]
+mod terminal_shell;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use portable_pty::{
-    native_pty_system, Child, ChildKiller, CommandBuilder, MasterPty, PtySize,
+    native_pty_system, Child, ChildKiller, MasterPty, PtySize,
 };
 use terminal_output_decoder::Utf8ChunkDecoder;
+use terminal_shell::{build_shell_command, resolve_shell_config, ShellConfig};
 use tauri::AppHandle;
 use crate::error::{AppError, AppResult};
 use crate::events::{emit_fatal, emit_terminal_exit, emit_terminal_output};
@@ -20,7 +23,6 @@ const DEFAULT_COLUMNS: u16 = 120;
 const DEFAULT_ROWS: u16 = 32;
 const OUTPUT_BUFFER_SIZE: usize = 4096;
 const ZERO_PIXELS: u16 = 0;
-const WINDOWS_POWERSHELL_UTF8_INIT: &str = "[Console]::InputEncoding = [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $OutputEncoding = [Console]::OutputEncoding; chcp.com 65001 > $null";
 type SessionMap = Arc<Mutex<HashMap<String, Arc<TerminalSession>>>>;
 struct TerminalSession {
     master: Mutex<Box<dyn MasterPty + Send>>,
@@ -39,11 +41,6 @@ impl TerminalSession {
             killer: Mutex::new(killer),
         }
     }
-}
-struct ShellConfig {
-    program: String,
-    args: Vec<String>,
-    label: String,
 }
 pub struct TerminalManager {
     next_session_id: AtomicU64,
@@ -138,9 +135,9 @@ fn spawn_shell_process(
     shell: &ShellConfig,
     cwd: Option<String>,
 ) -> AppResult<Box<dyn Child + Send + Sync>> {
-    let mut command = CommandBuilder::new(&shell.program);
-    command.args(&shell.args);
-    if let Some(path) = normalize_cwd(cwd)? {
+    let cwd = normalize_cwd(cwd)?;
+    let mut command = build_shell_command(shell, cwd.as_ref());
+    if let Some(path) = cwd {
         command.cwd(path);
     }
     slave.spawn_command(command).map_err(map_terminal_error)
@@ -167,33 +164,6 @@ fn normalize_cwd(cwd: Option<String>) -> AppResult<Option<PathBuf>> {
         )));
     }
     Ok(Some(path))
-}
-
-fn resolve_shell_config() -> ShellConfig {
-    if cfg!(target_os = "windows") {
-        return ShellConfig {
-            program: "powershell.exe".to_string(),
-            args: vec![
-                "-NoLogo".to_string(),
-                "-NoExit".to_string(),
-                "-Command".to_string(),
-                WINDOWS_POWERSHELL_UTF8_INIT.to_string(),
-            ],
-            label: "PowerShell".to_string(),
-        };
-    }
-
-    let shell_path = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
-    let label = PathBuf::from(&shell_path)
-        .file_name()
-        .and_then(|value| value.to_str())
-        .unwrap_or("shell")
-        .to_string();
-    ShellConfig {
-        program: shell_path,
-        args: Vec::new(),
-        label,
-    }
 }
 
 fn spawn_output_thread(app: AppHandle, session_id: String, mut reader: Box<dyn Read + Send>) {
