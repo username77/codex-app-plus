@@ -1,5 +1,5 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useAppController } from "./app/useAppController";
 import { inferWorkspaceNameFromPath } from "./app/workspacePath";
 import { useWorkspaceConversation } from "./app/useWorkspaceConversation";
@@ -33,16 +33,25 @@ async function requestWorkspaceFolder(): Promise<{ readonly name: string; readon
 
 export function App({ hostBridge }: AppProps): JSX.Element {
   const controller = useAppController(hostBridge);
-  const workspace = useWorkspaceRoots(controller.state.threads, controller.loadThreads);
+  const workspace = useWorkspaceRoots(controller.state.threads);
   const [screen, setScreen] = useState<"home" | SettingsSection>("home");
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+
+  const selectedRoot = workspace.roots.find((root) => root.id === workspace.selectedRootId) ?? null;
+  const selectedRootName = selectedRoot?.name ?? "选择工作区";
+  const selectedRootPath = selectedRoot?.path ?? null;
+  const conversation = useWorkspaceConversation(hostBridge, controller.state.threads, selectedRootPath);
+  const messages = useMemo(
+    () => controller.state.messages.filter((message) => message.threadId === conversation.selectedThreadId),
+    [controller.state.messages, conversation.selectedThreadId]
+  );
 
   const openConfigToml = useCallback(async () => {
     try {
       await hostBridge.app.openCodexConfigToml();
     } catch (error) {
       console.error("打开 config.toml 失败", error);
-      window.alert(`打开 config.toml 失败：${String(error)}`);
+      window.alert(`打开 config.toml 失败: ${String(error)}`);
     }
   }, [hostBridge.app]);
 
@@ -59,9 +68,27 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       }
     } catch (error) {
       console.error("选择工作区文件夹失败", error);
-      window.alert(`选择工作区文件夹失败：${String(error)}`);
+      window.alert(`选择工作区文件夹失败: ${String(error)}`);
     }
   }, [workspace]);
+
+  const createWorkspaceThread = useCallback(async () => {
+    try {
+      await conversation.createThread();
+    } catch (error) {
+      console.error("创建工作区会话失败", error);
+      window.alert(`创建工作区会话失败: ${String(error)}`);
+    }
+  }, [conversation]);
+
+  const sendWorkspaceTurn = useCallback(async () => {
+    try {
+      await conversation.sendTurn();
+    } catch (error) {
+      console.error("发送工作区消息失败", error);
+      window.alert(`发送工作区消息失败: ${String(error)}`);
+    }
+  }, [conversation]);
 
   if (screen !== "home") {
     return (
@@ -76,29 +103,6 @@ export function App({ hostBridge }: AppProps): JSX.Element {
     );
   }
 
-  const selectedRoot = workspace.roots.find((root) => root.id === workspace.selectedRootId) ?? null;
-  const selectedRootName = selectedRoot?.name ?? "选择工作区";
-  const selectedRootPath = selectedRoot?.path ?? null;
-  const conversation = useWorkspaceConversation(hostBridge, controller.state.threads, selectedRootPath);
-
-  const createWorkspaceThread = useCallback(async () => {
-    try {
-      await conversation.createThread();
-    } catch (error) {
-      console.error("创建工作区会话失败", error);
-      window.alert(`创建工作区会话失败：${String(error)}`);
-    }
-  }, [conversation]);
-
-  const sendWorkspaceTurn = useCallback(async () => {
-    try {
-      await conversation.sendTurn();
-    } catch (error) {
-      console.error("发送工作区消息失败", error);
-      window.alert(`发送工作区消息失败：${String(error)}`);
-    }
-  }, [conversation]);
-
   return (
     <HomeView
       hostBridge={hostBridge}
@@ -108,16 +112,30 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       selectedRootId={workspace.selectedRootId}
       selectedRootName={selectedRootName}
       selectedRootPath={selectedRootPath}
+      threads={conversation.workspaceThreads}
+      selectedThreadId={conversation.selectedThreadId}
+      messages={messages}
+      pendingServerRequests={controller.state.pendingServerRequests}
+      connectionStatus={controller.state.connectionStatus}
+      fatalError={controller.state.fatalError}
+      authStatus={controller.state.authStatus}
+      authMode={controller.state.authMode}
+      retryScheduledAt={controller.state.retryScheduledAt}
       settingsMenuOpen={settingsMenuOpen}
       onToggleSettingsMenu={() => setSettingsMenuOpen((openValue) => !openValue)}
       onDismissSettingsMenu={() => setSettingsMenuOpen(false)}
       onOpenSettings={openSettings}
       onSelectRoot={workspace.selectRoot}
+      onSelectThread={conversation.selectThread}
       onInputChange={controller.setInput}
       onCreateThread={createWorkspaceThread}
       onSendTurn={sendWorkspaceTurn}
       onAddRoot={addRoot}
       onRemoveRoot={workspace.removeRoot}
+      onRetryConnection={controller.retryConnection}
+      onLogin={controller.login}
+      onApproveRequest={controller.approveRequest}
+      onRejectRequest={controller.rejectRequest}
     />
   );
 }

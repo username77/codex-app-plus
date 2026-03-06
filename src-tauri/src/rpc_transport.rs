@@ -36,11 +36,20 @@ pub fn build_request_line(request_id: &str, method: &str, params: Value) -> AppR
     if method.is_empty() {
         return Err(AppError::InvalidInput("method 不能为空".to_string()));
     }
-    let value = json!({
-        "id": request_id,
-        "method": method,
-        "params": params
-    });
+
+    let value = json!({ "id": request_id, "method": method, "params": params });
+    serde_json::to_string(&value).map_err(Into::into)
+}
+
+pub fn build_notification_line(method: &str, params: Option<Value>) -> AppResult<String> {
+    if method.is_empty() {
+        return Err(AppError::InvalidInput("method 不能为空".to_string()));
+    }
+
+    let value = match params {
+        Some(params) => json!({ "method": method, "params": params }),
+        None => json!({ "method": method }),
+    };
     serde_json::to_string(&value).map_err(Into::into)
 }
 
@@ -48,12 +57,8 @@ pub fn build_cancel_line(request_id: &str) -> AppResult<String> {
     if request_id.is_empty() {
         return Err(AppError::InvalidInput("request_id 不能为空".to_string()));
     }
-    let value = json!({
-        "method": "$/cancelRequest",
-        "params": {
-            "id": request_id
-        }
-    });
+
+    let value = json!({ "method": "$/cancelRequest", "params": { "id": request_id } });
     serde_json::to_string(&value).map_err(Into::into)
 }
 
@@ -66,6 +71,7 @@ pub fn build_server_response_line(input: &ServerRequestResolveInput) -> AppResul
             "serverRequest.resolve 必须提供 result 或 error".to_string(),
         ));
     }
+
     let value = if let Some(error) = &input.error {
         json!({
             "id": input.request_id,
@@ -76,10 +82,7 @@ pub fn build_server_response_line(input: &ServerRequestResolveInput) -> AppResul
             }
         })
     } else {
-        json!({
-            "id": input.request_id,
-            "result": input.result.clone().unwrap_or(Value::Null)
-        })
+        json!({ "id": input.request_id, "result": input.result.clone().unwrap_or(Value::Null) })
     };
     serde_json::to_string(&value).map_err(Into::into)
 }
@@ -119,6 +122,32 @@ pub fn parse_incoming_line(line: &str) -> AppResult<IncomingMessage> {
     }
 
     Err(AppError::Protocol(
-        "无法识别的 RPC 消息: 缺少 method 或 id".to_string(),
+        "无法识别的 RPC 消息：缺少 method 或 id".to_string(),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builds_notification_line_without_id() {
+        let line = build_notification_line("initialized", Some(json!({}))).unwrap();
+        assert_eq!(line, r#"{"method":"initialized","params":{}}"#);
+    }
+
+    #[test]
+    fn parses_server_request() {
+        let line = r#"{"id":1,"method":"tool/request","params":{"ok":true}}"#;
+        let message = parse_incoming_line(line).unwrap();
+
+        match message {
+            IncomingMessage::ServerRequest { id, method, params } => {
+                assert_eq!(id, "1");
+                assert_eq!(method, "tool/request");
+                assert_eq!(params, json!({ "ok": true }));
+            }
+            _ => panic!("expected server request"),
+        }
+    }
 }

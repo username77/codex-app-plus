@@ -24,14 +24,12 @@ export interface HomeSidebarProps {
   readonly onRemoveRoot: (rootId: string) => void;
 }
 
-interface WorkspaceRootItemProps {
+function WorkspaceRootItem(props: {
   readonly root: WorkspaceRoot;
   readonly selected: boolean;
   readonly onSelect: (rootId: string) => void;
   readonly onRemove: (rootId: string) => void;
-}
-
-function WorkspaceRootItem(props: WorkspaceRootItemProps): JSX.Element {
+}): JSX.Element {
   const { onRemove, onSelect, root, selected } = props;
   const handleRemove = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -40,12 +38,10 @@ function WorkspaceRootItem(props: WorkspaceRootItemProps): JSX.Element {
     },
     [onRemove, root.id]
   );
-  const itemClassName = selected ? "thread-item thread-item-active" : "thread-item";
-  const iconClassName = selected ? "thread-leading-icon thread-leading-icon-active" : "thread-leading-icon";
 
   return (
-    <li className={itemClassName} onClick={() => onSelect(root.id)}>
-      <OfficialFolderIcon className={iconClassName} />
+    <li className={selected ? "thread-item thread-item-active" : "thread-item"} onClick={() => onSelect(root.id)}>
+      <OfficialFolderIcon className={selected ? "thread-leading-icon thread-leading-icon-active" : "thread-leading-icon"} />
       <span className="thread-label">{root.name}</span>
       {selected ? (
         <button
@@ -64,7 +60,6 @@ function WorkspaceRootItem(props: WorkspaceRootItemProps): JSX.Element {
 
 export function HomeSidebar(props: HomeSidebarProps): JSX.Element {
   const sidebarClassName = props.collapsed ? "replica-sidebar sidebar-collapsed" : "replica-sidebar";
-
   return (
     <aside className={sidebarClassName}>
       {props.settingsMenuOpen ? (

@@ -22,18 +22,22 @@ function normalizeStoredRoot(value: unknown): WorkspaceRoot | null {
   if (typeof value !== "object" || value === null) {
     return null;
   }
+
   const record = value as { id?: unknown; name?: unknown; path?: unknown };
   if (typeof record.id !== "string") {
     return null;
   }
+
   const rawPath = typeof record.path === "string" ? record.path : record.name;
   if (typeof rawPath !== "string") {
     return null;
   }
+
   const path = trimWorkspaceText(rawPath);
   if (path.length === 0) {
     return null;
   }
+
   const rawName = typeof record.name === "string" ? record.name : inferWorkspaceNameFromPath(path);
   const name = trimWorkspaceText(rawName);
   if (name.length === 0) {
@@ -46,19 +50,13 @@ function parseStoredRoots(raw: string | null): ReadonlyArray<WorkspaceRoot> {
   if (raw === null) {
     return EMPTY_ROOTS;
   }
+
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) {
       return EMPTY_ROOTS;
     }
-    const roots: Array<WorkspaceRoot> = [];
-    for (const item of parsed) {
-      const root = normalizeStoredRoot(item);
-      if (root !== null) {
-        roots.push(root);
-      }
-    }
-    return roots;
+    return parsed.map(normalizeStoredRoot).filter((root): root is WorkspaceRoot => root !== null);
   } catch {
     return EMPTY_ROOTS;
   }
@@ -68,6 +66,7 @@ function normalizeStoredKey(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
   }
+
   const normalized = trimWorkspaceText(value).toLowerCase();
   return normalized.length > 0 ? normalized : null;
 }
@@ -76,19 +75,13 @@ function parseStoredKeys(raw: string | null): ReadonlyArray<string> {
   if (raw === null) {
     return EMPTY_KEYS;
   }
+
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) {
       return EMPTY_KEYS;
     }
-    const uniqueKeys = new Set<string>();
-    for (const item of parsed) {
-      const key = normalizeStoredKey(item);
-      if (key !== null) {
-        uniqueKeys.add(key);
-      }
-    }
-    return [...uniqueKeys];
+    return [...new Set(parsed.map(normalizeStoredKey).filter((key): key is string => key !== null))];
   } catch {
     return EMPTY_KEYS;
   }
@@ -96,10 +89,7 @@ function parseStoredKeys(raw: string | null): ReadonlyArray<string> {
 
 function rootKey(root: Pick<WorkspaceRoot, "path" | "name">): string {
   const pathKey = normalizeWorkspacePath(root.path);
-  if (pathKey.length > 0) {
-    return pathKey;
-  }
-  return trimWorkspaceText(root.name).toLowerCase();
+  return pathKey.length > 0 ? pathKey : trimWorkspaceText(root.name).toLowerCase();
 }
 
 function createRootFromThread(thread: ThreadSummary): WorkspaceRoot | null {
@@ -107,6 +97,7 @@ function createRootFromThread(thread: ThreadSummary): WorkspaceRoot | null {
   if (path.length === 0) {
     return null;
   }
+
   const title = trimWorkspaceText(thread.title);
   const name = title.length > 0 ? title : inferWorkspaceNameFromPath(path);
   return { id: `thread-${rootKey({ name, path })}`, name, path };
@@ -134,29 +125,20 @@ function sanitizeInput(input: AddWorkspaceRootInput): WorkspaceRoot | null {
   if (path.length === 0) {
     return null;
   }
+
   const explicitName = trimWorkspaceText(input.name);
   const name = explicitName.length > 0 ? explicitName : inferWorkspaceNameFromPath(path);
   if (name.length === 0) {
     return null;
   }
-  return {
-    id: crypto.randomUUID(),
-    name,
-    path
-  };
+  return { id: crypto.randomUUID(), name, path };
 }
 
 function appendRootKey(keys: ReadonlyArray<string>, key: string): ReadonlyArray<string> {
-  if (keys.includes(key)) {
-    return keys;
-  }
-  return [...keys, key];
+  return keys.includes(key) ? keys : [...keys, key];
 }
 
 function removeStoredRootKey(keys: ReadonlyArray<string>, key: string): ReadonlyArray<string> {
-  if (!keys.includes(key)) {
-    return keys;
-  }
   return keys.filter((item) => item !== key);
 }
 
@@ -171,6 +153,7 @@ function filterVisibleRoots(
   if (dismissedRootKeys.length === 0) {
     return roots;
   }
+
   const dismissedSet = new Set(dismissedRootKeys);
   return roots.filter((root) => !dismissedSet.has(rootKey(root)));
 }
@@ -183,10 +166,7 @@ export interface WorkspaceRootController {
   removeRoot: (rootId: string) => void;
 }
 
-export function useWorkspaceRoots(
-  threads: ReadonlyArray<ThreadSummary>,
-  loadThreads: () => Promise<void>
-): WorkspaceRootController {
+export function useWorkspaceRoots(threads: ReadonlyArray<ThreadSummary>): WorkspaceRootController {
   const [manualRoots, setManualRoots] = useState<ReadonlyArray<WorkspaceRoot>>(() =>
     parseStoredRoots(window.localStorage.getItem(ROOTS_STORAGE_KEY))
   );
@@ -194,10 +174,6 @@ export function useWorkspaceRoots(
     parseStoredKeys(window.localStorage.getItem(DISMISSED_ROOT_KEYS_STORAGE_KEY))
   );
   const [selectedRootId, setSelectedRootId] = useState<string | null>(null);
-
-  useEffect(() => {
-    void loadThreads().catch(() => undefined);
-  }, [loadThreads]);
 
   const roots = useMemo(() => {
     const threadRoots = threads

@@ -1,0 +1,37 @@
+import type { GitDiffOutput, GitStatusOutput } from "../../../bridge/types";
+
+export interface GitNotice {
+  readonly kind: "error" | "success";
+  readonly text: string;
+}
+
+export interface WorkspaceGitController {
+  readonly loading: boolean;
+  readonly pendingAction: string | null;
+  readonly status: GitStatusOutput | null;
+  readonly statusLoaded: boolean;
+  readonly hasRepository: boolean;
+  readonly error: string | null;
+  readonly notice: GitNotice | null;
+  readonly commitMessage: string;
+  readonly selectedBranch: string;
+  readonly newBranchName: string;
+  readonly diff: GitDiffOutput | null;
+  readonly diffTarget: { readonly path: string; readonly staged: boolean } | null;
+  readonly refresh: () => Promise<void>;
+  readonly initRepository: () => Promise<void>;
+  readonly fetch: () => Promise<void>;
+  readonly pull: () => Promise<void>;
+  readonly push: () => Promise<void>;
+  readonly stagePaths: (paths: ReadonlyArray<string>) => Promise<void>;
+  readonly unstagePaths: (paths: ReadonlyArray<string>) => Promise<void>;
+  readonly discardPaths: (paths: ReadonlyArray<string>, deleteUntracked: boolean) => Promise<void>;
+  readonly commit: () => Promise<void>;
+  readonly checkoutSelectedBranch: () => Promise<void>;
+  readonly createBranch: () => Promise<void>;
+  readonly selectDiff: (path: string, staged: boolean) => Promise<void>;
+  readonly clearDiff: () => void;
+  readonly setCommitMessage: (message: string) => void;
+  readonly setSelectedBranch: (branchName: string) => void;
+  readonly setNewBranchName: (branchName: string) => void;
+}

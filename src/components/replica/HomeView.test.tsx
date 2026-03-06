@@ -8,8 +8,52 @@ vi.mock("../terminal/TerminalPanel", () => ({
   TerminalPanel: () => null
 }));
 
+vi.mock("./git/useWorkspaceGit", () => ({
+  useWorkspaceGit: () => ({
+    loading: false,
+    pendingAction: null,
+    status: null,
+    statusLoaded: false,
+    hasRepository: false,
+    error: null,
+    notice: null,
+    commitMessage: "",
+    selectedBranch: "",
+    newBranchName: "",
+    diff: null,
+    diffTarget: null,
+    refresh: vi.fn().mockResolvedValue(undefined),
+    initRepository: vi.fn().mockResolvedValue(undefined),
+    fetch: vi.fn().mockResolvedValue(undefined),
+    pull: vi.fn().mockResolvedValue(undefined),
+    push: vi.fn().mockResolvedValue(undefined),
+    stagePaths: vi.fn().mockResolvedValue(undefined),
+    unstagePaths: vi.fn().mockResolvedValue(undefined),
+    discardPaths: vi.fn().mockResolvedValue(undefined),
+    commit: vi.fn().mockResolvedValue(undefined),
+    checkoutSelectedBranch: vi.fn().mockResolvedValue(undefined),
+    createBranch: vi.fn().mockResolvedValue(undefined),
+    selectDiff: vi.fn().mockResolvedValue(undefined),
+    clearDiff: vi.fn(),
+    setCommitMessage: vi.fn(),
+    setSelectedBranch: vi.fn(),
+    setNewBranchName: vi.fn()
+  })
+}));
+
+vi.mock("./git/WorkspaceGitView", () => ({
+  WorkspaceGitView: () => null
+}));
+
 function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
   const root = { id: "root-1", name: "FPGA", path: "E:/code/FPGA" };
+  const thread = {
+    id: "thread-1",
+    title: "First thread",
+    cwd: root.path,
+    archived: false,
+    updatedAt: "2026-03-06T09:00:00.000Z"
+  };
 
   return render(
     <HomeView
@@ -20,16 +64,30 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       selectedRootId={root.id}
       selectedRootName={root.name}
       selectedRootPath={root.path}
+      threads={[thread]}
+      selectedThreadId={thread.id}
+      messages={[]}
+      pendingServerRequests={[]}
+      connectionStatus="connected"
+      fatalError={null}
+      authStatus="authenticated"
+      authMode="chatgpt"
+      retryScheduledAt={null}
       settingsMenuOpen={false}
       onToggleSettingsMenu={vi.fn()}
       onDismissSettingsMenu={vi.fn()}
       onOpenSettings={vi.fn()}
       onSelectRoot={vi.fn()}
+      onSelectThread={vi.fn()}
       onInputChange={vi.fn()}
       onCreateThread={vi.fn().mockResolvedValue(undefined)}
       onSendTurn={vi.fn().mockResolvedValue(undefined)}
       onAddRoot={vi.fn()}
       onRemoveRoot={vi.fn()}
+      onRetryConnection={vi.fn().mockResolvedValue(undefined)}
+      onLogin={vi.fn().mockResolvedValue(undefined)}
+      onApproveRequest={vi.fn().mockResolvedValue(undefined)}
+      onRejectRequest={vi.fn().mockResolvedValue(undefined)}
       {...overrides}
     />
   );

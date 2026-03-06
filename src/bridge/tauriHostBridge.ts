@@ -4,10 +4,19 @@ import type {
   AppServerStartInput,
   BridgeEventName,
   BridgeEventPayloadMap,
+  GitCheckoutInput,
+  GitCommitInput,
+  GitDiffInput,
+  GitDiffOutput,
+  GitDiscardInput,
+  GitPathsInput,
+  GitRepoInput,
+  GitStatusOutput,
   HostBridge,
-  ImportOfficialDataInput,
   OpenWorkspaceInput,
+  ImportOfficialDataInput,
   RpcCancelInput,
+  RpcNotifyInput,
   RpcRequestInput,
   RpcRequestOutput,
   ServerRequestResolveInput,
@@ -45,6 +54,10 @@ export function createTauriHostBridge(): HostBridge {
         invoke<RpcRequestOutput>("rpc_request", {
           input
         }),
+      notify: (input: RpcNotifyInput) =>
+        invoke("rpc_notify", {
+          input
+        }),
       cancel: (input: RpcCancelInput) =>
         invoke("rpc_cancel", {
           input
@@ -80,6 +93,52 @@ export function createTauriHostBridge(): HostBridge {
           input
         })
     },
+    git: {
+      getStatus: (input: GitRepoInput) =>
+        invoke<GitStatusOutput>("git_get_status", {
+          input
+        }),
+      getDiff: (input: GitDiffInput) =>
+        invoke<GitDiffOutput>("git_get_diff", {
+          input
+        }),
+      initRepository: (input: GitRepoInput) =>
+        invoke("git_init_repository", {
+          input
+        }),
+      stagePaths: (input: GitPathsInput) =>
+        invoke("git_stage_paths", {
+          input
+        }),
+      unstagePaths: (input: GitPathsInput) =>
+        invoke("git_unstage_paths", {
+          input
+        }),
+      discardPaths: (input: GitDiscardInput) =>
+        invoke("git_discard_paths", {
+          input
+        }),
+      commit: (input: GitCommitInput) =>
+        invoke("git_commit", {
+          input
+        }),
+      fetch: (input: GitRepoInput) =>
+        invoke("git_fetch", {
+          input
+        }),
+      pull: (input: GitRepoInput) =>
+        invoke("git_pull", {
+          input
+        }),
+      push: (input: GitRepoInput) =>
+        invoke("git_push", {
+          input
+        }),
+      checkout: (input: GitCheckoutInput) =>
+        invoke("git_checkout", {
+          input
+        })
+    },
     terminal: {
       createSession: (input?: TerminalCreateInput) =>
         invoke<TerminalCreateOutput>("terminal_create_session", {
@@ -103,7 +162,7 @@ export function createTauriHostBridge(): HostBridge {
       handler: (payload: BridgeEventPayloadMap[E]) => void
     ) => {
       const unlisten = await listen<BridgeEventPayloadMap[E]>(eventName, (event) => {
-        handler(mustDefined(event.payload, `${eventName} payload 为空`));
+        handler(mustDefined(event.payload, `${eventName} payload 不能为空`));
       });
       return unlisten;
     }

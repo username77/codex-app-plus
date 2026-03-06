@@ -1,29 +1,24 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { HostBridge } from "../bridge/types";
-import type { ThreadSummary, TimelineItem } from "../domain/types";
+import type { ThreadSummary } from "../domain/types";
+import { createUserConversationMessage, mapThreadHistoryToMessages } from "./conversationMessages";
+import type { ThreadReadParams } from "../protocol/generated/v2/ThreadReadParams";
+import type { ThreadReadResponse } from "../protocol/generated/v2/ThreadReadResponse";
+import type { ThreadResumeParams } from "../protocol/generated/v2/ThreadResumeParams";
 import type { ThreadStartParams } from "../protocol/generated/v2/ThreadStartParams";
 import type { ThreadStartResponse } from "../protocol/generated/v2/ThreadStartResponse";
 import type { TurnStartParams } from "../protocol/generated/v2/TurnStartParams";
+import type { TurnStartResponse } from "../protocol/generated/v2/TurnStartResponse";
 import { mapThreadToSummary } from "../protocol/mappers";
 import { useAppStore } from "../state/store";
-import { findLatestThreadForWorkspace } from "./workspaceThread";
+import { listThreadsForWorkspace } from "./workspaceThread";
 
 interface WorkspaceConversationController {
-  readonly activeThreadId: string | null;
+  readonly selectedThreadId: string | null;
+  readonly workspaceThreads: ReadonlyArray<ThreadSummary>;
   createThread: () => Promise<string>;
+  selectThread: (threadId: string) => void;
   sendTurn: () => Promise<void>;
-}
-
-function makeSystemItem(text: string): TimelineItem {
-  return {
-    id: crypto.randomUUID(),
-    role: "system",
-    text
-  };
-}
-
-function upsertThreadSummary(threads: ReadonlyArray<ThreadSummary>, nextThread: ThreadSummary): ReadonlyArray<ThreadSummary> {
-  return [nextThread, ...threads.filter((thread) => thread.id !== nextThread.id)];
 }
 
 export function useWorkspaceConversation(
@@ -32,18 +27,53 @@ export function useWorkspaceConversation(
   selectedRootPath: string | null
 ): WorkspaceConversationController {
   const { dispatch, state } = useAppStore();
-  const activeThread = useMemo(
-    () => findLatestThreadForWorkspace(threads, selectedRootPath),
-    [selectedRootPath, threads]
-  );
-  const activeThreadId = activeThread?.id ?? null;
+  const loadedThreadIds = useRef(new Set<string>());
+  const resumedThreadIds = useRef(new Set<string>());
+  const workspaceThreads = useMemo(() => listThreadsForWorkspace(threads, selectedRootPath), [threads, selectedRootPath]);
+  const selectedThreadId = useMemo(() => {
+    if (state.selectedThreadId !== null && workspaceThreads.some((thread) => thread.id === state.selectedThreadId)) {
+      return state.selectedThreadId;
+    }
+    return workspaceThreads[0]?.id ?? null;
+  }, [state.selectedThreadId, workspaceThreads]);
 
   useEffect(() => {
-    if (state.selectedThreadId === activeThreadId) {
+    if (state.selectedThreadId !== selectedThreadId) {
+      dispatch({ type: "thread/selected", threadId: selectedThreadId });
+    }
+  }, [dispatch, selectedThreadId, state.selectedThreadId]);
+
+  const loadThreadHistory = useCallback(
+    async (threadId: string) => {
+      const params: ThreadReadParams = { threadId, includeTurns: true };
+      const response = (await hostBridge.rpc.request({ method: "thread/read", params })).result as ThreadReadResponse;
+      dispatch({ type: "thread/upserted", thread: mapThreadToSummary(response.thread) });
+      dispatch({ type: "thread/messagesLoaded", threadId, messages: mapThreadHistoryToMessages(response.thread) });
+      loadedThreadIds.current.add(threadId);
+    },
+    [dispatch, hostBridge.rpc]
+  );
+
+  useEffect(() => {
+    if (selectedThreadId === null || loadedThreadIds.current.has(selectedThreadId)) {
       return;
     }
-    dispatch({ type: "thread/selected", threadId: activeThreadId });
-  }, [activeThreadId, dispatch, state.selectedThreadId]);
+    void loadThreadHistory(selectedThreadId).catch((error) => {
+      dispatch({ type: "fatal/error", message: String(error) });
+    });
+  }, [dispatch, loadThreadHistory, selectedThreadId]);
+
+  const ensureThreadResumed = useCallback(
+    async (threadId: string) => {
+      if (resumedThreadIds.current.has(threadId)) {
+        return;
+      }
+      const params: ThreadResumeParams = { threadId, persistExtendedHistory: true };
+      await hostBridge.rpc.request({ method: "thread/resume", params });
+      resumedThreadIds.current.add(threadId);
+    },
+    [hostBridge.rpc]
+  );
 
   const runBusy = useCallback(
     async <T,>(runner: () => Promise<T>): Promise<T> => {
@@ -63,38 +93,43 @@ export function useWorkspaceConversation(
     }
     return runBusy(async () => {
       const params: ThreadStartParams = { cwd: selectedRootPath, experimentalRawEvents: false, persistExtendedHistory: true };
-      const result = await hostBridge.rpc.request({ method: "thread/start", params });
-      const response = result.result as ThreadStartResponse;
+      const response = (await hostBridge.rpc.request({ method: "thread/start", params })).result as ThreadStartResponse;
       const summary = mapThreadToSummary(response.thread);
-      dispatch({ type: "threads/loaded", threads: upsertThreadSummary(threads, summary) });
+      dispatch({ type: "thread/upserted", thread: summary });
       dispatch({ type: "thread/selected", threadId: response.thread.id });
-      dispatch({ type: "timeline/appended", item: makeSystemItem(`已创建会话 ${response.thread.id}`) });
+      dispatch({ type: "thread/messagesLoaded", threadId: response.thread.id, messages: [] });
+      loadedThreadIds.current.add(response.thread.id);
+      resumedThreadIds.current.add(response.thread.id);
       return response.thread.id;
     });
-  }, [dispatch, hostBridge.rpc, runBusy, selectedRootPath, threads]);
+  }, [dispatch, hostBridge.rpc, runBusy, selectedRootPath]);
 
   const sendTurn = useCallback(async () => {
     const text = state.inputText.trim();
     if (text.length === 0) {
       return;
     }
-    const threadId = activeThreadId ?? (await createThread());
+    const threadId = selectedThreadId ?? (await createThread());
     await runBusy(async () => {
+      await ensureThreadResumed(threadId);
       const params: TurnStartParams = {
         threadId,
         cwd: selectedRootPath ?? undefined,
         input: [{ type: "text", text, text_elements: [] }]
       };
+      const response = (await hostBridge.rpc.request({ method: "turn/start", params })).result as TurnStartResponse;
       dispatch({ type: "thread/selected", threadId });
-      await hostBridge.rpc.request({ method: "turn/start", params });
-      dispatch({ type: "timeline/appended", item: { id: crypto.randomUUID(), role: "user", text } });
+      dispatch({ type: "thread/touched", threadId, updatedAt: new Date().toISOString() });
+      dispatch({ type: "message/added", message: createUserConversationMessage(threadId, response.turn.id, text) });
       dispatch({ type: "input/changed", value: "" });
     });
-  }, [activeThreadId, createThread, dispatch, hostBridge.rpc, runBusy, selectedRootPath, state.inputText]);
+  }, [createThread, dispatch, ensureThreadResumed, hostBridge.rpc, runBusy, selectedRootPath, selectedThreadId, state.inputText]);
 
   return {
-    activeThreadId,
+    selectedThreadId,
+    workspaceThreads,
     createThread,
+    selectThread: (threadId) => dispatch({ type: "thread/selected", threadId }),
     sendTurn
   };
 }

@@ -1,8 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod app_server_io;
+mod codex_cli;
 mod commands;
 mod error;
 mod events;
+mod git;
 mod models;
 mod process_manager;
 mod rpc_transport;
@@ -11,8 +14,12 @@ mod terminal_manager;
 use commands::{
     app_import_official_data, app_open_codex_config_toml, app_open_external, app_open_workspace,
     app_server_restart, app_server_start, app_server_stop, app_show_context_menu,
-    app_show_notification, rpc_cancel, rpc_request, server_request_resolve,
-    terminal_close_session, terminal_create_session, terminal_resize, terminal_write,
+    app_show_notification, rpc_cancel, rpc_notify, rpc_request, server_request_resolve, terminal_close_session,
+    terminal_create_session, terminal_resize, terminal_write,
+};
+use git::commands::{
+    git_checkout, git_commit, git_discard_paths, git_fetch, git_get_diff, git_get_status,
+    git_init_repository, git_pull, git_push, git_stage_paths, git_unstage_paths,
 };
 use process_manager::ProcessManager;
 use terminal_manager::TerminalManager;
@@ -27,6 +34,7 @@ fn main() {
             app_server_stop,
             app_server_restart,
             rpc_request,
+            rpc_notify,
             rpc_cancel,
             server_request_resolve,
             app_open_external,
@@ -35,6 +43,17 @@ fn main() {
             app_show_notification,
             app_show_context_menu,
             app_import_official_data,
+            git_get_status,
+            git_get_diff,
+            git_init_repository,
+            git_stage_paths,
+            git_unstage_paths,
+            git_discard_paths,
+            git_commit,
+            git_fetch,
+            git_pull,
+            git_push,
+            git_checkout,
             terminal_create_session,
             terminal_write,
             terminal_resize,

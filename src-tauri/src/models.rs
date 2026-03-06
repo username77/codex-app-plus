@@ -15,6 +15,13 @@ pub struct RpcRequestInput {
     pub timeout_ms: Option<u64>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcNotifyInput {
+    pub method: String,
+    pub params: Option<Value>,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcRequestOutput {
@@ -68,7 +75,7 @@ pub struct ImportOfficialDataInput {
     pub source_path: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
 pub enum WorkspaceOpener {
     Vscode,

@@ -3,12 +3,12 @@ import type { RefObject } from "react";
 import type { HostBridge, WorkspaceOpener } from "../../bridge/types";
 import terminalIconUrl from "../../assets/official/apps/microsoft-terminal.png";
 import vscodeIconUrl from "../../assets/official/apps/vscode.png";
-import { OfficialChevronRightIcon, OfficialFolderIcon } from "./officialIcons";
+import { OfficialChevronRightIcon } from "./officialIcons";
 
-const OPEN_TEXT = "打开";
-const OPEN_METHODS_TEXT = "打开方式";
-const SELECT_OPEN_METHOD_TEXT = "选择打开方式";
-const CURRENT_WORKSPACE_TEXT = "当前工作区";
+const OPEN_TEXT = "\u6253\u5f00";
+const OPEN_METHODS_TEXT = "\u6253\u5f00\u65b9\u5f0f";
+const SELECT_OPEN_METHOD_TEXT = "\u9009\u62e9\u6253\u5f00\u65b9\u5f0f";
+const CURRENT_WORKSPACE_TEXT = "\u5f53\u524d\u5de5\u4f5c\u533a";
 const WINDOWS_DRIVE_SEGMENT_PATTERN = /^[A-Za-z]:$/;
 
 interface WorkspaceOpenButtonProps {
@@ -32,8 +32,7 @@ function ImageOptionIcon(props: {
 function VisualStudioOptionIcon(props: { readonly className: string }): JSX.Element {
   return (
     <svg className={props.className} viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="#6B4CE6" d="M19.4 3.6 10 7.6 5.3 4.7 3 5.9v12.2l2.3 1.2 4.7-2.9 9.4 4 1.6-1V4.6z" />
-      <path fill="#FFF" d="m14.5 7.8-5.2 4.1v.2l5.2 4.1 2.1-1.2V9z" />
+      <path fill="#6B4CE6" d="M20.28 3.71a1.2 1.2 0 0 1 .72 1.1v14.38a1.2 1.2 0 0 1-.72 1.1l-8.66 3.65a1.2 1.2 0 0 1-1.26-.2l-4.28-3.87-2.89 1.47A.8.8 0 0 1 2 20.62V3.38a.8.8 0 0 1 1.15-.72l2.93 1.49 4.26-3.87a1.2 1.2 0 0 1 1.27-.2Zm-8.44 4.07L7.92 12l3.92 4.22 6.16 2.63V5.15Z" />
     </svg>
   );
 }
@@ -41,11 +40,21 @@ function VisualStudioOptionIcon(props: { readonly className: string }): JSX.Elem
 function GitHubDesktopOptionIcon(props: { readonly className: string }): JSX.Element {
   return (
     <svg className={props.className} viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" fill="#7D5DFF" />
+      <circle cx="12" cy="12" r="10" fill="#8250DF" />
       <path
         fill="#FFF"
-        d="M12 6.4a5.6 5.6 0 0 0-1.8 10.9v-1.9c-1.2.2-1.6-.5-1.8-.9-.1-.3-.3-.6-.6-.8-.2-.1 0-.1.1-.1.6 0 1 .5 1.1.7.6.9 1.6.6 2 .5.1-.4.3-.7.5-.9-2.1-.2-3.1-1.3-3.1-3 0-.7.2-1.2.6-1.7-.1-.3-.2-.9.1-1.7 0 0 .7-.2 1.8.7.5-.2 1.1-.2 1.6-.2s1.1 0 1.6.2c1.1-.9 1.8-.7 1.8-.7.3.8.2 1.4.1 1.7.4.5.6 1 .6 1.7 0 1.7-1 2.8-3.1 3 .3.2.6.7.6 1.4v1.7A5.6 5.6 0 0 0 12 6.4Z"
+        d="M12 6.45a5.55 5.55 0 0 0-1.76 10.81v-1.88c-1.16.25-1.48-.49-1.59-.79-.06-.17-.3-.72-.5-.86-.17-.09-.41-.33-.01-.34.38-.01.66.35.75.5.44.73 1.14.52 1.42.4.04-.32.17-.53.3-.66-1.03-.12-2.1-.52-2.1-2.32 0-.52.18-.95.49-1.29-.05-.12-.22-.62.05-1.29 0 0 .4-.13 1.32.49.38-.11.79-.17 1.2-.17.41 0 .82.06 1.2.17.92-.63 1.32-.49 1.32-.49.27.67.1 1.17.05 1.29.3.34.49.77.49 1.29 0 1.81-1.08 2.2-2.11 2.32.17.14.32.41.32.83v2.01A5.55 5.55 0 0 0 12 6.45Z"
       />
+    </svg>
+  );
+}
+
+function FileExplorerOptionIcon(props: { readonly className: string }): JSX.Element {
+  return (
+    <svg className={props.className} viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#F2B01E" d="M3 7.6A1.6 1.6 0 0 1 4.6 6h4.3c.46 0 .89.2 1.2.54l.9 1.06h8.4A1.6 1.6 0 0 1 21 9.2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+      <path fill="#FFD45C" d="M3 9.1h18v2.2H3Z" />
+      <path fill="#0B84F3" d="M7 12.7h10v4.1H7Z" />
     </svg>
   );
 }
@@ -53,8 +62,10 @@ function GitHubDesktopOptionIcon(props: { readonly className: string }): JSX.Ele
 function GitBashOptionIcon(props: { readonly className: string }): JSX.Element {
   return (
     <svg className={props.className} viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="5" y="5" width="14" height="14" rx="3" transform="rotate(45 12 12)" fill="#7CCB71" />
-      <path fill="#FFF" d="m9.2 10.1 1.8 1.9-1.8 1.9.9.8 2.6-2.7-2.6-2.7Zm4.6 4.1h2v-1.2h-2Z" />
+      <rect x="6.4" y="2.8" width="6.2" height="6.2" rx="1.1" transform="rotate(45 6.4 2.8)" fill="#4AA3FF" />
+      <rect x="11" y="7.4" width="6.2" height="6.2" rx="1.1" transform="rotate(45 11 7.4)" fill="#F35BA7" />
+      <rect x="6.4" y="12" width="6.2" height="6.2" rx="1.1" transform="rotate(45 6.4 12)" fill="#FFD24D" />
+      <rect x="11" y="16.6" width="6.2" height="6.2" rx="1.1" transform="rotate(45 11 16.6)" fill="#7CD992" />
     </svg>
   );
 }
@@ -78,7 +89,7 @@ const WORKSPACE_OPENER_OPTIONS = [
   {
     id: "explorer",
     label: "File Explorer",
-    renderIcon: (className: string) => <OfficialFolderIcon className={className} />
+    renderIcon: (className: string) => <FileExplorerOptionIcon className={className} />
   },
   {
     id: "terminal",
@@ -94,7 +105,7 @@ const WORKSPACE_OPENER_OPTIONS = [
 
 function assertSelectedRootPath(selectedRootPath: string | null): string {
   if (selectedRootPath === null) {
-    throw new Error("打开工作区前必须先选择一个工作区。");
+    throw new Error("\u6253\u5f00\u5de5\u4f5c\u533a\u524d\u5fc5\u987b\u5148\u9009\u62e9\u4e00\u4e2a\u5de5\u4f5c\u533a\u3002");
   }
   return selectedRootPath;
 }
@@ -210,7 +221,7 @@ export function WorkspaceOpenButton(props: WorkspaceOpenButtonProps): JSX.Elemen
       });
     } catch (error) {
       console.error(`Failed to open workspace with ${selectedOption.label}`, error);
-      window.alert(`${selectedOption.label}打开失败：${String(error)}`);
+      window.alert(`${selectedOption.label}\u6253\u5f00\u5931\u8d25\uff1a${String(error)}`);
     }
   }, [props.hostBridge.app, props.selectedRootPath, selectedOpener, selectedOption.label]);
 
@@ -229,7 +240,7 @@ export function WorkspaceOpenButton(props: WorkspaceOpenButtonProps): JSX.Elemen
         className="toolbar-split-main"
         data-opener={selectedOpener}
         disabled={!canOpenWorkspace}
-        aria-label={`使用 ${selectedOption.label} ${OPEN_TEXT}${CURRENT_WORKSPACE_TEXT}`}
+        aria-label={`\u4f7f\u7528 ${selectedOption.label} ${OPEN_TEXT}${CURRENT_WORKSPACE_TEXT}`}
         onClick={() => void openSelectedWorkspace()}
       >
         {selectedOption.renderIcon("toolbar-app-icon")}

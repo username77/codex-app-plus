@@ -1,4 +1,5 @@
 @import "./replica-shell.css";
+@import "./replica-git.css";
 @import "./replica-empty-state.css";
 @import "./replica-toolbar.css";
 @import "./replica-composer.css";
@@ -6,6 +7,7 @@
 @import "./replica-terminal.css";
 @import "./replica-settings.css";
 @import "./replica-settings-extra.css";
+@import "./replica-conversation.css";
 
 :root {
   color-scheme: light;

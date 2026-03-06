@@ -1,8 +1,8 @@
 export type BridgeEventName =
-  | "connection.changed"
-  | "notification.received"
-  | "serverRequest.received"
-  | "fatal.error"
+  | "connection-changed"
+  | "notification-received"
+  | "server-request-received"
+  | "fatal-error"
   | "terminal-output"
   | "terminal-exit";
 
@@ -71,6 +71,11 @@ export interface RpcRequestInput {
   readonly timeoutMs?: number;
 }
 
+export interface RpcNotifyInput {
+  readonly method: string;
+  readonly params?: unknown;
+}
+
 export interface RpcRequestOutput {
   readonly requestId: string;
   readonly result: unknown;
@@ -108,6 +113,7 @@ export interface ImportOfficialDataInput {
   readonly sourcePath: string;
 }
 
+
 export type WorkspaceOpener =
   | "vscode"
   | "visualStudio"
@@ -121,11 +127,78 @@ export interface OpenWorkspaceInput {
   readonly opener: WorkspaceOpener;
 }
 
+export interface GitRepoInput {
+  readonly repoPath: string;
+}
+
+export interface GitPathsInput extends GitRepoInput {
+  readonly paths: ReadonlyArray<string>;
+}
+
+export interface GitDiscardInput extends GitPathsInput {
+  readonly deleteUntracked: boolean;
+}
+
+export interface GitDiffInput extends GitRepoInput {
+  readonly path: string;
+  readonly staged: boolean;
+}
+
+export interface GitCommitInput extends GitRepoInput {
+  readonly message: string;
+}
+
+export interface GitCheckoutInput extends GitRepoInput {
+  readonly branchName: string;
+  readonly create: boolean;
+}
+
+export interface GitBranchSummary {
+  readonly head: string | null;
+  readonly upstream: string | null;
+  readonly ahead: number;
+  readonly behind: number;
+  readonly detached: boolean;
+}
+
+export interface GitBranchRef {
+  readonly name: string;
+  readonly upstream: string | null;
+  readonly isCurrent: boolean;
+}
+
+export interface GitStatusEntry {
+  readonly path: string;
+  readonly originalPath: string | null;
+  readonly indexStatus: string;
+  readonly worktreeStatus: string;
+}
+
+export interface GitStatusOutput {
+  readonly isRepository: boolean;
+  readonly repoRoot: string | null;
+  readonly branch: GitBranchSummary | null;
+  readonly remoteName: string | null;
+  readonly remoteUrl: string | null;
+  readonly branches: ReadonlyArray<GitBranchRef>;
+  readonly staged: ReadonlyArray<GitStatusEntry>;
+  readonly unstaged: ReadonlyArray<GitStatusEntry>;
+  readonly untracked: ReadonlyArray<GitStatusEntry>;
+  readonly conflicted: ReadonlyArray<GitStatusEntry>;
+  readonly isClean: boolean;
+}
+
+export interface GitDiffOutput {
+  readonly path: string;
+  readonly staged: boolean;
+  readonly diff: string;
+}
+
 export type BridgeEventPayloadMap = {
-  "connection.changed": ConnectionChangedPayload;
-  "notification.received": NotificationEventPayload;
-  "serverRequest.received": ServerRequestEventPayload;
-  "fatal.error": FatalErrorPayload;
+  "connection-changed": ConnectionChangedPayload;
+  "notification-received": NotificationEventPayload;
+  "server-request-received": ServerRequestEventPayload;
+  "fatal-error": FatalErrorPayload;
   "terminal-output": TerminalOutputEventPayload;
   "terminal-exit": TerminalExitEventPayload;
 };
@@ -138,6 +211,7 @@ export interface HostBridge {
   };
   readonly rpc: {
     request(input: RpcRequestInput): Promise<RpcRequestOutput>;
+    notify(input: RpcNotifyInput): Promise<void>;
     cancel(input: RpcCancelInput): Promise<void>;
   };
   readonly serverRequest: {
@@ -150,6 +224,19 @@ export interface HostBridge {
     showNotification(input: ShowNotificationInput): Promise<void>;
     showContextMenu(input: ShowContextMenuInput): Promise<void>;
     importOfficialData(input: ImportOfficialDataInput): Promise<void>;
+  };
+  readonly git: {
+    getStatus(input: GitRepoInput): Promise<GitStatusOutput>;
+    getDiff(input: GitDiffInput): Promise<GitDiffOutput>;
+    initRepository(input: GitRepoInput): Promise<void>;
+    stagePaths(input: GitPathsInput): Promise<void>;
+    unstagePaths(input: GitPathsInput): Promise<void>;
+    discardPaths(input: GitDiscardInput): Promise<void>;
+    commit(input: GitCommitInput): Promise<void>;
+    fetch(input: GitRepoInput): Promise<void>;
+    pull(input: GitRepoInput): Promise<void>;
+    push(input: GitRepoInput): Promise<void>;
+    checkout(input: GitCheckoutInput): Promise<void>;
   };
   readonly terminal: {
     createSession(input?: TerminalCreateInput): Promise<TerminalCreateOutput>;

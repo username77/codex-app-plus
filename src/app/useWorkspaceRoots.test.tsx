@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { useWorkspaceRoots } from "./useWorkspaceRoots";
 
 const DISMISSED_ROOT_KEYS_STORAGE_KEY = "codex-app-plus.workspace-root-dismissed-keys";
@@ -18,9 +18,8 @@ describe("useWorkspaceRoots", () => {
   });
 
   it("keeps removed thread roots hidden after remount", async () => {
-    const loadThreads = vi.fn().mockResolvedValue(undefined);
     const initialProps = { threads: [THREAD] };
-    const first = renderHook(({ threads }) => useWorkspaceRoots(threads, loadThreads), { initialProps });
+    const first = renderHook(({ threads }) => useWorkspaceRoots(threads), { initialProps });
 
     expect(first.result.current.roots).toHaveLength(1);
 
@@ -35,13 +34,12 @@ describe("useWorkspaceRoots", () => {
 
     first.unmount();
 
-    const second = renderHook(({ threads }) => useWorkspaceRoots(threads, loadThreads), { initialProps });
+    const second = renderHook(({ threads }) => useWorkspaceRoots(threads), { initialProps });
     expect(second.result.current.roots).toHaveLength(0);
   });
 
   it("shows a removed root again after manual re-add", () => {
-    const loadThreads = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useWorkspaceRoots([THREAD], loadThreads));
+    const { result } = renderHook(() => useWorkspaceRoots([THREAD]));
     const removedRoot = result.current.roots[0]!;
 
     act(() => {
