@@ -217,7 +217,7 @@ fn create_vscode_workspace_url(workspace_path: &Path) -> String {
 fn encode_file_url_path(workspace_path: &Path) -> String {
     workspace_path
         .to_string_lossy()
-        .replace('\', "/")
+        .replace('\\', "/")
         .split('/')
         .filter(|segment| !segment.is_empty())
         .enumerate()

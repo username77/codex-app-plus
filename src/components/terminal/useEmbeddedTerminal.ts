@@ -69,7 +69,7 @@ export function useEmbeddedTerminal(options: UseEmbeddedTerminalOptions): Embedd
     const sessionId = sessionIdRef.current;
     sessionIdRef.current = null;
     if (sessionId !== null) {
-      void hostBridge.terminal.closeSession({ sessionId }).catch((error) => reportError("关闭旧终端会话失败", error));
+      void hostBridge.terminal.closeSession({ sessionId }).catch((error) => reportError("failed to close previous terminal session", error));
     }
   }, [cwdKey, hostBridge.terminal, reportError, terminalRef]);
 

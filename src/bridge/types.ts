@@ -108,6 +108,19 @@ export interface ImportOfficialDataInput {
   readonly sourcePath: string;
 }
 
+export type WorkspaceOpener =
+  | "vscode"
+  | "visualStudio"
+  | "githubDesktop"
+  | "explorer"
+  | "terminal"
+  | "gitBash";
+
+export interface OpenWorkspaceInput {
+  readonly path: string;
+  readonly opener: WorkspaceOpener;
+}
+
 export type BridgeEventPayloadMap = {
   "connection.changed": ConnectionChangedPayload;
   "notification.received": NotificationEventPayload;
@@ -132,6 +145,7 @@ export interface HostBridge {
   };
   readonly app: {
     openExternal(url: string): Promise<void>;
+    openWorkspace(input: OpenWorkspaceInput): Promise<void>;
     openCodexConfigToml(): Promise<void>;
     showNotification(input: ShowNotificationInput): Promise<void>;
     showContextMenu(input: ShowContextMenuInput): Promise<void>;

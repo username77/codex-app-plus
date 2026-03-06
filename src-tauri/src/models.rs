@@ -68,6 +68,24 @@ pub struct ImportOfficialDataInput {
     pub source_path: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum WorkspaceOpener {
+    Vscode,
+    VisualStudio,
+    GithubDesktop,
+    Explorer,
+    Terminal,
+    GitBash,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenWorkspaceInput {
+    pub path: String,
+    pub opener: WorkspaceOpener,
+}
+
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TerminalCreateInput {

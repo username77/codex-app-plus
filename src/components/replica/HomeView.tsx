@@ -4,9 +4,9 @@ import type { HostBridge } from "../../bridge/types";
 import { TerminalPanel } from "../terminal/TerminalPanel";
 import { ComposerFooter } from "./ComposerFooter";
 import { HomeSidebar } from "./HomeSidebar";
+import { WorkspaceGitButton } from "./WorkspaceGitButton";
 import { WorkspaceOpenButton } from "./WorkspaceOpenButton";
 import {
-  OfficialArrowTopRightIcon,
   OfficialChevronRightIcon,
   OfficialPlusIcon,
   OfficialSidebarToggleIcon
@@ -84,11 +84,7 @@ function MainToolbar(props: MainToolbarProps): JSX.Element {
       <h1 className="toolbar-title">{title}</h1>
       <div className="toolbar-actions">
         <WorkspaceOpenButton hostBridge={props.hostBridge} selectedRootPath={props.selectedRootPath} />
-        <button type="button" className="toolbar-pill">
-          <OfficialArrowTopRightIcon className="toolbar-leading-icon" />
-          <span>分享</span>
-          <OfficialChevronRightIcon className="toolbar-caret-icon" />
-        </button>
+        <WorkspaceGitButton selectedRootPath={props.selectedRootPath} />
         <div className="toolbar-icon-row" aria-label="快捷操作">
           <button
             type="button"

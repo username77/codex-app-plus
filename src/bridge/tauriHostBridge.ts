@@ -6,6 +6,7 @@ import type {
   BridgeEventPayloadMap,
   HostBridge,
   ImportOfficialDataInput,
+  OpenWorkspaceInput,
   RpcCancelInput,
   RpcRequestInput,
   RpcRequestOutput,
@@ -59,6 +60,10 @@ export function createTauriHostBridge(): HostBridge {
       openExternal: (url: string) =>
         invoke("app_open_external", {
           url
+        }),
+      openWorkspace: (input: OpenWorkspaceInput) =>
+        invoke("app_open_workspace", {
+          input
         }),
       openCodexConfigToml: () =>
         invoke("app_open_codex_config_toml"),
