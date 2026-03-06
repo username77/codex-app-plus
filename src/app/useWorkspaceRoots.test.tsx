@@ -53,4 +53,39 @@ describe("useWorkspaceRoots", () => {
     expect(result.current.roots).toHaveLength(1);
     expect(result.current.roots[0]).toMatchObject({ name: removedRoot.name, path: removedRoot.path });
   });
+
+  it("ignores threads without cwd when building workspace roots", () => {
+    const threads = [
+      THREAD,
+      {
+        id: "thread-2",
+        title: "这是一条会话标题，不是工作区",
+        cwd: null,
+        archived: false,
+        updatedAt: "2026-03-06T10:00:00Z"
+      }
+    ];
+
+    const { result } = renderHook(() => useWorkspaceRoots(threads));
+
+    expect(result.current.roots).toHaveLength(1);
+    expect(result.current.roots[0]).toMatchObject({ name: "FPGA", path: "E:/code/FPGA" });
+  });
+
+  it("uses workspace path name instead of thread title for auto roots", () => {
+    const threads = [
+      {
+        id: "thread-3",
+        title: "请帮我重构这里的状态机",
+        cwd: "E:/code/project-alpha",
+        archived: false,
+        updatedAt: "2026-03-06T11:00:00Z"
+      }
+    ];
+
+    const { result } = renderHook(() => useWorkspaceRoots(threads));
+
+    expect(result.current.roots).toHaveLength(1);
+    expect(result.current.roots[0]).toMatchObject({ name: "project-alpha", path: "E:/code/project-alpha" });
+  });
 });

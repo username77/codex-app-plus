@@ -6,6 +6,23 @@ function toUpdatedAtTimestamp(updatedAt: string): number {
   return Number.isNaN(timestamp) ? 0 : timestamp;
 }
 
+function pathDepth(value: string | null): number {
+  if (value === null) {
+    return 0;
+  }
+  return normalizeWorkspacePath(value)
+    .split("/")
+    .filter((part) => part.length > 0).length;
+}
+
+function matchesWorkspacePath(threadPath: string | null, workspacePath: string): boolean {
+  const normalizedThreadPath = normalizeWorkspacePath(threadPath ?? "");
+  if (normalizedThreadPath.length === 0) {
+    return false;
+  }
+  return normalizedThreadPath === workspacePath || normalizedThreadPath.startsWith(`${workspacePath}/`);
+}
+
 export function listThreadsForWorkspace(
   threads: ReadonlyArray<ThreadSummary>,
   workspacePath: string | null
@@ -20,8 +37,14 @@ export function listThreadsForWorkspace(
   }
 
   return [...threads]
-    .filter((thread) => normalizeWorkspacePath(thread.cwd ?? "") === normalizedWorkspacePath)
-    .sort((left, right) => toUpdatedAtTimestamp(right.updatedAt) - toUpdatedAtTimestamp(left.updatedAt));
+    .filter((thread) => matchesWorkspacePath(thread.cwd, normalizedWorkspacePath))
+    .sort((left, right) => {
+      const updatedAtDelta = toUpdatedAtTimestamp(right.updatedAt) - toUpdatedAtTimestamp(left.updatedAt);
+      if (updatedAtDelta !== 0) {
+        return updatedAtDelta;
+      }
+      return pathDepth(left.cwd) - pathDepth(right.cwd);
+    });
 }
 
 export function findLatestThreadForWorkspace(

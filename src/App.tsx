@@ -1,5 +1,7 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { useCallback, useMemo, useState } from "react";
+import type { ComposerSelection } from "./app/composerPreferences";
+import { useComposerPicker } from "./app/useComposerPicker";
 import { useAppController } from "./app/useAppController";
 import { inferWorkspaceNameFromPath } from "./app/workspacePath";
 import { useWorkspaceConversation } from "./app/useWorkspaceConversation";
@@ -33,6 +35,7 @@ async function requestWorkspaceFolder(): Promise<{ readonly name: string; readon
 
 export function App({ hostBridge }: AppProps): JSX.Element {
   const controller = useAppController(hostBridge);
+  const composerPicker = useComposerPicker(hostBridge, controller.state.configSnapshot);
   const workspace = useWorkspaceRoots(controller.state.threads);
   const [screen, setScreen] = useState<"home" | SettingsSection>("home");
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
@@ -81,9 +84,9 @@ export function App({ hostBridge }: AppProps): JSX.Element {
     }
   }, [conversation]);
 
-  const sendWorkspaceTurn = useCallback(async () => {
+  const sendWorkspaceTurn = useCallback(async (selection: ComposerSelection) => {
     try {
-      await conversation.sendTurn();
+      await conversation.sendTurn(selection);
     } catch (error) {
       console.error("发送工作区消息失败", error);
       window.alert(`发送工作区消息失败: ${String(error)}`);
@@ -115,6 +118,9 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       threads={conversation.workspaceThreads}
       selectedThreadId={conversation.selectedThreadId}
       messages={messages}
+      models={composerPicker.models}
+      defaultModel={composerPicker.defaultModel}
+      defaultEffort={composerPicker.defaultEffort}
       pendingServerRequests={controller.state.pendingServerRequests}
       connectionStatus={controller.state.connectionStatus}
       fatalError={controller.state.fatalError}

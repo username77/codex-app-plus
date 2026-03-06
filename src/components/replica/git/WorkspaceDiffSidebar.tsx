@@ -1,17 +1,12 @@
 import { useEffect, useState } from "react";
 import { OfficialCloseIcon } from "../officialIcons";
-import {
-  GitChangeBrowser,
-  getDefaultGitChangeScope,
-  getGitChangeScopeOptions,
-  type GitChangeScope
-} from "./GitChangeBrowser";
-import { GitDiffPreview } from "./GitDiffPreview";
+import { getDefaultGitChangeScope, getGitChangeScopeOptions, type GitChangeScope } from "./GitChangeBrowser";
+import { GitDiffFileList } from "./GitDiffFileList";
 import { GitStateCard } from "./GitStateCard";
 import { GitDiffIcon } from "./gitIcons";
 import type { WorkspaceGitController } from "./types";
 import type { GitViewState } from "./gitViewState";
-import { getFirstDiffTarget, getGitViewState, getSelectedDiffKey, isGitBusy } from "./gitViewState";
+import { getGitViewState } from "./gitViewState";
 import { WorkspaceDiffScopeSelector } from "./WorkspaceDiffScopeSelector";
 
 interface WorkspaceDiffSidebarProps {
@@ -20,19 +15,6 @@ interface WorkspaceDiffSidebarProps {
   readonly selectedRootPath: string | null;
   readonly controller: WorkspaceGitController;
   readonly onClose: () => void;
-}
-
-function useAutoSelectFirstDiff(open: boolean, controller: WorkspaceGitController): void {
-  useEffect(() => {
-    if (!open || controller.status === null || !controller.status.isRepository || controller.diffTarget !== null) {
-      return;
-    }
-
-    const target = getFirstDiffTarget(controller.status);
-    if (target !== null) {
-      void controller.selectDiff(target.path, target.staged);
-    }
-  }, [controller.diffTarget, controller.selectDiff, controller.status, open]);
 }
 
 function useDiffScope(open: boolean, controller: WorkspaceGitController): [GitChangeScope, (scope: GitChangeScope) => void] {
@@ -56,19 +38,28 @@ function useDiffScope(open: boolean, controller: WorkspaceGitController): [GitCh
 }
 
 function DiffSidebarHeader(props: {
-  readonly selectedRootName: string;
   readonly controller: WorkspaceGitController;
+  readonly scope?: GitChangeScope;
+  readonly onScopeChange?: (scope: GitChangeScope) => void;
   readonly onClose: () => void;
 }): JSX.Element {
-  const subtitle = props.controller.status?.repoRoot ?? props.selectedRootName;
+  const options = getGitChangeScopeOptions(props.controller);
+  const showSelector = props.scope !== undefined && props.onScopeChange !== undefined && options.length > 0;
+
   return (
     <header className="workspace-diff-sidebar-header">
       <div className="workspace-diff-sidebar-title-wrap">
-        <GitDiffIcon className="workspace-diff-sidebar-icon" />
-        <div>
-          <h2 className="workspace-diff-sidebar-title">差异</h2>
-          <p className="workspace-diff-sidebar-subtitle">{subtitle}</p>
-        </div>
+        {showSelector ? (
+          <WorkspaceDiffScopeSelector options={options} selectedScope={props.scope!} onChange={props.onScopeChange!} />
+        ) : (
+          <>
+            <GitDiffIcon className="workspace-diff-sidebar-icon" />
+            <div>
+              <h2 className="workspace-diff-sidebar-title">差异</h2>
+              <p className="workspace-diff-sidebar-subtitle">{props.controller.status?.repoRoot ?? "当前工作区"}</p>
+            </div>
+          </>
+        )}
       </div>
       <button type="button" className="workspace-diff-sidebar-close" aria-label="关闭差异侧栏" onClick={props.onClose}>
         <OfficialCloseIcon className="workspace-diff-sidebar-close-icon" />
@@ -85,30 +76,24 @@ function DiffSidebarState(props: { readonly viewState: GitViewState }): JSX.Elem
   );
 }
 
-function DiffSidebarBody(props: { readonly controller: WorkspaceGitController; readonly scope: GitChangeScope; readonly onScopeChange: (scope: GitChangeScope) => void }): JSX.Element {
-  const busy = isGitBusy(props.controller);
-  const selectedDiffKey = getSelectedDiffKey(props.controller);
+function DiffSidebarBody(props: { readonly controller: WorkspaceGitController; readonly scope: GitChangeScope }): JSX.Element {
   const options = getGitChangeScopeOptions(props.controller);
+  const scopeLabel = options.find((option) => option.scope === props.scope)?.label ?? "未暂存";
 
   return (
-    <div className="workspace-diff-sidebar-content">
-      <WorkspaceDiffScopeSelector options={options} selectedScope={props.scope} onChange={props.onScopeChange} />
+    <div className="workspace-diff-sidebar-content workspace-diff-sidebar-content-stream">
       {props.controller.notice !== null ? (
         <div className={props.controller.notice.kind === "success" ? "git-banner git-banner-success" : "git-banner git-banner-error"}>
           {props.controller.notice.text}
         </div>
       ) : null}
-      <div className="workspace-diff-sidebar-sections">
-        <GitChangeBrowser controller={props.controller} busy={busy} selectedDiffKey={selectedDiffKey} scope={props.scope} />
-      </div>
-      <GitDiffPreview controller={props.controller} busy={busy} className="git-card git-diff-card workspace-diff-sidebar-diff" />
+      <GitDiffFileList controller={props.controller} scope={props.scope} scopeLabel={scopeLabel} />
     </div>
   );
 }
 
 export function WorkspaceDiffSidebar(props: WorkspaceDiffSidebarProps): JSX.Element | null {
   const [scope, setScope] = useDiffScope(props.open, props.controller);
-  useAutoSelectFirstDiff(props.open, props.controller);
   if (!props.open || props.selectedRootPath === null) {
     return null;
   }
@@ -116,8 +101,8 @@ export function WorkspaceDiffSidebar(props: WorkspaceDiffSidebarProps): JSX.Elem
   const viewState = getGitViewState(props.selectedRootName, props.controller);
   return (
     <aside className="workspace-diff-sidebar workspace-diff-sidebar-open" aria-label="工作区差异侧栏">
-      <DiffSidebarHeader selectedRootName={props.selectedRootName} controller={props.controller} onClose={props.onClose} />
-      {viewState !== null ? <DiffSidebarState viewState={viewState} /> : <DiffSidebarBody controller={props.controller} scope={scope} onScopeChange={setScope} />}
+      <DiffSidebarHeader controller={props.controller} scope={viewState === null ? scope : undefined} onScopeChange={viewState === null ? setScope : undefined} onClose={props.onClose} />
+      {viewState !== null ? <DiffSidebarState viewState={viewState} /> : <DiffSidebarBody controller={props.controller} scope={scope} />}
     </aside>
   );
 }

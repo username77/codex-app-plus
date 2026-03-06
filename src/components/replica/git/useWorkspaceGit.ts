@@ -1,44 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { GitDiffOutput, GitStatusEntry, GitStatusOutput, HostBridge } from "../../../bridge/types";
+import type { GitDiffOutput, GitStatusOutput, HostBridge } from "../../../bridge/types";
+import { createGitDiffKey } from "./gitDiffKey";
 import type { GitNotice, WorkspaceGitController } from "./types";
+import { addLoadingDiffKey, formatActionError, type GitDiffTarget, normalizePaths, pickBranchName, removeLoadingDiffKey, statusHasTarget, storeDiff } from "./workspaceGitHelpers";
 
-interface UseWorkspaceGitOptions {
-  readonly hostBridge: HostBridge;
-  readonly selectedRootPath: string | null;
-}
-
-interface GitDiffTarget {
-  readonly path: string;
-  readonly staged: boolean;
-}
-
-function formatActionError(action: string, error: unknown): string {
-  return `${action}失败：${String(error)}`;
-}
-
-function normalizePaths(paths: ReadonlyArray<string>): ReadonlyArray<string> {
-  return [...new Set(paths.map((path) => path.trim()).filter((path) => path.length > 0))];
-}
-
-function pickBranchName(status: GitStatusOutput | null, currentBranch: string): string {
-  if (status === null || !status.isRepository) {
-    return "";
-  }
-  if (status.branches.some((branch) => branch.name === currentBranch)) {
-    return currentBranch;
-  }
-  const activeBranch = status.branches.find((branch) => branch.isCurrent)?.name;
-  return activeBranch ?? status.branch?.head ?? status.branches[0]?.name ?? "";
-}
-
-function matchesDiffTarget(entry: GitStatusEntry, target: GitDiffTarget): boolean {
-  return entry.path === target.path;
-}
-
-function statusHasTarget(status: GitStatusOutput, target: GitDiffTarget): boolean {
-  const entries = target.staged ? status.staged : [...status.unstaged, ...status.untracked, ...status.conflicted];
-  return entries.some((entry) => matchesDiffTarget(entry, target));
-}
+interface UseWorkspaceGitOptions { readonly hostBridge: HostBridge; readonly selectedRootPath: string | null; }
 
 export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitController {
   const [loading, setLoading] = useState(false);
@@ -50,7 +16,9 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
   const [selectedBranch, setSelectedBranch] = useState("");
   const [newBranchName, setNewBranchName] = useState("");
   const [diff, setDiff] = useState<GitDiffOutput | null>(null);
+  const [diffCache, setDiffCache] = useState<Readonly<Record<string, GitDiffOutput>>>({});
   const [diffTarget, setDiffTarget] = useState<GitDiffTarget | null>(null);
+  const [loadingDiffKeys, setLoadingDiffKeys] = useState<ReadonlyArray<string>>([]);
   const requestIdRef = useRef(0);
 
   const clearTransientState = useCallback(() => {
@@ -58,11 +26,28 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
     setError(null);
     setNotice(null);
     setDiff(null);
+    setDiffCache({});
     setDiffTarget(null);
+    setLoadingDiffKeys([]);
     setCommitMessage("");
     setSelectedBranch("");
     setNewBranchName("");
   }, []);
+
+  const loadDiff = useCallback(
+    async (repoPath: string, target: GitDiffTarget): Promise<GitDiffOutput> => {
+      const diffKey = createGitDiffKey(target.path, target.staged);
+      setLoadingDiffKeys((current) => addLoadingDiffKey(current, diffKey));
+      try {
+        const nextDiff = await options.hostBridge.git.getDiff({ repoPath, path: target.path, staged: target.staged });
+        setDiffCache((current) => storeDiff(current, nextDiff));
+        return nextDiff;
+      } finally {
+        setLoadingDiffKeys((current) => removeLoadingDiffKey(current, diffKey));
+      }
+    },
+    [options.hostBridge.git]
+  );
 
   const syncDiff = useCallback(
     async (repoPath: string, nextStatus: GitStatusOutput, target: GitDiffTarget | null, requestId: number) => {
@@ -73,13 +58,13 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
         }
         return;
       }
-      const nextDiff = await options.hostBridge.git.getDiff({ repoPath, path: target.path, staged: target.staged });
+      const nextDiff = await loadDiff(repoPath, target);
       if (requestId === requestIdRef.current) {
         setDiff(nextDiff);
         setDiffTarget(target);
       }
     },
-    [options.hostBridge.git]
+    [loadDiff]
   );
 
   const refresh = useCallback(async () => {
@@ -91,6 +76,7 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
     requestIdRef.current = requestId;
     setLoading(true);
     setError(null);
+    setDiffCache({});
     try {
       const nextStatus = await options.hostBridge.git.getStatus({ repoPath: options.selectedRootPath });
       if (requestId !== requestIdRef.current) {
@@ -148,13 +134,32 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
       }
       try {
         const nextDiffTarget = { path, staged };
+        const nextDiff = await loadDiff(options.selectedRootPath, nextDiffTarget);
         setDiffTarget(nextDiffTarget);
-        setDiff(await options.hostBridge.git.getDiff({ repoPath: options.selectedRootPath, path, staged }));
+        setDiff(nextDiff);
       } catch (reason) {
         setNotice({ kind: "error", text: formatActionError("加载差异", reason) });
       }
     },
-    [options.hostBridge.git, options.selectedRootPath]
+    [loadDiff, options.selectedRootPath]
+  );
+
+  const ensureDiff = useCallback(
+    async (path: string, staged: boolean) => {
+      if (options.selectedRootPath === null) {
+        return;
+      }
+      const diffKey = createGitDiffKey(path, staged);
+      if (diffCache[diffKey] !== undefined || loadingDiffKeys.includes(diffKey)) {
+        return;
+      }
+      try {
+        await loadDiff(options.selectedRootPath, { path, staged });
+      } catch (reason) {
+        setNotice({ kind: "error", text: formatActionError("加载差异", reason) });
+      }
+    },
+    [diffCache, loadDiff, loadingDiffKeys, options.selectedRootPath]
   );
 
   const stagePaths = useCallback(
@@ -247,7 +252,9 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
       selectedBranch,
       newBranchName,
       diff,
+      diffCache,
       diffTarget,
+      loadingDiffKeys,
       refresh,
       initRepository: async () => {
         await runAction("初始化 Git 仓库", (repoPath) => options.hostBridge.git.initRepository({ repoPath }), "Git 仓库已初始化。");
@@ -267,6 +274,7 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
       commit,
       checkoutSelectedBranch,
       createBranch,
+      ensureDiff,
       selectDiff,
       clearDiff: () => {
         setDiff(null);
@@ -282,10 +290,13 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
       commitMessage,
       createBranch,
       diff,
+      diffCache,
       diffTarget,
       discardPaths,
+      ensureDiff,
       error,
       loading,
+      loadingDiffKeys,
       newBranchName,
       notice,
       options.hostBridge.git,

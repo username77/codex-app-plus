@@ -23,7 +23,9 @@ function createHostBridge(): HostBridge {
       openCodexConfigToml: vi.fn().mockResolvedValue(undefined),
       showNotification: vi.fn().mockResolvedValue(undefined),
       showContextMenu: vi.fn().mockResolvedValue(undefined),
-      importOfficialData: vi.fn().mockResolvedValue(undefined)
+      importOfficialData: vi.fn().mockResolvedValue(undefined),
+      listCodexSessions: vi.fn().mockResolvedValue([]),
+      readCodexSession: vi.fn().mockResolvedValue({ threadId: "1", messages: [] })
     },
     git: {
       getStatus: vi.fn(),

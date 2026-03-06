@@ -1,0 +1,110 @@
+.workspace-root-item {
+  min-width: 0;
+}
+
+.workspace-root-row {
+  gap: 4px;
+  padding-right: 2px;
+}
+
+.workspace-expand-btn,
+.workspace-root-button,
+.workspace-thread-button {
+  border: 0;
+  background: transparent;
+}
+
+.workspace-expand-btn {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: #7c7c7c;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.workspace-expand-btn:hover,
+.workspace-thread-button:hover {
+  background: #efefef;
+}
+
+.workspace-root-button {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: inherit;
+  padding: 0;
+}
+
+.workspace-chevron {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.workspace-chevron-expanded {
+  transform: rotate(90deg);
+}
+
+.workspace-thread-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ececec;
+  color: #6a6a6a;
+  font-size: 11px;
+  line-height: 20px;
+}
+
+.workspace-thread-list {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0 0 0 28px;
+  display: grid;
+  gap: 2px;
+}
+
+.workspace-thread-button {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: #606060;
+  text-align: left;
+}
+
+.workspace-thread-button-active {
+  background: #efefef;
+  color: #2f2f2f;
+}
+
+.workspace-thread-title,
+.workspace-thread-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-thread-title {
+  width: 100%;
+  font-size: 13px;
+}
+
+.workspace-thread-meta,
+.workspace-thread-empty {
+  font-size: 11px;
+  color: #8b8b8b;
+}
+
+.workspace-thread-empty {
+  padding: 4px 8px 8px;
+}

@@ -2,13 +2,15 @@ use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Emitter, State};
 
+use crate::codex_data::{list_codex_sessions, read_codex_session};
 use crate::error::{AppError, AppResult};
 use crate::events::{EVENT_CONTEXT_MENU_REQUESTED, EVENT_NOTIFICATION_REQUESTED};
 use crate::models::{
-    AppServerStartInput, ImportOfficialDataInput, OpenWorkspaceInput, RpcCancelInput,
-    RpcNotifyInput, RpcRequestInput, RpcRequestOutput, ServerRequestResolveInput,
-    ShowContextMenuInput, ShowNotificationInput, TerminalCloseInput, TerminalCreateInput,
-    TerminalCreateOutput, TerminalResizeInput, TerminalWriteInput, WorkspaceOpener,
+    AppServerStartInput, CodexSessionReadInput, CodexSessionReadOutput, CodexSessionSummary,
+    ImportOfficialDataInput, OpenWorkspaceInput, RpcCancelInput, RpcNotifyInput,
+    RpcRequestInput, RpcRequestOutput, ServerRequestResolveInput, ShowContextMenuInput,
+    ShowNotificationInput, TerminalCloseInput, TerminalCreateInput, TerminalCreateOutput,
+    TerminalResizeInput, TerminalWriteInput, WorkspaceOpener,
 };
 use crate::process_manager::ProcessManager;
 use crate::terminal_manager::TerminalManager;
@@ -110,6 +112,16 @@ pub fn app_show_context_menu(app: AppHandle, input: ShowContextMenuInput) -> Res
 #[tauri::command]
 pub fn app_import_official_data(input: ImportOfficialDataInput) -> Result<(), String> {
     to_result(import_official_data(input))
+}
+
+#[tauri::command]
+pub fn app_list_codex_sessions() -> Result<Vec<CodexSessionSummary>, String> {
+    to_result(list_codex_sessions())
+}
+
+#[tauri::command]
+pub fn app_read_codex_session(input: CodexSessionReadInput) -> Result<CodexSessionReadOutput, String> {
+    to_result(read_codex_session(input))
 }
 
 #[tauri::command]

@@ -1,12 +1,21 @@
+import type { GitStatusEntry } from "../../../bridge/types";
 import { GitChangeSection } from "./GitChangeSection";
 import type { WorkspaceGitController } from "./types";
 
 export type GitChangeScope = "all" | "conflicted" | "unstaged" | "staged" | "untracked";
+export type GitChangeSectionMode = Exclude<GitChangeScope, "all">;
 
 export interface GitChangeScopeOption {
   readonly scope: GitChangeScope;
   readonly label: string;
   readonly count: number;
+}
+
+export interface GitChangeSectionData {
+  readonly label: string;
+  readonly mode: GitChangeSectionMode;
+  readonly staged: boolean;
+  readonly entries: ReadonlyArray<GitStatusEntry>;
 }
 
 interface GitChangeBrowserProps {
@@ -17,10 +26,10 @@ interface GitChangeBrowserProps {
 }
 
 const CHANGE_SECTIONS = [
-  { label: "冲突", mode: "conflicted" },
-  { label: "未暂存", mode: "unstaged" },
-  { label: "已暂存", mode: "staged" },
-  { label: "未跟踪", mode: "untracked" }
+  { label: "冲突", mode: "conflicted", staged: false },
+  { label: "未暂存", mode: "unstaged", staged: false },
+  { label: "已暂存", mode: "staged", staged: true },
+  { label: "未跟踪", mode: "untracked", staged: false }
 ] as const;
 
 function getEntries(controller: WorkspaceGitController, mode: (typeof CHANGE_SECTIONS)[number]["mode"]) {
@@ -36,6 +45,15 @@ function getVisibleSections(scope: GitChangeScope) {
     return CHANGE_SECTIONS;
   }
   return CHANGE_SECTIONS.filter((section) => section.mode === scope);
+}
+
+export function getVisibleGitChangeSections(controller: WorkspaceGitController, scope: GitChangeScope): ReadonlyArray<GitChangeSectionData> {
+  return getVisibleSections(scope).map((section) => ({
+    label: section.label,
+    mode: section.mode,
+    staged: section.staged,
+    entries: getEntries(controller, section.mode)
+  }));
 }
 
 export function getGitChangeScopeOptions(controller: WorkspaceGitController): ReadonlyArray<GitChangeScopeOption> {

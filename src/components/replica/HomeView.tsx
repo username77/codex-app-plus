@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import type { ComposerModelOption, ComposerSelection } from "../../app/composerPreferences";
+import { useComposerSelection } from "../../app/useComposerSelection";
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
 import type { HostBridge } from "../../bridge/types";
 import type {
@@ -10,6 +12,7 @@ import type {
 } from "../../domain/types";
 import { TerminalPanel } from "../terminal/TerminalPanel";
 import { ComposerFooter } from "./ComposerFooter";
+import { ComposerModelControls } from "./ComposerModelControls";
 import { HomeMainToolbar } from "./HomeMainToolbar";
 import { HomeSidebar } from "./HomeSidebar";
 import { WorkspaceDiffSidebar } from "./git/WorkspaceDiffSidebar";
@@ -34,6 +37,9 @@ interface HomeViewProps {
   readonly threads: ReadonlyArray<ThreadSummary>;
   readonly selectedThreadId: string | null;
   readonly messages: ReadonlyArray<ConversationMessage>;
+  readonly models: ReadonlyArray<ComposerModelOption>;
+  readonly defaultModel: string | null;
+  readonly defaultEffort: ComposerSelection["effort"];
   readonly pendingServerRequests: ReadonlyArray<ReceivedServerRequest>;
   readonly connectionStatus: ConnectionStatus;
   readonly fatalError: string | null;
@@ -48,7 +54,7 @@ interface HomeViewProps {
   readonly onSelectThread: (threadId: string) => void;
   readonly onInputChange: (text: string) => void;
   readonly onCreateThread: () => Promise<void>;
-  readonly onSendTurn: () => Promise<void>;
+  readonly onSendTurn: (selection: ComposerSelection) => Promise<void>;
   readonly onAddRoot: () => void;
   readonly onRemoveRoot: (rootId: string) => void;
   readonly onRetryConnection: () => Promise<void>;
@@ -62,12 +68,15 @@ interface MainContentProps {
   readonly hostBridge: HostBridge;
   readonly gitController: WorkspaceGitController;
   readonly inputText: string;
+  readonly models: ReadonlyArray<ComposerModelOption>;
+  readonly defaultModel: string | null;
+  readonly defaultEffort: ComposerSelection["effort"];
   readonly selectedRootName: string;
   readonly selectedRootPath: string | null;
   readonly terminalOpen: boolean;
   readonly diffOpen: boolean;
   readonly onInputChange: (text: string) => void;
-  readonly onSendTurn: () => Promise<void>;
+  readonly onSendTurn: (selection: ComposerSelection) => Promise<void>;
   readonly onToggleDiff: () => void;
   readonly onToggleTerminal: () => void;
 }
@@ -89,6 +98,9 @@ function MainContent(props: MainContentProps): JSX.Element {
       <ComposerArea
         busy={props.busy}
         inputText={props.inputText}
+        models={props.models}
+        defaultModel={props.defaultModel}
+        defaultEffort={props.defaultEffort}
         selectedRootPath={props.selectedRootPath}
         onInputChange={props.onInputChange}
         onSendTurn={props.onSendTurn}
@@ -117,9 +129,12 @@ function EmptyCanvas(props: { readonly selectedRootName: string; readonly select
 interface ComposerAreaProps {
   readonly busy: boolean;
   readonly inputText: string;
+  readonly models: ReadonlyArray<ComposerModelOption>;
+  readonly defaultModel: string | null;
+  readonly defaultEffort: ComposerSelection["effort"];
   readonly selectedRootPath: string | null;
   readonly onInputChange: (text: string) => void;
-  readonly onSendTurn: () => Promise<void>;
+  readonly onSendTurn: (selection: ComposerSelection) => Promise<void>;
 }
 
 function ComposerArea(props: ComposerAreaProps): JSX.Element {
@@ -134,6 +149,7 @@ function ComposerArea(props: ComposerAreaProps): JSX.Element {
 function ComposerCard(props: ComposerAreaProps): JSX.Element {
   const canSend = !props.busy && props.selectedRootPath !== null && props.inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH;
   const placeholder = props.selectedRootPath === null ? "向 Codex 提任意问题，或添加文件、调出命令" : "输入问题，后续对话会固定在当前工作区";
+  const composerSelection = useComposerSelection(props.models, props.defaultModel, props.defaultEffort);
 
   return (
     <div className="composer-card">
@@ -143,16 +159,27 @@ function ComposerCard(props: ComposerAreaProps): JSX.Element {
           <button type="button" className="composer-mini-btn" aria-label="添加">
             <OfficialPlusIcon className="composer-plus-icon" />
           </button>
-          <button type="button" className="composer-chip">
-            自定义
-            <OfficialChevronRightIcon className="chip-caret" />
-          </button>
-          <button type="button" className="composer-chip">
-            超高
-            <OfficialChevronRightIcon className="chip-caret" />
-          </button>
+          <ComposerModelControls
+            models={props.models}
+            selectedModel={composerSelection.selectedModel}
+            selectedEffort={composerSelection.selectedEffort}
+            supportedEfforts={composerSelection.selectedModelOption?.supportedEfforts ?? []}
+            onSelectModel={composerSelection.selectModel}
+            onSelectEffort={composerSelection.selectEffort}
+          />
         </div>
-        <button type="button" className="send-btn" aria-label="发送消息" disabled={!canSend} onClick={() => void props.onSendTurn()}>
+        <button
+          type="button"
+          className="send-btn"
+          aria-label="发送消息"
+          disabled={!canSend}
+          onClick={() =>
+            void props.onSendTurn({
+              model: composerSelection.selectedModel,
+              effort: composerSelection.selectedEffort
+            })
+          }
+        >
           <SendArrowIcon className="send-icon" />
         </button>
       </div>
@@ -193,13 +220,16 @@ export function HomeView(props: HomeViewProps): JSX.Element {
     <div className={createReplicaAppClassName(canShowDiffSidebar)}>
       <HomeSidebar
         roots={props.roots}
+        threads={props.threads}
         selectedRootId={props.selectedRootId}
+        selectedThreadId={props.selectedThreadId}
         settingsMenuOpen={props.settingsMenuOpen}
         collapsed={sidebarCollapsed}
         onToggleSettingsMenu={props.onToggleSettingsMenu}
         onDismissSettingsMenu={props.onDismissSettingsMenu}
         onOpenSettings={props.onOpenSettings}
         onSelectRoot={props.onSelectRoot}
+        onSelectThread={props.onSelectThread}
         onCreateThread={props.onCreateThread}
         onAddRoot={props.onAddRoot}
         onRemoveRoot={props.onRemoveRoot}
@@ -209,6 +239,9 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         hostBridge={props.hostBridge}
         gitController={gitController}
         inputText={props.inputText}
+        models={props.models}
+        defaultModel={props.defaultModel}
+        defaultEffort={props.defaultEffort}
         selectedRootName={props.selectedRootName}
         selectedRootPath={props.selectedRootPath}
         terminalOpen={terminalOpen}

@@ -113,6 +113,28 @@ export interface ImportOfficialDataInput {
   readonly sourcePath: string;
 }
 
+export interface CodexSessionSummaryOutput {
+  readonly id: string;
+  readonly title: string;
+  readonly cwd: string;
+  readonly updatedAt: string;
+}
+
+export interface CodexSessionReadInput {
+  readonly threadId: string;
+}
+
+export interface CodexSessionMessageOutput {
+  readonly id: string;
+  readonly role: string;
+  readonly text: string;
+}
+
+export interface CodexSessionReadOutput {
+  readonly threadId: string;
+  readonly messages: ReadonlyArray<CodexSessionMessageOutput>;
+}
+
 
 export type WorkspaceOpener =
   | "vscode"
@@ -224,6 +246,8 @@ export interface HostBridge {
     showNotification(input: ShowNotificationInput): Promise<void>;
     showContextMenu(input: ShowContextMenuInput): Promise<void>;
     importOfficialData(input: ImportOfficialDataInput): Promise<void>;
+    listCodexSessions(): Promise<ReadonlyArray<CodexSessionSummaryOutput>>;
+    readCodexSession(input: CodexSessionReadInput): Promise<CodexSessionReadOutput>;
   };
   readonly git: {
     getStatus(input: GitRepoInput): Promise<GitStatusOutput>;

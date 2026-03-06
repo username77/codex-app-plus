@@ -62,3 +62,49 @@ export function GitDiffIcon(props: { readonly className?: string }): JSX.Element
     </svg>
   );
 }
+
+export function GitStageIcon(props: { readonly className?: string }): JSX.Element {
+  return (
+    <svg className={props.className} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M10 4.8v10.4" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+      <path d="M4.8 10h10.4" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function GitRestoreIcon(props: { readonly className?: string }): JSX.Element {
+  return (
+    <svg className={props.className} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M6.1 8.1H3.9V5.9" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4.1 8.1a6 6 0 1 1 1.5 5.9" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function GitChevronUpIcon(props: { readonly className?: string }): JSX.Element {
+  return (
+    <svg className={props.className} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="m5.7 12.2 4.3-4.4 4.3 4.4" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function GitChevronDownIcon(props: { readonly className?: string }): JSX.Element {
+  return (
+    <svg className={props.className} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="m5.7 7.8 4.3 4.4 4.3-4.4" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function GitEmptyDiffIcon(props: { readonly className?: string }): JSX.Element {
+  return (
+    <svg className={props.className} viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <path d="M18 10.5h21l11 11V49a7 7 0 0 1-7 7H18a7 7 0 0 1-7-7V17.5a7 7 0 0 1 7-7Z" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M39 10.5V20a3 3 0 0 0 3 3h8" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M25.5 31.5h13" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+      <path d="M32 25v13" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+      <path d="M24 42.5h16" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+    </svg>
+  );
+}

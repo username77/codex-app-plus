@@ -17,7 +17,8 @@ export function mapThreadToSummary(thread: Thread): ThreadSummary {
     title: thread.name ?? thread.preview,
     cwd: thread.cwd,
     archived: false,
-    updatedAt: toIsoFromUnixSeconds(thread.updatedAt)
+    updatedAt: toIsoFromUnixSeconds(thread.updatedAt),
+    source: "rpc"
   };
 }
 

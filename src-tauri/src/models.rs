@@ -75,6 +75,36 @@ pub struct ImportOfficialDataInput {
     pub source_path: String,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexSessionSummary {
+    pub id: String,
+    pub title: String,
+    pub cwd: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexSessionReadInput {
+    pub thread_id: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexSessionMessage {
+    pub id: String,
+    pub role: String,
+    pub text: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexSessionReadOutput {
+    pub thread_id: String,
+    pub messages: Vec<CodexSessionMessage>,
+}
+
 #[derive(Debug, Deserialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
 pub enum WorkspaceOpener {

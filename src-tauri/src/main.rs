@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app_server_io;
+mod codex_data;
 mod codex_cli;
 mod commands;
 mod error;
@@ -13,9 +14,10 @@ mod terminal_manager;
 
 use commands::{
     app_import_official_data, app_open_codex_config_toml, app_open_external, app_open_workspace,
-    app_server_restart, app_server_start, app_server_stop, app_show_context_menu,
-    app_show_notification, rpc_cancel, rpc_notify, rpc_request, server_request_resolve, terminal_close_session,
-    terminal_create_session, terminal_resize, terminal_write,
+    app_list_codex_sessions, app_read_codex_session, app_server_restart, app_server_start,
+    app_server_stop, app_show_context_menu, app_show_notification, rpc_cancel, rpc_notify,
+    rpc_request, server_request_resolve, terminal_close_session, terminal_create_session,
+    terminal_resize, terminal_write,
 };
 use git::commands::{
     git_checkout, git_commit, git_discard_paths, git_fetch, git_get_diff, git_get_status,
@@ -43,6 +45,8 @@ fn main() {
             app_show_notification,
             app_show_context_menu,
             app_import_official_data,
+            app_list_codex_sessions,
+            app_read_codex_session,
             git_get_status,
             git_get_diff,
             git_init_repository,

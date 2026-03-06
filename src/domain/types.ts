@@ -10,6 +10,7 @@ export interface ThreadSummary {
   readonly cwd: string | null;
   readonly archived: boolean;
   readonly updatedAt: string;
+  readonly source?: "rpc" | "codexData";
 }
 
 export interface ConversationMessage {

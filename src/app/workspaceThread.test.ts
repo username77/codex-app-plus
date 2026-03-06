@@ -40,4 +40,23 @@ describe("workspaceThread", () => {
   it("returns null when the workspace has no thread", () => {
     expect(findLatestThreadForWorkspace(THREADS, "E:/code/missing")).toBeNull();
   });
+
+  it("includes threads from child directories of the workspace", () => {
+    expect(
+      listThreadsForWorkspace(
+        [
+          ...THREADS,
+          {
+            id: "thread-4",
+            title: "frontend",
+            cwd: "E:/code/codex-app-plus/frontend",
+            archived: false,
+            updatedAt: "2026-03-06T11:00:00.000Z",
+            source: "codexData"
+          }
+        ],
+        "E:/code/codex-app-plus"
+      ).map((thread) => thread.id)
+    ).toEqual(["thread-4", "thread-2", "thread-1"]);
+  });
 });

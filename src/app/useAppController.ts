@@ -6,11 +6,10 @@ import type { InitializeParams } from "../protocol/generated/InitializeParams";
 import type { AgentMessageDeltaNotification } from "../protocol/generated/v2/AgentMessageDeltaNotification";
 import type { ServerRequestResolvedNotification } from "../protocol/generated/v2/ServerRequestResolvedNotification";
 import type { ThreadStartedNotification } from "../protocol/generated/v2/ThreadStartedNotification";
-import type { ThreadListParams } from "../protocol/generated/v2/ThreadListParams";
-import type { ThreadListResponse } from "../protocol/generated/v2/ThreadListResponse";
 import type { TurnCompletedNotification } from "../protocol/generated/v2/TurnCompletedNotification";
+import { listAllThreads, mapCodexSessionsToThreads, mergeThreadCatalogs } from "./threadCatalog";
 import { ProtocolClient } from "../protocol/client";
-import { mapThreadListResponse, mapThreadToSummary } from "../protocol/mappers";
+import { mapThreadToSummary } from "../protocol/mappers";
 import { useAppStore } from "../state/store";
 
 const APP_VERSION = "0.1.0";
@@ -54,9 +53,13 @@ function mapAuthStatus(response: GetAuthStatusResponse): { status: AuthStatus; m
   return { status: "unknown", mode: response.authMethod };
 }
 
-async function loadBootstrapSnapshot(client: ProtocolClient, dispatch: (action: AppAction) => void): Promise<void> {
+async function loadBootstrapSnapshot(
+  client: ProtocolClient,
+  hostBridge: HostBridge,
+  dispatch: (action: AppAction) => void
+): Promise<void> {
   await loadAuthStatus(client, dispatch);
-  await loadThreads(client, dispatch);
+  await loadThreads(client, hostBridge, dispatch);
   const config = await client.request("config/read", { includeLayers: true });
   dispatch({ type: "config/loaded", config });
 }
@@ -74,10 +77,15 @@ async function loadAuthStatus(client: ProtocolClient, dispatch: (action: AppActi
   }
 }
 
-async function loadThreads(client: ProtocolClient, dispatch: (action: AppAction) => void): Promise<void> {
-  const params: ThreadListParams = { archived: false };
-  const response = (await client.request("thread/list", params)) as ThreadListResponse;
-  dispatch({ type: "threads/loaded", threads: mapThreadListResponse(response) });
+async function loadThreads(
+  client: ProtocolClient,
+  hostBridge: HostBridge,
+  dispatch: (action: AppAction) => void
+): Promise<void> {
+  const remoteThreads = await listAllThreads({ request: (method, params) => client.request(method, params) });
+  const codexSessions = await hostBridge.app.listCodexSessions();
+  const threads = mergeThreadCatalogs(remoteThreads, mapCodexSessionsToThreads(codexSessions));
+  dispatch({ type: "threads/loaded", threads });
 }
 
 function applyNotification(dispatch: (action: AppAction) => void, method: string, params: unknown): void {
@@ -189,7 +197,7 @@ export function useAppController(hostBridge: HostBridge): AppController {
         }
         await client.initializeConnection(createInitializeParams());
         dispatch({ type: "initialized/changed", ready: true });
-        await loadBootstrapSnapshot(client, dispatch);
+        await loadBootstrapSnapshot(client, hostBridge, dispatch);
       } catch (error) {
         dispatch({ type: "fatal/error", message: toErrorMessage(error) });
         scheduleRetry();
@@ -198,7 +206,7 @@ export function useAppController(hostBridge: HostBridge): AppController {
         bootingRef.current = false;
       }
     },
-    [clearRetry, client, dispatch, scheduleRetry]
+    [clearRetry, client, dispatch, hostBridge, scheduleRetry]
   );
 
   retryHandlerRef.current = () => void bootstrap(true);

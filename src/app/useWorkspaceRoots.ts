@@ -93,13 +93,12 @@ function rootKey(root: Pick<WorkspaceRoot, "path" | "name">): string {
 }
 
 function createRootFromThread(thread: ThreadSummary): WorkspaceRoot | null {
-  const path = trimWorkspaceText(thread.cwd ?? thread.title);
+  const path = trimWorkspaceText(thread.cwd ?? "");
   if (path.length === 0) {
     return null;
   }
 
-  const title = trimWorkspaceText(thread.title);
-  const name = title.length > 0 ? title : inferWorkspaceNameFromPath(path);
+  const name = inferWorkspaceNameFromPath(path);
   return { id: `thread-${rootKey({ name, path })}`, name, path };
 }
 

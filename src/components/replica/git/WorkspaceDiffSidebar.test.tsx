@@ -43,7 +43,9 @@ function createController(overrides?: Partial<WorkspaceGitController>): Workspac
     selectedBranch: "main",
     newBranchName: "",
     diff: null,
+    diffCache: {},
     diffTarget: null,
+    loadingDiffKeys: [],
     refresh: vi.fn().mockResolvedValue(undefined),
     initRepository: vi.fn().mockResolvedValue(undefined),
     fetch: vi.fn().mockResolvedValue(undefined),
@@ -55,6 +57,7 @@ function createController(overrides?: Partial<WorkspaceGitController>): Workspac
     commit: vi.fn().mockResolvedValue(undefined),
     checkoutSelectedBranch: vi.fn().mockResolvedValue(undefined),
     createBranch: vi.fn().mockResolvedValue(undefined),
+    ensureDiff: vi.fn().mockResolvedValue(undefined),
     selectDiff: vi.fn().mockResolvedValue(undefined),
     clearDiff: vi.fn(),
     setCommitMessage: vi.fn(),
@@ -96,34 +99,36 @@ describe("WorkspaceDiffSidebar", () => {
     expect(screen.getByRole("button", { name: "选择差异分组" })).toHaveTextContent("1");
   });
 
-  it("renders empty diff preview when repository has no changes", () => {
+  it("renders empty diff state when repository has no changes", () => {
     const controller = createController({ status: createStatus() });
     renderSidebar(controller);
 
-    expect(screen.getByText("当前还没有选择任何文件。")).toBeInTheDocument();
-    expect(controller.selectDiff).not.toHaveBeenCalled();
+    expect(screen.getByText("无未暂存更改")).toBeInTheDocument();
+    expect(controller.ensureDiff).not.toHaveBeenCalled();
   });
 
-  it("renders selected diff content", () => {
+  it("renders structured diff content", () => {
     renderSidebar(
       createController({
         status: createStatus({ unstaged: [{ path: "src/App.tsx", originalPath: null, indexStatus: " ", worktreeStatus: "M" }] }),
         diff: createDiff(),
+        diffCache: { "unstaged:src/App.tsx": createDiff() },
         diffTarget: { path: "src/App.tsx", staged: false }
       })
     );
 
     expect(screen.getByText(/console\.log\('new'\)/)).toBeInTheDocument();
+    expect(screen.getByText("+1")).toBeInTheDocument();
   });
 
-  it("auto selects the first diff when sidebar opens", async () => {
+  it("loads visible diffs when sidebar opens", async () => {
     const controller = createController({
       status: createStatus({ unstaged: [{ path: "src/App.tsx", originalPath: null, indexStatus: " ", worktreeStatus: "M" }] })
     });
 
     renderSidebar(controller);
 
-    await waitFor(() => expect(controller.selectDiff).toHaveBeenCalledWith("src/App.tsx", false));
+    await waitFor(() => expect(controller.ensureDiff).toHaveBeenCalledWith("src/App.tsx", false));
   });
 
   it("switches scope from dropdown menu", () => {
@@ -139,14 +144,14 @@ describe("WorkspaceDiffSidebar", () => {
     expect(screen.getByRole("button", { name: "选择差异分组" })).toHaveTextContent("已暂存");
   });
 
-  it("calls selectDiff when user clicks file action", () => {
+  it("calls selectDiff when user clicks file title", () => {
     const controller = createController({
       status: createStatus({ unstaged: [{ path: "src/App.tsx", originalPath: null, indexStatus: " ", worktreeStatus: "M" }] }),
       diffTarget: { path: "src/App.tsx", staged: false }
     });
 
     renderSidebar(controller);
-    fireEvent.click(screen.getByRole("button", { name: "查看差异" }));
+    fireEvent.click(screen.getByRole("button", { name: "src/App.tsx" }));
 
     expect(controller.selectDiff).toHaveBeenCalledWith("src/App.tsx", false);
   });

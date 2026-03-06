@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import type { HostBridge } from "../bridge/types";
-import type { ThreadSummary } from "../domain/types";
+import type { ComposerSelection } from "./composerPreferences";
+import type { CodexSessionReadOutput, HostBridge } from "../bridge/types";
+import type { ConversationMessage, ThreadSummary } from "../domain/types";
 import { createUserConversationMessage, mapThreadHistoryToMessages } from "./conversationMessages";
 import type { ThreadReadParams } from "../protocol/generated/v2/ThreadReadParams";
 import type { ThreadReadResponse } from "../protocol/generated/v2/ThreadReadResponse";
@@ -16,9 +17,23 @@ import { listThreadsForWorkspace } from "./workspaceThread";
 interface WorkspaceConversationController {
   readonly selectedThreadId: string | null;
   readonly workspaceThreads: ReadonlyArray<ThreadSummary>;
-  createThread: () => Promise<string>;
+  createThread: (model?: string | null) => Promise<string>;
   selectThread: (threadId: string) => void;
-  sendTurn: () => Promise<void>;
+  sendTurn: (selection: ComposerSelection) => Promise<void>;
+}
+
+function mapCodexSessionMessages(threadId: string, response: CodexSessionReadOutput): ReadonlyArray<ConversationMessage> {
+  return response.messages
+    .filter((message) => message.role === "user" || message.role === "assistant")
+    .map((message) => ({
+      id: message.id,
+      threadId,
+      turnId: null,
+      itemId: message.id,
+      role: message.role as "user" | "assistant",
+      text: message.text,
+      status: "done"
+    }));
 }
 
 export function useWorkspaceConversation(
@@ -36,6 +51,10 @@ export function useWorkspaceConversation(
     }
     return workspaceThreads[0]?.id ?? null;
   }, [state.selectedThreadId, workspaceThreads]);
+  const selectedThread = useMemo(
+    () => workspaceThreads.find((thread) => thread.id === selectedThreadId) ?? null,
+    [selectedThreadId, workspaceThreads]
+  );
 
   useEffect(() => {
     if (state.selectedThreadId !== selectedThreadId) {
@@ -44,24 +63,32 @@ export function useWorkspaceConversation(
   }, [dispatch, selectedThreadId, state.selectedThreadId]);
 
   const loadThreadHistory = useCallback(
-    async (threadId: string) => {
+    async (thread: ThreadSummary) => {
+      if (thread.source === "codexData") {
+        const response = await hostBridge.app.readCodexSession({ threadId: thread.id });
+        dispatch({ type: "thread/messagesLoaded", threadId: thread.id, messages: mapCodexSessionMessages(thread.id, response) });
+        loadedThreadIds.current.add(thread.id);
+        return;
+      }
+
+      const threadId = thread.id;
       const params: ThreadReadParams = { threadId, includeTurns: true };
       const response = (await hostBridge.rpc.request({ method: "thread/read", params })).result as ThreadReadResponse;
       dispatch({ type: "thread/upserted", thread: mapThreadToSummary(response.thread) });
       dispatch({ type: "thread/messagesLoaded", threadId, messages: mapThreadHistoryToMessages(response.thread) });
       loadedThreadIds.current.add(threadId);
     },
-    [dispatch, hostBridge.rpc]
+    [dispatch, hostBridge.app, hostBridge.rpc]
   );
 
   useEffect(() => {
-    if (selectedThreadId === null || loadedThreadIds.current.has(selectedThreadId)) {
+    if (selectedThread === null || loadedThreadIds.current.has(selectedThread.id)) {
       return;
     }
-    void loadThreadHistory(selectedThreadId).catch((error) => {
+    void loadThreadHistory(selectedThread).catch((error) => {
       dispatch({ type: "fatal/error", message: String(error) });
     });
-  }, [dispatch, loadThreadHistory, selectedThreadId]);
+  }, [dispatch, loadThreadHistory, selectedThread]);
 
   const ensureThreadResumed = useCallback(
     async (threadId: string) => {
@@ -87,12 +114,17 @@ export function useWorkspaceConversation(
     [dispatch]
   );
 
-  const createThread = useCallback(async () => {
+  const createThread = useCallback(async (model: string | null = null) => {
     if (selectedRootPath === null) {
       throw new Error("请先选择一个工作区文件夹");
     }
     return runBusy(async () => {
-      const params: ThreadStartParams = { cwd: selectedRootPath, experimentalRawEvents: false, persistExtendedHistory: true };
+      const params: ThreadStartParams = {
+        model: model ?? undefined,
+        cwd: selectedRootPath,
+        experimentalRawEvents: false,
+        persistExtendedHistory: true
+      };
       const response = (await hostBridge.rpc.request({ method: "thread/start", params })).result as ThreadStartResponse;
       const summary = mapThreadToSummary(response.thread);
       dispatch({ type: "thread/upserted", thread: summary });
@@ -104,16 +136,18 @@ export function useWorkspaceConversation(
     });
   }, [dispatch, hostBridge.rpc, runBusy, selectedRootPath]);
 
-  const sendTurn = useCallback(async () => {
+  const sendTurn = useCallback(async (selection: ComposerSelection) => {
     const text = state.inputText.trim();
     if (text.length === 0) {
       return;
     }
-    const threadId = selectedThreadId ?? (await createThread());
+    const threadId = selectedThreadId ?? (await createThread(selection.model));
     await runBusy(async () => {
       await ensureThreadResumed(threadId);
       const params: TurnStartParams = {
         threadId,
+        model: selection.model ?? undefined,
+        effort: selection.effort ?? undefined,
         cwd: selectedRootPath ?? undefined,
         input: [{ type: "text", text, text_elements: [] }]
       };

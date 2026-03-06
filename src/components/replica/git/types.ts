@@ -17,7 +17,9 @@ export interface WorkspaceGitController {
   readonly selectedBranch: string;
   readonly newBranchName: string;
   readonly diff: GitDiffOutput | null;
+  readonly diffCache: Readonly<Record<string, GitDiffOutput>>;
   readonly diffTarget: { readonly path: string; readonly staged: boolean } | null;
+  readonly loadingDiffKeys: ReadonlyArray<string>;
   readonly refresh: () => Promise<void>;
   readonly initRepository: () => Promise<void>;
   readonly fetch: () => Promise<void>;
@@ -29,6 +31,7 @@ export interface WorkspaceGitController {
   readonly commit: () => Promise<void>;
   readonly checkoutSelectedBranch: () => Promise<void>;
   readonly createBranch: () => Promise<void>;
+  readonly ensureDiff: (path: string, staged: boolean) => Promise<void>;
   readonly selectDiff: (path: string, staged: boolean) => Promise<void>;
   readonly clearDiff: () => void;
   readonly setCommitMessage: (message: string) => void;

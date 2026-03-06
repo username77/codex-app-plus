@@ -15,6 +15,9 @@ import type {
   HostBridge,
   OpenWorkspaceInput,
   ImportOfficialDataInput,
+  CodexSessionReadInput,
+  CodexSessionReadOutput,
+  CodexSessionSummaryOutput,
   RpcCancelInput,
   RpcNotifyInput,
   RpcRequestInput,
@@ -90,6 +93,12 @@ export function createTauriHostBridge(): HostBridge {
         }),
       importOfficialData: (input: ImportOfficialDataInput) =>
         invoke("app_import_official_data", {
+          input
+        }),
+      listCodexSessions: () =>
+        invoke<ReadonlyArray<CodexSessionSummaryOutput>>("app_list_codex_sessions"),
+      readCodexSession: (input: CodexSessionReadInput) =>
+        invoke<CodexSessionReadOutput>("app_read_codex_session", {
           input
         })
     },

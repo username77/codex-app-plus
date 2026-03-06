@@ -1,4 +1,5 @@
 import type { GitStatusOutput } from "../../../bridge/types";
+import { createGitDiffKey } from "./gitDiffKey";
 import type { WorkspaceGitController } from "./types";
 
 export interface GitViewState {
@@ -30,8 +31,7 @@ export function getSelectedDiffKey(controller: WorkspaceGitController): string |
   if (controller.diffTarget === null) {
     return null;
   }
-  const mode = controller.diffTarget.staged ? "staged" : "unstaged";
-  return `${mode}:${controller.diffTarget.path}`;
+  return createGitDiffKey(controller.diffTarget.path, controller.diffTarget.staged);
 }
 
 export function getFirstDiffTarget(status: GitStatusOutput): GitDiffTarget | null {
