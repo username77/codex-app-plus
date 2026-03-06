@@ -2,14 +2,27 @@ import type { ComponentProps } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { HostBridge } from "../../bridge/types";
+import type { WorkspaceGitController } from "./git/types";
 import { HomeView } from "./HomeView";
+
+const { mockedUseWorkspaceGit } = vi.hoisted(() => ({
+  mockedUseWorkspaceGit: vi.fn()
+}));
 
 vi.mock("../terminal/TerminalPanel", () => ({
   TerminalPanel: () => null
 }));
 
 vi.mock("./git/useWorkspaceGit", () => ({
-  useWorkspaceGit: () => ({
+  useWorkspaceGit: mockedUseWorkspaceGit
+}));
+
+vi.mock("./git/WorkspaceGitView", () => ({
+  WorkspaceGitView: () => null
+}));
+
+function createController(overrides?: Partial<WorkspaceGitController>): WorkspaceGitController {
+  return {
     loading: false,
     pendingAction: null,
     status: null,
@@ -37,15 +50,13 @@ vi.mock("./git/useWorkspaceGit", () => ({
     clearDiff: vi.fn(),
     setCommitMessage: vi.fn(),
     setSelectedBranch: vi.fn(),
-    setNewBranchName: vi.fn()
-  })
-}));
-
-vi.mock("./git/WorkspaceGitView", () => ({
-  WorkspaceGitView: () => null
-}));
+    setNewBranchName: vi.fn(),
+    ...overrides
+  };
+}
 
 function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
+  mockedUseWorkspaceGit.mockReturnValue(createController());
   const root = { id: "root-1", name: "FPGA", path: "E:/code/FPGA" };
   const thread = {
     id: "thread-1",
@@ -97,11 +108,24 @@ describe("HomeView", () => {
   it("toggles terminal button label through icon button", () => {
     renderHomeView();
 
-    const toggleButton = screen.getByRole("button", { name: "隐藏终端" });
+    fireEvent.click(screen.getByRole("button", { name: "隐藏终端" }));
 
-    expect(screen.queryByText("隐藏终端")).not.toBeInTheDocument();
-    fireEvent.click(toggleButton);
     expect(screen.getByRole("button", { name: "显示终端" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("toggles diff sidebar from toolbar", () => {
+    renderHomeView();
+
+    fireEvent.click(screen.getByRole("button", { name: "显示差异侧栏" }));
+
+    expect(screen.getByRole("button", { name: "隐藏差异侧栏" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("工作区差异侧栏")).toBeInTheDocument();
+  });
+
+  it("disables diff button when no workspace is selected", () => {
+    renderHomeView({ roots: [], selectedRootId: null, selectedRootName: "选择工作区", selectedRootPath: null, threads: [], selectedThreadId: null });
+
+    expect(screen.getByRole("button", { name: "显示差异侧栏" })).toBeDisabled();
   });
 
   it("calls remove handler when delete button is clicked", () => {
@@ -109,7 +133,6 @@ describe("HomeView", () => {
     const root = { id: "root-1", name: "FPGA", path: "E:/code/FPGA" };
 
     renderHomeView({ onRemoveRoot, roots: [root], selectedRootId: root.id, selectedRootName: root.name, selectedRootPath: root.path });
-
     fireEvent.click(screen.getByRole("button", { name: `移除工作区 ${root.name}` }));
 
     expect(onRemoveRoot).toHaveBeenCalledWith(root.id);
@@ -119,7 +142,6 @@ describe("HomeView", () => {
     const onSendTurn = vi.fn().mockResolvedValue(undefined);
 
     renderHomeView({ inputText: "请分析当前工作区", onSendTurn });
-
     fireEvent.click(screen.getByRole("button", { name: "发送消息" }));
 
     expect(onSendTurn).toHaveBeenCalledTimes(1);

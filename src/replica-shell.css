@@ -7,9 +7,19 @@
   background: #ffffff;
   transition: grid-template-columns 0.3s ease;
 }
+
+.replica-app-with-diff-sidebar {
+  grid-template-columns: 248px minmax(0, 1fr) 388px;
+}
+
 .replica-app:has(.sidebar-collapsed) {
   grid-template-columns: 0 minmax(0, 1fr);
 }
+
+.replica-app-with-diff-sidebar:has(.sidebar-collapsed) {
+  grid-template-columns: 0 minmax(0, 1fr) 388px;
+}
+
 .replica-app:has(.sidebar-collapsed) .main-toolbar {
   padding-left: 56px;
 }
@@ -224,6 +234,7 @@
   display: flex;
   flex-direction: column;
   background: #ffffff;
+  grid-column: 2;
   grid-row: 1;
 }
 .main-toolbar {
@@ -263,5 +274,13 @@
 @media (max-width: 1080px) {
   .replica-app {
     grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .replica-app-with-diff-sidebar {
+    grid-template-columns: 220px minmax(0, 1fr) 340px;
+  }
+
+  .replica-app-with-diff-sidebar:has(.sidebar-collapsed) {
+    grid-template-columns: 0 minmax(0, 1fr) 340px;
   }
 }

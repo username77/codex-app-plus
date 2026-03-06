@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
 import type { HostBridge } from "../../bridge/types";
 import type {
@@ -10,9 +10,11 @@ import type {
 } from "../../domain/types";
 import { TerminalPanel } from "../terminal/TerminalPanel";
 import { ComposerFooter } from "./ComposerFooter";
+import { HomeMainToolbar } from "./HomeMainToolbar";
 import { HomeSidebar } from "./HomeSidebar";
-import { WorkspaceGitButton } from "./WorkspaceGitButton";
-import { WorkspaceOpenButton } from "./WorkspaceOpenButton";
+import { WorkspaceDiffSidebar } from "./git/WorkspaceDiffSidebar";
+import type { WorkspaceGitController } from "./git/types";
+import { useWorkspaceGit } from "./git/useWorkspaceGit";
 import {
   OfficialChevronRightIcon,
   OfficialPlusIcon,
@@ -58,23 +60,29 @@ interface HomeViewProps {
 interface MainContentProps {
   readonly busy: boolean;
   readonly hostBridge: HostBridge;
+  readonly gitController: WorkspaceGitController;
   readonly inputText: string;
   readonly selectedRootName: string;
   readonly selectedRootPath: string | null;
   readonly terminalOpen: boolean;
+  readonly diffOpen: boolean;
   readonly onInputChange: (text: string) => void;
   readonly onSendTurn: () => Promise<void>;
+  readonly onToggleDiff: () => void;
   readonly onToggleTerminal: () => void;
 }
 
 function MainContent(props: MainContentProps): JSX.Element {
   return (
     <div className="replica-main">
-      <MainToolbar
+      <HomeMainToolbar
         hostBridge={props.hostBridge}
+        gitController={props.gitController}
         selectedRootName={props.selectedRootName}
         selectedRootPath={props.selectedRootPath}
         terminalOpen={props.terminalOpen}
+        diffOpen={props.diffOpen}
+        onToggleDiff={props.onToggleDiff}
         onToggleTerminal={props.onToggleTerminal}
       />
       <EmptyCanvas selectedRootName={props.selectedRootName} selectedRootPath={props.selectedRootPath} />
@@ -89,49 +97,8 @@ function MainContent(props: MainContentProps): JSX.Element {
   );
 }
 
-interface MainToolbarProps {
-  readonly hostBridge: HostBridge;
-  readonly selectedRootName: string;
-  readonly selectedRootPath: string | null;
-  readonly terminalOpen: boolean;
-  readonly onToggleTerminal: () => void;
-}
-
-function MainToolbar(props: MainToolbarProps): JSX.Element {
-  const title = props.selectedRootPath === null ? "工作区会话" : props.selectedRootName;
-
-  return (
-    <header className="main-toolbar">
-      <h1 className="toolbar-title">{title}</h1>
-      <div className="toolbar-actions">
-        <WorkspaceOpenButton hostBridge={props.hostBridge} selectedRootPath={props.selectedRootPath} />
-        <WorkspaceGitButton
-          hostBridge={props.hostBridge}
-          selectedRootName={props.selectedRootName}
-          selectedRootPath={props.selectedRootPath}
-        />
-        <div className="toolbar-icon-row" aria-label="快捷操作">
-          <button
-            type="button"
-            className="toolbar-icon-btn"
-            aria-label={props.terminalOpen ? "隐藏终端" : "显示终端"}
-            aria-pressed={props.terminalOpen}
-            onClick={props.onToggleTerminal}
-          >
-            <TerminalIcon className="toolbar-terminal-icon" />
-          </button>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function EmptyCanvas(props: {
-  readonly selectedRootName: string;
-  readonly selectedRootPath: string | null;
-}): JSX.Element {
-  const selectorClassName =
-    props.selectedRootPath === null ? "workspace-selector workspace-selector-placeholder" : "workspace-selector";
+function EmptyCanvas(props: { readonly selectedRootName: string; readonly selectedRootPath: string | null }): JSX.Element {
+  const selectorClassName = props.selectedRootPath === null ? "workspace-selector workspace-selector-placeholder" : "workspace-selector";
   const title = props.selectedRootPath === null ? "开始构建" : "当前工作区";
 
   return (
@@ -165,29 +132,24 @@ function ComposerArea(props: ComposerAreaProps): JSX.Element {
 }
 
 function ComposerCard(props: ComposerAreaProps): JSX.Element {
-  const canSend =
-    !props.busy && props.selectedRootPath !== null && props.inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH;
-  const placeholder =
-    props.selectedRootPath === null ? "向 Codex 任意提问，@ 添加文件，/ 调出命令" : "输入问题，后续对话会固定在当前工作区";
+  const canSend = !props.busy && props.selectedRootPath !== null && props.inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH;
+  const placeholder = props.selectedRootPath === null ? "向 Codex 提任意问题，或添加文件、调出命令" : "输入问题，后续对话会固定在当前工作区";
 
   return (
     <div className="composer-card">
-      <textarea
-        className="composer-input"
-        placeholder={placeholder}
-        value={props.inputText}
-        onChange={(event) => props.onInputChange(event.currentTarget.value)}
-      />
+      <textarea className="composer-input" placeholder={placeholder} value={props.inputText} onChange={(event) => props.onInputChange(event.currentTarget.value)} />
       <div className="composer-bar">
         <div className="composer-left">
           <button type="button" className="composer-mini-btn" aria-label="添加">
             <OfficialPlusIcon className="composer-plus-icon" />
           </button>
           <button type="button" className="composer-chip">
-            自定义 <OfficialChevronRightIcon className="chip-caret" />
+            自定义
+            <OfficialChevronRightIcon className="chip-caret" />
           </button>
           <button type="button" className="composer-chip">
-            超高 <OfficialChevronRightIcon className="chip-caret" />
+            超高
+            <OfficialChevronRightIcon className="chip-caret" />
           </button>
         </div>
         <button type="button" className="send-btn" aria-label="发送消息" disabled={!canSend} onClick={() => void props.onSendTurn()}>
@@ -207,25 +169,28 @@ function SendArrowIcon(props: { readonly className?: string }): JSX.Element {
   );
 }
 
-function TerminalIcon(props: { readonly className?: string }): JSX.Element {
-  return (
-    <svg className={props.className} viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <rect x="3.5" y="4.5" width="13" height="11" rx="2.2" fill="none" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M6.6 8l2 2-2 2" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M9.8 12h3.6" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
+function createReplicaAppClassName(diffSidebarOpen: boolean): string {
+  return diffSidebarOpen ? "replica-app replica-app-with-diff-sidebar" : "replica-app";
 }
 
 export function HomeView(props: HomeViewProps): JSX.Element {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(true);
-  const toggleTerminal = useCallback(() => {
-    setTerminalOpen((value) => !value);
-  }, []);
+  const [diffSidebarOpen, setDiffSidebarOpen] = useState(false);
+  const gitController = useWorkspaceGit({ hostBridge: props.hostBridge, selectedRootPath: props.selectedRootPath });
+  const canShowDiffSidebar = diffSidebarOpen && props.selectedRootPath !== null;
+
+  useEffect(() => {
+    if (props.selectedRootPath === null) {
+      setDiffSidebarOpen(false);
+    }
+  }, [props.selectedRootPath]);
+
+  const toggleTerminal = useCallback(() => setTerminalOpen((value) => !value), []);
+  const toggleDiffSidebar = useCallback(() => setDiffSidebarOpen((value) => !value), []);
 
   return (
-    <div className="replica-app">
+    <div className={createReplicaAppClassName(canShowDiffSidebar)}>
       <HomeSidebar
         roots={props.roots}
         selectedRootId={props.selectedRootId}
@@ -242,37 +207,33 @@ export function HomeView(props: HomeViewProps): JSX.Element {
       <MainContent
         busy={props.busy}
         hostBridge={props.hostBridge}
+        gitController={gitController}
         inputText={props.inputText}
         selectedRootName={props.selectedRootName}
         selectedRootPath={props.selectedRootPath}
         terminalOpen={terminalOpen}
+        diffOpen={canShowDiffSidebar}
         onInputChange={props.onInputChange}
         onSendTurn={props.onSendTurn}
+        onToggleDiff={toggleDiffSidebar}
         onToggleTerminal={toggleTerminal}
       />
-      <TerminalPanel
-        hostBridge={props.hostBridge}
-        open={terminalOpen}
-        cwd={props.selectedRootPath}
-        cwdLabel={props.selectedRootName}
-        onClose={() => setTerminalOpen(false)}
+      <WorkspaceDiffSidebar
+        open={canShowDiffSidebar}
+        selectedRootName={props.selectedRootName}
+        selectedRootPath={props.selectedRootPath}
+        controller={gitController}
+        onClose={() => setDiffSidebarOpen(false)}
       />
+      <TerminalPanel hostBridge={props.hostBridge} open={terminalOpen} cwd={props.selectedRootPath} cwdLabel={props.selectedRootName} onClose={() => setTerminalOpen(false)} />
       <SidebarCollapseButton collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((value) => !value)} />
     </div>
   );
 }
 
-function SidebarCollapseButton(props: {
-  readonly collapsed: boolean;
-  readonly onToggle: () => void;
-}): JSX.Element {
+function SidebarCollapseButton(props: { readonly collapsed: boolean; readonly onToggle: () => void }): JSX.Element {
   return (
-    <button
-      type="button"
-      className="sidebar-collapse-toggle"
-      onClick={props.onToggle}
-      aria-label={props.collapsed ? "展开侧边栏" : "折叠侧边栏"}
-    >
+    <button type="button" className="sidebar-collapse-toggle" onClick={props.onToggle} aria-label={props.collapsed ? "展开侧边栏" : "折叠侧边栏"}>
       <OfficialSidebarToggleIcon className="sidebar-collapse-icon" />
     </button>
   );

@@ -50,3 +50,15 @@ export function GitBranchIcon(props: { readonly className?: string }): JSX.Eleme
     </svg>
   );
 }
+
+export function GitDiffIcon(props: { readonly className?: string }): JSX.Element {
+  return (
+    <svg className={props.className} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M6 5.5v9" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+      <path d="M6 5.5H4.8a1.8 1.8 0 1 0 0 3.6H6" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 14.5v-9" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+      <path d="M14 14.5h1.2a1.8 1.8 0 1 0 0-3.6H14" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8.4 10h3.2" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+    </svg>
+  );
+}

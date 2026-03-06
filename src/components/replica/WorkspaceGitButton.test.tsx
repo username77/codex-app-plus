@@ -1,42 +1,57 @@
 import type { ComponentProps } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { GitStatusOutput } from "../../bridge/types";
+import type { WorkspaceGitController } from "./git/types";
 import { WorkspaceGitButton } from "./WorkspaceGitButton";
 
-const gitController = {
-  loading: false,
-  pendingAction: null,
-  status: { isRepository: true },
-  statusLoaded: true,
-  hasRepository: true,
-  error: null,
-  notice: null,
-  commitMessage: "",
-  selectedBranch: "main",
-  newBranchName: "",
-  diff: null,
-  diffTarget: null,
-  refresh: vi.fn().mockResolvedValue(undefined),
-  initRepository: vi.fn().mockResolvedValue(undefined),
-  fetch: vi.fn().mockResolvedValue(undefined),
-  pull: vi.fn().mockResolvedValue(undefined),
-  push: vi.fn().mockResolvedValue(undefined),
-  stagePaths: vi.fn().mockResolvedValue(undefined),
-  unstagePaths: vi.fn().mockResolvedValue(undefined),
-  discardPaths: vi.fn().mockResolvedValue(undefined),
-  commit: vi.fn().mockResolvedValue(undefined),
-  checkoutSelectedBranch: vi.fn().mockResolvedValue(undefined),
-  createBranch: vi.fn().mockResolvedValue(undefined),
-  selectDiff: vi.fn().mockResolvedValue(undefined),
-  clearDiff: vi.fn(),
-  setCommitMessage: vi.fn(),
-  setSelectedBranch: vi.fn(),
-  setNewBranchName: vi.fn()
+const status: GitStatusOutput = {
+  isRepository: true,
+  repoRoot: "E:/code/project",
+  branch: { head: "main", upstream: "origin/main", ahead: 0, behind: 0, detached: false },
+  remoteName: "origin",
+  remoteUrl: "https://example.com/repo.git",
+  branches: [{ name: "main", upstream: "origin/main", isCurrent: true }],
+  staged: [],
+  unstaged: [],
+  untracked: [],
+  conflicted: [],
+  isClean: true
 };
 
-vi.mock("./git/useWorkspaceGit", () => ({
-  useWorkspaceGit: () => gitController
-}));
+function createController(overrides?: Partial<WorkspaceGitController>): WorkspaceGitController {
+  return {
+    loading: false,
+    pendingAction: null,
+    status,
+    statusLoaded: true,
+    hasRepository: true,
+    error: null,
+    notice: null,
+    commitMessage: "",
+    selectedBranch: "main",
+    newBranchName: "",
+    diff: null,
+    diffTarget: null,
+    refresh: vi.fn().mockResolvedValue(undefined),
+    initRepository: vi.fn().mockResolvedValue(undefined),
+    fetch: vi.fn().mockResolvedValue(undefined),
+    pull: vi.fn().mockResolvedValue(undefined),
+    push: vi.fn().mockResolvedValue(undefined),
+    stagePaths: vi.fn().mockResolvedValue(undefined),
+    unstagePaths: vi.fn().mockResolvedValue(undefined),
+    discardPaths: vi.fn().mockResolvedValue(undefined),
+    commit: vi.fn().mockResolvedValue(undefined),
+    checkoutSelectedBranch: vi.fn().mockResolvedValue(undefined),
+    createBranch: vi.fn().mockResolvedValue(undefined),
+    selectDiff: vi.fn().mockResolvedValue(undefined),
+    clearDiff: vi.fn(),
+    setCommitMessage: vi.fn(),
+    setSelectedBranch: vi.fn(),
+    setNewBranchName: vi.fn(),
+    ...overrides
+  };
+}
 
 vi.mock("./git/WorkspaceGitView", () => ({
   WorkspaceGitView: () => <div>git-workspace-view</div>
@@ -45,7 +60,7 @@ vi.mock("./git/WorkspaceGitView", () => ({
 function renderButton(overrides?: Partial<ComponentProps<typeof WorkspaceGitButton>>) {
   return render(
     <WorkspaceGitButton
-      hostBridge={{} as never}
+      controller={createController()}
       selectedRootName="codex-app-plus"
       selectedRootPath="E:/code/project"
       {...overrides}

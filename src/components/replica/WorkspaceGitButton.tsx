@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { HostBridge } from "../../bridge/types";
 import { GitBranchIcon, GitPullIcon, GitPushIcon, GitRefreshIcon } from "./git/gitIcons";
-import { useWorkspaceGit } from "./git/useWorkspaceGit";
+import type { WorkspaceGitController } from "./git/types";
 import { WorkspaceGitView } from "./git/WorkspaceGitView";
 import { OfficialChevronRightIcon } from "./officialIcons";
 import { useToolbarMenuDismissal } from "./useToolbarMenuDismissal";
@@ -17,7 +16,7 @@ const FETCH_LABEL = "抓取";
 const REFRESH_LABEL = "刷新状态";
 
 interface WorkspaceGitButtonProps {
-  readonly hostBridge: HostBridge;
+  readonly controller: WorkspaceGitController;
   readonly selectedRootName: string;
   readonly selectedRootPath: string | null;
 }
@@ -26,6 +25,27 @@ interface GitMenuAction {
   readonly label: string;
   readonly onClick: () => Promise<void> | void;
   readonly renderIcon: (className: string) => JSX.Element;
+}
+
+function createMenuActions(controller: WorkspaceGitController, openPanel: () => void): ReadonlyArray<GitMenuAction> {
+  const commonActions: GitMenuAction[] = [
+    { label: OPEN_PANEL_LABEL, onClick: openPanel, renderIcon: (className) => <GitBranchIcon className={className} /> },
+    { label: REFRESH_LABEL, onClick: controller.refresh, renderIcon: (className) => <GitRefreshIcon className={className} /> }
+  ];
+
+  if (!controller.hasRepository) {
+    return [
+      { label: INIT_LABEL, onClick: controller.initRepository, renderIcon: (className) => <GitBranchIcon className={className} /> },
+      ...commonActions
+    ];
+  }
+
+  return [
+    { label: PUSH_LABEL, onClick: controller.push, renderIcon: (className) => <GitPushIcon className={className} /> },
+    { label: PULL_LABEL, onClick: controller.pull, renderIcon: (className) => <GitPullIcon className={className} /> },
+    { label: FETCH_LABEL, onClick: controller.fetch, renderIcon: (className) => <GitRefreshIcon className={className} /> },
+    ...commonActions
+  ];
 }
 
 function WorkspaceGitMenu(props: {
@@ -57,104 +77,58 @@ function WorkspaceGitMenu(props: {
   );
 }
 
+function GitWorkspaceDialog(props: {
+  readonly controller: WorkspaceGitController;
+  readonly open: boolean;
+  readonly selectedRootName: string;
+  readonly selectedRootPath: string | null;
+  readonly onClose: () => void;
+}): JSX.Element | null {
+  if (!props.open || props.selectedRootPath === null) {
+    return null;
+  }
+
+  return (
+    <div className="git-dialog-backdrop" role="presentation" onClick={props.onClose}>
+      <section className="git-dialog" role="dialog" aria-modal="true" aria-label="Git 工作台" onClick={(event) => event.stopPropagation()}>
+        <header className="git-dialog-header">
+          <strong>Git 工作台</strong>
+          <button type="button" className="git-dialog-close" onClick={props.onClose} aria-label="关闭 Git 工作台">×</button>
+        </header>
+        <div className="git-dialog-body">
+          <WorkspaceGitView selectedRootName={props.selectedRootName} controller={props.controller} />
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function WorkspaceGitButton(props: WorkspaceGitButtonProps): JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const git = useWorkspaceGit({ hostBridge: props.hostBridge, selectedRootPath: props.selectedRootPath });
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const openPanel = useCallback(() => setPanelOpen(true), []);
   const closePanel = useCallback(() => setPanelOpen(false), []);
-  const triggerDisabled = props.selectedRootPath === null || git.pendingAction !== null || git.loading || !git.statusLoaded;
-  const pushDisabled = props.selectedRootPath === null || git.pendingAction !== null || git.loading || !git.statusLoaded || !git.hasRepository;
-  const menuActions = useMemo<ReadonlyArray<GitMenuAction>>(() => {
-    const commonActions: GitMenuAction[] = [
-      {
-        label: OPEN_PANEL_LABEL,
-        onClick: openPanel,
-        renderIcon: (className: string) => <GitBranchIcon className={className} />
-      },
-      {
-        label: REFRESH_LABEL,
-        onClick: git.refresh,
-        renderIcon: (className: string) => <GitRefreshIcon className={className} />
-      }
-    ];
-
-    if (!git.hasRepository) {
-      return [
-        {
-          label: INIT_LABEL,
-          onClick: git.initRepository,
-          renderIcon: (className: string) => <GitBranchIcon className={className} />
-        },
-        ...commonActions
-      ];
-    }
-
-    return [
-      {
-        label: PUSH_LABEL,
-        onClick: git.push,
-        renderIcon: (className: string) => <GitPushIcon className={className} />
-      },
-      {
-        label: PULL_LABEL,
-        onClick: git.pull,
-        renderIcon: (className: string) => <GitPullIcon className={className} />
-      },
-      {
-        label: FETCH_LABEL,
-        onClick: git.fetch,
-        renderIcon: (className: string) => <GitRefreshIcon className={className} />
-      },
-      ...commonActions
-    ];
-  }, [git.fetch, git.hasRepository, git.initRepository, git.pull, git.push, git.refresh, openPanel]);
+  const triggerDisabled = props.selectedRootPath === null || props.controller.pendingAction !== null || props.controller.loading || !props.controller.statusLoaded;
+  const pushDisabled = triggerDisabled || !props.controller.hasRepository;
+  const menuActions = useMemo(() => createMenuActions(props.controller, openPanel), [props.controller, openPanel]);
 
   useToolbarMenuDismissal(menuOpen, containerRef, closeMenu);
 
   return (
     <>
       <div className={menuOpen ? "toolbar-split toolbar-split-open" : "toolbar-split"} ref={containerRef}>
-        <button
-          type="button"
-          className="toolbar-split-main"
-          disabled={pushDisabled}
-          aria-label={`${PUSH_LABEL}${CURRENT_WORKSPACE_LABEL}`}
-          onClick={() => void git.push()}
-        >
+        <button type="button" className="toolbar-split-main" disabled={pushDisabled} aria-label={`${PUSH_LABEL}${CURRENT_WORKSPACE_LABEL}`} onClick={() => void props.controller.push()}>
           <GitPushIcon className="toolbar-action-icon" />
           <span>{PUSH_LABEL}</span>
         </button>
-        <button
-          type="button"
-          className="toolbar-split-trigger"
-          disabled={triggerDisabled}
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          aria-label={GIT_TRIGGER_LABEL}
-          onClick={() => setMenuOpen((value) => !value)}
-        >
+        <button type="button" className="toolbar-split-trigger" disabled={triggerDisabled} aria-haspopup="menu" aria-expanded={menuOpen} aria-label={GIT_TRIGGER_LABEL} onClick={() => setMenuOpen((value) => !value)}>
           <OfficialChevronRightIcon className="toolbar-caret-icon" />
         </button>
         {menuOpen ? <WorkspaceGitMenu actions={menuActions} disabled={triggerDisabled} onClose={closeMenu} /> : null}
       </div>
-      {panelOpen && props.selectedRootPath !== null ? (
-        <div className="git-dialog-backdrop" role="presentation" onClick={closePanel}>
-          <section className="git-dialog" role="dialog" aria-modal="true" aria-label="Git 工作台" onClick={(event) => event.stopPropagation()}>
-            <header className="git-dialog-header">
-              <strong>Git 工作台</strong>
-              <button type="button" className="git-dialog-close" onClick={closePanel} aria-label="关闭 Git 工作台">
-                ×
-              </button>
-            </header>
-            <div className="git-dialog-body">
-              <WorkspaceGitView selectedRootName={props.selectedRootName} controller={git} />
-            </div>
-          </section>
-        </div>
-      ) : null}
+      <GitWorkspaceDialog controller={props.controller} open={panelOpen} selectedRootName={props.selectedRootName} selectedRootPath={props.selectedRootPath} onClose={closePanel} />
     </>
   );
 }
