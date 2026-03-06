@@ -11,7 +11,12 @@ import type {
   RpcRequestOutput,
   ServerRequestResolveInput,
   ShowContextMenuInput,
-  ShowNotificationInput
+  ShowNotificationInput,
+  TerminalCloseInput,
+  TerminalCreateInput,
+  TerminalCreateOutput,
+  TerminalResizeInput,
+  TerminalWriteInput
 } from "./types";
 
 function mustDefined<T>(value: T | null | undefined, message: string): T {
@@ -67,6 +72,24 @@ export function createTauriHostBridge(): HostBridge {
         }),
       importOfficialData: (input: ImportOfficialDataInput) =>
         invoke("app_import_official_data", {
+          input
+        })
+    },
+    terminal: {
+      createSession: (input?: TerminalCreateInput) =>
+        invoke<TerminalCreateOutput>("terminal_create_session", {
+          input: input ?? {}
+        }),
+      write: (input: TerminalWriteInput) =>
+        invoke("terminal_write", {
+          input
+        }),
+      resize: (input: TerminalResizeInput) =>
+        invoke("terminal_resize", {
+          input
+        }),
+      closeSession: (input: TerminalCloseInput) =>
+        invoke("terminal_close_session", {
           input
         })
     },

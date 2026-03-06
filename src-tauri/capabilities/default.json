@@ -16,7 +16,11 @@
       "app_open_codex_config_toml",
       "app_show_notification",
       "app_show_context_menu",
-      "app_import_official_data"
+      "app_import_official_data",
+      "terminal_create_session",
+      "terminal_write",
+      "terminal_resize",
+      "terminal_close_session"
     ],
     "deny": []
   }

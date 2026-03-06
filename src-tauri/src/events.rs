@@ -3,12 +3,15 @@ use tauri::{AppHandle, Emitter};
 use crate::error::AppResult;
 use crate::models::{
     ConnectionChangedPayload, FatalErrorPayload, NotificationPayload, ServerRequestPayload,
+    TerminalExitPayload, TerminalOutputPayload,
 };
 
 pub const EVENT_CONNECTION_CHANGED: &str = "connection.changed";
 pub const EVENT_NOTIFICATION_RECEIVED: &str = "notification.received";
 pub const EVENT_SERVER_REQUEST_RECEIVED: &str = "serverRequest.received";
 pub const EVENT_FATAL_ERROR: &str = "fatal.error";
+pub const EVENT_TERMINAL_OUTPUT: &str = "terminal.output";
+pub const EVENT_TERMINAL_EXIT: &str = "terminal.exit";
 pub const EVENT_CONTEXT_MENU_REQUESTED: &str = "app.context-menu.requested";
 pub const EVENT_NOTIFICATION_REQUESTED: &str = "app.notification.requested";
 
@@ -42,5 +45,31 @@ pub fn emit_fatal(app: &AppHandle, message: impl Into<String>) -> AppResult<()> 
         message: message.into(),
     };
     app.emit(EVENT_FATAL_ERROR, payload)
+        .map_err(|e| crate::error::AppError::Protocol(e.to_string()))
+}
+
+pub fn emit_terminal_output(
+    app: &AppHandle,
+    session_id: impl Into<String>,
+    data: impl Into<String>,
+) -> AppResult<()> {
+    let payload = TerminalOutputPayload {
+        session_id: session_id.into(),
+        data: data.into(),
+    };
+    app.emit(EVENT_TERMINAL_OUTPUT, payload)
+        .map_err(|e| crate::error::AppError::Protocol(e.to_string()))
+}
+
+pub fn emit_terminal_exit(
+    app: &AppHandle,
+    session_id: impl Into<String>,
+    exit_code: Option<u32>,
+) -> AppResult<()> {
+    let payload = TerminalExitPayload {
+        session_id: session_id.into(),
+        exit_code,
+    };
+    app.emit(EVENT_TERMINAL_EXIT, payload)
         .map_err(|e| crate::error::AppError::Protocol(e.to_string()))
 }

@@ -1,97 +1,46 @@
+import { useCallback, useState } from "react";
+import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
+import type { HostBridge } from "../../bridge/types";
+import vscodeIconUrl from "../../assets/official/apps/vscode.png";
+import { TerminalPanel } from "../terminal/TerminalPanel";
+import { ComposerFooter } from "./ComposerFooter";
+import { HomeSidebar } from "./HomeSidebar";
 import {
   OfficialArrowTopRightIcon,
   OfficialChevronRightIcon,
-  OfficialCloseIcon,
-  OfficialFolderIcon,
-  OfficialFolderPlusIcon,
   OfficialPlusIcon,
-  OfficialSidebarToggleIcon,
-  OfficialSortIcon,
-  OfficialSettingsGearIcon,
+  OfficialSidebarToggleIcon
 } from "./officialIcons";
-import { SidebarIcon } from "./icons";
-import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
-import { SettingsPopover } from "./SettingsPopover";
-import { ComposerFooter } from "./ComposerFooter";
-import { useCallback, useState } from "react";
-import vscodeIconUrl from "../../assets/official/apps/vscode.png";
 
 const MIN_TRIMMED_MESSAGE_LENGTH = 1;
 
 interface HomeViewProps {
+  readonly hostBridge: HostBridge;
   readonly roots: ReadonlyArray<WorkspaceRoot>;
   readonly selectedRootId: string | null;
   readonly selectedRootName: string;
+  readonly selectedRootPath: string | null;
   readonly settingsMenuOpen: boolean;
-  onToggleSettingsMenu: () => void;
-  onDismissSettingsMenu: () => void;
-  onOpenSettings: () => void;
-  onSelectRoot: (rootId: string) => void;
-  onAddRoot: () => void;
-}
-
-interface SidebarProps extends Pick<HomeViewProps, "roots" | "selectedRootId" | "onSelectRoot" | "onAddRoot" | "settingsMenuOpen" | "onToggleSettingsMenu" | "onDismissSettingsMenu" | "onOpenSettings"> {
-  readonly collapsed: boolean;
-}
-
-function Sidebar(props: SidebarProps): JSX.Element {
-  const { roots, selectedRootId, onSelectRoot, onAddRoot, settingsMenuOpen, onToggleSettingsMenu, onDismissSettingsMenu, onOpenSettings, collapsed } = props;
-  const sidebarClassName = collapsed ? "replica-sidebar sidebar-collapsed" : "replica-sidebar";
-
-  return (
-    <aside className={sidebarClassName}>
-      {settingsMenuOpen ? <button type="button" className="settings-backdrop" onClick={onDismissSettingsMenu} aria-label="关闭菜单" /> : null}
-      <div className="sidebar-header" aria-hidden="true" />
-      <nav className="sidebar-nav">
-        <button type="button" className="sidebar-nav-item"><SidebarIcon kind="new-thread" /><span>新线程</span></button>
-        <button type="button" className="sidebar-nav-item"><SidebarIcon kind="automation" /><span>自动化</span></button>
-        <button type="button" className="sidebar-nav-item"><SidebarIcon kind="skills" /><span>技能</span></button>
-      </nav>
-      <section className="thread-section">
-        <div className="thread-section-header">
-          <div className="thread-section-title">线程</div>
-          <div className="thread-header-actions">
-            <button type="button" className="thread-header-btn" onClick={onAddRoot} aria-label="添加项目">
-              <OfficialFolderPlusIcon className="thread-header-icon" />
-            </button>
-            <button type="button" className="thread-header-btn" aria-label="排序">
-              <OfficialSortIcon className="thread-header-icon" />
-            </button>
-          </div>
-        </div>
-        <ul className="thread-list">
-          {roots.map((root) => (
-            <li key={root.id} className={root.id === selectedRootId ? "thread-item thread-item-active" : "thread-item"} onClick={() => onSelectRoot(root.id)}>
-              <OfficialFolderIcon className={root.id === selectedRootId ? "thread-leading-icon thread-leading-icon-active" : "thread-leading-icon"} />
-              <span className="thread-label">{root.name}</span>
-              {root.id === selectedRootId ? <span className="thread-item-tools">···</span> : null}
-            </li>
-          ))}
-          {roots.length === 0 ? <li className="thread-empty">暂无项目，点击 + 添加</li> : null}
-        </ul>
-      </section>
-      <div className="settings-slot">
-        {settingsMenuOpen ? <SettingsPopover onOpenSettings={onOpenSettings} /> : null}
-        <button type="button" className="sidebar-settings" onClick={onToggleSettingsMenu}>
-          <OfficialSettingsGearIcon className="settings-gear" />
-          <span>设置</span>
-        </button>
-      </div>
-    </aside>
-  );
+  readonly onToggleSettingsMenu: () => void;
+  readonly onDismissSettingsMenu: () => void;
+  readonly onOpenSettings: () => void;
+  readonly onSelectRoot: (rootId: string) => void;
+  readonly onAddRoot: () => void;
+  readonly onRemoveRoot: (rootId: string) => void;
 }
 
 interface MainContentProps {
   readonly selectedRootName: string;
+  readonly selectedRootPath: string | null;
   readonly terminalOpen: boolean;
   readonly onToggleTerminal: () => void;
 }
 
-function MainContent({ selectedRootName, terminalOpen, onToggleTerminal }: MainContentProps): JSX.Element {
+function MainContent(props: MainContentProps): JSX.Element {
   return (
     <div className="replica-main">
-      <MainToolbar terminalOpen={terminalOpen} onToggleTerminal={onToggleTerminal} />
-      <EmptyCanvas selectedRootName={selectedRootName} />
+      <MainToolbar terminalOpen={props.terminalOpen} onToggleTerminal={props.onToggleTerminal} />
+      <EmptyCanvas selectedRootName={props.selectedRootName} selectedRootPath={props.selectedRootPath} />
       <ComposerArea />
     </div>
   );
@@ -102,7 +51,7 @@ interface MainToolbarProps {
   readonly onToggleTerminal: () => void;
 }
 
-function MainToolbar({ terminalOpen, onToggleTerminal }: MainToolbarProps): JSX.Element {
+function MainToolbar(props: MainToolbarProps): JSX.Element {
   return (
     <header className="main-toolbar">
       <h1 className="toolbar-title">新线程</h1>
@@ -121,9 +70,9 @@ function MainToolbar({ terminalOpen, onToggleTerminal }: MainToolbarProps): JSX.
           <button
             type="button"
             className="toolbar-icon-btn"
-            aria-label={terminalOpen ? "隐藏终端" : "显示终端"}
-            aria-pressed={terminalOpen}
-            onClick={onToggleTerminal}
+            aria-label={props.terminalOpen ? "隐藏终端" : "显示终端"}
+            aria-pressed={props.terminalOpen}
+            onClick={props.onToggleTerminal}
           >
             <TerminalIcon className="toolbar-terminal-icon" />
           </button>
@@ -133,16 +82,19 @@ function MainToolbar({ terminalOpen, onToggleTerminal }: MainToolbarProps): JSX.
   );
 }
 
-function EmptyCanvas({ selectedRootName }: { readonly selectedRootName: string }): JSX.Element {
-  const isPlaceholder = selectedRootName === "选择项目";
-  const selectorClassName = isPlaceholder ? "workspace-selector workspace-selector-placeholder" : "workspace-selector";
+function EmptyCanvas(props: {
+  readonly selectedRootName: string;
+  readonly selectedRootPath: string | null;
+}): JSX.Element {
+  const selectorClassName =
+    props.selectedRootPath === null ? "workspace-selector workspace-selector-placeholder" : "workspace-selector";
 
   return (
     <main className="main-canvas">
       <div className="empty-state" aria-label="欢迎界面">
         <h2 className="empty-title">开始构建</h2>
         <button type="button" className={selectorClassName}>
-          <span className="workspace-selector-label">{selectedRootName}</span>
+          <span className="workspace-selector-label">{props.selectedRootName}</span>
           <OfficialChevronRightIcon className="workspace-selector-caret" />
         </button>
       </div>
@@ -219,18 +171,37 @@ export function HomeView(props: HomeViewProps): JSX.Element {
 
   return (
     <div className="replica-app">
-      <Sidebar {...props} collapsed={sidebarCollapsed} />
-      <MainContent selectedRootName={props.selectedRootName} terminalOpen={terminalOpen} onToggleTerminal={toggleTerminal} />
-      {terminalOpen ? <TerminalPanel onClose={() => setTerminalOpen(false)} /> : null}
+      <HomeSidebar
+        roots={props.roots}
+        selectedRootId={props.selectedRootId}
+        settingsMenuOpen={props.settingsMenuOpen}
+        collapsed={sidebarCollapsed}
+        onToggleSettingsMenu={props.onToggleSettingsMenu}
+        onDismissSettingsMenu={props.onDismissSettingsMenu}
+        onOpenSettings={props.onOpenSettings}
+        onSelectRoot={props.onSelectRoot}
+        onAddRoot={props.onAddRoot}
+        onRemoveRoot={props.onRemoveRoot}
+      />
+      <MainContent
+        selectedRootName={props.selectedRootName}
+        selectedRootPath={props.selectedRootPath}
+        terminalOpen={terminalOpen}
+        onToggleTerminal={toggleTerminal}
+      />
+      <TerminalPanel
+        hostBridge={props.hostBridge}
+        open={terminalOpen}
+        cwd={props.selectedRootPath}
+        cwdLabel={props.selectedRootName}
+        onClose={() => setTerminalOpen(false)}
+      />
       <SidebarCollapseButton collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((value) => !value)} />
     </div>
   );
 }
 
-function SidebarCollapseButton({
-  collapsed,
-  onToggle
-}: {
+function SidebarCollapseButton(props: {
   readonly collapsed: boolean;
   readonly onToggle: () => void;
 }): JSX.Element {
@@ -238,45 +209,10 @@ function SidebarCollapseButton({
     <button
       type="button"
       className="sidebar-collapse-toggle"
-      onClick={onToggle}
-      aria-label={collapsed ? "展开边栏" : "折叠边栏"}
+      onClick={props.onToggle}
+      aria-label={props.collapsed ? "展开边栏" : "折叠边栏"}
     >
       <OfficialSidebarToggleIcon className="sidebar-collapse-icon" />
     </button>
-  );
-}
-
-function TerminalPanel({ onClose }: { readonly onClose: () => void }): JSX.Element {
-  return (
-    <section className="replica-terminal" aria-label="终端">
-      <header className="terminal-toolbar">
-        <div className="terminal-title">
-          <span className="terminal-title-main">终端</span>
-          <span className="terminal-title-sub">PowerShell</span>
-        </div>
-        <button type="button" className="terminal-close-btn" aria-label="关闭终端" onClick={onClose}>
-          <OfficialCloseIcon className="terminal-close-icon" />
-        </button>
-      </header>
-      <pre className="terminal-body">
-        {[
-          "PS E:\\\\code\\\\codex-app-plus> pnpm dev",
-          "",
-          "> codex-app-plus@0.1.0 dev E:\\\\code\\\\codex-app-plus",
-          "> vite",
-          "",
-          "Port 5173 is in use, trying another one...",
-          "",
-          "VITE v5.4.21  ready in 331 ms",
-          "",
-          "  ➜  Local:   http://localhost:5174/",
-          "  ➜  Network: use --host to expose",
-          "  ➜  press h + enter to show help",
-          "",
-          "PS E:\\\\code\\\\codex-app-plus> ^C",
-          "PS E:\\\\code\\\\codex-app-plus>"
-        ].join("\n")}
-      </pre>
-    </section>
   );
 }

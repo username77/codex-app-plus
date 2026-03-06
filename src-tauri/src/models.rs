@@ -68,6 +68,42 @@ pub struct ImportOfficialDataInput {
     pub source_path: String,
 }
 
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalCreateInput {
+    pub cwd: Option<String>,
+    pub cols: Option<u16>,
+    pub rows: Option<u16>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalCreateOutput {
+    pub session_id: String,
+    pub shell: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalWriteInput {
+    pub session_id: String,
+    pub data: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalResizeInput {
+    pub session_id: String,
+    pub cols: u16,
+    pub rows: u16,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalCloseInput {
+    pub session_id: String,
+}
+
 #[derive(Debug, Serialize, Clone)]
 pub struct ConnectionChangedPayload {
     pub status: String,
@@ -89,4 +125,18 @@ pub struct ServerRequestPayload {
 #[derive(Debug, Serialize, Clone)]
 pub struct FatalErrorPayload {
     pub message: String,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalOutputPayload {
+    pub session_id: String,
+    pub data: String,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalExitPayload {
+    pub session_id: String,
+    pub exit_code: Option<u32>,
 }

@@ -1,10 +1,10 @@
+import { open } from "@tauri-apps/plugin-dialog";
 import { useCallback, useState } from "react";
 import { useAppController } from "./app/useAppController";
 import { useWorkspaceRoots } from "./app/useWorkspaceRoots";
 import type { HostBridge } from "./bridge/types";
 import { HomeView } from "./components/replica/HomeView";
 import { SettingsView, type SettingsSection } from "./components/replica/SettingsView";
-import { open } from "@tauri-apps/plugin-dialog";
 
 interface AppProps {
   readonly hostBridge: HostBridge;
@@ -26,7 +26,7 @@ async function requestWorkspaceFolder(): Promise<{ readonly name: string; readon
     return null;
   }
   if (Array.isArray(selection)) {
-    throw new Error("选择项目文件夹不支持多选");
+    throw new Error("选择项目文件夹时不支持多选");
   }
   const path = selection.trim();
   if (path.length === 0) {
@@ -80,20 +80,24 @@ export function App({ hostBridge }: AppProps): JSX.Element {
     );
   }
 
-  const selectedRootName =
-    workspace.roots.find((root) => root.id === workspace.selectedRootId)?.name ?? "选择项目";
+  const selectedRoot = workspace.roots.find((root) => root.id === workspace.selectedRootId) ?? null;
+  const selectedRootName = selectedRoot?.name ?? "选择项目";
+  const selectedRootPath = selectedRoot?.path ?? null;
 
   return (
     <HomeView
+      hostBridge={hostBridge}
       roots={workspace.roots}
       selectedRootId={workspace.selectedRootId}
       selectedRootName={selectedRootName}
+      selectedRootPath={selectedRootPath}
       settingsMenuOpen={settingsMenuOpen}
-      onToggleSettingsMenu={() => setSettingsMenuOpen((open) => !open)}
+      onToggleSettingsMenu={() => setSettingsMenuOpen((openValue) => !openValue)}
       onDismissSettingsMenu={() => setSettingsMenuOpen(false)}
       onOpenSettings={openSettings}
       onSelectRoot={workspace.selectRoot}
       onAddRoot={addRoot}
+      onRemoveRoot={workspace.removeRoot}
     />
   );
 }

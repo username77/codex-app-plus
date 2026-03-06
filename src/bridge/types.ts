@@ -2,7 +2,9 @@ export type BridgeEventName =
   | "connection.changed"
   | "notification.received"
   | "serverRequest.received"
-  | "fatal.error";
+  | "fatal.error"
+  | "terminal.output"
+  | "terminal.exit";
 
 export interface ConnectionChangedPayload {
   readonly status: "disconnected" | "connecting" | "connected" | "error";
@@ -21,6 +23,42 @@ export interface ServerRequestEventPayload {
 
 export interface FatalErrorPayload {
   readonly message: string;
+}
+
+export interface TerminalCreateInput {
+  readonly cwd?: string;
+  readonly cols?: number;
+  readonly rows?: number;
+}
+
+export interface TerminalCreateOutput {
+  readonly sessionId: string;
+  readonly shell: string;
+}
+
+export interface TerminalWriteInput {
+  readonly sessionId: string;
+  readonly data: string;
+}
+
+export interface TerminalResizeInput {
+  readonly sessionId: string;
+  readonly cols: number;
+  readonly rows: number;
+}
+
+export interface TerminalCloseInput {
+  readonly sessionId: string;
+}
+
+export interface TerminalOutputEventPayload {
+  readonly sessionId: string;
+  readonly data: string;
+}
+
+export interface TerminalExitEventPayload {
+  readonly sessionId: string;
+  readonly exitCode?: number | null;
 }
 
 export interface AppServerStartInput {
@@ -75,6 +113,8 @@ export type BridgeEventPayloadMap = {
   "notification.received": NotificationEventPayload;
   "serverRequest.received": ServerRequestEventPayload;
   "fatal.error": FatalErrorPayload;
+  "terminal.output": TerminalOutputEventPayload;
+  "terminal.exit": TerminalExitEventPayload;
 };
 
 export interface HostBridge {
@@ -96,6 +136,12 @@ export interface HostBridge {
     showNotification(input: ShowNotificationInput): Promise<void>;
     showContextMenu(input: ShowContextMenuInput): Promise<void>;
     importOfficialData(input: ImportOfficialDataInput): Promise<void>;
+  };
+  readonly terminal: {
+    createSession(input?: TerminalCreateInput): Promise<TerminalCreateOutput>;
+    write(input: TerminalWriteInput): Promise<void>;
+    resize(input: TerminalResizeInput): Promise<void>;
+    closeSession(input: TerminalCloseInput): Promise<void>;
   };
   subscribe<E extends BridgeEventName>(
     eventName: E,

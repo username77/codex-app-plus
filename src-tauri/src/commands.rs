@@ -6,9 +6,11 @@ use crate::error::{AppError, AppResult};
 use crate::events::{EVENT_CONTEXT_MENU_REQUESTED, EVENT_NOTIFICATION_REQUESTED};
 use crate::models::{
     AppServerStartInput, ImportOfficialDataInput, RpcCancelInput, RpcRequestInput, RpcRequestOutput,
-    ServerRequestResolveInput, ShowContextMenuInput, ShowNotificationInput,
+    ServerRequestResolveInput, ShowContextMenuInput, ShowNotificationInput, TerminalCloseInput,
+    TerminalCreateInput, TerminalCreateOutput, TerminalResizeInput, TerminalWriteInput,
 };
 use crate::process_manager::ProcessManager;
+use crate::terminal_manager::TerminalManager;
 
 fn to_result<T>(result: AppResult<T>) -> Result<T, String> {
     result.map_err(|error| error.to_string())
@@ -97,6 +99,39 @@ pub fn app_show_context_menu(app: AppHandle, input: ShowContextMenuInput) -> Res
 #[tauri::command]
 pub fn app_import_official_data(input: ImportOfficialDataInput) -> Result<(), String> {
     to_result(import_official_data(input))
+}
+
+#[tauri::command]
+pub fn terminal_create_session(
+    app: AppHandle,
+    state: State<'_, TerminalManager>,
+    input: TerminalCreateInput,
+) -> Result<TerminalCreateOutput, String> {
+    to_result(state.create_session(app, input))
+}
+
+#[tauri::command]
+pub fn terminal_write(
+    state: State<'_, TerminalManager>,
+    input: TerminalWriteInput,
+) -> Result<(), String> {
+    to_result(state.write(input))
+}
+
+#[tauri::command]
+pub fn terminal_resize(
+    state: State<'_, TerminalManager>,
+    input: TerminalResizeInput,
+) -> Result<(), String> {
+    to_result(state.resize(input))
+}
+
+#[tauri::command]
+pub fn terminal_close_session(
+    state: State<'_, TerminalManager>,
+    input: TerminalCloseInput,
+) -> Result<(), String> {
+    to_result(state.close(input))
 }
 
 fn import_official_data(input: ImportOfficialDataInput) -> AppResult<()> {

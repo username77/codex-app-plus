@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ThreadSummary } from "../domain/types";
 
-const STORAGE_KEY = "codex-app-plus.workspace-roots";
-const EMPTY_ARRAY: ReadonlyArray<WorkspaceRoot> = [];
+const ROOTS_STORAGE_KEY = "codex-app-plus.workspace-roots";
+const DISMISSED_ROOT_KEYS_STORAGE_KEY = "codex-app-plus.workspace-root-dismissed-keys";
+const EMPTY_KEYS: ReadonlyArray<string> = [];
+const EMPTY_ROOTS: ReadonlyArray<WorkspaceRoot> = [];
 
 export interface WorkspaceRoot {
   readonly id: string;
@@ -51,12 +53,12 @@ function normalizeStoredRoot(value: unknown): WorkspaceRoot | null {
 
 function parseStoredRoots(raw: string | null): ReadonlyArray<WorkspaceRoot> {
   if (raw === null) {
-    return EMPTY_ARRAY;
+    return EMPTY_ROOTS;
   }
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) {
-      return EMPTY_ARRAY;
+      return EMPTY_ROOTS;
     }
     const roots: Array<WorkspaceRoot> = [];
     for (const item of parsed) {
@@ -67,7 +69,37 @@ function parseStoredRoots(raw: string | null): ReadonlyArray<WorkspaceRoot> {
     }
     return roots;
   } catch {
-    return EMPTY_ARRAY;
+    return EMPTY_ROOTS;
+  }
+}
+
+function normalizeStoredKey(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = trimText(value).toLowerCase();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function parseStoredKeys(raw: string | null): ReadonlyArray<string> {
+  if (raw === null) {
+    return EMPTY_KEYS;
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return EMPTY_KEYS;
+    }
+    const uniqueKeys = new Set<string>();
+    for (const item of parsed) {
+      const key = normalizeStoredKey(item);
+      if (key !== null) {
+        uniqueKeys.add(key);
+      }
+    }
+    return [...uniqueKeys];
+  } catch {
+    return EMPTY_KEYS;
   }
 }
 
@@ -106,23 +138,6 @@ function mergeRoots(
   return merged;
 }
 
-function rootsEqual(
-  first: ReadonlyArray<WorkspaceRoot>,
-  second: ReadonlyArray<WorkspaceRoot>
-): boolean {
-  if (first.length !== second.length) {
-    return false;
-  }
-  for (let index = 0; index < first.length; index += 1) {
-    const left = first[index];
-    const right = second[index];
-    if (left.id !== right.id || left.name !== right.name || left.path !== right.path) {
-      return false;
-    }
-  }
-  return true;
-}
-
 function sanitizeInput(input: AddWorkspaceRootInput): WorkspaceRoot | null {
   const path = trimText(input.path);
   if (path.length === 0) {
@@ -140,19 +155,52 @@ function sanitizeInput(input: AddWorkspaceRootInput): WorkspaceRoot | null {
   };
 }
 
+function appendRootKey(keys: ReadonlyArray<string>, key: string): ReadonlyArray<string> {
+  if (keys.includes(key)) {
+    return keys;
+  }
+  return [...keys, key];
+}
+
+function removeStoredRootKey(keys: ReadonlyArray<string>, key: string): ReadonlyArray<string> {
+  if (!keys.includes(key)) {
+    return keys;
+  }
+  return keys.filter((item) => item !== key);
+}
+
+function removeRootByKey(roots: ReadonlyArray<WorkspaceRoot>, key: string): ReadonlyArray<WorkspaceRoot> {
+  return roots.filter((root) => rootKey(root) !== key);
+}
+
+function filterVisibleRoots(
+  roots: ReadonlyArray<WorkspaceRoot>,
+  dismissedRootKeys: ReadonlyArray<string>
+): ReadonlyArray<WorkspaceRoot> {
+  if (dismissedRootKeys.length === 0) {
+    return roots;
+  }
+  const dismissedSet = new Set(dismissedRootKeys);
+  return roots.filter((root) => !dismissedSet.has(rootKey(root)));
+}
+
 export interface WorkspaceRootController {
   readonly roots: ReadonlyArray<WorkspaceRoot>;
   readonly selectedRootId: string | null;
   selectRoot: (rootId: string) => void;
   addRoot: (input: AddWorkspaceRootInput) => void;
+  removeRoot: (rootId: string) => void;
 }
 
 export function useWorkspaceRoots(
   threads: ReadonlyArray<ThreadSummary>,
   loadThreads: () => Promise<void>
 ): WorkspaceRootController {
-  const [roots, setRoots] = useState<ReadonlyArray<WorkspaceRoot>>(() =>
-    parseStoredRoots(window.localStorage.getItem(STORAGE_KEY))
+  const [manualRoots, setManualRoots] = useState<ReadonlyArray<WorkspaceRoot>>(() =>
+    parseStoredRoots(window.localStorage.getItem(ROOTS_STORAGE_KEY))
+  );
+  const [dismissedRootKeys, setDismissedRootKeys] = useState<ReadonlyArray<string>>(() =>
+    parseStoredKeys(window.localStorage.getItem(DISMISSED_ROOT_KEYS_STORAGE_KEY))
   );
   const [selectedRootId, setSelectedRootId] = useState<string | null>(null);
 
@@ -160,19 +208,20 @@ export function useWorkspaceRoots(
     void loadThreads().catch(() => undefined);
   }, [loadThreads]);
 
-  useEffect(() => {
+  const roots = useMemo(() => {
     const threadRoots = threads
       .map((thread) => createRootFromThread(thread))
       .filter((root): root is WorkspaceRoot => root !== null);
-    const merged = mergeRoots(roots, threadRoots);
-    if (!rootsEqual(roots, merged)) {
-      setRoots(merged);
-    }
-  }, [roots, threads]);
+    return filterVisibleRoots(mergeRoots(manualRoots, threadRoots), dismissedRootKeys);
+  }, [dismissedRootKeys, manualRoots, threads]);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(roots));
-  }, [roots]);
+    window.localStorage.setItem(ROOTS_STORAGE_KEY, JSON.stringify(manualRoots));
+  }, [manualRoots]);
+
+  useEffect(() => {
+    window.localStorage.setItem(DISMISSED_ROOT_KEYS_STORAGE_KEY, JSON.stringify(dismissedRootKeys));
+  }, [dismissedRootKeys]);
 
   useEffect(() => {
     if (selectedRootId !== null && roots.some((root) => root.id === selectedRootId)) {
@@ -186,12 +235,26 @@ export function useWorkspaceRoots(
     if (root === null) {
       return;
     }
-    setRoots((current) => mergeRoots(current, [root]));
+    const key = rootKey(root);
+    setManualRoots((current) => mergeRoots(current, [root]));
+    setDismissedRootKeys((current) => removeStoredRootKey(current, key));
   }, []);
 
-  const value = useMemo(
-    () => ({ roots, selectedRootId, selectRoot: setSelectedRootId, addRoot }),
-    [addRoot, roots, selectedRootId]
+  const removeRoot = useCallback(
+    (rootId: string) => {
+      const root = roots.find((item) => item.id === rootId);
+      if (root === undefined) {
+        return;
+      }
+      const key = rootKey(root);
+      setManualRoots((current) => removeRootByKey(current, key));
+      setDismissedRootKeys((current) => appendRootKey(current, key));
+    },
+    [roots]
   );
-  return value;
+
+  return useMemo(
+    () => ({ roots, selectedRootId, selectRoot: setSelectedRootId, addRoot, removeRoot }),
+    [addRoot, removeRoot, roots, selectedRootId]
+  );
 }
