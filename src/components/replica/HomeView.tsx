@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ComposerModelOption, ComposerSelection } from "../../app/composerPreferences";
-import { useComposerSelection } from "../../app/useComposerSelection";
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
 import type { EmbeddedTerminalShell, HostBridge, WorkspaceOpener } from "../../bridge/types";
 import type {
@@ -11,21 +10,14 @@ import type {
   ThreadSummary
 } from "../../domain/types";
 import { TerminalPanel } from "../terminal/TerminalPanel";
-import { ComposerFooter } from "./ComposerFooter";
-import { ComposerModelControls } from "./ComposerModelControls";
 import { HomeConversationCanvas } from "./HomeConversationCanvas";
+import { HomeComposer } from "./HomeComposer";
 import { HomeMainToolbar } from "./HomeMainToolbar";
 import { HomeSidebar } from "./HomeSidebar";
 import { WorkspaceDiffSidebar } from "./git/WorkspaceDiffSidebar";
 import type { WorkspaceGitController } from "./git/types";
 import { useWorkspaceGit } from "./git/useWorkspaceGit";
-import {
-  OfficialChevronRightIcon,
-  OfficialPlusIcon,
-  OfficialSidebarToggleIcon
-} from "./officialIcons";
-
-const MIN_TRIMMED_MESSAGE_LENGTH = 1;
+import { OfficialChevronRightIcon, OfficialSidebarToggleIcon } from "./officialIcons";
 
 interface HomeViewProps {
   readonly hostBridge: HostBridge;
@@ -116,7 +108,7 @@ function MainContent(props: MainContentProps): JSX.Element {
       ) : (
         <EmptyCanvas selectedRootName={props.selectedRootName} selectedRootPath={props.selectedRootPath} />
       )}
-      <ComposerArea
+      <HomeComposer
         busy={props.busy}
         inputText={props.inputText}
         models={props.models}
@@ -144,78 +136,6 @@ function EmptyCanvas(props: { readonly selectedRootName: string; readonly select
         </button>
       </div>
     </main>
-  );
-}
-
-interface ComposerAreaProps {
-  readonly busy: boolean;
-  readonly inputText: string;
-  readonly models: ReadonlyArray<ComposerModelOption>;
-  readonly defaultModel: string | null;
-  readonly defaultEffort: ComposerSelection["effort"];
-  readonly selectedRootPath: string | null;
-  readonly onInputChange: (text: string) => void;
-  readonly onSendTurn: (selection: ComposerSelection) => Promise<void>;
-}
-
-function ComposerArea(props: ComposerAreaProps): JSX.Element {
-  return (
-    <footer className="composer-area">
-      <ComposerCard {...props} />
-      <ComposerFooter />
-    </footer>
-  );
-}
-
-function ComposerCard(props: ComposerAreaProps): JSX.Element {
-  const canSend = !props.busy && props.selectedRootPath !== null && props.inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH;
-  const placeholder = props.selectedRootPath === null
-    ? "向 Codex 提问，或先添加文件、调用命令"
-    : "输入问题，后续对话会固定在当前工作区";
-  const composerSelection = useComposerSelection(props.models, props.defaultModel, props.defaultEffort);
-
-  return (
-    <div className="composer-card">
-      <textarea className="composer-input" placeholder={placeholder} value={props.inputText} onChange={(event) => props.onInputChange(event.currentTarget.value)} />
-      <div className="composer-bar">
-        <div className="composer-left">
-          <button type="button" className="composer-mini-btn" aria-label="添加">
-            <OfficialPlusIcon className="composer-plus-icon" />
-          </button>
-          <ComposerModelControls
-            models={props.models}
-            selectedModel={composerSelection.selectedModel}
-            selectedEffort={composerSelection.selectedEffort}
-            supportedEfforts={composerSelection.selectedModelOption?.supportedEfforts ?? []}
-            onSelectModel={composerSelection.selectModel}
-            onSelectEffort={composerSelection.selectEffort}
-          />
-        </div>
-        <button
-          type="button"
-          className="send-btn"
-          aria-label="发送消息"
-          disabled={!canSend}
-          onClick={() =>
-            void props.onSendTurn({
-              model: composerSelection.selectedModel,
-              effort: composerSelection.selectedEffort
-            })
-          }
-        >
-          <SendArrowIcon className="send-icon" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function SendArrowIcon(props: { readonly className?: string }): JSX.Element {
-  return (
-    <svg className={props.className} viewBox="0 0 16 16" aria-hidden="true">
-      <path d="M8 13.3V2.8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M3.2 7.1L8 2.3l4.8 4.8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }
 

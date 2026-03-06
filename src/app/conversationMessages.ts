@@ -5,12 +5,18 @@ import type { ThreadItem } from "../protocol/generated/v2/ThreadItem";
 import type { UserInput } from "../protocol/generated/v2/UserInput";
 
 const AGENTS_PREFIX = "# AGENTS.md instructions for ";
+const APP_CONTEXT_CLOSE_TAG = "</app-context>";
+const APP_CONTEXT_OPEN_TAG = "<app-context>";
+const COLLABORATION_MODE_CLOSE_TAG = "</collaboration_mode>";
+const COLLABORATION_MODE_OPEN_TAG = "<collaboration_mode>";
 const EMPTY_TEXT = "";
 const ENVIRONMENT_CONTEXT_CLOSE_TAG = "</environment_context>";
 const ENVIRONMENT_CONTEXT_OPEN_TAG = "<environment_context>";
 const INSTRUCTIONS_CLOSE_TAG = "</INSTRUCTIONS>";
 const INSTRUCTIONS_OPEN_TAG = "<INSTRUCTIONS>";
 const MIN_VISIBLE_MESSAGE_LENGTH = 1;
+const PERMISSIONS_INSTRUCTIONS_CLOSE_TAG = "</permissions instructions>";
+const PERMISSIONS_INSTRUCTIONS_OPEN_TAG = "<permissions instructions>";
 
 export function createMessageId(threadId: string, turnId: string, itemId: string): string {
   return `${threadId}:${turnId}:${itemId}`;
@@ -206,8 +212,17 @@ function stripKnownInjectedBlock(text: string): string {
   if (text.startsWith(AGENTS_PREFIX) && text.includes(INSTRUCTIONS_OPEN_TAG)) {
     return stripTaggedBlock(text, INSTRUCTIONS_CLOSE_TAG);
   }
+  if (text.startsWith(PERMISSIONS_INSTRUCTIONS_OPEN_TAG)) {
+    return stripTaggedBlock(text, PERMISSIONS_INSTRUCTIONS_CLOSE_TAG);
+  }
   if (text.startsWith(ENVIRONMENT_CONTEXT_OPEN_TAG)) {
     return stripTaggedBlock(text, ENVIRONMENT_CONTEXT_CLOSE_TAG);
+  }
+  if (text.startsWith(APP_CONTEXT_OPEN_TAG)) {
+    return stripTaggedBlock(text, APP_CONTEXT_CLOSE_TAG);
+  }
+  if (text.startsWith(COLLABORATION_MODE_OPEN_TAG)) {
+    return stripTaggedBlock(text, COLLABORATION_MODE_CLOSE_TAG);
   }
   return text;
 }

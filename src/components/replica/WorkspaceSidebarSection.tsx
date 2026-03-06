@@ -2,13 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useState, type MouseEvent } from
 import { listThreadsForWorkspace } from "../../app/workspaceThread";
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
 import type { ThreadSummary } from "../../domain/types";
-import {
-  OfficialChevronRightIcon,
-  OfficialCloseIcon,
-  OfficialFolderIcon,
-  OfficialFolderPlusIcon,
-  OfficialSortIcon
-} from "./officialIcons";
+import { OfficialChevronRightIcon, OfficialCloseIcon, OfficialFolderPlusIcon, OfficialSortIcon } from "./officialIcons";
 
 const DEFAULT_VISIBLE_THREAD_COUNT = 10;
 
@@ -30,7 +24,6 @@ interface WorkspaceRootRowProps {
   readonly expanded: boolean;
   readonly selected: boolean;
   readonly threadCount: number;
-  readonly onSelect: (rootId: string) => void;
   readonly onToggleExpanded: (rootId: string) => void;
   readonly onRemove: (rootId: string) => void;
 }
@@ -42,7 +35,6 @@ interface WorkspaceRootItemProps {
   readonly selectedThreadId: string | null;
   readonly threads: ReadonlyArray<ThreadSummary>;
   readonly showAllThreads: boolean;
-  readonly onSelectRoot: (rootId: string) => void;
   readonly onSelectThread: (threadId: string | null) => void;
   readonly onToggleExpanded: (rootId: string) => void;
   readonly onToggleShowAllThreads: (rootId: string) => void;
@@ -77,11 +69,7 @@ function useExpandedRootId(
   roots: ReadonlyArray<WorkspaceRoot>,
   selectedRootId: string | null,
   onSelectRoot: (rootId: string) => void
-): {
-  readonly expandedRootId: string | null;
-  readonly selectRoot: (rootId: string) => void;
-  readonly toggleExpanded: (rootId: string) => void;
-} {
+): { readonly expandedRootId: string | null; readonly toggleExpanded: (rootId: string) => void } {
   const [expandedRootId, setExpandedRootId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -90,14 +78,6 @@ function useExpandedRootId(
     }
     setExpandedRootId(null);
   }, [expandedRootId, roots]);
-
-  const selectRoot = useCallback(
-    (rootId: string) => {
-      onSelectRoot(rootId);
-      setExpandedRootId(rootId);
-    },
-    [onSelectRoot]
-  );
 
   const toggleExpanded = useCallback(
     (rootId: string) => {
@@ -109,7 +89,7 @@ function useExpandedRootId(
     [onSelectRoot, selectedRootId]
   );
 
-  return { expandedRootId, selectRoot, toggleExpanded };
+  return { expandedRootId, toggleExpanded };
 }
 
 const WorkspaceThreadItem = memo(function WorkspaceThreadItem(props: {
@@ -137,30 +117,29 @@ function WorkspaceRootRow(props: WorkspaceRootRowProps): JSX.Element {
     [props]
   );
 
-  const handleToggle = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      event.stopPropagation();
-      props.onToggleExpanded(props.root.id);
-    },
-    [props]
-  );
-
   const chevronClassName = props.expanded ? "workspace-chevron workspace-chevron-expanded" : "workspace-chevron";
-  const leadingIconClassName = props.selected ? "thread-leading-icon thread-leading-icon-active" : "thread-leading-icon";
   const rowClassName = props.selected ? "thread-item thread-item-active workspace-root-row" : "thread-item workspace-root-row";
 
   return (
     <div className={rowClassName}>
-      <button type="button" className="workspace-expand-btn" aria-label={props.expanded ? `折叠工作区 ${props.root.name}` : `展开工作区 ${props.root.name}`} onClick={handleToggle}>
+      <button
+        type="button"
+        className="workspace-root-button"
+        aria-label={props.expanded ? `收起工作区 ${props.root.name}` : `展开工作区 ${props.root.name}`}
+        onClick={() => props.onToggleExpanded(props.root.id)}
+      >
         <OfficialChevronRightIcon className={chevronClassName} />
-      </button>
-      <button type="button" className="workspace-root-button" onClick={() => props.onSelect(props.root.id)}>
-        <OfficialFolderIcon className={leadingIconClassName} />
         <span className="thread-label">{props.root.name}</span>
         {props.threadCount > 0 ? <span className="workspace-thread-count">{props.threadCount}</span> : null}
       </button>
       {props.selected ? (
-        <button type="button" className="thread-item-tools" aria-label={`移除工作区 ${props.root.name}`} title={`移除工作区 ${props.root.name}`} onClick={handleRemove}>
+        <button
+          type="button"
+          className="thread-item-tools"
+          aria-label={`移除工作区 ${props.root.name}`}
+          title={`移除工作区 ${props.root.name}`}
+          onClick={handleRemove}
+        >
           <OfficialCloseIcon className="thread-item-tools-icon" />
         </button>
       ) : null}
@@ -182,7 +161,8 @@ function WorkspaceThreadList(props: {
 
   const visibleThreads = props.showAllThreads ? props.threads : props.threads.slice(0, DEFAULT_VISIBLE_THREAD_COUNT);
   const hasHiddenThreads = visibleThreads.length < props.threads.length;
-  const toggleLabel = props.showAllThreads ? "收起" : `展开全部 ${props.threads.length} 条`;
+  const expandLabel = `展开全部 ${props.threads.length} 条`;
+  const collapseLabel = `收起到最近 ${DEFAULT_VISIBLE_THREAD_COUNT} 条`;
 
   return (
     <>
@@ -193,7 +173,7 @@ function WorkspaceThreadList(props: {
       </ul>
       {props.threads.length > DEFAULT_VISIBLE_THREAD_COUNT ? (
         <button type="button" className="workspace-thread-toggle" onClick={() => props.onToggleShowAllThreads(props.rootId)}>
-          {hasHiddenThreads ? toggleLabel : `收起到最近 ${DEFAULT_VISIBLE_THREAD_COUNT} 条`}
+          {hasHiddenThreads ? expandLabel : collapseLabel}
         </button>
       ) : null}
     </>
@@ -208,7 +188,6 @@ const WorkspaceRootItem = memo(function WorkspaceRootItem(props: WorkspaceRootIt
         expanded={props.expanded}
         selected={props.selected}
         threadCount={props.threads.length}
-        onSelect={props.onSelectRoot}
         onToggleExpanded={props.onToggleExpanded}
         onRemove={props.onRemoveRoot}
       />
@@ -227,7 +206,7 @@ const WorkspaceRootItem = memo(function WorkspaceRootItem(props: WorkspaceRootIt
 });
 
 export function WorkspaceSidebarSection(props: WorkspaceSidebarSectionProps): JSX.Element {
-  const { expandedRootId, selectRoot, toggleExpanded } = useExpandedRootId(props.roots, props.selectedRootId, props.onSelectRoot);
+  const { expandedRootId, toggleExpanded } = useExpandedRootId(props.roots, props.selectedRootId, props.onSelectRoot);
   const [expandedThreadRootIds, setExpandedThreadRootIds] = useState<ReadonlyArray<string>>([]);
 
   useEffect(() => {
@@ -238,14 +217,8 @@ export function WorkspaceSidebarSection(props: WorkspaceSidebarSectionProps): JS
     setExpandedThreadRootIds((current) => current.filter((rootId) => visibleRootIds.has(rootId)));
   }, [expandedThreadRootIds.length, props.roots]);
 
-  const threadsByRootId = useMemo(
-    () => createThreadsByRootId(props.roots, props.codexSessions),
-    [props.codexSessions, props.roots]
-  );
-  const toggleShowAllThreads = useCallback(
-    (rootId: string) => setExpandedThreadRootIds((current) => toggleRootId(current, rootId)),
-    []
-  );
+  const threadsByRootId = useMemo(() => createThreadsByRootId(props.roots, props.codexSessions), [props.codexSessions, props.roots]);
+  const toggleShowAllThreads = useCallback((rootId: string) => setExpandedThreadRootIds((current) => toggleRootId(current, rootId)), []);
 
   return (
     <section className="thread-section">
@@ -272,7 +245,6 @@ export function WorkspaceSidebarSection(props: WorkspaceSidebarSectionProps): JS
             selectedThreadId={props.selectedThreadId}
             threads={threadsByRootId.get(root.id) ?? []}
             showAllThreads={expandedThreadRootIds.includes(root.id)}
-            onSelectRoot={selectRoot}
             onSelectThread={props.onSelectThread}
             onToggleExpanded={toggleExpanded}
             onToggleShowAllThreads={toggleShowAllThreads}

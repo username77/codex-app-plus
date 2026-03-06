@@ -1,9 +1,15 @@
 const AGENTS_PREFIX: &str = "# AGENTS.md instructions for ";
+const APP_CONTEXT_CLOSE_TAG: &str = "</app-context>";
+const APP_CONTEXT_OPEN_TAG: &str = "<app-context>";
+const COLLABORATION_MODE_CLOSE_TAG: &str = "</collaboration_mode>";
+const COLLABORATION_MODE_OPEN_TAG: &str = "<collaboration_mode>";
 const ENVIRONMENT_CONTEXT_CLOSE_TAG: &str = "</environment_context>";
 const ENVIRONMENT_CONTEXT_OPEN_TAG: &str = "<environment_context>";
 const INSTRUCTIONS_CLOSE_TAG: &str = "</INSTRUCTIONS>";
 const INSTRUCTIONS_OPEN_TAG: &str = "<INSTRUCTIONS>";
 const MAX_TITLE_CHARS: usize = 48;
+const PERMISSIONS_INSTRUCTIONS_CLOSE_TAG: &str = "</permissions instructions>";
+const PERMISSIONS_INSTRUCTIONS_OPEN_TAG: &str = "<permissions instructions>";
 
 pub fn summarize_user_message(text: &str) -> Option<String> {
     let normalized = strip_injected_user_context(text);
@@ -35,8 +41,17 @@ fn strip_known_injected_block(text: &str) -> String {
     if text.starts_with(AGENTS_PREFIX) && text.contains(INSTRUCTIONS_OPEN_TAG) {
         return strip_tagged_block(text, INSTRUCTIONS_CLOSE_TAG);
     }
+    if text.starts_with(PERMISSIONS_INSTRUCTIONS_OPEN_TAG) {
+        return strip_tagged_block(text, PERMISSIONS_INSTRUCTIONS_CLOSE_TAG);
+    }
     if text.starts_with(ENVIRONMENT_CONTEXT_OPEN_TAG) {
         return strip_tagged_block(text, ENVIRONMENT_CONTEXT_CLOSE_TAG);
+    }
+    if text.starts_with(APP_CONTEXT_OPEN_TAG) {
+        return strip_tagged_block(text, APP_CONTEXT_CLOSE_TAG);
+    }
+    if text.starts_with(COLLABORATION_MODE_OPEN_TAG) {
+        return strip_tagged_block(text, COLLABORATION_MODE_CLOSE_TAG);
     }
     text.to_string()
 }
@@ -84,6 +99,22 @@ mod tests {
         assert_eq!(
             summarize_user_message(&text),
             Some("请优化时间线接口性能".to_string())
+        );
+    }
+
+    #[test]
+    fn strips_permissions_instructions_prefix_before_summarizing() {
+        let text = [
+            "<permissions instructions>",
+            "Filesystem sandboxing defines which files can be read or written.",
+            "</permissions instructions>",
+            "请修复聊天标题来源",
+        ]
+        .join("\n");
+
+        assert_eq!(
+            summarize_user_message(&text),
+            Some("请修复聊天标题来源".to_string())
         );
     }
 }

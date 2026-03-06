@@ -101,7 +101,10 @@ fn read_session_header(path: &Path) -> AppResult<Option<SessionHeader>> {
             cwd = read_session_cwd(&value);
         }
         if title.is_none() {
-            title = read_message_text(&value, "user").and_then(|text| summarize_user_message(&text));
+            title = read_message_role(&value)
+                .filter(|role| *role == "user")
+                .and_then(|role| read_message_text(&value, role))
+                .and_then(|text| summarize_user_message(&text));
         }
         if session_id.is_some() && cwd.is_some() && title.is_some() {
             break;
@@ -340,6 +343,25 @@ mod tests {
         assert_eq!(summary.title, "Fix slow startup");
         assert_eq!(summary.cwd, "E:/code/project");
         assert_eq!(summary.updated_at, "2026-03-01T10:09:59Z");
+
+        fs::remove_file(path).expect("remove temp session file");
+    }
+
+    #[test]
+    fn ignores_developer_messages_when_picking_session_title() {
+        let contents = [
+            "{\"timestamp\":\"2026-03-01T10:00:00Z\",\"type\":\"session_meta\",\"payload\":{\"id\":\"thread-2\",\"cwd\":\"E:/code/project\"}}\n",
+            "{\"timestamp\":\"2026-03-01T10:00:01Z\",\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"developer\",\"content\":[{\"type\":\"input_text\",\"text\":\"<permissions instructions>\\nFilesystem sandboxing defines which files can be read or written.\\n</permissions instructions>\"}]}}\n",
+            "{\"timestamp\":\"2026-03-01T10:00:02Z\",\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"真正的首条用户消息\"}]}}\n"
+        ]
+        .join("");
+        let path = create_temp_session_file(&contents);
+
+        let summary = read_session_summary(&path)
+            .expect("read summary")
+            .expect("session summary present");
+
+        assert_eq!(summary.title, "真正的首条用户消息");
 
         fs::remove_file(path).expect("remove temp session file");
     }

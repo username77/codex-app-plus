@@ -71,6 +71,18 @@ describe("WorkspaceSidebarSection", () => {
     expect(screen.getByTestId("selected-thread")).toHaveTextContent("none");
   });
 
+  it("toggles collapse when clicking the workspace row again", () => {
+    const threads = [createThread(ROOTS[0]!, 1)];
+
+    renderSection(threads);
+
+    fireEvent.click(screen.getByText("FPGA"));
+    expect(screen.getByText("FPGA Thread 1")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("FPGA"));
+    expect(screen.queryByText("FPGA Thread 1")).not.toBeInTheDocument();
+  });
+
   it("shows only the latest ten sessions until expanded", () => {
     const threads = Array.from({ length: 12 }, (_, index) => createThread(ROOTS[0]!, index + 1));
 

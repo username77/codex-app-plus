@@ -167,6 +167,21 @@ describe("HomeView", () => {
     expect(onSendTurn).toHaveBeenCalledWith({ model: "gpt-5.2", effort: "xhigh" });
   });
 
+  it("opens add menu and toggles plan mode", () => {
+    renderHomeView();
+
+    fireEvent.click(screen.getByRole("button", { name: "添加" }));
+
+    expect(screen.getByText("添加照片和文件")).toBeInTheDocument();
+    const planModeSwitch = screen.getByRole("switch", { name: "切换计划模式" });
+    expect(planModeSwitch).toHaveAttribute("aria-checked", "false");
+
+    fireEvent.click(planModeSwitch);
+
+    expect(planModeSwitch).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByText("MCP 快捷方式")).toBeInTheDocument();
+  });
+
   it("uses codex sessions instead of the thread list in the sidebar", () => {
     const remoteThread = createThread({ id: "thread-remote", title: "Remote thread", source: "rpc" });
     const localSession = createThread({ id: "thread-local", title: "Local session", source: "codexData" });

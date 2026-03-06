@@ -69,4 +69,15 @@ describe("conversationMessages", () => {
 
     expect(normalizeConversationMessageText("user", text)).toBe("请优化接口查询性能");
   });
+
+  it("strips permissions instructions from loaded user messages", () => {
+    const text = [
+      "<permissions instructions>",
+      "Filesystem sandboxing defines which files can be read or written.",
+      "</permissions instructions>",
+      "请修复聊天标题来源"
+    ].join("\n");
+
+    expect(normalizeConversationMessageText("user", text)).toBe("请修复聊天标题来源");
+  });
 });

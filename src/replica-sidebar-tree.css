@@ -7,38 +7,28 @@
   padding-right: 2px;
 }
 
-.workspace-expand-btn,
 .workspace-root-button,
 .workspace-thread-button {
   border: 0;
   background: transparent;
 }
 
-.workspace-expand-btn {
-  width: 20px;
-  height: 20px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  color: #7c7c7c;
-  flex-shrink: 0;
-  padding: 0;
-}
-
-.workspace-expand-btn:hover,
+.workspace-root-button:hover,
 .workspace-thread-button:hover {
   background: #efefef;
 }
 
 .workspace-root-button {
+  width: 100%;
   min-width: 0;
   flex: 1 1 auto;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
   color: inherit;
-  padding: 0;
+  padding: 0 6px 0 0;
+  border-radius: 8px;
+  text-align: left;
 }
 
 .workspace-chevron {
