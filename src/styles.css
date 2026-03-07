@@ -2,6 +2,7 @@
 @import "./replica-sidebar-tree.css";
 @import "./replica-git.css";
 @import "./replica-git-diff.css";
+@import "./replica-git-diff-panel.css";
 @import "./replica-empty-state.css";
 @import "./replica-toolbar.css";
 @import "./replica-composer.css";
@@ -36,3 +37,4 @@ button,
 textarea {
   font: inherit;
 }
+

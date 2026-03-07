@@ -1,8 +1,18 @@
-import { collapseDiffRows, parseUnifiedDiff, type CollapsedDiffRow, type DiffDisplayRow, type ParsedDiffFile, type ParsedDiffHunk, type ParsedDiffLine } from "./diffPreviewModel";
+import {
+  collapseDiffRows,
+  parseUnifiedDiff,
+  type CollapsedDiffRow,
+  type DiffDisplayRow,
+  type ParsedDiffFile,
+  type ParsedDiffHunk,
+  type ParsedDiffLine
+} from "./diffPreviewModel";
+import { HighlightedCodeContent } from "./diffCodeHighlight";
 
 interface GitDiffCodeViewProps {
   readonly diff?: string;
   readonly parsed?: ParsedDiffFile;
+  readonly path?: string;
 }
 
 function formatLineNumber(value: number | null): string {
@@ -43,20 +53,20 @@ function CollapsedDiffRowView(props: { readonly row: CollapsedDiffRow }): JSX.El
   );
 }
 
-function ParsedDiffRowView(props: { readonly row: ParsedDiffLine }): JSX.Element {
+function ParsedDiffRowView(props: { readonly row: ParsedDiffLine; readonly path?: string }): JSX.Element {
   return (
     <div className={getRowClassName(props.row)}>
       <DiffCodeLineNumbers row={props.row} />
-      <code className="workspace-diff-code-content">{props.row.content}</code>
+      <HighlightedCodeContent className="workspace-diff-code-content" content={props.row.content} path={props.path} />
     </div>
   );
 }
 
-function DiffCodeRow(props: { readonly row: DiffDisplayRow }): JSX.Element {
+function DiffCodeRow(props: { readonly row: DiffDisplayRow; readonly path?: string }): JSX.Element {
   if (props.row.kind === "collapsed") {
     return <CollapsedDiffRowView row={props.row} />;
   }
-  return <ParsedDiffRowView row={props.row} />;
+  return <ParsedDiffRowView row={props.row} path={props.path} />;
 }
 
 function HunkHeader(props: { readonly hunk: ParsedDiffHunk }): JSX.Element | null {
@@ -66,22 +76,22 @@ function HunkHeader(props: { readonly hunk: ParsedDiffHunk }): JSX.Element | nul
   return <div className="workspace-diff-hunk-header">{props.hunk.sectionTitle}</div>;
 }
 
-function HunkBody(props: { readonly hunk: ParsedDiffHunk }): JSX.Element {
+function HunkBody(props: { readonly hunk: ParsedDiffHunk; readonly path?: string }): JSX.Element {
   const rows = collapseDiffRows(props.hunk.lines);
   return (
     <div className="workspace-diff-hunk-body">
       {rows.map((row, index) => (
-        <DiffCodeRow key={`${props.hunk.header}:${index}`} row={row} />
+        <DiffCodeRow key={`${props.hunk.header}:${index}`} row={row} path={props.path} />
       ))}
     </div>
   );
 }
 
-function DiffHunkView(props: { readonly hunk: ParsedDiffHunk }): JSX.Element {
+function DiffHunkView(props: { readonly hunk: ParsedDiffHunk; readonly path?: string }): JSX.Element {
   return (
     <section className="workspace-diff-hunk">
       <HunkHeader hunk={props.hunk} />
-      <HunkBody hunk={props.hunk} />
+      <HunkBody hunk={props.hunk} path={props.path} />
     </section>
   );
 }
@@ -89,18 +99,18 @@ function DiffHunkView(props: { readonly hunk: ParsedDiffHunk }): JSX.Element {
 function RawDiffFallback(props: { readonly parsed: ParsedDiffFile }): JSX.Element {
   return (
     <div className="workspace-diff-raw">
-      <div className="workspace-diff-raw-note">当前 diff 不包含可渲染的代码块，下面展示原始输出。</div>
+      <div className="workspace-diff-raw-note">当前 diff 暂时无法结构化展示，下面显示原始输出。</div>
       <pre className="workspace-diff-raw-content">{props.parsed.raw}</pre>
     </div>
   );
 }
 
-function StructuredDiff(props: { readonly parsed: ParsedDiffFile }): JSX.Element {
+function StructuredDiff(props: { readonly parsed: ParsedDiffFile; readonly path?: string }): JSX.Element {
   return (
     <div className="workspace-diff-code-scroll" role="presentation">
       <div className="workspace-diff-code-surface">
         {props.parsed.hunks.map((hunk) => (
-          <DiffHunkView key={hunk.header} hunk={hunk} />
+          <DiffHunkView key={hunk.header} hunk={hunk} path={props.path} />
         ))}
       </div>
     </div>
@@ -112,5 +122,5 @@ export function GitDiffCodeView(props: GitDiffCodeViewProps): JSX.Element {
   if (parsed.hunks.length === 0) {
     return <RawDiffFallback parsed={parsed} />;
   }
-  return <StructuredDiff parsed={parsed} />;
+  return <StructuredDiff parsed={parsed} path={props.path} />;
 }

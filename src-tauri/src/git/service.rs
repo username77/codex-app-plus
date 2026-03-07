@@ -4,6 +4,7 @@ use std::process::Command;
 
 use crate::error::{AppError, AppResult};
 
+use super::diff::get_diff_preview;
 use super::models::{
     GitBranchRef, GitCheckoutInput, GitCommitInput, GitDiffInput, GitDiffOutput, GitDiscardInput,
     GitPathsInput, GitRepoInput, GitStatusOutput,
@@ -27,9 +28,6 @@ const FETCH_ARGS: [&str; 3] = ["fetch", "--all", "--prune"];
 const PULL_ARGS: [&str; 1] = ["pull"];
 const PUSH_ARGS: [&str; 1] = ["push"];
 const INIT_ARGS: [&str; 1] = ["init"];
-const EMPTY_DIFF_MESSAGE: &str = "当前没有可显示的差异。";
-const DIRECTORY_PREVIEW_MESSAGE: &str = "目录变更暂不支持内联预览。";
-const BINARY_PREVIEW_MESSAGE: &str = "该文件不是 UTF-8 文本，无法显示预览。";
 
 #[derive(Debug)]
 struct RepositoryContext {
@@ -41,6 +39,7 @@ pub fn get_status(input: GitRepoInput) -> AppResult<GitStatusOutput> {
     let Some(repo_root) = find_repository_root(&workspace_path) else {
         return Ok(GitStatusOutput::not_repository());
     };
+
     let branch_output = run_git(&repo_root, &to_args(&BRANCH_ARGS))?;
     let status_output = run_git(&repo_root, &to_args(&STATUS_ARGS))?;
     let parsed_status = parse_status_output(&status_output)?;
@@ -48,16 +47,7 @@ pub fn get_status(input: GitRepoInput) -> AppResult<GitStatusOutput> {
     let remote_name = resolve_remote_name(&parsed_status.branch, &branches);
     let remote_url = remote_name
         .as_ref()
-        .map(|name| {
-            run_git(
-                &repo_root,
-                &vec![
-                    OsString::from("remote"),
-                    OsString::from("get-url"),
-                    OsString::from(name),
-                ],
-            )
-        })
+        .map(|name| run_git(&repo_root, &vec![OsString::from("remote"), OsString::from("get-url"), OsString::from(name)]))
         .transpose()?;
     let is_clean = parsed_status.staged.is_empty()
         && parsed_status.unstaged.is_empty()
@@ -82,26 +72,17 @@ pub fn get_status(input: GitRepoInput) -> AppResult<GitStatusOutput> {
 pub fn get_diff(input: GitDiffInput) -> AppResult<GitDiffOutput> {
     let context = require_repository_context(&input.repo_path)?;
     let path = validate_pathspec(&input.path)?;
-    let diff_args = create_diff_args(&path, input.staged);
-    let diff = run_git(&context.repo_root, &diff_args)?;
-    let preview = if diff.is_empty() {
-        build_text_preview(&context.repo_root, &path)?
-    } else {
-        diff
-    };
     Ok(GitDiffOutput {
-        path,
+        path: path.clone(),
         staged: input.staged,
-        diff: preview,
+        diff: get_diff_preview(&context.repo_root, &path, input.staged)?,
     })
 }
 
 pub fn init_repository(input: GitRepoInput) -> AppResult<()> {
     let workspace_path = resolve_workspace_path(&input.repo_path)?;
     if find_repository_root(&workspace_path).is_some() {
-        return Err(AppError::InvalidInput(
-            "当前工作区已经是 Git 仓库".to_string(),
-        ));
+        return Err(AppError::InvalidInput("当前工作区已经是 Git 仓库。".to_string()));
     }
     run_git(&workspace_path, &to_args(&INIT_ARGS)).map(|_| ())
 }
@@ -114,34 +95,26 @@ pub fn unstage_paths(input: GitPathsInput) -> AppResult<()> {
     let context = require_repository_context(&input.repo_path)?;
     let paths = validate_paths(&input.paths)?;
     if has_head(&context.repo_root) {
-        let mut args = vec![
-            OsString::from("reset"),
-            OsString::from("HEAD"),
-            OsString::from("--"),
-        ];
+        let mut args = vec![OsString::from("reset"), OsString::from("HEAD"), OsString::from("--")];
         args.extend(paths);
-        run_git(&context.repo_root, &args).map(|_| ())
-    } else {
-        let mut args = vec![
-            OsString::from("rm"),
-            OsString::from("--cached"),
-            OsString::from("-r"),
-            OsString::from("--"),
-        ];
-        args.extend(paths);
-        run_git(&context.repo_root, &args).map(|_| ())
+        return run_git(&context.repo_root, &args).map(|_| ());
     }
+
+    let mut args = vec![
+        OsString::from("rm"),
+        OsString::from("--cached"),
+        OsString::from("-r"),
+        OsString::from("--"),
+    ];
+    args.extend(paths);
+    run_git(&context.repo_root, &args).map(|_| ())
 }
 
 pub fn discard_paths(input: GitDiscardInput) -> AppResult<()> {
     let context = require_repository_context(&input.repo_path)?;
     let paths = validate_paths(&input.paths)?;
     let mut args = if input.delete_untracked {
-        vec![
-            OsString::from("clean"),
-            OsString::from("-f"),
-            OsString::from("--"),
-        ]
+        vec![OsString::from("clean"), OsString::from("-f"), OsString::from("--")]
     } else {
         vec![
             OsString::from("restore"),
@@ -157,13 +130,9 @@ pub fn commit(input: GitCommitInput) -> AppResult<()> {
     let context = require_repository_context(&input.repo_path)?;
     let message = input.message.trim();
     if message.is_empty() {
-        return Err(AppError::InvalidInput("提交说明不能为空".to_string()));
+        return Err(AppError::InvalidInput("提交说明不能为空。".to_string()));
     }
-    let args = vec![
-        OsString::from("commit"),
-        OsString::from("-m"),
-        OsString::from(message),
-    ];
+    let args = vec![OsString::from("commit"), OsString::from("-m"), OsString::from(message)];
     run_git(&context.repo_root, &args).map(|_| ())
 }
 
@@ -183,14 +152,10 @@ pub fn checkout(input: GitCheckoutInput) -> AppResult<()> {
     let context = require_repository_context(&input.repo_path)?;
     let branch_name = input.branch_name.trim();
     if branch_name.is_empty() {
-        return Err(AppError::InvalidInput("分支名称不能为空".to_string()));
+        return Err(AppError::InvalidInput("分支名称不能为空。".to_string()));
     }
     let args = if input.create {
-        vec![
-            OsString::from("checkout"),
-            OsString::from("-b"),
-            OsString::from(branch_name),
-        ]
+        vec![OsString::from("checkout"), OsString::from("-b"), OsString::from(branch_name)]
     } else {
         vec![OsString::from("checkout"), OsString::from(branch_name)]
     };
@@ -209,58 +174,24 @@ fn run_path_command(repo_path: &str, prefix_args: &[&str], paths: &[String]) -> 
     run_git(&context.repo_root, &args).map(|_| ())
 }
 
-fn create_diff_args(path: &str, staged: bool) -> Vec<OsString> {
-    if staged {
-        return vec![
-            OsString::from("diff"),
-            OsString::from("--cached"),
-            OsString::from("--"),
-            OsString::from(path),
-        ];
-    }
-    vec![
-        OsString::from("diff"),
-        OsString::from("--"),
-        OsString::from(path),
-    ]
-}
-
-fn build_text_preview(repo_root: &Path, path: &str) -> AppResult<String> {
-    let absolute_path = repo_root.join(path);
-    if !absolute_path.exists() {
-        return Ok(EMPTY_DIFF_MESSAGE.to_string());
-    }
-    if absolute_path.is_dir() {
-        return Ok(DIRECTORY_PREVIEW_MESSAGE.to_string());
-    }
-    match std::fs::read_to_string(absolute_path) {
-        Ok(content) => Ok(content),
-        Err(_) => Ok(BINARY_PREVIEW_MESSAGE.to_string()),
-    }
-}
-
 fn require_repository_context(repo_path: &str) -> AppResult<RepositoryContext> {
     let workspace_path = resolve_workspace_path(repo_path)?;
     let repo_root = find_repository_root(&workspace_path)
-        .ok_or_else(|| AppError::InvalidInput("当前工作区不是 Git 仓库".to_string()))?;
+        .ok_or_else(|| AppError::InvalidInput("当前工作区不是 Git 仓库。".to_string()))?;
     Ok(RepositoryContext { repo_root })
 }
 
 fn resolve_workspace_path(repo_path: &str) -> AppResult<PathBuf> {
     let trimmed_path = repo_path.trim();
     if trimmed_path.is_empty() {
-        return Err(AppError::InvalidInput("repoPath 不能为空".to_string()));
+        return Err(AppError::InvalidInput("repoPath 不能为空。".to_string()));
     }
     let path = PathBuf::from(trimmed_path);
     if !path.exists() {
-        return Err(AppError::InvalidInput(format!(
-            "工作区不存在: {trimmed_path}"
-        )));
+        return Err(AppError::InvalidInput(format!("工作区不存在: {trimmed_path}")));
     }
     if !path.is_dir() {
-        return Err(AppError::InvalidInput(format!(
-            "工作区不是目录: {trimmed_path}"
-        )));
+        return Err(AppError::InvalidInput(format!("工作区不是目录: {trimmed_path}")));
     }
     std::fs::canonicalize(path).map_err(AppError::from)
 }
@@ -278,7 +209,7 @@ fn validate_paths(paths: &[String]) -> AppResult<Vec<OsString>> {
         .map(|path| validate_pathspec(path).map(OsString::from))
         .collect::<AppResult<Vec<_>>>()?;
     if validated.is_empty() {
-        return Err(AppError::InvalidInput("paths 不能为空".to_string()));
+        return Err(AppError::InvalidInput("paths 不能为空。".to_string()));
     }
     Ok(validated)
 }
@@ -286,7 +217,7 @@ fn validate_paths(paths: &[String]) -> AppResult<Vec<OsString>> {
 fn validate_pathspec(path: &str) -> AppResult<String> {
     let trimmed = path.trim();
     if trimmed.is_empty() {
-        return Err(AppError::InvalidInput("path 不能为空".to_string()));
+        return Err(AppError::InvalidInput("path 不能为空。".to_string()));
     }
     Ok(trimmed.to_string())
 }
@@ -302,8 +233,7 @@ fn ensure_current_branch(
     let Some(head) = branch.head.as_ref() else {
         return branches;
     };
-    let already_present = branches.iter().any(|item| item.name == *head);
-    if !already_present {
+    if branches.iter().all(|item| item.name != *head) {
         branches.insert(
             0,
             GitBranchRef {
@@ -356,9 +286,7 @@ fn run_git(repo_root: &Path, args: &[OsString]) -> AppResult<String> {
         .output()
         .map_err(AppError::from)?;
     if output.status.success() {
-        return Ok(String::from_utf8_lossy(&output.stdout)
-            .trim_end()
-            .to_string());
+        return Ok(String::from_utf8_lossy(&output.stdout).trim_end().to_string());
     }
 
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
@@ -369,7 +297,5 @@ fn run_git(repo_root: &Path, args: &[OsString]) -> AppResult<String> {
         .map(|item| item.to_string_lossy().to_string())
         .collect::<Vec<_>>()
         .join(" ");
-    Err(AppError::Protocol(format!(
-        "git {command} 执行失败: {detail}"
-    )))
+    Err(AppError::Protocol(format!("git {command} 执行失败: {detail}")))
 }

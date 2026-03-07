@@ -20,6 +20,7 @@ export interface WorkspaceGitController {
   readonly diffCache: Readonly<Record<string, GitDiffOutput>>;
   readonly diffTarget: { readonly path: string; readonly staged: boolean } | null;
   readonly loadingDiffKeys: ReadonlyArray<string>;
+  readonly staleDiffKeys: ReadonlyArray<string>;
   readonly refresh: () => Promise<void>;
   readonly initRepository: () => Promise<void>;
   readonly fetch: () => Promise<void>;

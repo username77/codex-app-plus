@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { OfficialCloseIcon } from "../officialIcons";
-import { getDefaultGitChangeScope, getGitChangeScopeOptions, type GitChangeScope } from "./GitChangeBrowser";
 import { GitDiffFileList } from "./GitDiffFileList";
+import { GitDiffPreviewPanel, type SelectedGitDiffFile } from "./GitDiffPreviewPanel";
+import { getDefaultGitChangeScope, getGitChangeScopeOptions, type GitChangeScope, type GitChangeSectionData } from "./GitChangeBrowser";
 import { GitStateCard } from "./GitStateCard";
-import { GitDiffIcon } from "./gitIcons";
+import { GitDiffIcon, GitRefreshIcon } from "./gitIcons";
+import { getGitViewState, type GitViewState } from "./gitViewState";
 import type { WorkspaceGitController } from "./types";
-import type { GitViewState } from "./gitViewState";
-import { getGitViewState } from "./gitViewState";
+import { isSameDiffTarget } from "./workspaceGitHelpers";
+import { useWorkspaceDiffData, type WorkspaceDiffSummary } from "./useWorkspaceDiffData";
 import { WorkspaceDiffScopeSelector } from "./WorkspaceDiffScopeSelector";
 
 interface WorkspaceDiffSidebarProps {
@@ -37,10 +39,49 @@ function useDiffScope(open: boolean, controller: WorkspaceGitController): [GitCh
   return [scope, setScope];
 }
 
+function flattenSections(sections: ReadonlyArray<GitChangeSectionData>): ReadonlyArray<SelectedGitDiffFile> {
+  return sections.flatMap((section) =>
+    section.entries.map(({ entry, mode }) => ({
+      path: entry.path,
+      title: entry.originalPath === null ? entry.path : `${entry.originalPath} → ${entry.path}`,
+      mode,
+      staged: section.staged
+    }))
+  );
+}
+
+function pickActiveFile(
+  files: ReadonlyArray<SelectedGitDiffFile>,
+  controller: WorkspaceGitController
+): SelectedGitDiffFile | null {
+  if (files.length === 0) {
+    return null;
+  }
+  const currentTarget = controller.diffTarget;
+  const matched = files.find((file) => isSameDiffTarget(currentTarget, { path: file.path, staged: file.staged }));
+  return matched ?? files[0] ?? null;
+}
+
+function DiffChangeSummary(props: { readonly summary?: WorkspaceDiffSummary }): JSX.Element | null {
+  if (props.summary === undefined || props.summary.files === 0) {
+    return null;
+  }
+  if (props.summary.pending) {
+    return <div className="workspace-diff-sidebar-summary workspace-diff-sidebar-summary-pending">更新中…</div>;
+  }
+  return (
+    <div className="workspace-diff-sidebar-summary" aria-label={`当前分组新增 ${props.summary.additions} 行，删除 ${props.summary.deletions} 行`}>
+      <span className="workspace-diff-sidebar-summary-add">+{props.summary.additions}</span>
+      <span className="workspace-diff-sidebar-summary-delete">-{props.summary.deletions}</span>
+    </div>
+  );
+}
+
 function DiffSidebarHeader(props: {
   readonly controller: WorkspaceGitController;
   readonly scope?: GitChangeScope;
   readonly onScopeChange?: (scope: GitChangeScope) => void;
+  readonly summary?: WorkspaceDiffSummary;
   readonly onClose: () => void;
 }): JSX.Element {
   const options = getGitChangeScopeOptions(props.controller);
@@ -50,7 +91,10 @@ function DiffSidebarHeader(props: {
     <header className="workspace-diff-sidebar-header">
       <div className="workspace-diff-sidebar-title-wrap">
         {showSelector ? (
-          <WorkspaceDiffScopeSelector options={options} selectedScope={props.scope!} onChange={props.onScopeChange!} />
+          <>
+            <WorkspaceDiffScopeSelector options={options} selectedScope={props.scope!} onChange={props.onScopeChange!} />
+            <DiffChangeSummary summary={props.summary} />
+          </>
         ) : (
           <>
             <GitDiffIcon className="workspace-diff-sidebar-icon" />
@@ -61,9 +105,14 @@ function DiffSidebarHeader(props: {
           </>
         )}
       </div>
-      <button type="button" className="workspace-diff-sidebar-close" aria-label="关闭差异侧栏" onClick={props.onClose}>
-        <OfficialCloseIcon className="workspace-diff-sidebar-close-icon" />
-      </button>
+      <div className="workspace-diff-sidebar-actions">
+        <button type="button" className="workspace-diff-sidebar-close" aria-label="刷新差异" onClick={() => void props.controller.refresh()}>
+          <GitRefreshIcon className="workspace-diff-sidebar-close-icon" />
+        </button>
+        <button type="button" className="workspace-diff-sidebar-close" aria-label="关闭差异侧栏" onClick={props.onClose}>
+          <OfficialCloseIcon className="workspace-diff-sidebar-close-icon" />
+        </button>
+      </div>
     </header>
   );
 }
@@ -76,9 +125,33 @@ function DiffSidebarState(props: { readonly viewState: GitViewState }): JSX.Elem
   );
 }
 
-function DiffSidebarBody(props: { readonly controller: WorkspaceGitController; readonly scope: GitChangeScope }): JSX.Element {
-  const options = getGitChangeScopeOptions(props.controller);
-  const scopeLabel = options.find((option) => option.scope === props.scope)?.label ?? "未暂存";
+function getScopeLabel(controller: WorkspaceGitController, scope: GitChangeScope): string {
+  return getGitChangeScopeOptions(controller).find((option) => option.scope === scope)?.label ?? "未暂存";
+}
+
+function DiffSidebarBody(props: {
+  readonly controller: WorkspaceGitController;
+  readonly scope: GitChangeScope;
+  readonly sections: ReadonlyArray<GitChangeSectionData>;
+}): JSX.Element {
+  const visibleFiles = useMemo(() => flattenSections(props.sections), [props.sections]);
+  const activeFile = useMemo(() => pickActiveFile(visibleFiles, props.controller), [props.controller, visibleFiles]);
+
+  useEffect(() => {
+    if (visibleFiles.length === 0) {
+      if (props.controller.diffTarget !== null) {
+        props.controller.clearDiff();
+      }
+      return;
+    }
+    if (activeFile === null) {
+      return;
+    }
+    const nextTarget = { path: activeFile.path, staged: activeFile.staged };
+    if (!isSameDiffTarget(props.controller.diffTarget, nextTarget)) {
+      void props.controller.selectDiff(nextTarget.path, nextTarget.staged);
+    }
+  }, [activeFile, props.controller, visibleFiles]);
 
   return (
     <div className="workspace-diff-sidebar-content workspace-diff-sidebar-content-stream">
@@ -87,22 +160,33 @@ function DiffSidebarBody(props: { readonly controller: WorkspaceGitController; r
           {props.controller.notice.text}
         </div>
       ) : null}
-      <GitDiffFileList controller={props.controller} scope={props.scope} scopeLabel={scopeLabel} />
+      <div className="workspace-diff-layout">
+        <GitDiffFileList controller={props.controller} scope={props.scope} scopeLabel={getScopeLabel(props.controller, props.scope)} sections={props.sections} />
+        <GitDiffPreviewPanel controller={props.controller} selectedFile={activeFile} />
+      </div>
     </div>
   );
 }
 
 export function WorkspaceDiffSidebar(props: WorkspaceDiffSidebarProps): JSX.Element | null {
   const [scope, setScope] = useDiffScope(props.open, props.controller);
+  const viewState = getGitViewState(props.selectedRootName, props.controller);
+  const diffData = useWorkspaceDiffData(props.controller, scope, props.open && props.selectedRootPath !== null && viewState === null);
+
   if (!props.open || props.selectedRootPath === null) {
     return null;
   }
 
-  const viewState = getGitViewState(props.selectedRootName, props.controller);
   return (
     <aside className="workspace-diff-sidebar workspace-diff-sidebar-open" aria-label="工作区差异侧栏">
-      <DiffSidebarHeader controller={props.controller} scope={viewState === null ? scope : undefined} onScopeChange={viewState === null ? setScope : undefined} onClose={props.onClose} />
-      {viewState !== null ? <DiffSidebarState viewState={viewState} /> : <DiffSidebarBody controller={props.controller} scope={scope} />}
+      <DiffSidebarHeader
+        controller={props.controller}
+        scope={viewState === null ? scope : undefined}
+        onScopeChange={viewState === null ? setScope : undefined}
+        summary={viewState === null ? diffData.summary : undefined}
+        onClose={props.onClose}
+      />
+      {viewState !== null ? <DiffSidebarState viewState={viewState} /> : <DiffSidebarBody controller={props.controller} scope={scope} sections={diffData.sections} />}
     </aside>
   );
 }

@@ -52,14 +52,11 @@ export function getFirstDiffTarget(status: GitStatusOutput): GitDiffTarget | nul
   return null;
 }
 
-export function getGitViewState(
-  selectedRootName: string,
-  controller: WorkspaceGitController
-): GitViewState | null {
+export function getGitViewState(selectedRootName: string, controller: WorkspaceGitController): GitViewState | null {
   if (controller.loading && controller.status === null) {
     return {
       title: "正在读取 Git 状态",
-      body: "稍等一下，我正在分析当前工作区的分支、变更和远程信息。"
+      body: "稍等一下，我正在分析当前工作区的分支、变更和远端信息。"
     };
   }
 

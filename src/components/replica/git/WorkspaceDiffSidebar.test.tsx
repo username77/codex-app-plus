@@ -46,6 +46,7 @@ function createController(overrides?: Partial<WorkspaceGitController>): Workspac
     diffCache: {},
     diffTarget: null,
     loadingDiffKeys: [],
+    staleDiffKeys: [],
     refresh: vi.fn().mockResolvedValue(undefined),
     initRepository: vi.fn().mockResolvedValue(undefined),
     fetch: vi.fn().mockResolvedValue(undefined),
@@ -103,32 +104,54 @@ describe("WorkspaceDiffSidebar", () => {
     const controller = createController({ status: createStatus() });
     renderSidebar(controller);
 
-    expect(screen.getByText("无未暂存更改")).toBeInTheDocument();
+    expect(screen.getByText("当前没有未暂存变更")).toBeInTheDocument();
     expect(controller.ensureDiff).not.toHaveBeenCalled();
   });
 
-  it("renders structured diff content", () => {
+  it("auto-selects the first visible file", async () => {
+    const controller = createController({
+      status: createStatus({ unstaged: [{ path: "src/App.tsx", originalPath: null, indexStatus: " ", worktreeStatus: "M" }] })
+    });
+    renderSidebar(controller);
+
+    await waitFor(() => expect(controller.selectDiff).toHaveBeenCalledWith("src/App.tsx", false));
+  });
+
+  it("renders a single preview panel for the active file", () => {
+    const controller = createController({
+      status: createStatus({ unstaged: [{ path: "src/App.tsx", originalPath: null, indexStatus: " ", worktreeStatus: "M" }] }),
+      diff: createDiff(),
+      diffCache: { "unstaged:src/App.tsx": createDiff() },
+      diffTarget: { path: "src/App.tsx", staged: false }
+    });
+    const { container } = renderSidebar(controller);
+
+    expect(container.textContent).toContain("console.log('new')");
+    expect(container.querySelectorAll(".workspace-diff-preview-card")).toHaveLength(1);
+  });
+
+  it("renders aggregated change counts in header", () => {
     renderSidebar(
       createController({
         status: createStatus({ unstaged: [{ path: "src/App.tsx", originalPath: null, indexStatus: " ", worktreeStatus: "M" }] }),
-        diff: createDiff(),
         diffCache: { "unstaged:src/App.tsx": createDiff() },
         diffTarget: { path: "src/App.tsx", staged: false }
       })
     );
 
-    expect(screen.getByText(/console\.log\('new'\)/)).toBeInTheDocument();
-    expect(screen.getByText("+1")).toBeInTheDocument();
+    expect(screen.getByLabelText("当前分组新增 1 行，删除 1 行")).toBeInTheDocument();
   });
 
-  it("loads visible diffs when sidebar opens", async () => {
-    const controller = createController({
-      status: createStatus({ unstaged: [{ path: "src/App.tsx", originalPath: null, indexStatus: " ", worktreeStatus: "M" }] })
-    });
+  it("shows loading placeholder instead of fake zero for unresolved diff", () => {
+    renderSidebar(
+      createController({
+        status: createStatus({ untracked: [{ path: "src/new-file.ts", originalPath: null, indexStatus: "?", worktreeStatus: "?" }] }),
+        loadingDiffKeys: ["unstaged:src/new-file.ts"]
+      })
+    );
 
-    renderSidebar(controller);
-
-    await waitFor(() => expect(controller.ensureDiff).toHaveBeenCalledWith("src/App.tsx", false));
+    expect(screen.getAllByText("加载中…").length).toBeGreaterThan(0);
+    expect(screen.queryByText("+0")).not.toBeInTheDocument();
   });
 
   it("switches scope from dropdown menu", () => {
@@ -144,7 +167,7 @@ describe("WorkspaceDiffSidebar", () => {
     expect(screen.getByRole("button", { name: "选择差异分组" })).toHaveTextContent("已暂存");
   });
 
-  it("calls selectDiff when user clicks file title", () => {
+  it("calls selectDiff when user clicks file row", () => {
     const controller = createController({
       status: createStatus({ unstaged: [{ path: "src/App.tsx", originalPath: null, indexStatus: " ", worktreeStatus: "M" }] }),
       diffTarget: { path: "src/App.tsx", staged: false }

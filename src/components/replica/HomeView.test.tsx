@@ -39,6 +39,7 @@ function createController(): WorkspaceGitController {
     diffCache: {},
     diffTarget: null,
     loadingDiffKeys: [],
+    staleDiffKeys: [],
     refresh: vi.fn().mockResolvedValue(undefined),
     initRepository: vi.fn().mockResolvedValue(undefined),
     fetch: vi.fn().mockResolvedValue(undefined),

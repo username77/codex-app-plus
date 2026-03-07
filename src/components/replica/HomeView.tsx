@@ -172,8 +172,12 @@ export function HomeView(props: HomeViewProps): JSX.Element {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(true);
   const [diffSidebarOpen, setDiffSidebarOpen] = useState(false);
-  const gitController = useWorkspaceGit({ hostBridge: props.hostBridge, selectedRootPath: props.selectedRootPath });
   const canShowDiffSidebar = diffSidebarOpen && props.selectedRootPath !== null;
+  const gitController = useWorkspaceGit({
+    hostBridge: props.hostBridge,
+    selectedRootPath: props.selectedRootPath,
+    autoRefreshEnabled: canShowDiffSidebar
+  });
 
   useEffect(() => {
     if (props.selectedRootPath === null) {
