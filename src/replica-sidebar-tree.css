@@ -3,8 +3,8 @@
 }
 
 .workspace-root-row {
-  gap: 4px;
-  padding-right: 2px;
+  gap: 2px;
+  padding-right: 0;
 }
 
 .workspace-root-button,
@@ -19,14 +19,14 @@
 }
 
 .workspace-root-button {
-  width: 100%;
+  width: auto;
   min-width: 0;
   flex: 1 1 auto;
   display: flex;
   align-items: center;
   gap: 8px;
   color: inherit;
-  padding: 0 6px 0 0;
+  padding: 0 4px 0 0;
   border-radius: 8px;
   text-align: left;
 }
@@ -54,21 +54,21 @@
 .workspace-thread-list {
   list-style: none;
   margin: 2px 0 0;
-  padding: 0 0 0 28px;
+  padding: 0 0 0 24px;
   display: grid;
   gap: 2px;
+  overflow-x: hidden;
 }
 
 .workspace-thread-button {
   width: 100%;
   min-width: 0;
-  display: grid;
-  justify-items: start;
-  gap: 2px;
-  padding: 6px 8px;
+  display: block;
+  padding: 4px 8px;
   border-radius: 8px;
   color: #606060;
   text-align: left;
+  overflow: hidden;
 }
 
 .workspace-thread-button-active {
@@ -76,17 +76,10 @@
   color: #2f2f2f;
 }
 
-.workspace-thread-title,
-.workspace-thread-meta {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .workspace-thread-title-row {
   width: 100%;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 6px;
   min-width: 0;
@@ -96,16 +89,23 @@
   min-width: 0;
   flex: 1 1 auto;
   font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace-thread-badge {
   flex-shrink: 0;
-  padding: 0 6px;
+  max-width: 72px;
+  padding: 0 5px;
   border-radius: 999px;
   background: #e2e8f0;
   color: #334155;
   font-size: 10px;
-  line-height: 18px;
+  line-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace-thread-meta,
@@ -114,12 +114,18 @@
   color: #8b8b8b;
 }
 
+.workspace-thread-meta {
+  flex: 0 0 auto;
+  justify-self: end;
+  white-space: nowrap;
+}
+
 .workspace-thread-empty {
   padding: 4px 8px 8px;
 }
 
 .workspace-thread-toggle {
-  margin: 2px 0 0 28px;
+  margin: 2px 0 0 24px;
   padding: 4px 8px 8px;
   border: 0;
   background: transparent;

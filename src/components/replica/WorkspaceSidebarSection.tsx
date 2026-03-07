@@ -5,6 +5,9 @@ import type { ThreadSummary } from "../../domain/types";
 import { OfficialChevronRightIcon, OfficialCloseIcon, OfficialFolderPlusIcon, OfficialSortIcon } from "./officialIcons";
 
 const DEFAULT_VISIBLE_THREAD_COUNT = 10;
+const MINUTE_IN_MS = 60 * 1000;
+const HOUR_IN_MS = 60 * MINUTE_IN_MS;
+const DAY_IN_MS = 24 * HOUR_IN_MS;
 
 interface WorkspaceSidebarSectionProps {
   readonly roots: ReadonlyArray<WorkspaceRoot>;
@@ -46,7 +49,18 @@ function formatThreadUpdatedAt(updatedAt: string): string {
   if (Number.isNaN(timestamp)) {
     return "";
   }
-  return new Date(timestamp).toLocaleString([], { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  const elapsed = Date.now() - timestamp;
+
+  if (elapsed >= 0 && elapsed < HOUR_IN_MS) {
+    return `${Math.max(1, Math.floor(elapsed / MINUTE_IN_MS))}分`;
+  }
+
+  if (elapsed >= 0 && elapsed < DAY_IN_MS) {
+    return `${Math.max(1, Math.floor(elapsed / HOUR_IN_MS))}时`;
+  }
+
+  return new Date(timestamp).toLocaleDateString([], { month: "numeric", day: "numeric" });
 }
 
 function getThreadLabel(thread: ThreadSummary): string {
@@ -99,14 +113,16 @@ const WorkspaceThreadItem = memo(function WorkspaceThreadItem(props: {
 }): JSX.Element {
   const className = props.selected ? "workspace-thread-button workspace-thread-button-active" : "workspace-thread-button";
   const statusLabel = props.thread.status === "active" ? "运行中" : props.thread.queuedCount > 0 ? `队列 ${props.thread.queuedCount}` : null;
+  const updatedAtLabel = formatThreadUpdatedAt(props.thread.updatedAt);
+
   return (
     <li>
       <button type="button" className={className} onClick={() => props.onSelect(props.thread.id)}>
         <span className="workspace-thread-title-row">
           <span className="workspace-thread-title">{getThreadLabel(props.thread)}</span>
           {statusLabel !== null ? <span className="workspace-thread-badge">{statusLabel}</span> : null}
+          <span className="workspace-thread-meta">{updatedAtLabel}</span>
         </span>
-        <span className="workspace-thread-meta">{formatThreadUpdatedAt(props.thread.updatedAt)}</span>
       </button>
     </li>
   );

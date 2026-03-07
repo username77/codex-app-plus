@@ -1,5 +1,5 @@
 ﻿import { useState } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
 import type { ThreadSummary } from "../../domain/types";
@@ -104,6 +104,23 @@ describe("WorkspaceSidebarSection", () => {
     fireEvent.click(screen.getByRole("button", { name: "收起到最近 10 条" }));
     expect(screen.queryByText("FPGA Thread 2")).not.toBeInTheDocument();
     expect(screen.queryByText("FPGA Thread 1")).not.toBeInTheDocument();
+  });
+
+  it("renders title and time inside the same session button", () => {
+    const thread = createThread(ROOTS[0]!, 1);
+
+    renderSection([thread]);
+    fireEvent.click(screen.getByText("FPGA"));
+
+    const title = screen.getByText("FPGA Thread 1");
+    const threadButton = title.closest("button");
+
+    expect(threadButton).not.toBeNull();
+
+    const meta = (threadButton as HTMLButtonElement).querySelector(".workspace-thread-meta");
+    expect(meta).not.toBeNull();
+    expect(meta?.textContent?.trim().length).toBeGreaterThan(0);
+    expect(within(threadButton as HTMLButtonElement).getByText("FPGA Thread 1")).toBeInTheDocument();
   });
 
   it("shows loading and explicit errors", () => {
