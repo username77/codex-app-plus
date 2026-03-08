@@ -16,7 +16,6 @@ import type { McpToolCallError } from "../protocol/generated/v2/McpToolCallError
 import type { McpToolCallResult } from "../protocol/generated/v2/McpToolCallResult";
 import type { McpToolCallStatus } from "../protocol/generated/v2/McpToolCallStatus";
 import type { PatchApplyStatus } from "../protocol/generated/v2/PatchApplyStatus";
-import type { ThreadTokenUsage } from "../protocol/generated/v2/ThreadTokenUsage";
 import type { TurnPlanStep } from "../protocol/generated/v2/TurnPlanStep";
 import type { WebSearchAction } from "../protocol/generated/v2/WebSearchAction";
 import type {
@@ -184,11 +183,6 @@ export interface SystemNoticeEntry extends TimelineBase {
   readonly source: string;
 }
 
-export interface TokenUsageEntry extends TimelineBase {
-  readonly kind: "tokenUsage";
-  readonly usage: ThreadTokenUsage;
-}
-
 export interface RealtimeSessionEntry extends TimelineBase {
   readonly kind: "realtimeSession";
   readonly sessionId: string | null;
@@ -276,7 +270,6 @@ export type TimelineEntry =
   | ContextCompactionEntry
   | RawResponseEntry
   | SystemNoticeEntry
-  | TokenUsageEntry
   | RealtimeSessionEntry
   | RealtimeAudioEntry
   | FuzzySearchEntry

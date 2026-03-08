@@ -17,7 +17,6 @@ export function HomeAuxiliaryEntry(props: HomeAuxiliaryEntryProps): JSX.Element 
   if (props.entry.kind === "contextCompaction") return <NoticeCard title="Context compacted" detail="Older context was compacted by the app-server." />;
   if (props.entry.kind === "rawResponse") return <NoticeCard title={props.entry.title} detail={props.entry.detail} />;
   if (props.entry.kind === "systemNotice") return <NoticeCard title={props.entry.title} detail={props.entry.detail} status={props.entry.level} />;
-  if (props.entry.kind === "tokenUsage") return <NoticeCard title="Token usage updated" detail={`input ${props.entry.usage.last.inputTokens}, output ${props.entry.usage.last.outputTokens}, total ${props.entry.usage.total.totalTokens}`} />;
   if (props.entry.kind === "realtimeSession") return <NoticeCard title={`Realtime session ${props.entry.status}`} detail={props.entry.message ?? props.entry.sessionId} />;
   if (props.entry.kind === "realtimeAudio") return <NoticeCard title={`Realtime audio chunk #${props.entry.chunkIndex + 1}`} detail={`${props.entry.audio.sampleRate} Hz · ${props.entry.audio.numChannels} channel(s)`} />;
   return <FuzzySearchBlock entry={props.entry} />;

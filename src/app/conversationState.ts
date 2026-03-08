@@ -139,9 +139,25 @@ function appendNotice(turn: ConversationTurnState, notice: ConversationSystemNot
 function appendReviewState(turn: ConversationTurnState, reviewState: ConversationReviewState): ConversationTurnState {
   return { ...turn, reviewStates: [...turn.reviewStates, reviewState] };
 }
-
 function appendContextCompaction(turn: ConversationTurnState, compaction: ConversationContextCompaction): ConversationTurnState {
   return { ...turn, contextCompactions: [...turn.contextCompactions, compaction] };
+}
+function mergeSparseTurnState(currentTurn: ConversationTurnState, turn: Turn): ConversationTurnState {
+  const nextTurn = createTurnState(turn, currentTurn.params);
+  return {
+    ...nextTurn,
+    localId: currentTurn.localId,
+    items: turn.items.length === 0 ? currentTurn.items : nextTurn.items,
+    turnStartedAtMs: currentTurn.turnStartedAtMs ?? nextTurn.turnStartedAtMs,
+    planExplanation: currentTurn.planExplanation,
+    planSteps: currentTurn.planSteps,
+    diff: currentTurn.diff,
+    rawResponses: currentTurn.rawResponses,
+    notices: currentTurn.notices,
+    reviewStates: currentTurn.reviewStates,
+    contextCompactions: currentTurn.contextCompactions,
+    tokenUsage: currentTurn.tokenUsage,
+  };
 }
 
 function updateTurn(conversation: ConversationState, turnId: string | null, updater: (turn: ConversationTurnState) => ConversationTurnState): ConversationState {
@@ -185,11 +201,11 @@ export function addPlaceholderTurn(conversation: ConversationState, params: Conv
 }
 
 export function syncStartedTurn(conversation: ConversationState, turn: Turn): ConversationState {
-  return updateTurn(conversation, turn.id, (currentTurn) => ({ ...createTurnState(turn, currentTurn.params), rawResponses: currentTurn.rawResponses, notices: currentTurn.notices, reviewStates: currentTurn.reviewStates, contextCompactions: currentTurn.contextCompactions, tokenUsage: currentTurn.tokenUsage }));
+  return updateTurn(conversation, turn.id, (currentTurn) => mergeSparseTurnState(currentTurn, turn));
 }
 
 export function syncCompletedTurn(conversation: ConversationState, turn: Turn): ConversationState {
-  return updateTurn(conversation, turn.id, (currentTurn) => ({ ...createTurnState(turn, currentTurn.params), rawResponses: currentTurn.rawResponses, notices: currentTurn.notices, reviewStates: currentTurn.reviewStates, contextCompactions: currentTurn.contextCompactions, tokenUsage: currentTurn.tokenUsage }));
+  return updateTurn(conversation, turn.id, (currentTurn) => mergeSparseTurnState(currentTurn, turn));
 }
 
 export function upsertConversationItem(conversation: ConversationState, turnId: string, item: ThreadItem): ConversationState {

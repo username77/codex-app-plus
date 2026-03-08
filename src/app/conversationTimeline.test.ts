@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { ConversationState, ConversationTurnState } from "../domain/conversation";
 import type { TimelineEntry } from "../domain/timeline";
+import type { ThreadTokenUsage } from "../protocol/generated/v2/ThreadTokenUsage";
 import { mapConversationToTimelineEntries } from "./conversationTimeline";
+
+const TOKEN_USAGE: ThreadTokenUsage = {
+  total: { totalTokens: 14996, inputTokens: 14791, cachedInputTokens: 0, outputTokens: 205, reasoningOutputTokens: 0 },
+  last: { totalTokens: 14996, inputTokens: 14791, cachedInputTokens: 0, outputTokens: 205, reasoningOutputTokens: 0 },
+  modelContextWindow: 200000,
+};
 
 function createTurn(overrides?: Partial<ConversationTurnState>): ConversationTurnState {
   return {
@@ -95,5 +102,21 @@ describe("conversationTimeline", () => {
     const entries = mapConversationToTimelineEntries(conversation, []);
 
     expect(getKinds(entries)).toEqual(["userMessage", "agentMessage", "commandExecution", "dynamicToolCall", "collabAgentToolCall", "webSearch", "fileChange"]);
+  });
+  it("keeps assistant content visible when a turn also stores token usage", () => {
+    const conversation = createConversation([
+      createTurn({
+        params: { input: [{ type: "text", text: "hello", text_elements: [] }], cwd: null, model: null, effort: null, collaborationMode: null },
+        items: [{ item: { type: "agentMessage", id: "assistant-1", text: "assistant reply", phase: null }, approvalRequestId: null, outputText: "", terminalInteractions: [], rawResponse: null, progressMessages: [] }],
+        tokenUsage: TOKEN_USAGE,
+      }),
+    ]);
+
+    const entries = mapConversationToTimelineEntries(conversation, []);
+    const kinds = getKinds(entries);
+
+    expect(kinds).toEqual(["userMessage", "agentMessage"]);
+    expect(kinds).not.toContain("tokenUsage");
+    expect(entries[1]?.kind === "agentMessage" ? entries[1].text : null).toBe("assistant reply");
   });
 });

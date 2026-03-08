@@ -202,9 +202,6 @@ function appendTurnArtifacts(
   turn.reviewStates.forEach((reviewState) => entries.push({ id: createEntryId(conversationId, turn.turnId, reviewState.itemId, reviewState.state), kind: "reviewMode", threadId: conversationId, turnId: turn.turnId, itemId: reviewState.itemId, state: reviewState.state, review: reviewState.review }));
   turn.contextCompactions.forEach((compaction) => entries.push({ id: createEntryId(conversationId, turn.turnId, compaction.itemId, compaction.id), kind: "contextCompaction", threadId: conversationId, turnId: turn.turnId, itemId: compaction.itemId }));
   turn.notices.forEach((notice) => entries.push({ id: createEntryId(conversationId, turn.turnId, notice.itemId, notice.id), kind: "systemNotice", threadId: conversationId, turnId: turn.turnId, itemId: notice.itemId, level: notice.level, title: notice.title, detail: notice.detail, source: notice.source }));
-  if (turn.tokenUsage !== null) {
-    entries.push({ id: createEntryId(conversationId, turn.turnId, null, "tokenUsage"), kind: "tokenUsage", threadId: conversationId, turnId: turn.turnId, itemId: null, usage: turn.tokenUsage });
-  }
   turn.rawResponses.forEach((item, index) => entries.push(mapRawResponseEntry(conversationId, turn.turnId, index, item)));
   if (turn.error !== null) {
     entries.push({ id: createEntryId(conversationId, turn.turnId, null, "turnError"), kind: "debug", threadId: conversationId, turnId: turn.turnId, itemId: null, title: "turn:error", payload: turn.error });

@@ -114,9 +114,6 @@ function createAuxiliaryModel(key: string, entry: AuxiliaryBlock): AssistantTran
   if (entry.kind === "systemNotice") {
     return createDetailsModel(key, entry.title, entry.detail);
   }
-  if (entry.kind === "tokenUsage") {
-    return createLineModel(key, `Token 使用已更新：input ${entry.usage.last.inputTokens}，output ${entry.usage.last.outputTokens}，total ${entry.usage.total.totalTokens}`);
-  }
   if (entry.kind === "realtimeSession") {
     return createLineModel(key, `Realtime 会话 ${entry.status}${entry.message ? `：${entry.message}` : ""}`);
   }

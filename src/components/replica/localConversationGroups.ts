@@ -20,7 +20,6 @@ import type {
   ReviewModeEntry,
   SystemNoticeEntry,
   TimelineEntry,
-  TokenUsageEntry,
   TurnDiffSnapshotEntry,
   TurnPlanSnapshotEntry,
   WebSearchEntry,
@@ -52,7 +51,6 @@ export type AuxiliaryBlock =
   | ContextCompactionEntry
   | RawResponseEntry
   | SystemNoticeEntry
-  | TokenUsageEntry
   | RealtimeSessionEntry
   | RealtimeAudioEntry
   | FuzzySearchEntry;
@@ -254,7 +252,6 @@ function isAuxiliaryBlock(entry: TimelineEntry): entry is AuxiliaryBlock {
     || entry.kind === "contextCompaction"
     || entry.kind === "rawResponse"
     || entry.kind === "systemNotice"
-    || entry.kind === "tokenUsage"
     || entry.kind === "realtimeSession"
     || entry.kind === "realtimeAudio"
     || entry.kind === "fuzzySearch";

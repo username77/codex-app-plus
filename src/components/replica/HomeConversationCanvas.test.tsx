@@ -1,8 +1,19 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { ConversationState, ConversationTurnState } from "../../domain/conversation";
+import { syncCompletedTurn } from "../../app/conversationState";
+import { mapConversationToTimelineEntries } from "../../app/conversationTimeline";
 import type { ThreadSummary } from "../../domain/types";
 import type { TimelineEntry } from "../../domain/timeline";
+import type { ThreadTokenUsage } from "../../protocol/generated/v2/ThreadTokenUsage";
+import type { Turn } from "../../protocol/generated/v2/Turn";
 import { HomeConversationCanvas } from "./HomeConversationCanvas";
+
+const TOKEN_USAGE: ThreadTokenUsage = {
+  total: { totalTokens: 14996, inputTokens: 14791, cachedInputTokens: 0, outputTokens: 205, reasoningOutputTokens: 0 },
+  last: { totalTokens: 205, inputTokens: 0, cachedInputTokens: 0, outputTokens: 205, reasoningOutputTokens: 0 },
+  modelContextWindow: 200000,
+};
 
 function createThread(status: ThreadSummary["status"]): ThreadSummary {
   return {
@@ -31,6 +42,60 @@ function renderCanvas(
       onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
     />,
   );
+}
+
+function createConversationTurn(overrides?: Partial<ConversationTurnState>): ConversationTurnState {
+  return {
+    localId: "local-turn-1",
+    turnId: "turn-1",
+    status: "completed",
+    error: null,
+    params: { input: [{ type: "text", text: "请继续", text_elements: [] }], cwd: null, model: null, effort: null, collaborationMode: null },
+    items: [{ item: { type: "agentMessage", id: "assistant-1", text: "已经完成。", phase: null }, approvalRequestId: null, outputText: "", terminalInteractions: [], rawResponse: null, progressMessages: [] }],
+    turnStartedAtMs: null,
+    planExplanation: null,
+    planSteps: [],
+    diff: null,
+    rawResponses: [],
+    notices: [],
+    reviewStates: [],
+    contextCompactions: [],
+    tokenUsage: null,
+    ...overrides,
+  };
+}
+
+function createConversationActivities(turn: ConversationTurnState): ReadonlyArray<TimelineEntry> {
+  return mapConversationToTimelineEntries(createConversationState(turn), []);
+}
+
+function createConversationState(turn: ConversationTurnState): ConversationState {
+  const conversation: ConversationState = {
+    id: "thread-1",
+    title: "Thread",
+    cwd: "E:/code/codex-app-plus",
+    updatedAt: "2026-03-07T04:00:00.000Z",
+    source: "rpc",
+    status: "idle",
+    activeFlags: [],
+    resumeState: "resumed",
+    turns: [turn],
+    queuedFollowUps: [],
+    interruptRequestedTurnId: null,
+    hidden: false,
+  };
+
+  return conversation;
+}
+
+function createNotificationTurn(overrides: Partial<Turn> = {}): Turn {
+  return {
+    id: "turn-1",
+    items: [],
+    status: "completed",
+    error: null,
+    ...overrides,
+  };
 }
 
 const USER_MESSAGE: TimelineEntry = {
@@ -175,5 +240,27 @@ describe("HomeConversationCanvas", () => {
 
     expect(container.querySelector(".home-chat-attachments img")).not.toBeNull();
     expect(screen.queryByText(/data:image\/png;base64/i)).toBeNull();
+  });
+
+  it("keeps the assistant reply visible when token usage exists on the turn", () => {
+    const activities = createConversationActivities(createConversationTurn({ tokenUsage: TOKEN_USAGE }));
+
+    renderCanvas(activities);
+
+    expect(screen.getByText("已经完成。", { exact: false })).toBeInTheDocument();
+    expect(screen.queryByText(/Token 使用已更新/)).toBeNull();
+    expect(screen.queryByText(/Token usage updated/)).toBeNull();
+  });
+
+  it("keeps streamed assistant text visible after a sparse turnCompleted notification", () => {
+    const conversation = createConversationState(createConversationTurn({
+      status: "inProgress",
+      items: [{ item: { type: "agentMessage", id: "assistant-1", text: "assistant reply", phase: null }, approvalRequestId: null, outputText: "", terminalInteractions: [], rawResponse: null, progressMessages: [] }],
+    }));
+    const nextConversation = syncCompletedTurn(conversation, createNotificationTurn({ status: "completed" }));
+
+    renderCanvas(mapConversationToTimelineEntries(nextConversation, []));
+
+    expect(screen.getByText("assistant reply", { exact: false })).toBeInTheDocument();
   });
 });
