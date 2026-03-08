@@ -35,6 +35,7 @@ interface HomeViewProps {
   readonly threads: ReadonlyArray<ThreadSummary>;
   readonly selectedThread: ThreadSummary | null;
   readonly selectedThreadId: string | null;
+  readonly activeTurnId: string | null;
   readonly activities: ReadonlyArray<TimelineEntry>;
   readonly mcpShortcuts: ReadonlyArray<McpShortcut>;
   readonly banners: ReadonlyArray<UiBanner>;
@@ -92,6 +93,7 @@ interface MainContentProps {
   readonly selectedRootName: string;
   readonly selectedRootPath: string | null;
   readonly selectedThread: ThreadSummary | null;
+  readonly activeTurnId: string | null;
   readonly draftActive: boolean;
   readonly selectedConversationLoading: boolean;
   readonly terminalOpen: boolean;
@@ -120,7 +122,6 @@ function MainContent(props: MainContentProps): JSX.Element {
 
   return (
     <div className="replica-main">
-      <NoticeStrip banners={props.banners} account={props.account} rateLimitSummary={props.rateLimitSummary} />
       <HomeMainToolbar
         hostBridge={props.hostBridge}
         gitController={props.gitController}
@@ -136,7 +137,7 @@ function MainContent(props: MainContentProps): JSX.Element {
         onToggleTerminal={props.onToggleTerminal}
       />
       {conversationActive ? (
-        <HomeConversationCanvas activities={props.activities} selectedThread={props.selectedThread} placeholder={placeholder} onResolveServerRequest={props.onResolveServerRequest} />
+        <HomeConversationCanvas activities={props.activities} selectedThread={props.selectedThread} activeTurnId={props.activeTurnId} placeholder={placeholder} onResolveServerRequest={props.onResolveServerRequest} />
       ) : (
         <EmptyCanvas selectedRootName={props.selectedRootName} selectedRootPath={props.selectedRootPath} />
       )}
@@ -240,6 +241,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         selectedRootName={props.selectedRootName}
         selectedRootPath={props.selectedRootPath}
         selectedThread={props.selectedThread}
+        activeTurnId={props.activeTurnId}
         draftActive={props.draftActive}
         selectedConversationLoading={props.selectedConversationLoading}
         terminalOpen={terminalOpen}
@@ -265,19 +267,6 @@ export function HomeView(props: HomeViewProps): JSX.Element {
       <TerminalPanel hostBridge={props.hostBridge} open={terminalOpen} cwd={props.selectedRootPath} cwdLabel={props.selectedRootName} shell={props.embeddedTerminalShell} onClose={() => setTerminalOpen(false)} />
       <SidebarCollapseButton collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((value) => !value)} />
     </div>
-  );
-}
-
-function NoticeStrip(props: { readonly banners: ReadonlyArray<UiBanner>; readonly account: AccountSummary | null; readonly rateLimitSummary: string | null }): JSX.Element | null {
-  if (props.banners.length === 0 && props.account === null && props.rateLimitSummary === null) {
-    return null;
-  }
-  return (
-    <section className="home-notice-strip" aria-label="System notices">
-      {props.account ? <div className="home-notice-pill">{`Auth: ${props.account.authMode ?? "unknown"} · Plan: ${props.account.planType ?? "unknown"}`}</div> : null}
-      {props.rateLimitSummary ? <div className="home-notice-pill">{props.rateLimitSummary}</div> : null}
-      {props.banners.map((banner) => <div key={banner.id} className={`home-notice-pill home-notice-pill-${banner.level}`} title={banner.detail ?? undefined}>{banner.title}</div>)}
-    </section>
   );
 }
 

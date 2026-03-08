@@ -6,6 +6,7 @@ import { flattenConversationRenderGroup, splitActivitiesIntoRenderGroups } from 
 interface HomeConversationCanvasProps {
   readonly activities: ReadonlyArray<TimelineEntry>;
   readonly selectedThread: ThreadSummary | null;
+  readonly activeTurnId: string | null;
   readonly placeholder: { readonly title: string; readonly body: string } | null;
   readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
 }
@@ -17,7 +18,7 @@ interface RenderGroup {
 
 export function HomeConversationCanvas(props: HomeConversationCanvasProps): JSX.Element {
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const renderGroups = useMemo(() => createRenderGroups(props.activities, props.selectedThread), [props.activities, props.selectedThread]);
+  const renderGroups = useMemo(() => createRenderGroups(props.activities, props.activeTurnId), [props.activities, props.activeTurnId]);
   const scrollKey = useMemo(() => createScrollKey(renderGroups), [renderGroups]);
 
   useEffect(() => {
@@ -47,9 +48,9 @@ export function HomeConversationCanvas(props: HomeConversationCanvasProps): JSX.
 
 function createRenderGroups(
   activities: ReadonlyArray<TimelineEntry>,
-  selectedThread: ThreadSummary | null,
+  activeTurnId: string | null,
 ): Array<RenderGroup> {
-  return splitActivitiesIntoRenderGroups(activities, selectedThread)
+  return splitActivitiesIntoRenderGroups(activities, activeTurnId)
     .map((group) => ({ key: group.key, nodes: flattenConversationRenderGroup(group) }))
     .filter((group) => group.nodes.length > 0);
 }
@@ -64,7 +65,10 @@ function createScrollKey(groups: ReadonlyArray<RenderGroup>): string {
     return `${lastNode.key}:${lastNode.message.status}:${lastNode.message.text.length}`;
   }
   if (lastNode.kind === "assistantMessage") {
-    return `${lastNode.key}:${lastNode.message.status}:${lastNode.message.text.length}:${lastNode.showThinkingIndicator ? "thinking" : "idle"}`;
+    return `${lastNode.key}:${lastNode.message.status}:${lastNode.message.text.length}`;
+  }
+  if (lastNode.kind === "assistantThinking") {
+    return `${lastNode.key}:${lastNode.message.status}:thinking`;
   }
   if (lastNode.kind === "reasoningBlock") {
     return `${lastNode.key}:${lastNode.block.summary ?? ""}`;

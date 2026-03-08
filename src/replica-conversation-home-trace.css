@@ -1,15 +1,18 @@
 .home-thinking-block,
 .home-entry-card,
-.home-trace-card,
 .home-request-card,
 .home-auxiliary-card {
   width: min(900px, 100%);
   align-self: flex-start;
 }
 
+.home-trace-entry {
+  width: min(900px, 100%);
+  align-self: flex-start;
+}
+
 .home-thinking-block,
 .home-entry-card,
-.home-trace-card,
 .home-request-card,
 .home-auxiliary-card {
   border: 1px solid #e4e8f0;
@@ -36,7 +39,6 @@
 }
 
 .home-entry-card,
-.home-trace-card,
 .home-request-card,
 .home-auxiliary-card {
   padding: 12px 14px;
@@ -91,8 +93,52 @@
   white-space: pre-wrap;
 }
 
-.home-trace-card {
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+.home-trace-entry-shell {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.home-trace-entry-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 7px;
+  border-radius: 999px;
+  background: #cbd5e1;
+  flex: none;
+}
+
+.home-trace-entry-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home-trace-entry-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-trace-entry-title {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.home-trace-entry-meta,
+.home-trace-entry-status {
+  color: #7a8699;
+  font-size: 12px;
+}
+
+.home-trace-entry-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .home-trace-code,

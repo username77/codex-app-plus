@@ -168,6 +168,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       threads={conversation.workspaceThreads}
       selectedThread={conversation.selectedThread}
       selectedThreadId={conversation.selectedThreadId}
+      activeTurnId={conversation.activeTurnId}
       activities={conversation.activities}
       mcpShortcuts={controller.state.mcpShortcuts}
       banners={controller.state.banners}

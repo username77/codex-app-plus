@@ -28,6 +28,7 @@ export interface SendTurnOptions {
 interface WorkspaceConversationController {
   readonly selectedThreadId: string | null;
   readonly selectedThread: ThreadSummary | null;
+  readonly activeTurnId: string | null;
   readonly workspaceThreads: ReadonlyArray<ThreadSummary>;
   readonly activities: ReadonlyArray<TimelineEntry>;
   readonly queuedFollowUps: ReadonlyArray<QueuedFollowUp>;
@@ -76,6 +77,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
   const workspaceThreads = useMemo(() => listThreadsForWorkspace(allThreadSummaries, options.selectedRootPath), [allThreadSummaries, options.selectedRootPath]);
   const selectedConversation = state.selectedConversationId === null ? null : state.conversationsById[state.selectedConversationId] ?? null;
   const selectedThread = useMemo(() => selectedConversation === null ? null : mapConversationToThreadSummary(selectedConversation), [selectedConversation]);
+  const activeTurnId = useMemo(() => getActiveTurnId(selectedConversation), [selectedConversation]);
   const selectedRequests = selectedConversation === null ? [] : state.pendingRequestsByConversationId[selectedConversation.id] ?? [];
   const selectedRealtime = selectedConversation === null ? null : state.realtimeByThreadId[selectedConversation.id] ?? null;
   const fuzzySessions = useMemo(() => Object.values(state.fuzzySearchSessionsById), [state.fuzzySearchSessionsById]);
@@ -225,5 +227,5 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     }
   }, [dispatch, selectedConversation]);
 
-  return { selectedThreadId: selectedConversation?.id ?? null, selectedThread, workspaceThreads, activities, queuedFollowUps, draftActive: state.draftConversation !== null, selectedConversationLoading: selectedConversation?.resumeState === "resuming", createThread, selectThread, sendTurn, removeQueuedFollowUp, clearQueuedFollowUps };
+  return { selectedThreadId: selectedConversation?.id ?? null, selectedThread, activeTurnId, workspaceThreads, activities, queuedFollowUps, draftActive: state.draftConversation !== null, selectedConversationLoading: selectedConversation?.resumeState === "resuming", createThread, selectThread, sendTurn, removeQueuedFollowUp, clearQueuedFollowUps };
 }

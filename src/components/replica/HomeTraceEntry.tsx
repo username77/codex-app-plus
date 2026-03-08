@@ -7,7 +7,6 @@ import type {
   McpToolCallEntry,
   WebSearchEntry,
 } from "../../domain/timeline";
-import { HomeEntryCard } from "./HomeEntryCard";
 import type { TraceEntry } from "./localConversationGroups";
 
 const ELLIPSIS = "…";
@@ -21,7 +20,21 @@ interface HomeTraceEntryProps {
 }
 
 export function HomeTraceEntry(props: HomeTraceEntryProps): JSX.Element {
-  return <HomeEntryCard className="home-trace-card" title={formatTraceTitle(props.entry)} status={formatTraceStatus(props.entry)} meta={formatTraceMeta(props.entry)}>{renderTraceBody(props.entry)}</HomeEntryCard>;
+  return (
+    <section className="home-trace-entry" data-kind={props.entry.kind} data-status={formatTraceStatus(props.entry)}>
+      <div className="home-trace-entry-shell">
+        <span className="home-trace-entry-dot" aria-hidden="true" />
+        <div className="home-trace-entry-main">
+          <div className="home-trace-entry-header">
+            <span className="home-trace-entry-title">{formatTraceTitle(props.entry)}</span>
+            {formatTraceMeta(props.entry) ? <span className="home-trace-entry-meta">{formatTraceMeta(props.entry)}</span> : null}
+            <span className="home-trace-entry-status">{formatTraceStatus(props.entry)}</span>
+          </div>
+          <div className="home-trace-entry-body">{renderTraceBody(props.entry)}</div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function renderTraceBody(entry: TraceEntry): JSX.Element {

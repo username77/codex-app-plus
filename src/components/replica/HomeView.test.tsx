@@ -92,6 +92,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       threads={[thread]}
       selectedThread={thread}
       selectedThreadId={thread.id}
+      activeTurnId={null}
       activities={[]}
       mcpShortcuts={[]}
       banners={[]}
@@ -238,6 +239,18 @@ describe("HomeView", () => {
     expect(screen.getByText("Command execution")).toBeInTheDocument();
     expect(screen.getByText("Additional input required")).toBeInTheDocument();
     expect(screen.getByText("请选择处理方式")).toBeInTheDocument();
+  });
+
+  it("hides Auth/Plan pills and info banners above the conversation", () => {
+    renderHomeView({
+      account: { authMode: "apikey", planType: "unknown" },
+      rateLimitSummary: "Rate limit: default",
+      banners: [{ id: "banner-1", level: "info", title: "Skills changed", detail: null, source: "test" }],
+    });
+
+    expect(screen.queryByText(/Auth:/)).toBeNull();
+    expect(screen.queryByText(/Rate limit:/)).toBeNull();
+    expect(screen.queryByText("Skills changed")).toBeNull();
   });
 
   it("truncates long toolbar titles while preserving the full title in tooltip", () => {
