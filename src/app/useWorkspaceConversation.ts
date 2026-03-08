@@ -2,10 +2,8 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { CollaborationMode } from "../protocol/generated/CollaborationMode";
 import type { ComposerSelection } from "./composerPreferences";
 import type { HostBridge } from "../bridge/types";
-import type { DraftConversationState } from "../domain/conversation";
 import type { CollaborationModePreset, FollowUpMode, QueuedFollowUp, ThreadSummary, TimelineEntry } from "../domain/timeline";
 import type { ThreadResumeResponse } from "../protocol/generated/v2/ThreadResumeResponse";
-import type { ThreadStartParams } from "../protocol/generated/v2/ThreadStartParams";
 import type { ThreadStartResponse } from "../protocol/generated/v2/ThreadStartResponse";
 import type { TurnStartParams } from "../protocol/generated/v2/TurnStartParams";
 import type { TurnStartResponse } from "../protocol/generated/v2/TurnStartResponse";
@@ -15,7 +13,7 @@ import type { UserInput } from "../protocol/generated/v2/UserInput";
 import { createConversationFromThread } from "./conversationState";
 import { mapConversationToThreadSummary, getActiveTurnId, isConversationStreaming } from "./conversationSelectors";
 import { mapConversationToTimelineEntries } from "./conversationTimeline";
-import { consumePrewarmedThread, hasPrewarmedThread, registerPrewarmedThreadPromise } from "./prewarmedThreadManager";
+import { consumePrewarmedThread } from "./prewarmedThreadManager";
 import { useAppStore } from "../state/store";
 import { listThreadsForWorkspace } from "./workspaceThread";
 
@@ -64,10 +62,6 @@ function resolvePlanMode(modes: ReadonlyArray<CollaborationModePreset>, selectio
   return { mode: "plan", settings: { model: preset.model ?? selection.model ?? "", reasoning_effort: preset.reasoningEffort ?? selection.effort ?? null, developer_instructions: null } };
 }
 
-function createDraftConversation(workspacePath: string | null): DraftConversationState {
-  return { workspacePath, createdAt: new Date().toISOString() };
-}
-
 export function useWorkspaceConversation(options: UseWorkspaceConversationOptions): WorkspaceConversationController {
   const { state, dispatch } = useAppStore();
   const resumingConversationIds = useRef(new Set<string>());
@@ -106,17 +100,19 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
   }, [ensureConversationResumed, selectedConversation]);
 
   const createThread = useCallback(async () => {
-    dispatch({ type: "conversation/draftOpened", draft: createDraftConversation(options.selectedRootPath) });
-    if (options.selectedRootPath === null || hasPrewarmedThread(options.selectedRootPath)) {
-      return;
+    if (options.selectedRootPath === null) {
+      throw new Error("请先选择工作区。");
     }
-    const promise = (async () => {
-      const params: ThreadStartParams = { cwd: options.selectedRootPath ?? undefined, experimentalRawEvents: false, persistExtendedHistory: true };
-      const response = (await options.hostBridge.rpc.request({ method: "thread/start", params })).result as ThreadStartResponse;
-      dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(response.thread, { hidden: true, resumeState: "resumed" }) });
-      return response;
-    })();
-    registerPrewarmedThreadPromise(options.selectedRootPath, promise);
+    const prewarmedResponse = await consumePrewarmedThread(options.selectedRootPath);
+    const response = prewarmedResponse
+      ?? ((await options.hostBridge.rpc.request({
+        method: "thread/start",
+        params: { cwd: options.selectedRootPath, experimentalRawEvents: false, persistExtendedHistory: true },
+      })).result as ThreadStartResponse);
+    const conversation = createConversationFromThread(response.thread, { hidden: false, resumeState: "resumed" });
+    dispatch({ type: "conversation/upserted", conversation });
+    dispatch({ type: "conversation/selected", conversationId: conversation.id });
+    dispatch({ type: "conversation/draftCleared" });
   }, [dispatch, options.hostBridge.rpc, options.selectedRootPath]);
 
   const startTurn = useCallback(async (conversationId: string, text: string, sendOptions: SendTurnOptions, cwdOverride: string | null) => {

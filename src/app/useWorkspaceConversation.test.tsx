@@ -49,8 +49,25 @@ function renderConversation(hostBridge: HostBridge) {
 }
 
 describe("useWorkspaceConversation", () => {
-  it("opens draft conversation without selecting a real thread", async () => {
-    const request = vi.fn(async () => ({ requestId: "request-1", result: { thread: createThread(), model: "gpt-5.2", modelProvider: "openai", serviceTier: null, cwd: "E:/code/FPGA", approvalPolicy: "on-request", sandbox: { type: "workspace-write", networkAccess: false, writableRoots: [], readableRoots: null }, reasoningEffort: "medium" } }));
+  it("creates and selects a real thread in the current workspace", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "thread/start") {
+        return {
+          requestId: "request-1",
+          result: {
+            thread: createThread(),
+            model: "gpt-5.2",
+            modelProvider: "openai",
+            serviceTier: null,
+            cwd: "E:/code/FPGA",
+            approvalPolicy: "on-request",
+            sandbox: { type: "workspace-write", networkAccess: false, writableRoots: [], readableRoots: null },
+            reasoningEffort: "medium",
+          },
+        };
+      }
+      throw new Error(`unexpected method: ${input.method}`);
+    });
     const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
     const { result } = renderConversation(hostBridge);
 
@@ -58,14 +75,29 @@ describe("useWorkspaceConversation", () => {
       await result.current.conversation.createThread();
     });
 
-    expect(result.current.conversation.draftActive).toBe(true);
-    expect(result.current.conversation.selectedThreadId).toBeNull();
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/start", params: expect.objectContaining({ cwd: "E:/code/FPGA" }) }));
+    expect(result.current.conversation.draftActive).toBe(false);
+    expect(result.current.conversation.selectedThreadId).toBe("thread-1");
+    expect(result.current.conversation.selectedThread?.cwd).toBe("E:/code/FPGA");
+    expect(result.current.conversation.workspaceThreads.map((thread) => thread.id)).toContain("thread-1");
   });
 
   it("starts official conversation on first send", async () => {
     const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
       if (input.method === "thread/start") {
-        return { requestId: "request-1", result: { thread: createThread(), model: "gpt-5.2", modelProvider: "openai", serviceTier: null, cwd: "E:/code/FPGA", approvalPolicy: "on-request", sandbox: { type: "workspace-write", networkAccess: false, writableRoots: [], readableRoots: null }, reasoningEffort: "medium" } };
+        return {
+          requestId: "request-1",
+          result: {
+            thread: createThread(),
+            model: "gpt-5.2",
+            modelProvider: "openai",
+            serviceTier: null,
+            cwd: "E:/code/FPGA",
+            approvalPolicy: "on-request",
+            sandbox: { type: "workspace-write", networkAccess: false, writableRoots: [], readableRoots: null },
+            reasoningEffort: "medium",
+          },
+        };
       }
       if (input.method === "turn/start") {
         return { requestId: "request-2", result: { turn: createTurn() } };

@@ -16,10 +16,7 @@ export function HomeTimelineEntry(props: HomeTimelineEntryProps): JSX.Element {
     return <HomeChatMessage message={props.node.message} />;
   }
   if (props.node.kind === "assistantMessage") {
-    return <HomeChatMessage message={props.node.message} />;
-  }
-  if (props.node.kind === "assistantThinking") {
-    return <HomeChatMessage message={props.node.message} showThinkingIndicator />;
+    return <HomeChatMessage message={props.node.message} showThinkingIndicator={props.node.showThinkingIndicator} />;
   }
   if (props.node.kind === "reasoningBlock") {
     return <HomeThinkingBlock block={props.node.block} />;

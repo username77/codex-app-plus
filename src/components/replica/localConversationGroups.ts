@@ -27,10 +27,35 @@ import type {
 } from "../../domain/timeline";
 
 const REASONING_LABEL = "Reasoning";
+const STREAMING_STATUS = "streaming";
 
-export type TraceEntry = CommandExecutionEntry | FileChangeEntry | McpToolCallEntry | DynamicToolCallEntry | CollabAgentToolCallEntry | WebSearchEntry | ImageViewEntry;
-export type RequestBlock = PendingApprovalEntry | PendingUserInputEntry | PendingToolCallEntry | PendingTokenRefreshEntry;
-export type AuxiliaryBlock = PlanEntry | TurnPlanSnapshotEntry | TurnDiffSnapshotEntry | ReviewModeEntry | ContextCompactionEntry | RawResponseEntry | SystemNoticeEntry | TokenUsageEntry | RealtimeSessionEntry | RealtimeAudioEntry | FuzzySearchEntry;
+export type TraceEntry =
+  | CommandExecutionEntry
+  | FileChangeEntry
+  | McpToolCallEntry
+  | DynamicToolCallEntry
+  | CollabAgentToolCallEntry
+  | WebSearchEntry
+  | ImageViewEntry;
+
+export type RequestBlock =
+  | PendingApprovalEntry
+  | PendingUserInputEntry
+  | PendingToolCallEntry
+  | PendingTokenRefreshEntry;
+
+export type AuxiliaryBlock =
+  | PlanEntry
+  | TurnPlanSnapshotEntry
+  | TurnDiffSnapshotEntry
+  | ReviewModeEntry
+  | ContextCompactionEntry
+  | RawResponseEntry
+  | SystemNoticeEntry
+  | TokenUsageEntry
+  | RealtimeSessionEntry
+  | RealtimeAudioEntry
+  | FuzzySearchEntry;
 
 export interface ReasoningBlock {
   readonly id: string;
@@ -38,13 +63,17 @@ export interface ReasoningBlock {
   readonly summary: string | null;
 }
 
+export interface AssistantRenderMessage {
+  readonly message: ConversationMessage;
+  readonly showThinkingIndicator: boolean;
+}
+
 type AssistantFlowNode =
-  | { readonly key: string; readonly kind: "assistantMessage"; readonly message: ConversationMessage }
+  | { readonly key: string; readonly kind: "assistantMessage"; readonly message: ConversationMessage; readonly showThinkingIndicator: boolean }
   | { readonly key: string; readonly kind: "reasoningBlock"; readonly block: ReasoningBlock }
   | { readonly key: string; readonly kind: "traceItem"; readonly item: TraceEntry }
   | { readonly key: string; readonly kind: "requestBlock"; readonly entry: RequestBlock }
-  | { readonly key: string; readonly kind: "auxiliaryBlock"; readonly entry: AuxiliaryBlock }
-  | { readonly key: string; readonly kind: "assistantThinking"; readonly message: ConversationMessage };
+  | { readonly key: string; readonly kind: "auxiliaryBlock"; readonly entry: AuxiliaryBlock };
 
 export interface ConversationRenderGroup {
   readonly key: string;
@@ -61,19 +90,14 @@ export function splitActivitiesIntoRenderGroups(
   entries: ReadonlyArray<TimelineEntry>,
   activeTurnId: string | null,
 ): Array<ConversationRenderGroup> {
-  const visibleEntries = entries.filter(isVisibleEntry);
-  return groupActivitiesByTurn(visibleEntries)
+  return groupActivitiesByTurn(entries.filter(isVisibleEntry))
     .map((group) => buildConversationRenderGroup(group, group[0]?.turnId === activeTurnId))
     .filter((group) => group.userBubble !== null || group.assistantFlow.length > 0);
 }
 
 export function flattenConversationRenderGroup(group: ConversationRenderGroup): Array<ConversationRenderNode> {
-  const nodes: Array<ConversationRenderNode> = [];
-  if (group.userBubble !== null) {
-    nodes.push({ key: group.userBubble.id, kind: "userBubble", message: group.userBubble });
-  }
-  nodes.push(...group.assistantFlow);
-  return nodes;
+  const nodes = group.assistantFlow.map<ConversationRenderNode>((node) => node);
+  return group.userBubble === null ? nodes : [{ key: group.userBubble.id, kind: "userBubble", message: group.userBubble }, ...nodes];
 }
 
 function isVisibleEntry(entry: TimelineEntry): boolean {
@@ -82,34 +106,27 @@ function isVisibleEntry(entry: TimelineEntry): boolean {
 
 function groupActivitiesByTurn(entries: ReadonlyArray<TimelineEntry>): Array<Array<TimelineEntry>> {
   const groups: Array<Array<TimelineEntry>> = [];
-  let current: Array<TimelineEntry> = [];
+  let currentGroup: Array<TimelineEntry> = [];
   let currentTurnId: string | null | undefined;
 
   for (const entry of entries) {
-    if (current.length === 0) {
-      current = [entry];
+    if (currentGroup.length === 0 || entry.turnId === currentTurnId) {
+      currentGroup.push(entry);
       currentTurnId = entry.turnId;
       continue;
     }
-    if (entry.turnId === currentTurnId) {
-      current.push(entry);
-      continue;
-    }
-    groups.push(current);
-    current = [entry];
+    groups.push(currentGroup);
+    currentGroup = [entry];
     currentTurnId = entry.turnId;
   }
 
-  if (current.length > 0) {
-    groups.push(current);
+  if (currentGroup.length > 0) {
+    groups.push(currentGroup);
   }
   return groups;
 }
 
-function buildConversationRenderGroup(
-  items: ReadonlyArray<TimelineEntry>,
-  activeTurn: boolean,
-): ConversationRenderGroup {
+function buildConversationRenderGroup(items: ReadonlyArray<TimelineEntry>, activeTurn: boolean): ConversationRenderGroup {
   const turnId = items[0]?.turnId ?? null;
   const userBubble = items.find(isUserMessage) ?? null;
   return {
@@ -125,82 +142,86 @@ function createAssistantFlow(
   activeTurn: boolean,
   userBubble: ConversationMessage | null,
 ): Array<AssistantFlowNode> {
-  const nodes: Array<AssistantFlowNode> = [];
-
-  for (const item of items) {
-    if (isUserMessage(item)) {
-      continue;
-    }
-
-    const node = mapAssistantFlowNode(item);
-    if (node !== null) {
-      nodes.push(node);
-    }
+  const nodes = items.flatMap((entry) => mapAssistantFlowNode(entry));
+  if (!shouldShowThinkingIndicator(activeTurn, userBubble, nodes)) {
+    return nodes;
   }
-
-  if (shouldAppendThinking(activeTurn, userBubble, items)) {
-    nodes.push(createThinkingNode(items[0]?.threadId ?? "thread", items[0]?.turnId ?? null));
-  }
-  return nodes;
+  const lastAssistantIndex = findLastAssistantIndex(nodes);
+  return lastAssistantIndex >= 0
+    ? nodes.map((node, index) => (index === lastAssistantIndex && node.kind === "assistantMessage" ? { ...node, showThinkingIndicator: true } : node))
+    : [...nodes, createAssistantPlaceholder(items[0]?.threadId ?? "thread", items[0]?.turnId ?? null)];
 }
 
-function mapAssistantFlowNode(entry: TimelineEntry): AssistantFlowNode | null {
+function mapAssistantFlowNode(entry: TimelineEntry): Array<AssistantFlowNode> {
+  if (isUserMessage(entry)) {
+    return [];
+  }
   if (isAssistantMessage(entry)) {
-    return { key: entry.id, kind: "assistantMessage", message: entry };
+    return [{ key: entry.id, kind: "assistantMessage", message: entry, showThinkingIndicator: false }];
   }
   if (isReasoningEntry(entry)) {
-    return { key: entry.id, kind: "reasoningBlock", block: createReasoningBlock(entry) };
+    return [{ key: entry.id, kind: "reasoningBlock", block: createReasoningBlock(entry) }];
   }
   if (isTraceEntry(entry)) {
-    return { key: entry.id, kind: "traceItem", item: entry };
+    return [{ key: entry.id, kind: "traceItem", item: entry }];
   }
   if (isRequestBlock(entry)) {
-    return { key: entry.id, kind: "requestBlock", entry };
+    return [{ key: entry.id, kind: "requestBlock", entry }];
   }
   if (isAuxiliaryBlock(entry)) {
-    return { key: entry.id, kind: "auxiliaryBlock", entry };
+    return [{ key: entry.id, kind: "auxiliaryBlock", entry }];
   }
-  return null;
+  return [];
 }
 
 function createReasoningBlock(entry: ReasoningEntry): ReasoningBlock {
-  const summary = entry.summary.map((item) => item.trim()).filter(Boolean).join("\n") || null;
-  return { id: entry.id, label: REASONING_LABEL, summary };
+  return {
+    id: entry.id,
+    label: REASONING_LABEL,
+    summary: entry.summary.map((item) => item.trim()).filter(Boolean).join("\n") || null,
+  };
 }
 
-function shouldAppendThinking(
+function shouldShowThinkingIndicator(
   activeTurn: boolean,
   userBubble: ConversationMessage | null,
-  items: ReadonlyArray<TimelineEntry>,
+  nodes: ReadonlyArray<AssistantFlowNode>,
 ): boolean {
-  return activeTurn && userBubble !== null && !items.some(isRequestBlock);
+  return activeTurn && userBubble !== null && nodes.every((node) => node.kind !== "requestBlock");
 }
 
-function createThinkingNode(
-  threadId: string,
-  turnId: string | null,
-): Extract<AssistantFlowNode, { kind: "assistantThinking" }> {
+function findLastAssistantIndex(nodes: ReadonlyArray<AssistantFlowNode>): number {
+  for (let index = nodes.length - 1; index >= 0; index -= 1) {
+    if (nodes[index]?.kind === "assistantMessage") {
+      return index;
+    }
+  }
+  return -1;
+}
+
+function createAssistantPlaceholder(threadId: string, turnId: string | null): AssistantFlowNode {
   return {
-    key: `${turnId ?? "turn"}:assistant:thinking`,
-    kind: "assistantThinking",
+    key: `${turnId ?? "turn"}:assistant:placeholder`,
+    kind: "assistantMessage",
+    showThinkingIndicator: true,
     message: {
-      id: `${turnId ?? "turn"}:assistant:thinking`,
+      id: `${turnId ?? "turn"}:assistant:placeholder`,
       kind: "agentMessage",
       role: "assistant",
       threadId,
       turnId,
       itemId: null,
       text: "",
-      status: "streaming",
+      status: STREAMING_STATUS,
     },
   };
 }
 
-function isUserMessage(entry: TimelineEntry): entry is ConversationMessage {
+function isUserMessage(entry: TimelineEntry): entry is ConversationMessage & { kind: "userMessage"; role: "user" } {
   return entry.kind === "userMessage";
 }
 
-function isAssistantMessage(entry: TimelineEntry): entry is ConversationMessage {
+function isAssistantMessage(entry: TimelineEntry): entry is ConversationMessage & { kind: "agentMessage"; role: "assistant" } {
   return entry.kind === "agentMessage";
 }
 
@@ -209,13 +230,32 @@ function isReasoningEntry(entry: TimelineEntry): entry is ReasoningEntry {
 }
 
 function isTraceEntry(entry: TimelineEntry): entry is TraceEntry {
-  return entry.kind === "commandExecution" || entry.kind === "fileChange" || entry.kind === "mcpToolCall" || entry.kind === "dynamicToolCall" || entry.kind === "collabAgentToolCall" || entry.kind === "webSearch" || entry.kind === "imageView";
+  return entry.kind === "commandExecution"
+    || entry.kind === "fileChange"
+    || entry.kind === "mcpToolCall"
+    || entry.kind === "dynamicToolCall"
+    || entry.kind === "collabAgentToolCall"
+    || entry.kind === "webSearch"
+    || entry.kind === "imageView";
 }
 
 function isRequestBlock(entry: TimelineEntry): entry is RequestBlock {
-  return entry.kind === "pendingApproval" || entry.kind === "pendingUserInput" || entry.kind === "pendingToolCall" || entry.kind === "pendingTokenRefresh";
+  return entry.kind === "pendingApproval"
+    || entry.kind === "pendingUserInput"
+    || entry.kind === "pendingToolCall"
+    || entry.kind === "pendingTokenRefresh";
 }
 
 function isAuxiliaryBlock(entry: TimelineEntry): entry is AuxiliaryBlock {
-  return entry.kind === "plan" || entry.kind === "turnPlanSnapshot" || entry.kind === "turnDiffSnapshot" || entry.kind === "reviewMode" || entry.kind === "contextCompaction" || entry.kind === "rawResponse" || entry.kind === "systemNotice" || entry.kind === "tokenUsage" || entry.kind === "realtimeSession" || entry.kind === "realtimeAudio" || entry.kind === "fuzzySearch";
+  return entry.kind === "plan"
+    || entry.kind === "turnPlanSnapshot"
+    || entry.kind === "turnDiffSnapshot"
+    || entry.kind === "reviewMode"
+    || entry.kind === "contextCompaction"
+    || entry.kind === "rawResponse"
+    || entry.kind === "systemNotice"
+    || entry.kind === "tokenUsage"
+    || entry.kind === "realtimeSession"
+    || entry.kind === "realtimeAudio"
+    || entry.kind === "fuzzySearch";
 }

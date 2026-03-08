@@ -65,10 +65,7 @@ function createScrollKey(groups: ReadonlyArray<RenderGroup>): string {
     return `${lastNode.key}:${lastNode.message.status}:${lastNode.message.text.length}`;
   }
   if (lastNode.kind === "assistantMessage") {
-    return `${lastNode.key}:${lastNode.message.status}:${lastNode.message.text.length}`;
-  }
-  if (lastNode.kind === "assistantThinking") {
-    return `${lastNode.key}:${lastNode.message.status}:thinking`;
+    return `${lastNode.key}:${lastNode.message.status}:${lastNode.message.text.length}:${lastNode.showThinkingIndicator ? "thinking" : "idle"}`;
   }
   if (lastNode.kind === "reasoningBlock") {
     return `${lastNode.key}:${lastNode.block.summary ?? ""}`;
