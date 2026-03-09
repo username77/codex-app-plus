@@ -108,6 +108,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       embeddedTerminalShell="powerShell"
       followUpQueueMode="queue"
       composerEnterBehavior="enter"
+      composerPermissionLevel="default"
       connectionStatus="connected"
       fatalError={null}
       authStatus="authenticated"
@@ -118,6 +119,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       onDismissSettingsMenu={vi.fn()}
       onOpenSettings={vi.fn()}
       onSelectWorkspaceOpener={vi.fn()}
+      onSelectComposerPermissionLevel={vi.fn()}
       onSelectRoot={vi.fn()}
       onSelectThread={vi.fn()}
       onInputChange={vi.fn()}

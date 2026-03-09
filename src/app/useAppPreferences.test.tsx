@@ -18,6 +18,7 @@ describe("useAppPreferences", () => {
     expect(result.current.embeddedTerminalShell).toBe(DEFAULT_APP_PREFERENCES.embeddedTerminalShell);
     expect(result.current.uiLanguage).toBe(DEFAULT_APP_PREFERENCES.uiLanguage);
     expect(result.current.threadDetailLevel).toBe(DEFAULT_APP_PREFERENCES.threadDetailLevel);
+    expect(result.current.composerPermissionLevel).toBe(DEFAULT_APP_PREFERENCES.composerPermissionLevel);
   });
 
   it("persists updated preferences after remount", async () => {
@@ -28,6 +29,7 @@ describe("useAppPreferences", () => {
       first.result.current.setEmbeddedTerminalShell("gitBash");
       first.result.current.setUiLanguage("en-US");
       first.result.current.setThreadDetailLevel("full");
+      first.result.current.setComposerPermissionLevel("full");
     });
 
     await waitFor(() => {
@@ -42,6 +44,7 @@ describe("useAppPreferences", () => {
     expect(second.result.current.embeddedTerminalShell).toBe("gitBash");
     expect(second.result.current.uiLanguage).toBe("en-US");
     expect(second.result.current.threadDetailLevel).toBe("full");
+    expect(second.result.current.composerPermissionLevel).toBe("full");
   });
 
   it("falls back invalid stored values to defaults", () => {
@@ -51,7 +54,8 @@ describe("useAppPreferences", () => {
         workspaceOpener: "unknown",
         embeddedTerminalShell: "bad-shell",
         uiLanguage: "fr-FR",
-        threadDetailLevel: "verbose"
+        threadDetailLevel: "verbose",
+        composerPermissionLevel: "admin"
       })
     );
 
@@ -61,5 +65,6 @@ describe("useAppPreferences", () => {
     expect(result.current.embeddedTerminalShell).toBe(DEFAULT_APP_PREFERENCES.embeddedTerminalShell);
     expect(result.current.uiLanguage).toBe(DEFAULT_APP_PREFERENCES.uiLanguage);
     expect(result.current.threadDetailLevel).toBe(DEFAULT_APP_PREFERENCES.threadDetailLevel);
+    expect(result.current.composerPermissionLevel).toBe(DEFAULT_APP_PREFERENCES.composerPermissionLevel);
   });
 });

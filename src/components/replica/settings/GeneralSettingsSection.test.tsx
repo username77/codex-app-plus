@@ -21,7 +21,9 @@ function renderSection(): void {
           setFollowUpQueueMode: (followUpQueueMode) =>
             setPreferences((current) => ({ ...current, followUpQueueMode })),
           setComposerEnterBehavior: (composerEnterBehavior) =>
-            setPreferences((current) => ({ ...current, composerEnterBehavior }))
+            setPreferences((current) => ({ ...current, composerEnterBehavior })),
+          setComposerPermissionLevel: (composerPermissionLevel) =>
+            setPreferences((current) => ({ ...current, composerPermissionLevel }))
         }}
       />
     );

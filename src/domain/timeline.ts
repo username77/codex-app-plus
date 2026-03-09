@@ -1,3 +1,4 @@
+import type { ComposerPermissionLevel } from "../app/composerPermission";
 import type { ReasoningEffort } from "../protocol/generated/ReasoningEffort";
 import type { Tool } from "../protocol/generated/Tool";
 import type { ModeKind } from "../protocol/generated/ModeKind";
@@ -215,6 +216,7 @@ export interface QueuedFollowUp {
   readonly text: string;
   readonly model: string | null;
   readonly effort: ReasoningEffort | null;
+  readonly permissionLevel: ComposerPermissionLevel;
   readonly planModeEnabled: boolean;
   readonly mode: FollowUpMode;
   readonly createdAt: string;

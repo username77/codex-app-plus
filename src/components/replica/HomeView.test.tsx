@@ -103,6 +103,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       embeddedTerminalShell="powerShell"
       followUpQueueMode="queue"
       composerEnterBehavior="enter"
+      composerPermissionLevel="default"
       connectionStatus="connected"
       fatalError={null}
       authStatus="authenticated"
@@ -113,6 +114,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       onDismissSettingsMenu={vi.fn()}
       onOpenSettings={vi.fn()}
       onSelectWorkspaceOpener={vi.fn()}
+      onSelectComposerPermissionLevel={vi.fn()}
       onSelectRoot={vi.fn()}
       onSelectThread={vi.fn()}
       onInputChange={vi.fn()}
@@ -280,6 +282,7 @@ describe("HomeView", () => {
           text: "继续修测试",
           model: "gpt-5.2",
           effort: "medium",
+          permissionLevel: "default",
           planModeEnabled: false,
           mode: "queue",
           createdAt: "2026-03-06T09:00:00.000Z"

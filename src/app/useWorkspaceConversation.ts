@@ -15,12 +15,24 @@ import { mapConversationToThreadSummary, getActiveTurnId, isConversationStreamin
 import { mapConversationToTimelineEntries } from "./conversationTimeline";
 import { consumePrewarmedThread } from "./prewarmedThreadManager";
 import { useAppStore } from "../state/store";
+import {
+  createThreadPermissionOverrides,
+  createTurnPermissionOverrides,
+  DEFAULT_COMPOSER_PERMISSION_LEVEL,
+  type ComposerPermissionLevel,
+} from "./composerPermission";
 import { listThreadsForWorkspace } from "./workspaceThread";
 
 export interface SendTurnOptions {
   readonly selection: ComposerSelection;
+  readonly permissionLevel: ComposerPermissionLevel;
   readonly planModeEnabled: boolean;
   readonly followUpOverride?: FollowUpMode | null;
+}
+
+interface CreateThreadOptions {
+  readonly model?: string | null;
+  readonly permissionLevel?: ComposerPermissionLevel;
 }
 
 interface WorkspaceConversationController {
@@ -34,7 +46,7 @@ interface WorkspaceConversationController {
   readonly queuedFollowUps: ReadonlyArray<QueuedFollowUp>;
   readonly draftActive: boolean;
   readonly selectedConversationLoading: boolean;
-  createThread: (model?: string | null) => Promise<void>;
+  createThread: (options?: CreateThreadOptions) => Promise<void>;
   selectThread: (threadId: string | null) => void;
   sendTurn: (options: SendTurnOptions) => Promise<void>;
   interruptActiveTurn: () => Promise<void>;
@@ -54,7 +66,7 @@ function createInput(text: string): Array<UserInput> {
 }
 
 function createQueuedFollowUp(text: string, options: SendTurnOptions): QueuedFollowUp {
-  return { id: `follow-up-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`, text, model: options.selection.model, effort: options.selection.effort, planModeEnabled: options.planModeEnabled, mode: options.followUpOverride ?? "queue", createdAt: new Date().toISOString() };
+  return { id: `follow-up-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`, text, model: options.selection.model, effort: options.selection.effort, permissionLevel: options.permissionLevel, planModeEnabled: options.planModeEnabled, mode: options.followUpOverride ?? "queue", createdAt: new Date().toISOString() };
 }
 
 function resolvePlanMode(modes: ReadonlyArray<CollaborationModePreset>, selection: ComposerSelection): CollaborationMode | undefined {
@@ -122,15 +134,16 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     }
   }, [ensureConversationResumed, selectedConversation]);
 
-  const createThread = useCallback(async () => {
+  const createThread = useCallback(async (createOptions?: CreateThreadOptions) => {
     if (options.selectedRootPath === null) {
       throw new Error("请先选择工作区。");
     }
+    const permissionLevel = createOptions?.permissionLevel ?? DEFAULT_COMPOSER_PERMISSION_LEVEL;
     const prewarmedResponse = await consumePrewarmedThread(options.selectedRootPath);
     const response = prewarmedResponse
       ?? ((await options.hostBridge.rpc.request({
         method: "thread/start",
-        params: { cwd: options.selectedRootPath, experimentalRawEvents: false, persistExtendedHistory: true },
+        params: { model: createOptions?.model ?? undefined, cwd: options.selectedRootPath, experimentalRawEvents: false, persistExtendedHistory: true, ...createThreadPermissionOverrides(permissionLevel) },
       })).result as ThreadStartResponse);
     const conversation = createConversationFromThread(response.thread, { hidden: false, resumeState: "resumed" });
     dispatch({ type: "conversation/upserted", conversation });
@@ -141,7 +154,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
   const startTurn = useCallback(async (conversationId: string, text: string, sendOptions: SendTurnOptions, cwdOverride: string | null) => {
     const collaborationMode = sendOptions.planModeEnabled ? resolvePlanMode(options.collaborationModes, sendOptions.selection) : undefined;
     dispatch({ type: "conversation/turnPlaceholderAdded", conversationId, params: { input: createInput(text), cwd: cwdOverride, model: sendOptions.selection.model, effort: sendOptions.selection.effort, collaborationMode: collaborationMode ?? null } });
-    const params: TurnStartParams = { threadId: conversationId, model: sendOptions.selection.model ?? undefined, effort: sendOptions.selection.effort ?? undefined, cwd: cwdOverride ?? undefined, input: createInput(text), collaborationMode };
+    const params: TurnStartParams = { threadId: conversationId, model: sendOptions.selection.model ?? undefined, effort: sendOptions.selection.effort ?? undefined, cwd: cwdOverride ?? undefined, input: createInput(text), collaborationMode, ...createTurnPermissionOverrides(sendOptions.permissionLevel) };
     const response = (await options.hostBridge.rpc.request({ method: "turn/start", params })).result as TurnStartResponse;
     dispatch({ type: "conversation/turnStarted", conversationId, turn: response.turn });
     dispatch({ type: "conversation/touched", conversationId, updatedAt: new Date().toISOString() });
@@ -153,7 +166,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
       throw new Error("请先选择工作区。");
     }
     const prewarmedResponse = await consumePrewarmedThread(workspacePath);
-    const response = prewarmedResponse ?? (await options.hostBridge.rpc.request({ method: "thread/start", params: { model: sendOptions.selection.model ?? undefined, cwd: workspacePath, experimentalRawEvents: false, persistExtendedHistory: true } })).result as ThreadStartResponse;
+    const response = prewarmedResponse ?? (await options.hostBridge.rpc.request({ method: "thread/start", params: { model: sendOptions.selection.model ?? undefined, cwd: workspacePath, experimentalRawEvents: false, persistExtendedHistory: true, ...createThreadPermissionOverrides(sendOptions.permissionLevel) } })).result as ThreadStartResponse;
     const conversation = createConversationFromThread(response.thread, { hidden: false, resumeState: "resumed" });
     dispatch({ type: "conversation/upserted", conversation });
     dispatch({ type: "conversation/selected", conversationId: conversation.id });
@@ -195,7 +208,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     drainingConversationIds.current.add(conversationId);
     try {
       await ensureConversationResumed(conversationId);
-      await startTurn(conversationId, queued.text, { selection: { model: queued.model, effort: queued.effort }, planModeEnabled: queued.planModeEnabled, followUpOverride: queued.mode }, conversation.cwd ?? options.selectedRootPath);
+      await startTurn(conversationId, queued.text, { selection: { model: queued.model, effort: queued.effort }, permissionLevel: queued.permissionLevel, planModeEnabled: queued.planModeEnabled, followUpOverride: queued.mode }, conversation.cwd ?? options.selectedRootPath);
       dispatch({ type: "followUp/dequeued", conversationId, followUpId: queued.id });
     } finally {
       drainingConversationIds.current.delete(conversationId);

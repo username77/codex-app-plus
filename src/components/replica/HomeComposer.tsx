@@ -1,4 +1,5 @@
 import { useState, type KeyboardEvent } from "react";
+import type { ComposerPermissionLevel } from "../../app/composerPermission";
 import type { ComposerModelOption, ComposerSelection } from "../../app/composerPreferences";
 import type { SendTurnOptions } from "../../app/useWorkspaceConversation";
 import { useComposerSelection } from "../../app/useComposerSelection";
@@ -22,10 +23,12 @@ export interface HomeComposerProps {
   readonly queuedFollowUps: ReadonlyArray<QueuedFollowUp>;
   readonly followUpQueueMode: FollowUpMode;
   readonly composerEnterBehavior: ComposerEnterBehavior;
+  readonly permissionLevel: ComposerPermissionLevel;
   readonly isResponding: boolean;
   readonly interruptPending: boolean;
   readonly onInputChange: (text: string) => void;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
+  readonly onSelectPermissionLevel: (level: ComposerPermissionLevel) => void;
   readonly onInterruptTurn: () => Promise<void>;
   readonly onRemoveQueuedFollowUp: (followUpId: string) => void;
   readonly onClearQueuedFollowUps: () => void;
@@ -145,6 +148,7 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
     }
     void props.onSendTurn({
       selection: createSelection(composerSelection.selectedModel, composerSelection.selectedEffort),
+      permissionLevel: props.permissionLevel,
       planModeEnabled,
       followUpOverride
     });
@@ -213,7 +217,7 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
           </button>
         </div>
       </div>
-      <ComposerFooter />
+      <ComposerFooter permissionLevel={props.permissionLevel} onSelectPermission={props.onSelectPermissionLevel} />
     </footer>
   );
 }

@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
+import type { ComposerPermissionLevel } from "../../app/composerPermission";
 import { OfficialArrowTopRightIcon, OfficialWorktreeIcon } from "./officialIcons";
 
-export type PermissionLevel = "default" | "full";
+export type PermissionLevel = ComposerPermissionLevel;
 
 interface PermissionOption {
   readonly key: PermissionLevel;
@@ -214,4 +215,3 @@ export function BranchPopover(props: {
     </div>
   );
 }
-

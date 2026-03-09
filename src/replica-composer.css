@@ -288,6 +288,9 @@
   color: #8f8f8f;
   font-size: 14px;
 }
+.composer-footer-popover-open {
+  z-index: 41;
+}
 .composer-footer-left {
   display: flex;
   gap: 0;
@@ -327,11 +330,14 @@
   padding: 0;
   background: transparent;
 }
+.composer-footer-popover-backdrop {
+  z-index: 39;
+}
 .composer-footer-popover {
   position: absolute;
   left: 0;
   bottom: 34px;
-  z-index: 30;
+  z-index: 40;
   width: 260px;
   border: 1px solid #dedede;
   border-radius: 16px;

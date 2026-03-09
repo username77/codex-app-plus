@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  DEFAULT_COMPOSER_PERMISSION_LEVEL,
+  isComposerPermissionLevel,
+  type ComposerPermissionLevel,
+} from "./composerPermission";
 import type { EmbeddedTerminalShell, WorkspaceOpener } from "../bridge/types";
 import type { ComposerEnterBehavior, FollowUpMode } from "../domain/timeline";
 
@@ -12,6 +17,7 @@ export interface AppPreferences {
   readonly threadDetailLevel: ThreadDetailLevel;
   readonly followUpQueueMode: FollowUpMode;
   readonly composerEnterBehavior: ComposerEnterBehavior;
+  readonly composerPermissionLevel: ComposerPermissionLevel;
 }
 
 export interface AppPreferencesController extends AppPreferences {
@@ -21,6 +27,7 @@ export interface AppPreferencesController extends AppPreferences {
   setThreadDetailLevel: (detailLevel: ThreadDetailLevel) => void;
   setFollowUpQueueMode: (mode: FollowUpMode) => void;
   setComposerEnterBehavior: (behavior: ComposerEnterBehavior) => void;
+  setComposerPermissionLevel: (level: ComposerPermissionLevel) => void;
 }
 
 export const APP_PREFERENCES_STORAGE_KEY = "codex-app-plus.app-preferences";
@@ -51,7 +58,8 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   uiLanguage: "zh-CN",
   threadDetailLevel: "commands",
   followUpQueueMode: "queue",
-  composerEnterBehavior: "enter"
+  composerEnterBehavior: "enter",
+  composerPermissionLevel: DEFAULT_COMPOSER_PERMISSION_LEVEL
 };
 
 function isPreferenceValue<T extends string>(allowedValues: ReadonlyArray<T>, value: unknown): value is T {
@@ -81,7 +89,10 @@ function sanitizeStoredPreferences(value: unknown): AppPreferences {
       : DEFAULT_APP_PREFERENCES.followUpQueueMode,
     composerEnterBehavior: isPreferenceValue(COMPOSER_ENTER_BEHAVIORS, record.composerEnterBehavior)
       ? record.composerEnterBehavior
-      : DEFAULT_APP_PREFERENCES.composerEnterBehavior
+      : DEFAULT_APP_PREFERENCES.composerEnterBehavior,
+    composerPermissionLevel: isComposerPermissionLevel(record.composerPermissionLevel)
+      ? record.composerPermissionLevel
+      : DEFAULT_APP_PREFERENCES.composerPermissionLevel
   };
 }
 
@@ -136,6 +147,10 @@ export function useAppPreferences(): AppPreferencesController {
     setPreferences((current) => updatePreferences(current, { composerEnterBehavior }));
   }, []);
 
+  const setComposerPermissionLevel = useCallback((composerPermissionLevel: ComposerPermissionLevel) => {
+    setPreferences((current) => updatePreferences(current, { composerPermissionLevel }));
+  }, []);
+
   return useMemo(
     () => ({
       ...preferences,
@@ -144,11 +159,13 @@ export function useAppPreferences(): AppPreferencesController {
       setUiLanguage,
       setThreadDetailLevel,
       setFollowUpQueueMode,
-      setComposerEnterBehavior
+      setComposerEnterBehavior,
+      setComposerPermissionLevel
     }),
     [
       preferences,
       setComposerEnterBehavior,
+      setComposerPermissionLevel,
       setEmbeddedTerminalShell,
       setFollowUpQueueMode,
       setThreadDetailLevel,

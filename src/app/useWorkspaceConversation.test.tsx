@@ -75,11 +75,35 @@ describe("useWorkspaceConversation", () => {
       await result.current.conversation.createThread();
     });
 
-    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/start", params: expect.objectContaining({ cwd: "E:/code/FPGA" }) }));
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/start", params: expect.objectContaining({ cwd: "E:/code/FPGA", approvalPolicy: "on-request", sandbox: "workspace-write" }) }));
     expect(result.current.conversation.draftActive).toBe(false);
     expect(result.current.conversation.selectedThreadId).toBe("thread-1");
     expect(result.current.conversation.selectedThread?.cwd).toBe("E:/code/FPGA");
     expect(result.current.conversation.workspaceThreads.map((thread) => thread.id)).toContain("thread-1");
+  });
+
+  it("creates a full-access thread when requested", async () => {
+    const request = vi.fn(async () => ({
+      requestId: "request-1",
+      result: {
+        thread: createThread(),
+        model: "gpt-5.2",
+        modelProvider: "openai",
+        serviceTier: null,
+        cwd: "E:/code/FPGA",
+        approvalPolicy: "never",
+        sandbox: { type: "dangerFullAccess" },
+        reasoningEffort: "medium",
+      },
+    }));
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    await act(async () => {
+      await result.current.conversation.createThread({ permissionLevel: "full" });
+    });
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/start", params: expect.objectContaining({ approvalPolicy: "never", sandbox: "danger-full-access" }) }));
   });
 
   it("starts official conversation on first send", async () => {
@@ -112,10 +136,11 @@ describe("useWorkspaceConversation", () => {
     });
 
     await act(async () => {
-      await result.current.conversation.sendTurn({ selection: { model: "gpt-5.2", effort: "medium" }, planModeEnabled: false });
+      await result.current.conversation.sendTurn({ selection: { model: "gpt-5.2", effort: "medium" }, permissionLevel: "default", planModeEnabled: false });
     });
 
-    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/start" }));
+    expect(request).toHaveBeenNthCalledWith(1, expect.objectContaining({ method: "thread/start", params: expect.objectContaining({ approvalPolicy: "on-request", sandbox: "workspace-write" }) }));
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ method: "turn/start", params: expect.objectContaining({ approvalPolicy: "on-request", sandboxPolicy: expect.objectContaining({ type: "workspaceWrite", networkAccess: false }) }) }));
     expect(result.current.conversation.selectedThreadId).toBe("thread-1");
   });
 
@@ -134,10 +159,11 @@ describe("useWorkspaceConversation", () => {
     });
 
     await act(async () => {
-      await result.current.conversation.sendTurn({ selection: { model: "gpt-5.2", effort: "medium" }, planModeEnabled: false });
+      await result.current.conversation.sendTurn({ selection: { model: "gpt-5.2", effort: "medium" }, permissionLevel: "default", planModeEnabled: false });
     });
 
     expect(result.current.conversation.queuedFollowUps).toHaveLength(1);
+    expect(result.current.conversation.queuedFollowUps[0]?.permissionLevel).toBe("default");
   });
 
   it("steers the active turn when requested", async () => {
@@ -160,10 +186,33 @@ describe("useWorkspaceConversation", () => {
     });
 
     await act(async () => {
-      await result.current.conversation.sendTurn({ selection: { model: "gpt-5.2", effort: "medium" }, planModeEnabled: false, followUpOverride: "steer" });
+      await result.current.conversation.sendTurn({ selection: { model: "gpt-5.2", effort: "medium" }, permissionLevel: "default", planModeEnabled: false, followUpOverride: "steer" });
     });
 
     expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/steer" }));
+  });
+
+  it("overrides an existing thread to full access on the next turn", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "turn/start") {
+        return { requestId: "request-1", result: { turn: createTurn() } };
+      }
+      return { requestId: "noop", result: {} };
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread(), { resumeState: "resumed" }) });
+      result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-1" });
+      result.current.store.dispatch({ type: "input/changed", value: "切到完全访问" });
+    });
+
+    await act(async () => {
+      await result.current.conversation.sendTurn({ selection: { model: "gpt-5.2", effort: "medium" }, permissionLevel: "full", planModeEnabled: false });
+    });
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/start", params: expect.objectContaining({ approvalPolicy: "never", sandboxPolicy: { type: "dangerFullAccess" } }) }));
   });
 
   it("interrupts the active turn once and clears pending state after completion", async () => {

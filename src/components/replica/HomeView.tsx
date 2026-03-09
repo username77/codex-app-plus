@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import type { ComposerPermissionLevel } from "../../app/composerPermission";
 import type { ComposerModelOption, ComposerSelection } from "../../app/composerPreferences";
 import type { SendTurnOptions } from "../../app/useWorkspaceConversation";
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
@@ -53,6 +54,7 @@ interface HomeViewProps {
   readonly embeddedTerminalShell: EmbeddedTerminalShell;
   readonly followUpQueueMode: FollowUpMode;
   readonly composerEnterBehavior: ComposerEnterBehavior;
+  readonly composerPermissionLevel: ComposerPermissionLevel;
   readonly connectionStatus: ConnectionStatus;
   readonly fatalError: string | null;
   readonly authStatus: AuthStatus;
@@ -68,6 +70,7 @@ interface HomeViewProps {
   readonly onInputChange: (text: string) => void;
   readonly onCreateThread: () => Promise<void>;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
+  readonly onSelectComposerPermissionLevel: (level: ComposerPermissionLevel) => void;
   readonly onInterruptTurn: () => Promise<void>;
   readonly onAddRoot: () => void;
   readonly onRemoveRoot: (rootId: string) => void;
@@ -105,9 +108,11 @@ interface MainContentProps {
   readonly diffOpen: boolean;
   readonly followUpQueueMode: FollowUpMode;
   readonly composerEnterBehavior: ComposerEnterBehavior;
+  readonly composerPermissionLevel: ComposerPermissionLevel;
   readonly onSelectWorkspaceOpener: (opener: WorkspaceOpener) => void;
   readonly onInputChange: (text: string) => void;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
+  readonly onSelectComposerPermissionLevel: (level: ComposerPermissionLevel) => void;
   readonly onInterruptTurn: () => Promise<void>;
   readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
   readonly onRemoveQueuedFollowUp: (followUpId: string) => void;
@@ -158,10 +163,12 @@ function MainContent(props: MainContentProps): JSX.Element {
         queuedFollowUps={props.queuedFollowUps}
         followUpQueueMode={props.followUpQueueMode}
         composerEnterBehavior={props.composerEnterBehavior}
+        permissionLevel={props.composerPermissionLevel}
         isResponding={props.isResponding}
         interruptPending={props.interruptPending}
         onInputChange={props.onInputChange}
         onSendTurn={props.onSendTurn}
+        onSelectPermissionLevel={props.onSelectComposerPermissionLevel}
         onInterruptTurn={props.onInterruptTurn}
         onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
         onClearQueuedFollowUps={props.onClearQueuedFollowUps}
@@ -259,9 +266,11 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         diffOpen={canShowDiffSidebar}
         followUpQueueMode={props.followUpQueueMode}
         composerEnterBehavior={props.composerEnterBehavior}
+        composerPermissionLevel={props.composerPermissionLevel}
         onSelectWorkspaceOpener={props.onSelectWorkspaceOpener}
         onInputChange={props.onInputChange}
         onSendTurn={props.onSendTurn}
+        onSelectComposerPermissionLevel={props.onSelectComposerPermissionLevel}
         onInterruptTurn={props.onInterruptTurn}
         onResolveServerRequest={props.onResolveServerRequest}
         onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}

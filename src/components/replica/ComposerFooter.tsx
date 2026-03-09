@@ -17,7 +17,7 @@ function PopoverBackdrop(props: { readonly onClick: () => void }): JSX.Element {
   return (
     <button
       type="button"
-      className="composer-popover-backdrop"
+      className="composer-popover-backdrop composer-footer-popover-backdrop"
       onClick={props.onClick}
       aria-label="关闭菜单"
     />
@@ -106,17 +106,20 @@ function BranchFooterButton(props: {
   );
 }
 
-export function ComposerFooter(): JSX.Element {
+export function ComposerFooter(props: {
+  readonly permissionLevel: PermissionLevel;
+  readonly onSelectPermission: (level: PermissionLevel) => void;
+}): JSX.Element {
   const [openPopover, setOpenPopover] = useState<FooterPopover>(null);
-  const [permissionLevel, setPermissionLevel] = useState<PermissionLevel>("full");
   const [selectedBranch, setSelectedBranch] = useState(PRIMARY_BRANCH_NAME);
+  const footerClassName = openPopover === null ? "composer-footer" : "composer-footer composer-footer-popover-open";
 
   const closePopover = () => setOpenPopover(null);
   const togglePopover = (target: Exclude<FooterPopover, null>) =>
     setOpenPopover((current) => (current === target ? null : target));
 
   const onSelectPermission = (level: PermissionLevel) => {
-    setPermissionLevel(level);
+    props.onSelectPermission(level);
     closePopover();
   };
 
@@ -126,11 +129,11 @@ export function ComposerFooter(): JSX.Element {
   };
 
   return (
-    <div className="composer-footer">
+    <div className={footerClassName}>
       {openPopover ? <PopoverBackdrop onClick={closePopover} /> : null}
       <div className="composer-footer-left">
         <WorkspaceFooterButton active={openPopover === "workspace"} onToggle={() => togglePopover("workspace")} onClose={closePopover} />
-        <PermissionsFooterButton active={openPopover === "permissions"} selected={permissionLevel} onToggle={() => togglePopover("permissions")} onSelect={onSelectPermission} />
+        <PermissionsFooterButton active={openPopover === "permissions"} selected={props.permissionLevel} onToggle={() => togglePopover("permissions")} onSelect={onSelectPermission} />
       </div>
       <BranchFooterButton
         active={openPopover === "branch"}

@@ -107,12 +107,12 @@ export function App({ hostBridge }: AppProps): JSX.Element {
 
   const createWorkspaceThread = useCallback(async () => {
     try {
-      await conversation.createThread();
+      await conversation.createThread({ permissionLevel: preferences.composerPermissionLevel });
     } catch (error) {
       console.error("创建工作区会话失败", error);
       window.alert(`创建工作区会话失败: ${String(error)}`);
     }
-  }, [conversation]);
+  }, [conversation, preferences.composerPermissionLevel]);
 
   const sendWorkspaceTurn = useCallback(
     async (sendOptions: Parameters<typeof conversation.sendTurn>[0]) => {
@@ -186,6 +186,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       embeddedTerminalShell={preferences.embeddedTerminalShell}
       followUpQueueMode={preferences.followUpQueueMode}
       composerEnterBehavior={preferences.composerEnterBehavior}
+      composerPermissionLevel={preferences.composerPermissionLevel}
       connectionStatus={controller.state.connectionStatus}
       fatalError={controller.state.fatalError}
       authStatus={controller.state.authStatus}
@@ -196,6 +197,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       onDismissSettingsMenu={() => setSettingsMenuOpen(false)}
       onOpenSettings={openSettings}
       onSelectWorkspaceOpener={preferences.setWorkspaceOpener}
+      onSelectComposerPermissionLevel={preferences.setComposerPermissionLevel}
       onSelectRoot={workspace.selectRoot}
       onSelectThread={conversation.selectThread}
       onInputChange={controller.setInput}
