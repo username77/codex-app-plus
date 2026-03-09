@@ -36,6 +36,8 @@ interface HomeViewProps {
   readonly selectedThread: ThreadSummary | null;
   readonly selectedThreadId: string | null;
   readonly activeTurnId: string | null;
+  readonly isResponding: boolean;
+  readonly interruptPending: boolean;
   readonly activities: ReadonlyArray<TimelineEntry>;
   readonly mcpShortcuts: ReadonlyArray<McpShortcut>;
   readonly banners: ReadonlyArray<UiBanner>;
@@ -66,6 +68,7 @@ interface HomeViewProps {
   readonly onInputChange: (text: string) => void;
   readonly onCreateThread: () => Promise<void>;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
+  readonly onInterruptTurn: () => Promise<void>;
   readonly onAddRoot: () => void;
   readonly onRemoveRoot: (rootId: string) => void;
   readonly onRetryConnection: () => Promise<void>;
@@ -94,6 +97,8 @@ interface MainContentProps {
   readonly selectedRootPath: string | null;
   readonly selectedThread: ThreadSummary | null;
   readonly activeTurnId: string | null;
+  readonly isResponding: boolean;
+  readonly interruptPending: boolean;
   readonly draftActive: boolean;
   readonly selectedConversationLoading: boolean;
   readonly terminalOpen: boolean;
@@ -103,6 +108,7 @@ interface MainContentProps {
   readonly onSelectWorkspaceOpener: (opener: WorkspaceOpener) => void;
   readonly onInputChange: (text: string) => void;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
+  readonly onInterruptTurn: () => Promise<void>;
   readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
   readonly onRemoveQueuedFollowUp: (followUpId: string) => void;
   readonly onClearQueuedFollowUps: () => void;
@@ -152,8 +158,11 @@ function MainContent(props: MainContentProps): JSX.Element {
         queuedFollowUps={props.queuedFollowUps}
         followUpQueueMode={props.followUpQueueMode}
         composerEnterBehavior={props.composerEnterBehavior}
+        isResponding={props.isResponding}
+        interruptPending={props.interruptPending}
         onInputChange={props.onInputChange}
         onSendTurn={props.onSendTurn}
+        onInterruptTurn={props.onInterruptTurn}
         onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
         onClearQueuedFollowUps={props.onClearQueuedFollowUps}
       />
@@ -242,6 +251,8 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         selectedRootPath={props.selectedRootPath}
         selectedThread={props.selectedThread}
         activeTurnId={props.activeTurnId}
+        isResponding={props.isResponding}
+        interruptPending={props.interruptPending}
         draftActive={props.draftActive}
         selectedConversationLoading={props.selectedConversationLoading}
         terminalOpen={terminalOpen}
@@ -251,6 +262,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         onSelectWorkspaceOpener={props.onSelectWorkspaceOpener}
         onInputChange={props.onInputChange}
         onSendTurn={props.onSendTurn}
+        onInterruptTurn={props.onInterruptTurn}
         onResolveServerRequest={props.onResolveServerRequest}
         onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
         onClearQueuedFollowUps={props.onClearQueuedFollowUps}

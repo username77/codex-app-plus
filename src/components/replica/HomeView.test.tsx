@@ -6,12 +6,9 @@ import type { HostBridge } from "../../bridge/types";
 import type { ThreadSummary, TimelineEntry } from "../../domain/types";
 import type { WorkspaceGitController } from "./git/types";
 import { HomeView } from "./HomeView";
-
 const { mockedUseWorkspaceGit } = vi.hoisted(() => ({ mockedUseWorkspaceGit: vi.fn() }));
-
 vi.mock("../terminal/TerminalPanel", () => ({ TerminalPanel: () => null }));
 vi.mock("./git/useWorkspaceGit", () => ({ useWorkspaceGit: mockedUseWorkspaceGit }));
-
 const MODELS: ReadonlyArray<ComposerModelOption> = [
   {
     id: "model-1",
@@ -22,7 +19,6 @@ const MODELS: ReadonlyArray<ComposerModelOption> = [
     isDefault: true
   }
 ];
-
 function createController(): WorkspaceGitController {
   return {
     loading: false,
@@ -59,7 +55,6 @@ function createController(): WorkspaceGitController {
     setNewBranchName: vi.fn()
   };
 }
-
 function createThread(overrides?: Partial<ThreadSummary>): ThreadSummary {
   return {
     id: "thread-1",
@@ -74,12 +69,10 @@ function createThread(overrides?: Partial<ThreadSummary>): ThreadSummary {
     ...overrides
   };
 }
-
 function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
   mockedUseWorkspaceGit.mockReturnValue(createController());
   const root = { id: "root-1", name: "FPGA", path: "E:/code/FPGA" };
   const thread = createThread();
-
   return render(
     <HomeView
       hostBridge={{} as HostBridge}
@@ -93,6 +86,8 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       selectedThread={thread}
       selectedThreadId={thread.id}
       activeTurnId={null}
+      isResponding={false}
+      interruptPending={false}
       activities={[]}
       mcpShortcuts={[]}
       banners={[]}
@@ -123,6 +118,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       onInputChange={vi.fn()}
       onCreateThread={vi.fn().mockResolvedValue(undefined)}
       onSendTurn={vi.fn().mockResolvedValue(undefined)}
+      onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
       onAddRoot={vi.fn()}
       onRemoveRoot={vi.fn()}
       onRetryConnection={vi.fn().mockResolvedValue(undefined)}
@@ -134,16 +130,13 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
     />
   );
 }
-
 describe("HomeView", () => {
   it("submits with plan mode after toggling the attachment switch", () => {
     const onSendTurn = vi.fn().mockResolvedValue(undefined);
     renderHomeView({ onSendTurn });
-
     fireEvent.click(screen.getByRole("button", { name: "Open attachment menu" }));
     fireEvent.click(screen.getByRole("switch", { name: "Toggle plan mode" }));
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
-
     expect(onSendTurn).toHaveBeenCalledWith(
       expect.objectContaining({
         planModeEnabled: true,
@@ -165,9 +158,7 @@ describe("HomeView", () => {
         status: "done"
       }
     ];
-
     const { container } = renderHomeView({ activities });
-
     expect(container.querySelector(".home-chat-proposed-plan")).toBeNull();
     expect(screen.getByRole("heading", { name: "计划书" })).toBeInTheDocument();
   });

@@ -27,6 +27,8 @@ interface WorkspaceConversationController {
   readonly selectedThreadId: string | null;
   readonly selectedThread: ThreadSummary | null;
   readonly activeTurnId: string | null;
+  readonly isResponding: boolean;
+  readonly interruptPending: boolean;
   readonly workspaceThreads: ReadonlyArray<ThreadSummary>;
   readonly activities: ReadonlyArray<TimelineEntry>;
   readonly queuedFollowUps: ReadonlyArray<QueuedFollowUp>;
@@ -35,6 +37,7 @@ interface WorkspaceConversationController {
   createThread: (model?: string | null) => Promise<void>;
   selectThread: (threadId: string | null) => void;
   sendTurn: (options: SendTurnOptions) => Promise<void>;
+  interruptActiveTurn: () => Promise<void>;
   removeQueuedFollowUp: (followUpId: string) => void;
   clearQueuedFollowUps: () => void;
 }
@@ -66,6 +69,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
   const { state, dispatch } = useAppStore();
   const resumingConversationIds = useRef(new Set<string>());
   const drainingConversationIds = useRef(new Set<string>());
+  const interruptRequestKeys = useRef(new Set<string>());
   const visibleConversations = useMemo(() => state.orderedConversationIds.map((conversationId) => state.conversationsById[conversationId]).filter((conversation): conversation is NonNullable<typeof conversation> => conversation !== undefined && conversation.hidden === false), [state.conversationsById, state.orderedConversationIds]);
   const allThreadSummaries = useMemo(() => visibleConversations.map(mapConversationToThreadSummary), [visibleConversations]);
   const workspaceThreads = useMemo(() => listThreadsForWorkspace(allThreadSummaries, options.selectedRootPath), [allThreadSummaries, options.selectedRootPath]);
@@ -77,6 +81,25 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
   const fuzzySessions = useMemo(() => Object.values(state.fuzzySearchSessionsById), [state.fuzzySearchSessionsById]);
   const activities = useMemo(() => mapConversationToTimelineEntries(selectedConversation, selectedRequests, { realtime: selectedRealtime, fuzzySessions }), [fuzzySessions, selectedConversation, selectedRealtime, selectedRequests]);
   const queuedFollowUps = selectedConversation?.queuedFollowUps ?? [];
+  const isResponding = activeTurnId !== null;
+  const interruptPending = activeTurnId !== null && selectedConversation?.interruptRequestedTurnId === activeTurnId;
+
+  useEffect(() => {
+    const activeKey = selectedConversation === null || activeTurnId === null ? null : `${selectedConversation.id}:${activeTurnId}`;
+    if (interruptPending) {
+      interruptRequestKeys.current.clear();
+      return;
+    }
+    if (activeKey === null) {
+      interruptRequestKeys.current.clear();
+      return;
+    }
+    for (const requestKey of interruptRequestKeys.current) {
+      if (requestKey !== activeKey) {
+        interruptRequestKeys.current.delete(requestKey);
+      }
+    }
+  }, [activeTurnId, interruptPending, selectedConversation]);
 
   const ensureConversationResumed = useCallback(async (conversationId: string) => {
     const conversation = state.conversationsById[conversationId] ?? null;
@@ -145,9 +168,19 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
   }, [dispatch, options.hostBridge.rpc]);
 
   const interruptTurn = useCallback(async (conversationId: string, turnId: string) => {
+    const requestKey = `${conversationId}:${turnId}`;
+    if (interruptRequestKeys.current.has(requestKey)) {
+      return;
+    }
+    interruptRequestKeys.current.add(requestKey);
     const params: TurnInterruptParams = { threadId: conversationId, turnId };
-    await options.hostBridge.rpc.request({ method: "turn/interrupt", params });
-    dispatch({ type: "turn/interruptRequested", conversationId, turnId });
+    try {
+      await options.hostBridge.rpc.request({ method: "turn/interrupt", params });
+      dispatch({ type: "turn/interruptRequested", conversationId, turnId });
+    } catch (error) {
+      interruptRequestKeys.current.delete(requestKey);
+      throw error;
+    }
   }, [dispatch, options.hostBridge.rpc]);
 
   const processQueuedFollowUp = useCallback(async (conversationId: string) => {
@@ -207,6 +240,13 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     }
   }, [dispatch, ensureConversationResumed, interruptTurn, options.followUpQueueMode, options.selectedRootPath, selectedConversation, startNewConversation, startTurn, state.conversationsById, state.inputText, steerTurn]);
 
+  const interruptActiveTurn = useCallback(async () => {
+    if (selectedConversation === null || activeTurnId === null || selectedConversation.interruptRequestedTurnId === activeTurnId) {
+      return;
+    }
+    await interruptTurn(selectedConversation.id, activeTurnId);
+  }, [activeTurnId, interruptTurn, selectedConversation]);
+
   const selectThread = useCallback((threadId: string | null) => {
     dispatch({ type: "conversation/selected", conversationId: threadId });
   }, [dispatch]);
@@ -223,5 +263,22 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     }
   }, [dispatch, selectedConversation]);
 
-  return { selectedThreadId: selectedConversation?.id ?? null, selectedThread, activeTurnId, workspaceThreads, activities, queuedFollowUps, draftActive: state.draftConversation !== null, selectedConversationLoading: selectedConversation?.resumeState === "resuming", createThread, selectThread, sendTurn, removeQueuedFollowUp, clearQueuedFollowUps };
+  return {
+    selectedThreadId: selectedConversation?.id ?? null,
+    selectedThread,
+    activeTurnId,
+    isResponding,
+    interruptPending,
+    workspaceThreads,
+    activities,
+    queuedFollowUps,
+    draftActive: state.draftConversation !== null,
+    selectedConversationLoading: selectedConversation?.resumeState === "resuming",
+    createThread,
+    selectThread,
+    sendTurn,
+    interruptActiveTurn,
+    removeQueuedFollowUp,
+    clearQueuedFollowUps
+  };
 }

@@ -169,6 +169,8 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       selectedThread={conversation.selectedThread}
       selectedThreadId={conversation.selectedThreadId}
       activeTurnId={conversation.activeTurnId}
+      isResponding={conversation.isResponding}
+      interruptPending={conversation.interruptPending}
       activities={conversation.activities}
       mcpShortcuts={controller.state.mcpShortcuts}
       banners={controller.state.banners}
@@ -199,6 +201,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       onInputChange={controller.setInput}
       onCreateThread={createWorkspaceThread}
       onSendTurn={sendWorkspaceTurn}
+      onInterruptTurn={conversation.interruptActiveTurn}
       onAddRoot={addRoot}
       onRemoveRoot={workspace.removeRoot}
       onRetryConnection={controller.retryConnection}

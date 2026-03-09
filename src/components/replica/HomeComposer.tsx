@@ -22,8 +22,11 @@ export interface HomeComposerProps {
   readonly queuedFollowUps: ReadonlyArray<QueuedFollowUp>;
   readonly followUpQueueMode: FollowUpMode;
   readonly composerEnterBehavior: ComposerEnterBehavior;
+  readonly isResponding: boolean;
+  readonly interruptPending: boolean;
   readonly onInputChange: (text: string) => void;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
+  readonly onInterruptTurn: () => Promise<void>;
   readonly onRemoveQueuedFollowUp: (followUpId: string) => void;
   readonly onClearQueuedFollowUps: () => void;
 }
@@ -51,6 +54,46 @@ function shouldSendOnEnter(inputText: string, behavior: ComposerEnterBehavior, m
     return true;
   }
   return !inputText.includes("\n");
+}
+
+function insertMcpShortcut(inputText: string, shortcut: McpShortcut): string {
+  const prefix = inputText.trim().length === 0 ? "" : `${inputText.trim()}\n\n`;
+  return `${prefix}Use MCP tool ${shortcut.server}/${shortcut.tool.name} for this task.`;
+}
+
+function handleComposerEnterKey(
+  event: KeyboardEvent<HTMLTextAreaElement>,
+  options: {
+    readonly inputText: string;
+    readonly composerEnterBehavior: ComposerEnterBehavior;
+    readonly followUpQueueMode: FollowUpMode;
+    readonly isResponding: boolean;
+    readonly submit: (followUpOverride?: FollowUpMode) => void;
+    readonly interrupt: () => void;
+  }
+): void {
+  if (event.key !== "Enter") {
+    return;
+  }
+  const metaPressed = event.metaKey || event.ctrlKey;
+  if (event.shiftKey && metaPressed) {
+    event.preventDefault();
+    if (options.isResponding) {
+      options.interrupt();
+      return;
+    }
+    options.submit(getOppositeMode(options.followUpQueueMode));
+    return;
+  }
+  if (event.shiftKey || !shouldSendOnEnter(options.inputText, options.composerEnterBehavior, metaPressed)) {
+    return;
+  }
+  event.preventDefault();
+  if (options.isResponding) {
+    options.interrupt();
+    return;
+  }
+  options.submit();
 }
 
 function QueuedFollowUpsPanel(props: {
@@ -92,6 +135,8 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
   const [planModeEnabled, setPlanModeEnabled] = useState(false);
   const composerSelection = useComposerSelection(props.models, props.defaultModel, props.defaultEffort);
   const canSend = !props.busy && props.inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH;
+  const buttonDisabled = props.isResponding ? props.interruptPending : !canSend;
+  const buttonLabel = props.isResponding ? "Pause response" : "Send message";
   const placeholder = getComposerPlaceholder(props.selectedRootPath);
 
   const submit = (followUpOverride?: FollowUpMode) => {
@@ -105,28 +150,8 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
     });
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key !== "Enter") {
-      return;
-    }
-    if (event.shiftKey && (event.metaKey || event.ctrlKey)) {
-      event.preventDefault();
-      submit(getOppositeMode(props.followUpQueueMode));
-      return;
-    }
-    if (event.shiftKey) {
-      return;
-    }
-    if (!shouldSendOnEnter(props.inputText, props.composerEnterBehavior, event.metaKey || event.ctrlKey)) {
-      return;
-    }
-    event.preventDefault();
-    submit();
-  };
-
   const handleInsertMcpShortcut = (shortcut: McpShortcut) => {
-    const prefix = props.inputText.trim().length === 0 ? "" : `${props.inputText.trim()}\n\n`;
-    props.onInputChange(`${prefix}Use MCP tool ${shortcut.server}/${shortcut.tool.name} for this task.`);
+    props.onInputChange(insertMcpShortcut(props.inputText, shortcut));
     setMenuOpen(false);
   };
 
@@ -143,7 +168,14 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
           className="composer-input"
           placeholder={placeholder}
           value={props.inputText}
-          onKeyDown={handleKeyDown}
+          onKeyDown={(event) => handleComposerEnterKey(event, {
+            inputText: props.inputText,
+            composerEnterBehavior: props.composerEnterBehavior,
+            followUpQueueMode: props.followUpQueueMode,
+            isResponding: props.isResponding,
+            submit,
+            interrupt: () => void props.onInterruptTurn()
+          })}
           onChange={(event) => props.onInputChange(event.currentTarget.value)}
         />
         <div className="composer-bar">
@@ -170,8 +202,14 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
               onSelectEffort={composerSelection.selectEffort}
             />
           </div>
-          <button type="button" className="send-btn" aria-label="Send message" disabled={!canSend} onClick={() => submit()}>
-            <SendArrowIcon className="send-icon" />
+          <button
+            type="button"
+            className="send-btn"
+            aria-label={buttonLabel}
+            disabled={buttonDisabled}
+            onClick={() => props.isResponding ? void props.onInterruptTurn() : submit()}
+          >
+            {props.isResponding ? <PauseResponseIcon className="send-icon" /> : <SendArrowIcon className="send-icon" />}
           </button>
         </div>
       </div>
@@ -185,6 +223,14 @@ function SendArrowIcon(props: { readonly className?: string }): JSX.Element {
     <svg className={props.className} viewBox="0 0 16 16" aria-hidden="true">
       <path d="M8 13.3V2.8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       <path d="M3.2 7.1L8 2.3l4.8 4.8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PauseResponseIcon(props: { readonly className?: string }): JSX.Element {
+  return (
+    <svg className={props.className} viewBox="0 0 16 16" aria-hidden="true">
+      <rect x="4" y="4" width="8" height="8" rx="1.5" fill="currentColor" />
     </svg>
   );
 }

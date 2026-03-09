@@ -1,0 +1,166 @@
+import type { ComponentProps } from "react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import type { ComposerModelOption } from "../../app/composerPreferences";
+import type { HostBridge } from "../../bridge/types";
+import type { ThreadSummary } from "../../domain/types";
+import type { WorkspaceGitController } from "./git/types";
+import { HomeView } from "./HomeView";
+
+const { mockedUseWorkspaceGit } = vi.hoisted(() => ({ mockedUseWorkspaceGit: vi.fn() }));
+
+vi.mock("../terminal/TerminalPanel", () => ({ TerminalPanel: () => null }));
+vi.mock("./git/useWorkspaceGit", () => ({ useWorkspaceGit: mockedUseWorkspaceGit }));
+
+const MODELS: ReadonlyArray<ComposerModelOption> = [{
+  id: "model-1",
+  value: "gpt-5.2",
+  label: "GPT-5.2",
+  defaultEffort: "xhigh",
+  supportedEfforts: ["minimal", "low", "medium", "high", "xhigh"],
+  isDefault: true
+}];
+
+function createController(): WorkspaceGitController {
+  return {
+    loading: false,
+    pendingAction: null,
+    status: null,
+    statusLoaded: false,
+    hasRepository: false,
+    error: null,
+    notice: null,
+    commitMessage: "",
+    selectedBranch: "",
+    newBranchName: "",
+    diff: null,
+    diffCache: {},
+    diffTarget: null,
+    loadingDiffKeys: [],
+    staleDiffKeys: [],
+    refresh: vi.fn().mockResolvedValue(undefined),
+    initRepository: vi.fn().mockResolvedValue(undefined),
+    fetch: vi.fn().mockResolvedValue(undefined),
+    pull: vi.fn().mockResolvedValue(undefined),
+    push: vi.fn().mockResolvedValue(undefined),
+    stagePaths: vi.fn().mockResolvedValue(undefined),
+    unstagePaths: vi.fn().mockResolvedValue(undefined),
+    discardPaths: vi.fn().mockResolvedValue(undefined),
+    commit: vi.fn().mockResolvedValue(undefined),
+    checkoutSelectedBranch: vi.fn().mockResolvedValue(undefined),
+    createBranch: vi.fn().mockResolvedValue(undefined),
+    ensureDiff: vi.fn().mockResolvedValue(undefined),
+    selectDiff: vi.fn().mockResolvedValue(undefined),
+    clearDiff: vi.fn(),
+    setCommitMessage: vi.fn(),
+    setSelectedBranch: vi.fn(),
+    setNewBranchName: vi.fn()
+  };
+}
+
+function createThread(overrides?: Partial<ThreadSummary>): ThreadSummary {
+  return {
+    id: "thread-1",
+    title: "Active thread",
+    cwd: "E:/code/FPGA",
+    archived: false,
+    updatedAt: "2026-03-06T09:00:00.000Z",
+    source: "rpc",
+    status: "active",
+    activeFlags: [],
+    queuedCount: 0,
+    ...overrides
+  };
+}
+
+function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
+  mockedUseWorkspaceGit.mockReturnValue(createController());
+  const root = { id: "root-1", name: "FPGA", path: "E:/code/FPGA" };
+  const thread = createThread();
+
+  return render(
+    <HomeView
+      hostBridge={{} as HostBridge}
+      busy={false}
+      inputText="继续分析"
+      roots={[root]}
+      selectedRootId={root.id}
+      selectedRootName={root.name}
+      selectedRootPath={root.path}
+      threads={[thread]}
+      selectedThread={thread}
+      selectedThreadId={thread.id}
+      activeTurnId="turn-1"
+      isResponding={true}
+      interruptPending={false}
+      activities={[]}
+      mcpShortcuts={[]}
+      banners={[]}
+      account={null}
+      rateLimitSummary={null}
+      queuedFollowUps={[]}
+      draftActive={false}
+      selectedConversationLoading={false}
+      models={MODELS}
+      defaultModel="gpt-5.2"
+      defaultEffort="xhigh"
+      workspaceOpener="vscode"
+      embeddedTerminalShell="powerShell"
+      followUpQueueMode="queue"
+      composerEnterBehavior="enter"
+      connectionStatus="connected"
+      fatalError={null}
+      authStatus="authenticated"
+      authMode="chatgpt"
+      retryScheduledAt={null}
+      settingsMenuOpen={false}
+      onToggleSettingsMenu={vi.fn()}
+      onDismissSettingsMenu={vi.fn()}
+      onOpenSettings={vi.fn()}
+      onSelectWorkspaceOpener={vi.fn()}
+      onSelectRoot={vi.fn()}
+      onSelectThread={vi.fn()}
+      onInputChange={vi.fn()}
+      onCreateThread={vi.fn().mockResolvedValue(undefined)}
+      onSendTurn={vi.fn().mockResolvedValue(undefined)}
+      onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
+      onAddRoot={vi.fn()}
+      onRemoveRoot={vi.fn()}
+      onRetryConnection={vi.fn().mockResolvedValue(undefined)}
+      onLogin={vi.fn().mockResolvedValue(undefined)}
+      onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
+      onRemoveQueuedFollowUp={vi.fn()}
+      onClearQueuedFollowUps={vi.fn()}
+      {...overrides}
+    />
+  );
+}
+
+describe("HomeView interrupt composer", () => {
+  it("shows the pause button and interrupts on click", () => {
+    const onSendTurn = vi.fn().mockResolvedValue(undefined);
+    const onInterruptTurn = vi.fn().mockResolvedValue(undefined);
+
+    renderHomeView({ onSendTurn, onInterruptTurn });
+    fireEvent.click(screen.getByRole("button", { name: "Pause response" }));
+
+    expect(onInterruptTurn).toHaveBeenCalledTimes(1);
+    expect(onSendTurn).not.toHaveBeenCalled();
+  });
+
+  it("interrupts from Enter instead of sending while responding", () => {
+    const onSendTurn = vi.fn().mockResolvedValue(undefined);
+    const onInterruptTurn = vi.fn().mockResolvedValue(undefined);
+
+    renderHomeView({ onSendTurn, onInterruptTurn });
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
+
+    expect(onInterruptTurn).toHaveBeenCalledTimes(1);
+    expect(onSendTurn).not.toHaveBeenCalled();
+  });
+
+  it("keeps the pause button disabled after an interrupt is already pending", () => {
+    renderHomeView({ interruptPending: true });
+    expect(screen.getByRole("button", { name: "Pause response" })).toBeDisabled();
+  });
+});

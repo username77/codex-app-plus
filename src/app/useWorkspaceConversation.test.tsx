@@ -31,8 +31,8 @@ function createThread() {
   };
 }
 
-function createTurn() {
-  return { id: "turn-1", items: [], status: "inProgress" as const, error: null };
+function createTurn(status: "inProgress" | "completed" = "inProgress") {
+  return { id: "turn-1", items: [], status, error: null };
 }
 
 function renderConversation(hostBridge: HostBridge) {
@@ -164,5 +164,48 @@ describe("useWorkspaceConversation", () => {
     });
 
     expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/steer" }));
+  });
+
+  it("interrupts the active turn once and clears pending state after completion", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "turn/interrupt") {
+        return { requestId: "request-1", result: { success: true } };
+      }
+      return { requestId: "noop", result: {} };
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread(), { resumeState: "resumed" }) });
+      result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-1" });
+      result.current.store.dispatch({ type: "conversation/turnPlaceholderAdded", conversationId: "thread-1", params: { input: [{ type: "text", text: "hello", text_elements: [] }], cwd: "E:/code/FPGA", model: "gpt-5.2", effort: "medium", collaborationMode: null } });
+      result.current.store.dispatch({ type: "conversation/turnStarted", conversationId: "thread-1", turn: createTurn() });
+      result.current.store.dispatch({ type: "conversation/statusChanged", conversationId: "thread-1", status: "active", activeFlags: [] });
+    });
+
+    expect(result.current.conversation.isResponding).toBe(true);
+    expect(result.current.conversation.interruptPending).toBe(false);
+
+    await act(async () => {
+      await result.current.conversation.interruptActiveTurn();
+    });
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/interrupt", params: { threadId: "thread-1", turnId: "turn-1" } }));
+    expect(result.current.conversation.interruptPending).toBe(true);
+
+    await act(async () => {
+      await result.current.conversation.interruptActiveTurn();
+    });
+
+    expect(request).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      result.current.store.dispatch({ type: "conversation/turnCompleted", conversationId: "thread-1", turn: createTurn("completed") });
+      result.current.store.dispatch({ type: "conversation/statusChanged", conversationId: "thread-1", status: "idle", activeFlags: [] });
+    });
+
+    expect(result.current.conversation.isResponding).toBe(false);
+    expect(result.current.conversation.interruptPending).toBe(false);
   });
 });
