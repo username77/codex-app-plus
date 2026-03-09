@@ -17,6 +17,7 @@ mod terminal_manager;
 use commands::{
     app_apply_codex_provider,
     app_delete_codex_provider,
+    app_delete_codex_session,
     app_import_official_data, app_list_codex_sessions, app_open_codex_config_toml,
     app_list_codex_providers, app_open_external, app_open_workspace, app_read_codex_session,
     app_read_chatgpt_auth_tokens, app_read_global_agent_instructions, app_server_restart,
@@ -62,6 +63,7 @@ fn main() {
             app_import_official_data,
             app_list_codex_sessions,
             app_read_codex_session,
+            app_delete_codex_session,
             git_get_status,
             git_get_diff,
             git_init_repository,

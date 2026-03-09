@@ -191,6 +191,10 @@ export interface CodexSessionReadInput {
   readonly threadId: string;
 }
 
+export interface DeleteCodexSessionInput {
+  readonly threadId: string;
+}
+
 export interface CodexSessionMessageOutput {
   readonly id: string;
   readonly role: string;
@@ -327,6 +331,7 @@ export interface HostBridge {
     importOfficialData(input: ImportOfficialDataInput): Promise<void>;
     listCodexSessions(): Promise<ReadonlyArray<CodexSessionSummaryOutput>>;
     readCodexSession(input: CodexSessionReadInput): Promise<CodexSessionReadOutput>;
+    deleteCodexSession(input: DeleteCodexSessionInput): Promise<void>;
   };
   readonly git: {
     getStatus(input: GitRepoInput): Promise<GitStatusOutput>;

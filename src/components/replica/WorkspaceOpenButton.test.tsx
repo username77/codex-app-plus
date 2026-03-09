@@ -27,11 +27,12 @@ function createHostBridge(overrides?: {
       openWorkspace: overrides?.openWorkspace ?? vi.fn().mockResolvedValue(undefined),
       openCodexConfigToml: vi.fn(),
       showNotification: vi.fn(),
-      showContextMenu: vi.fn(),
-      importOfficialData: vi.fn(),
-      listCodexSessions: vi.fn(),
-      readCodexSession: vi.fn()
-    },
+    showContextMenu: vi.fn(),
+    importOfficialData: vi.fn(),
+    listCodexSessions: vi.fn(),
+    readCodexSession: vi.fn(),
+    deleteCodexSession: vi.fn()
+  },
     git: {
       getStatus: vi.fn(),
       getDiff: vi.fn(),

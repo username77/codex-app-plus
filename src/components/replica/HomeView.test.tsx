@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ComposerModelOption } from "../../app/composerPreferences";
 import type { HostBridge } from "../../bridge/types";
 import type { ThreadSummary, TimelineEntry } from "../../domain/types";
+import { AppStoreProvider } from "../../state/store";
 import type { WorkspaceGitController } from "./git/types";
 import { HomeView } from "./HomeView";
 const { mockedUseWorkspaceGit } = vi.hoisted(() => ({ mockedUseWorkspaceGit: vi.fn() }));
@@ -74,7 +75,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
   const root = { id: "root-1", name: "FPGA", path: "E:/code/FPGA" };
   const thread = createThread();
   return render(
-    <HomeView
+    <AppStoreProvider><HomeView
       hostBridge={{} as HostBridge}
       busy={false}
       inputText="检查工作区"
@@ -129,7 +130,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       onRemoveQueuedFollowUp={vi.fn()}
       onClearQueuedFollowUps={vi.fn()}
       {...overrides}
-    />
+    /></AppStoreProvider>
   );
 }
 describe("HomeView", () => {

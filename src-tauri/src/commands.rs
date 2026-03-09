@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, State};
 
-use crate::codex_data::{list_codex_sessions, read_codex_session};
+use crate::codex_data::{delete_codex_session, list_codex_sessions, read_codex_session};
 use crate::codex_provider::{
     apply_codex_provider, delete_codex_provider, list_codex_providers, upsert_codex_provider,
 };
@@ -13,6 +13,7 @@ use crate::models::{
     AppServerStartInput, ApplyCodexProviderInput, ChatgptAuthTokensOutput,
     CodexProviderApplyResult, CodexProviderRecord, CodexProviderStore, CodexSessionReadInput,
     CodexSessionReadOutput, CodexSessionSummary, DeleteCodexProviderInput,
+    DeleteCodexSessionInput,
     GlobalAgentInstructionsOutput, ImportOfficialDataInput, OpenWorkspaceInput,
     RpcCancelInput, RpcNotifyInput, RpcRequestInput, RpcRequestOutput,
     ServerRequestResolveInput, ShowContextMenuInput, ShowNotificationInput,
@@ -185,6 +186,11 @@ pub fn app_read_codex_session(
     input: CodexSessionReadInput,
 ) -> Result<CodexSessionReadOutput, String> {
     to_result(read_codex_session(input))
+}
+
+#[tauri::command]
+pub fn app_delete_codex_session(input: DeleteCodexSessionInput) -> Result<(), String> {
+    to_result(delete_codex_session(input))
 }
 
 #[tauri::command]

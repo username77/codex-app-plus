@@ -176,6 +176,12 @@ pub struct CodexSessionReadInput {
     pub thread_id: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteCodexSessionInput {
+    pub thread_id: String,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CodexSessionMessage {

@@ -49,11 +49,12 @@ function createHostBridge(createSession: ReturnType<typeof vi.fn>): HostBridge {
       openWorkspace: vi.fn(),
       openCodexConfigToml: vi.fn(),
       showNotification: vi.fn(),
-      showContextMenu: vi.fn(),
-      importOfficialData: vi.fn(),
-      listCodexSessions: vi.fn(),
-      readCodexSession: vi.fn()
-    },
+    showContextMenu: vi.fn(),
+    importOfficialData: vi.fn(),
+    listCodexSessions: vi.fn(),
+    readCodexSession: vi.fn(),
+    deleteCodexSession: vi.fn()
+  },
     git: {
       getStatus: vi.fn(),
       getDiff: vi.fn(),

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ComposerModelOption } from "../../app/composerPreferences";
 import type { HostBridge } from "../../bridge/types";
 import type { ThreadSummary } from "../../domain/types";
+import { AppStoreProvider } from "../../state/store";
 import type { WorkspaceGitController } from "./git/types";
 import { HomeView } from "./HomeView";
 
@@ -79,7 +80,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
   const thread = createThread();
 
   return render(
-    <HomeView
+    <AppStoreProvider><HomeView
       hostBridge={{} as HostBridge}
       busy={false}
       inputText="继续分析"
@@ -134,7 +135,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       onRemoveQueuedFollowUp={vi.fn()}
       onClearQueuedFollowUps={vi.fn()}
       {...overrides}
-    />
+    /></AppStoreProvider>
   );
 }
 

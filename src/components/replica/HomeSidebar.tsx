@@ -1,12 +1,15 @@
-import { memo } from "react";
+import { memo, useCallback } from "react";
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
+import type { HostBridge } from "../../bridge/types";
 import type { ThreadSummary } from "../../domain/types";
+import { useAppStore } from "../../state/store";
 import { SidebarIcon } from "./icons";
 import { OfficialSettingsGearIcon } from "./officialIcons";
 import { SettingsPopover } from "./SettingsPopover";
 import { WorkspaceSidebarSection } from "./WorkspaceSidebarSection";
 
 export interface HomeSidebarProps {
+  readonly hostBridge: HostBridge;
   readonly roots: ReadonlyArray<WorkspaceRoot>;
   readonly codexSessions: ReadonlyArray<ThreadSummary>;
   readonly codexSessionsLoading: boolean;
@@ -45,7 +48,13 @@ function SidebarNav(props: { readonly onCreateThread: () => Promise<void> }): JS
 }
 
 function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
+  const { dispatch } = useAppStore();
   const sidebarClassName = props.collapsed ? "replica-sidebar sidebar-collapsed" : "replica-sidebar";
+  const handleDeleteThread = useCallback(async (thread: ThreadSummary) => {
+    await props.hostBridge.app.deleteCodexSession({ threadId: thread.id });
+    dispatch({ type: "conversation/hiddenChanged", conversationId: thread.id, hidden: true });
+    if (thread.id === props.selectedThreadId) props.onSelectThread(null);
+  }, [dispatch, props]);
 
   return (
     <aside className={sidebarClassName}>
@@ -61,6 +70,7 @@ function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
         selectedThreadId={props.selectedThreadId}
         onSelectRoot={props.onSelectRoot}
         onSelectThread={props.onSelectThread}
+        onDeleteThread={handleDeleteThread}
         onAddRoot={props.onAddRoot}
         onRemoveRoot={props.onRemoveRoot}
       />

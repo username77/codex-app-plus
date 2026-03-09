@@ -1,5 +1,5 @@
 ﻿import { useState } from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
 import type { ThreadSummary } from "../../domain/types";
@@ -26,7 +26,7 @@ function createThread(root: WorkspaceRoot, index: number): ThreadSummary {
 
 function renderSection(
   codexSessions: ReadonlyArray<ThreadSummary>,
-  options?: { readonly loading?: boolean; readonly error?: string | null }
+  options?: { readonly loading?: boolean; readonly error?: string | null; readonly onDeleteThread?: (thread: ThreadSummary) => Promise<void> }
 ): void {
   function Harness(): JSX.Element {
     const [selectedRootId, setSelectedRootId] = useState<string | null>(ROOTS[0]!.id);
@@ -44,6 +44,7 @@ function renderSection(
           selectedThreadId={selectedThreadId}
           onSelectRoot={setSelectedRootId}
           onSelectThread={setSelectedThreadId}
+          onDeleteThread={options?.onDeleteThread ?? vi.fn().mockResolvedValue(undefined)}
           onAddRoot={vi.fn()}
           onRemoveRoot={vi.fn()}
         />
@@ -128,6 +129,21 @@ describe("WorkspaceSidebarSection", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("加载会话中...");
     expect(screen.getByRole("alert")).toHaveTextContent("加载会话失败：boom");
+  });
+
+  it("shows a delete action on right click and forwards the delete request", async () => {
+    const thread = createThread(ROOTS[0]!, 1);
+    const onDeleteThread = vi.fn().mockResolvedValue(undefined);
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    renderSection([thread], { onDeleteThread });
+    fireEvent.click(screen.getByText("FPGA"));
+    fireEvent.contextMenu(screen.getByRole("button", { name: /FPGA Thread 1/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "删除会话" }));
+
+    await waitFor(() => expect(onDeleteThread).toHaveBeenCalledWith(thread));
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    confirmSpy.mockRestore();
   });
 
   it("shows empty state after expanding a workspace without sessions", () => {

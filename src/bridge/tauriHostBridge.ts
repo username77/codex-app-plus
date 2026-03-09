@@ -9,6 +9,7 @@ import type {
   CodexProviderDraft,
   CodexProviderRecord,
   CodexProviderStore,
+  DeleteCodexSessionInput,
   DeleteCodexProviderInput,
   GitCheckoutInput,
   GitCommitInput,
@@ -135,6 +136,10 @@ export function createTauriHostBridge(): HostBridge {
         invoke<ReadonlyArray<CodexSessionSummaryOutput>>("app_list_codex_sessions"),
       readCodexSession: (input: CodexSessionReadInput) =>
         invoke<CodexSessionReadOutput>("app_read_codex_session", {
+          input
+        }),
+      deleteCodexSession: (input: DeleteCodexSessionInput) =>
+        invoke("app_delete_codex_session", {
           input
         })
     },

@@ -3,6 +3,7 @@ import { listThreadsForWorkspace } from "../../app/workspaceThread";
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
 import type { ThreadSummary } from "../../domain/types";
 import { OfficialChevronRightIcon, OfficialCloseIcon, OfficialFolderPlusIcon, OfficialSortIcon } from "./officialIcons";
+import { ThreadContextMenu } from "./ThreadContextMenu";
 
 const DEFAULT_VISIBLE_THREAD_COUNT = 10;
 const MINUTE_IN_MS = 60 * 1000;
@@ -18,6 +19,7 @@ interface WorkspaceSidebarSectionProps {
   readonly selectedThreadId: string | null;
   readonly onSelectRoot: (rootId: string) => void;
   readonly onSelectThread: (threadId: string | null) => void;
+  readonly onDeleteThread: (thread: ThreadSummary) => Promise<void>;
   readonly onAddRoot: () => void;
   readonly onRemoveRoot: (rootId: string) => void;
 }
@@ -40,6 +42,7 @@ interface WorkspaceRootItemProps {
   readonly showAllThreads: boolean;
   readonly onSelectThread: (threadId: string | null) => void;
   readonly onToggleExpanded: (rootId: string) => void;
+  readonly onOpenMenu: (event: MouseEvent<HTMLButtonElement>, thread: ThreadSummary) => void;
   readonly onToggleShowAllThreads: (rootId: string) => void;
   readonly onRemoveRoot: (rootId: string) => void;
 }
@@ -110,6 +113,7 @@ const WorkspaceThreadItem = memo(function WorkspaceThreadItem(props: {
   readonly thread: ThreadSummary;
   readonly selected: boolean;
   readonly onSelect: (threadId: string | null) => void;
+  readonly onOpenMenu: (event: MouseEvent<HTMLButtonElement>, thread: ThreadSummary) => void;
 }): JSX.Element {
   const className = props.selected ? "workspace-thread-button workspace-thread-button-active" : "workspace-thread-button";
   const statusLabel = props.thread.status === "active" ? "运行中" : props.thread.queuedCount > 0 ? `队列 ${props.thread.queuedCount}` : null;
@@ -117,7 +121,7 @@ const WorkspaceThreadItem = memo(function WorkspaceThreadItem(props: {
 
   return (
     <li>
-      <button type="button" className={className} onClick={() => props.onSelect(props.thread.id)}>
+      <button type="button" className={className} onClick={() => props.onSelect(props.thread.id)} onContextMenu={(event) => props.onOpenMenu(event, props.thread)}>
         <span className="workspace-thread-title-row">
           <span className="workspace-thread-title">{getThreadLabel(props.thread)}</span>
           {statusLabel !== null ? <span className="workspace-thread-badge">{statusLabel}</span> : null}
@@ -173,6 +177,7 @@ function WorkspaceThreadList(props: {
   readonly selectedThreadId: string | null;
   readonly showAllThreads: boolean;
   readonly onSelectThread: (threadId: string | null) => void;
+  readonly onOpenMenu: (event: MouseEvent<HTMLButtonElement>, thread: ThreadSummary) => void;
   readonly onToggleShowAllThreads: (rootId: string) => void;
 }): JSX.Element {
   if (props.threads.length === 0) {
@@ -188,7 +193,7 @@ function WorkspaceThreadList(props: {
     <>
       <ul className="workspace-thread-list">
         {visibleThreads.map((thread) => (
-          <WorkspaceThreadItem key={thread.id} thread={thread} selected={thread.id === props.selectedThreadId} onSelect={props.onSelectThread} />
+          <WorkspaceThreadItem key={thread.id} thread={thread} selected={thread.id === props.selectedThreadId} onSelect={props.onSelectThread} onOpenMenu={props.onOpenMenu} />
         ))}
       </ul>
       {props.threads.length > DEFAULT_VISIBLE_THREAD_COUNT ? (
@@ -218,6 +223,7 @@ const WorkspaceRootItem = memo(function WorkspaceRootItem(props: WorkspaceRootIt
           selectedThreadId={props.selectedThreadId}
           showAllThreads={props.showAllThreads}
           onSelectThread={props.onSelectThread}
+          onOpenMenu={props.onOpenMenu}
           onToggleShowAllThreads={props.onToggleShowAllThreads}
         />
       ) : null}
@@ -228,6 +234,7 @@ const WorkspaceRootItem = memo(function WorkspaceRootItem(props: WorkspaceRootIt
 export function WorkspaceSidebarSection(props: WorkspaceSidebarSectionProps): JSX.Element {
   const { expandedRootId, toggleExpanded } = useExpandedRootId(props.roots, props.selectedRootId, props.onSelectRoot);
   const [expandedThreadRootIds, setExpandedThreadRootIds] = useState<ReadonlyArray<string>>([]);
+  const [menuState, setMenuState] = useState<{ readonly thread: ThreadSummary; readonly x: number; readonly y: number } | null>(null);
 
   useEffect(() => {
     if (expandedThreadRootIds.length === 0) {
@@ -239,6 +246,8 @@ export function WorkspaceSidebarSection(props: WorkspaceSidebarSectionProps): JS
 
   const threadsByRootId = useMemo(() => createThreadsByRootId(props.roots, props.codexSessions), [props.codexSessions, props.roots]);
   const toggleShowAllThreads = useCallback((rootId: string) => setExpandedThreadRootIds((current) => toggleRootId(current, rootId)), []);
+  const openThreadMenu = useCallback((event: MouseEvent<HTMLButtonElement>, thread: ThreadSummary) => { event.preventDefault(); setMenuState({ thread, x: event.clientX, y: event.clientY }); }, []);
+  const handleDeleteThread = useCallback(async () => { if (menuState === null) return; const { thread } = menuState; setMenuState(null); await props.onDeleteThread(thread); }, [menuState, props]);
 
   return (
     <section className="thread-section">
@@ -267,12 +276,14 @@ export function WorkspaceSidebarSection(props: WorkspaceSidebarSectionProps): JS
             showAllThreads={expandedThreadRootIds.includes(root.id)}
             onSelectThread={props.onSelectThread}
             onToggleExpanded={toggleExpanded}
+            onOpenMenu={openThreadMenu}
             onToggleShowAllThreads={toggleShowAllThreads}
             onRemoveRoot={props.onRemoveRoot}
           />
         ))}
         {props.roots.length === 0 ? <li className="thread-empty">暂无工作区，点击左上角添加</li> : null}
       </ul>
+      {menuState !== null ? <ThreadContextMenu thread={menuState.thread} x={menuState.x} y={menuState.y} onDelete={handleDeleteThread} onClose={() => setMenuState(null)} /> : null}
     </section>
   );
 }

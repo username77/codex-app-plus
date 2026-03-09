@@ -65,7 +65,8 @@ function createHostBridge(): HostBridge {
       showContextMenu: vi.fn().mockResolvedValue(undefined),
       importOfficialData: vi.fn().mockResolvedValue(undefined),
       listCodexSessions: vi.fn().mockResolvedValue([]),
-      readCodexSession: vi.fn().mockResolvedValue({ threadId: "1", messages: [] })
+      readCodexSession: vi.fn().mockResolvedValue({ threadId: "1", messages: [] }),
+      deleteCodexSession: vi.fn().mockResolvedValue(undefined)
     },
     git: {
       getStatus: vi.fn(),

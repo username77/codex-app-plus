@@ -8,6 +8,7 @@ use crate::codex_session_text::summarize_user_message;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     CodexSessionMessage, CodexSessionReadInput, CodexSessionReadOutput, CodexSessionSummary,
+    DeleteCodexSessionInput,
 };
 
 const SUMMARY_TAIL_BYTES: u64 = 64 * 1024;
@@ -34,11 +35,7 @@ pub fn list_codex_sessions() -> AppResult<Vec<CodexSessionSummary>> {
 }
 
 pub fn read_codex_session(input: CodexSessionReadInput) -> AppResult<CodexSessionReadOutput> {
-    if input.thread_id.trim().is_empty() {
-        return Err(AppError::InvalidInput(
-            "threadId cannot be empty".to_string(),
-        ));
-    }
+    validate_thread_id(&input.thread_id)?;
 
     let path = find_session_file(&input.thread_id)?;
     let messages = read_session_messages(&path, &input.thread_id)?;
@@ -46,6 +43,22 @@ pub fn read_codex_session(input: CodexSessionReadInput) -> AppResult<CodexSessio
         thread_id: input.thread_id,
         messages,
     })
+}
+
+pub fn delete_codex_session(input: DeleteCodexSessionInput) -> AppResult<()> {
+    validate_thread_id(&input.thread_id)?;
+
+    let root = codex_sessions_root()?;
+    delete_session_by_id(&root, &input.thread_id)
+}
+
+fn validate_thread_id(thread_id: &str) -> AppResult<()> {
+    if thread_id.trim().is_empty() {
+        return Err(AppError::InvalidInput(
+            "threadId cannot be empty".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 fn codex_sessions_root() -> AppResult<PathBuf> {
@@ -170,8 +183,12 @@ fn read_last_timestamp(path: &Path) -> AppResult<Option<String>> {
 }
 
 fn find_session_file(thread_id: &str) -> AppResult<PathBuf> {
+    find_session_file_in_root(&codex_sessions_root()?, thread_id)
+}
+
+fn find_session_file_in_root(root: &Path, thread_id: &str) -> AppResult<PathBuf> {
     let mut files = Vec::new();
-    collect_session_files(&codex_sessions_root()?, &mut files)?;
+    collect_session_files(root, &mut files)?;
 
     for file in files {
         if session_file_matches(&file, thread_id)? {
@@ -182,6 +199,26 @@ fn find_session_file(thread_id: &str) -> AppResult<PathBuf> {
     Err(AppError::InvalidInput(format!(
         "session not found: {thread_id}"
     )))
+}
+
+fn delete_session_by_id(root: &Path, thread_id: &str) -> AppResult<()> {
+    let path = find_session_file_in_root(root, thread_id)?;
+    fs::remove_file(&path)?;
+    prune_empty_session_dirs(path.parent(), root)
+}
+
+fn prune_empty_session_dirs(mut current: Option<&Path>, root: &Path) -> AppResult<()> {
+    while let Some(directory) = current {
+        if directory == root || directory.starts_with(root) == false {
+            break;
+        }
+        if fs::read_dir(directory)?.next().is_some() {
+            break;
+        }
+        fs::remove_dir(directory)?;
+        current = directory.parent();
+    }
+    Ok(())
 }
 
 fn session_file_matches(path: &Path, thread_id: &str) -> AppResult<bool> {
@@ -298,10 +335,10 @@ fn infer_name_from_path(path: &str) -> String {
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{infer_name_from_path, read_session_summary};
+    use super::{delete_session_by_id, infer_name_from_path, read_session_summary};
 
     fn create_temp_session_file(contents: &str) -> PathBuf {
         let suffix = SystemTime::now()
@@ -310,6 +347,24 @@ mod tests {
             .as_nanos();
         let path = std::env::temp_dir().join(format!("codex-app-plus-session-{suffix}.jsonl"));
         fs::write(&path, contents).expect("write temp session file");
+        path
+    }
+
+    fn create_temp_session_root() -> PathBuf {
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time before unix epoch")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("codex-app-plus-sessions-{suffix}"));
+        fs::create_dir_all(&path).expect("create temp session root");
+        path
+    }
+
+    fn write_session_file(root: &Path, relative_path: &str, contents: &str) -> PathBuf {
+        let path = root.join(relative_path);
+        let parent = path.parent().expect("session file parent");
+        fs::create_dir_all(parent).expect("create session file parent");
+        fs::write(&path, contents).expect("write session file");
         path
     }
 
@@ -364,5 +419,20 @@ mod tests {
         assert_eq!(summary.title, "真正的首条用户消息");
 
         fs::remove_file(path).expect("remove temp session file");
+    }
+
+    #[test]
+    fn deletes_session_file_and_prunes_empty_directories() {
+        let root = create_temp_session_root();
+        let contents = "{\"timestamp\":\"2026-03-01T10:00:00Z\",\"type\":\"session_meta\",\"payload\":{\"id\":\"thread-delete\",\"cwd\":\"E:/code/project\"}}\n";
+        let path = write_session_file(&root, "2026/03/thread-delete.jsonl", contents);
+
+        delete_session_by_id(&root, "thread-delete").expect("delete session");
+
+        assert!(!path.exists());
+        assert!(!root.join("2026/03").exists());
+        assert!(root.exists());
+
+        fs::remove_dir_all(root).expect("remove temp session root");
     }
 }

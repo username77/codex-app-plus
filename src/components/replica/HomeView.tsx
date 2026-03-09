@@ -221,7 +221,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
 
   return (
     <div className={createReplicaAppClassName(canShowDiffSidebar)}>
-      <HomeSidebar
+      <HomeSidebar hostBridge={props.hostBridge}
         roots={props.roots}
         codexSessions={props.threads}
         codexSessionsLoading={props.busy && props.threads.length === 0}
