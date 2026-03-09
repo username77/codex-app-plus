@@ -204,7 +204,7 @@ describe("HomeConversationCanvas", () => {
   it("renders transcript summaries and keeps request cards in the conversation flow", () => {
     const { container } = renderCanvas([USER_MESSAGE, COMMAND_ENTRY, REQUEST_ENTRY], { activeTurnId: "turn-1" });
 
-    expect(screen.getByText(/pnpm test/)).toBeInTheDocument();
+    expect(screen.getByText("正在执行命令：pnpm test")).toBeInTheDocument();
     expect(screen.getByText("Additional input required")).toBeInTheDocument();
     expect(screen.getByText("请选择处理范围")).toBeInTheDocument();
     expect(container.querySelector(".home-assistant-transcript-details details[open]")).toBeNull();

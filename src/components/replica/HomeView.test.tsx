@@ -230,7 +230,7 @@ describe("HomeView", () => {
 
     renderHomeView({ activities });
 
-    expect(screen.getByText(/pnpm test/)).toBeInTheDocument();
+    expect(screen.getByText("正在执行命令：pnpm test")).toBeInTheDocument();
     expect(screen.getByText("Additional input required")).toBeInTheDocument();
     expect(screen.getByText("请选择处理方式")).toBeInTheDocument();
   });

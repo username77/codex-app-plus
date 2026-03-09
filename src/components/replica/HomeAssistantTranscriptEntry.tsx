@@ -1,6 +1,7 @@
 import { ConversationMessageContent } from "./ConversationMessageContent";
 import type { ConversationRenderNode } from "./localConversationGroups";
 import { createAssistantTranscriptEntryModel } from "./assistantTranscript";
+import { HomeAssistantTranscriptDetailBlock } from "./HomeAssistantTranscriptDetailBlock";
 
 type AssistantNode = Extract<ConversationRenderNode, { kind: "assistantMessage" | "reasoningBlock" | "traceItem" | "auxiliaryBlock" }>;
 
@@ -10,7 +11,7 @@ interface HomeAssistantTranscriptEntryProps {
 
 export function HomeAssistantTranscriptEntry(props: HomeAssistantTranscriptEntryProps): JSX.Element {
   const model = createAssistantTranscriptEntryModel(props.node);
-  const truncateSummaryWhenCollapsed = model.truncateSummaryWhenCollapsed === true;
+  const truncateSummaryWhenCollapsed = model.kind === "details" && model.truncateSummaryWhenCollapsed === true;
 
   if (model.kind === "message" && model.message) {
     return (
@@ -37,7 +38,7 @@ export function HomeAssistantTranscriptEntry(props: HomeAssistantTranscriptEntry
           >
             <span className="home-assistant-transcript-summary-text">{model.summary}</span>
           </summary>
-          {model.detail ? <pre className="home-assistant-transcript-detail">{model.detail}</pre> : null}
+          <HomeAssistantTranscriptDetailBlock panel={model.detailPanel} />
         </details>
       </section>
     );

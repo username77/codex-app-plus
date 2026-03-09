@@ -148,11 +148,25 @@ describe("HomeAssistantTranscriptEntry", () => {
     const summary = container.querySelector("summary");
     const details = container.querySelector("details");
     const summaryText = container.querySelector(".home-assistant-transcript-summary-text");
+    const detailPanel = container.querySelector('.home-assistant-transcript-detail-panel[data-variant="shell"]');
+    const topMeta = container.querySelector(".home-assistant-transcript-detail-top-meta");
+    const footerMeta = container.querySelector(".home-assistant-transcript-detail-footer-meta");
+    const footerStatus = container.querySelector(".home-assistant-transcript-detail-footer-status");
+    const body = container.querySelector(".home-assistant-transcript-detail-body");
 
     expect(summary).toHaveAttribute("data-truncate-summary", "true");
     expect(summaryText?.textContent).toContain(LONG_COMMAND);
     expect(summaryText?.textContent).not.toContain("…");
     expect(details?.open).toBe(false);
+    expect(detailPanel).not.toBeNull();
+    expect(screen.getByText("Shell")).toBeInTheDocument();
+    expect(topMeta?.textContent).toBe("E:/code/codex-app-plus");
+    expect(footerMeta?.textContent).toContain("退出码：0");
+    expect(footerMeta?.textContent).toContain("耗时：1.2 s");
+    expect(footerStatus?.textContent).toBe("成功");
+    expect(body?.textContent).toContain(`$ ${LONG_COMMAND}`);
+    expect(body?.textContent).toContain("done");
+    expect(body?.textContent).not.toContain("工作目录：");
 
     if (summary !== null) {
       fireEvent.click(summary);
@@ -174,18 +188,24 @@ describe("HomeAssistantTranscriptEntry", () => {
     const texts = Array.from(container.querySelectorAll(".home-assistant-transcript-summary-text")).map(
       (element) => element.textContent,
     );
+    const labels = Array.from(container.querySelectorAll(".home-assistant-transcript-detail-label")).map(
+      (element) => element.textContent,
+    );
 
     expect(summaries).toHaveLength(3);
     expect(texts).toContain("工具调用：server-alpha/tool/with/a/very/long/name");
     expect(texts).toContain("工具调用：dynamic-tool-with-an-extremely-long-name");
     expect(texts).toContain("协作工具：spawnAgent");
+    expect(labels.filter((label) => label === "Tool")).toHaveLength(3);
   });
 
   it("does not mark turn plan summaries for collapsed truncation", () => {
     const { container } = render(<HomeAssistantTranscriptEntry node={createTurnPlanNode()} />);
     const summary = container.querySelector("summary");
+    const label = container.querySelector(".home-assistant-transcript-detail-label");
 
     expect(screen.getByText("Turn plan")).toBeInTheDocument();
     expect(summary?.hasAttribute("data-truncate-summary")).toBe(false);
+    expect(label?.textContent).toBe("Plan");
   });
 });
