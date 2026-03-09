@@ -120,6 +120,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       onInputChange={vi.fn()}
       onCreateThread={vi.fn().mockResolvedValue(undefined)}
       onSendTurn={vi.fn().mockResolvedValue(undefined)}
+      onPersistComposerSelection={vi.fn().mockResolvedValue(undefined)}
       onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
       onAddRoot={vi.fn()}
       onRemoveRoot={vi.fn()}

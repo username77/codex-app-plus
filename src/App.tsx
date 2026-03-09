@@ -1,5 +1,7 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { useCallback, useState } from "react";
+import type { ComposerSelection } from "./app/composerPreferences";
+import { readUserConfigWriteTarget } from "./app/configWriteTarget";
 import { useAppController } from "./app/useAppController";
 import { useAppPreferences } from "./app/useAppPreferences";
 import { useComposerPicker } from "./app/useComposerPicker";
@@ -126,6 +128,25 @@ export function App({ hostBridge }: AppProps): JSX.Element {
     [conversation]
   );
 
+  const persistComposerSelection = useCallback(
+    async (selection: ComposerSelection) => {
+      if (selection.model === null || selection.effort === null) {
+        throw new Error("Composer 模型和思考强度不能为空");
+      }
+
+      const writeTarget = readUserConfigWriteTarget(controller.state.configSnapshot);
+      await controller.batchWriteConfigSnapshot({
+        edits: [
+          { keyPath: "model", value: selection.model, mergeStrategy: "upsert" },
+          { keyPath: "model_reasoning_effort", value: selection.effort, mergeStrategy: "upsert" }
+        ],
+        filePath: writeTarget.filePath,
+        expectedVersion: writeTarget.expectedVersion
+      });
+    },
+    [controller.batchWriteConfigSnapshot, controller.state.configSnapshot]
+  );
+
   const rateLimitSummary = controller.state.rateLimits === null
     ? null
     : `Rate limit: ${controller.state.rateLimits.limitName ?? controller.state.rateLimits.limitId ?? "default"}`;
@@ -202,6 +223,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       onInputChange={controller.setInput}
       onCreateThread={createWorkspaceThread}
       onSendTurn={sendWorkspaceTurn}
+      onPersistComposerSelection={persistComposerSelection}
       onInterruptTurn={conversation.interruptActiveTurn}
       onAddRoot={addRoot}
       onRemoveRoot={workspace.removeRoot}

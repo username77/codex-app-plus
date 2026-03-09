@@ -55,6 +55,7 @@ function MenuCheck(): JSX.Element {
 function ModelMenuItem(props: {
   readonly model: ComposerModelOption;
   readonly selected: boolean;
+  readonly disabled: boolean;
   readonly onSelectModel: (model: string) => void;
 }): JSX.Element {
   const itemClassName = props.selected
@@ -67,6 +68,7 @@ function ModelMenuItem(props: {
       className={itemClassName}
       role="menuitemradio"
       aria-checked={props.selected}
+      disabled={props.disabled}
       onClick={() => props.onSelectModel(props.model.value)}
     >
       <span className="composer-select-menu-item-label">{props.model.label}</span>
@@ -116,6 +118,7 @@ function useDelayedSubmenuState(): {
 function ExtraModelsFolder(props: {
   readonly models: ReadonlyArray<ComposerModelOption>;
   readonly selectedModel: string | null;
+  readonly disabled: boolean;
   readonly onSelectModel: (model: string) => void;
 }): JSX.Element {
   const submenu = useDelayedSubmenuState();
@@ -135,6 +138,7 @@ function ExtraModelsFolder(props: {
         role="menuitem"
         aria-haspopup="menu"
         aria-expanded={open}
+        disabled={props.disabled}
         onClick={submenu.toggleMenu}
       >
         <span className="composer-select-menu-item-left">
@@ -153,6 +157,7 @@ function ExtraModelsFolder(props: {
             key={model.id}
             model={model}
             selected={model.value === props.selectedModel}
+            disabled={props.disabled}
             onSelectModel={props.onSelectModel}
           />
         ))}
@@ -164,6 +169,7 @@ function ExtraModelsFolder(props: {
 function ModelMenu(props: {
   readonly models: ReadonlyArray<ComposerModelOption>;
   readonly selectedModel: string | null;
+  readonly disabled: boolean;
   readonly onSelectModel: (model: string) => void;
 }): JSX.Element {
   const { primaryModels, extraModels } = useMemo(() => partitionComposerModels(props.models), [props.models]);
@@ -176,6 +182,7 @@ function ModelMenu(props: {
           key={model.id}
           model={model}
           selected={model.value === props.selectedModel}
+          disabled={props.disabled}
           onSelectModel={props.onSelectModel}
         />
       ))}
@@ -184,6 +191,7 @@ function ModelMenu(props: {
         <ExtraModelsFolder
           models={extraModels}
           selectedModel={props.selectedModel}
+          disabled={props.disabled}
           onSelectModel={props.onSelectModel}
         />
       ) : null}
@@ -194,6 +202,7 @@ function ModelMenu(props: {
 function EffortMenu(props: {
   readonly selectedEffort: ReasoningEffort | null;
   readonly supportedEfforts: ReadonlyArray<ReasoningEffort>;
+  readonly disabled: boolean;
   readonly onSelectEffort: (effort: ReasoningEffort) => void;
 }): JSX.Element {
   const visibleEfforts = useMemo(
@@ -214,6 +223,7 @@ function EffortMenu(props: {
             className={itemClassName}
             role="menuitemradio"
             aria-checked={selected}
+            disabled={props.disabled}
             onClick={() => props.onSelectEffort(effort.value)}
           >
             <span className="composer-select-menu-item-left">
@@ -229,6 +239,7 @@ function EffortMenu(props: {
 }
 
 export function ComposerModelControls(props: {
+  readonly disabled?: boolean;
   readonly models: ReadonlyArray<ComposerModelOption>;
   readonly selectedModel: string | null;
   readonly selectedEffort: ReasoningEffort | null;
@@ -257,7 +268,7 @@ export function ComposerModelControls(props: {
     <div className="composer-select-group" ref={containerRef}>
       <div className="composer-select-anchor">
         {openMenu === "model" ? (
-          <ModelMenu models={props.models} selectedModel={props.selectedModel} onSelectModel={onSelectModel} />
+          <ModelMenu disabled={props.disabled ?? false} models={props.models} selectedModel={props.selectedModel} onSelectModel={onSelectModel} />
         ) : null}
         <button
           type="button"
@@ -265,6 +276,7 @@ export function ComposerModelControls(props: {
           aria-haspopup="menu"
           aria-expanded={openMenu === "model"}
           aria-label={`选择模型：${modelLabel}`}
+          disabled={props.disabled}
           onClick={() => setOpenMenu((current) => (current === "model" ? null : "model"))}
         >
           <span className="composer-select-trigger-text">{modelLabel || DEFAULT_COMPOSER_MODEL_LABEL}</span>
@@ -273,7 +285,7 @@ export function ComposerModelControls(props: {
       </div>
       <div className="composer-select-anchor">
         {openMenu === "effort" ? (
-          <EffortMenu selectedEffort={props.selectedEffort} supportedEfforts={props.supportedEfforts} onSelectEffort={onSelectEffort} />
+          <EffortMenu disabled={props.disabled ?? false} selectedEffort={props.selectedEffort} supportedEfforts={props.supportedEfforts} onSelectEffort={onSelectEffort} />
         ) : null}
         <button
           type="button"
@@ -281,6 +293,7 @@ export function ComposerModelControls(props: {
           aria-haspopup="menu"
           aria-expanded={openMenu === "effort"}
           aria-label={`选择思考强度：${effortLabel}`}
+          disabled={props.disabled}
           onClick={() => setOpenMenu((current) => (current === "effort" ? null : "effort"))}
         >
           <BrainIcon className="composer-select-brain" />

@@ -8,6 +8,7 @@ import { ComposerAttachmentMenu } from "./ComposerAttachmentMenu";
 import { ComposerFooter } from "./ComposerFooter";
 import { ComposerModelControls } from "./ComposerModelControls";
 import { OfficialPlusIcon } from "./officialIcons";
+import { useComposerSelectionPersistence } from "./useComposerSelectionPersistence";
 
 const MIN_TRIMMED_MESSAGE_LENGTH = 1;
 
@@ -26,6 +27,7 @@ export interface HomeComposerProps {
   readonly interruptPending: boolean;
   readonly onInputChange: (text: string) => void;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
+  readonly onPersistComposerSelection: (selection: ComposerSelection) => Promise<void>;
   readonly onSelectPermissionLevel: (level: ComposerPermissionLevel) => void;
   readonly onInterruptTurn: () => Promise<void>;
   readonly onRemoveQueuedFollowUp: (followUpId: string) => void;
@@ -106,7 +108,7 @@ function QueuedFollowUpsPanel(props: {
       <header className="composer-queue-header">
         <strong>Queued follow-ups</strong>
         <button type="button" className="composer-queue-clear" onClick={props.onClearQueuedFollowUps}>
-          清空
+          娓呯┖
         </button>
       </header>
       <ul className="composer-queue-list">
@@ -117,7 +119,7 @@ function QueuedFollowUpsPanel(props: {
               <p>{followUp.text}</p>
             </div>
             <button type="button" className="composer-queue-remove" onClick={() => props.onRemoveQueuedFollowUp(followUp.id)}>
-              移除
+              绉婚櫎
             </button>
           </li>
         ))}
@@ -130,6 +132,15 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false);
   const [planModeEnabled, setPlanModeEnabled] = useState(false);
   const composerSelection = useComposerSelection(props.models, props.defaultModel, props.defaultEffort);
+  const { handleSelectModel, handleSelectEffort } = useComposerSelectionPersistence({
+    models: props.models,
+    defaultModel: props.defaultModel,
+    defaultEffort: props.defaultEffort,
+    selectedModel: composerSelection.selectedModel,
+    selectedEffort: composerSelection.selectedEffort,
+    replaceSelection: composerSelection.replaceSelection,
+    persistSelection: props.onPersistComposerSelection
+  });
   const canSend = !props.busy && props.inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH;
   const buttonDisabled = props.isResponding ? props.interruptPending : !canSend;
   const buttonLabel = props.isResponding ? "Pause response" : "Send message";
@@ -190,8 +201,8 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
               selectedModel={composerSelection.selectedModel}
               selectedEffort={composerSelection.selectedEffort}
               supportedEfforts={composerSelection.selectedModelOption?.supportedEfforts ?? []}
-              onSelectModel={composerSelection.selectModel}
-              onSelectEffort={composerSelection.selectEffort}
+              onSelectModel={handleSelectModel}
+              onSelectEffort={handleSelectEffort}
             />
           </div>
           <button

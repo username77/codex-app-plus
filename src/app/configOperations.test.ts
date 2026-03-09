@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ProtocolClient } from "../protocol/client";
-import { batchWriteConfigAndRefresh, writeConfigValueAndRefresh } from "./configOperations";
+import {
+  batchWriteConfigAndReadSnapshot,
+  batchWriteConfigAndRefresh,
+  writeConfigValueAndRefresh
+} from "./configOperations";
 
 const SNAPSHOT = {
   config: { mcp_servers: { fetch: { command: "uvx", args: ["mcp-server-fetch"] } } },
@@ -77,6 +81,23 @@ describe("configOperations", () => {
       "config/mcpServer/reload",
       "config/read",
       "mcpServerStatus/list"
+    ]);
+    expect(dispatch).toHaveBeenCalledWith({ type: "config/loaded", config: SNAPSHOT });
+  });
+
+  it("batch writes config and only refreshes the config snapshot when MCP reload is unnecessary", async () => {
+    const dispatch = vi.fn();
+    const { client, request } = createClient();
+
+    await batchWriteConfigAndReadSnapshot(client, dispatch, {
+      edits: [{ keyPath: "model", value: "gpt-5.4", mergeStrategy: "upsert" }],
+      filePath: null,
+      expectedVersion: null
+    });
+
+    expect(request.mock.calls.map(([method]) => method)).toEqual([
+      "config/batchWrite",
+      "config/read"
     ]);
     expect(dispatch).toHaveBeenCalledWith({ type: "config/loaded", config: SNAPSHOT });
   });

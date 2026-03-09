@@ -22,6 +22,11 @@ export interface ConfigMutationResult {
   readonly write: ConfigWriteResponse;
 }
 
+export interface ConfigSnapshotMutationResult {
+  readonly config: ConfigReadResponse;
+  readonly write: ConfigWriteResponse;
+}
+
 type Dispatch = (action: AppAction) => void;
 
 export async function readConfigSnapshot(
@@ -77,4 +82,14 @@ export async function batchWriteConfigAndRefresh(
   const write = (await client.request("config/batchWrite", params)) as ConfigWriteResponse;
   const refreshed = await refreshMcpData(client, dispatch);
   return { write, config: refreshed.config, statuses: refreshed.statuses };
+}
+
+export async function batchWriteConfigAndReadSnapshot(
+  client: ProtocolClient,
+  dispatch: Dispatch,
+  params: ConfigBatchWriteParams
+): Promise<ConfigSnapshotMutationResult> {
+  const write = (await client.request("config/batchWrite", params)) as ConfigWriteResponse;
+  const config = await readConfigSnapshot(client, dispatch);
+  return { write, config };
 }

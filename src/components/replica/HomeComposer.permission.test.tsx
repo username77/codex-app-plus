@@ -35,6 +35,7 @@ function ComposerHarness(props: {
       interruptPending={false}
       onInputChange={vi.fn()}
       onSendTurn={props.onSendTurn}
+      onPersistComposerSelection={vi.fn().mockResolvedValue(undefined)}
       onSelectPermissionLevel={setPermissionLevel}
       onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
       onRemoveQueuedFollowUp={vi.fn()}

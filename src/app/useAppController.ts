@@ -13,8 +13,10 @@ import type { LoginAccountResponse } from "../protocol/generated/v2/LoginAccount
 import type { McpServerStatus } from "../protocol/generated/v2/McpServerStatus";
 import type { ThreadListResponse } from "../protocol/generated/v2/ThreadListResponse";
 import {
+  batchWriteConfigAndReadSnapshot,
   batchWriteConfigAndRefresh,
   type ConfigMutationResult,
+  type ConfigSnapshotMutationResult,
   listAllMcpServerStatuses,
   readConfigSnapshot,
   refreshMcpData,
@@ -42,6 +44,7 @@ interface AppController {
   listMcpServerStatuses: () => Promise<ReadonlyArray<McpServerStatus>>;
   writeConfigValue: (params: ConfigValueWriteParams) => Promise<ConfigMutationResult>;
   batchWriteConfig: (params: ConfigBatchWriteParams) => Promise<ConfigMutationResult>;
+  batchWriteConfigSnapshot: (params: ConfigBatchWriteParams) => Promise<ConfigSnapshotMutationResult>;
   login: () => Promise<void>;
   resolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
 }
@@ -307,6 +310,7 @@ export function useAppController(hostBridge: HostBridge): AppController {
   }, [client, dispatch]);
   const writeConfigValue = useCallback((params: ConfigValueWriteParams) => runBusy(() => writeConfigValueAndRefresh(client, dispatch, params)), [client, dispatch, runBusy]);
   const batchWriteConfig = useCallback((params: ConfigBatchWriteParams) => runBusy(() => batchWriteConfigAndRefresh(client, dispatch, params)), [client, dispatch, runBusy]);
+  const batchWriteConfigSnapshot = useCallback((params: ConfigBatchWriteParams) => runBusy(() => batchWriteConfigAndReadSnapshot(client, dispatch, params)), [client, dispatch, runBusy]);
 
   const resolveServerRequest = useCallback(async (resolution: ServerRequestResolution) => {
     if (resolution.kind === "tokenRefresh") {
@@ -316,5 +320,5 @@ export function useAppController(hostBridge: HostBridge): AppController {
     dispatch({ type: "serverRequest/resolved", requestId: resolution.requestId });
   }, [client, dispatch, hostBridge.app]);
 
-  return { state, setInput: (text) => dispatch({ type: "input/changed", value: text }), retryConnection: () => bootstrap(true), refreshConfigSnapshot: refreshConfig, refreshMcpData: refreshMcp, listMcpServerStatuses: listStatuses, writeConfigValue, batchWriteConfig, login, resolveServerRequest };
+  return { state, setInput: (text) => dispatch({ type: "input/changed", value: text }), retryConnection: () => bootstrap(true), refreshConfigSnapshot: refreshConfig, refreshMcpData: refreshMcp, listMcpServerStatuses: listStatuses, writeConfigValue, batchWriteConfig, batchWriteConfigSnapshot, login, resolveServerRequest };
 }

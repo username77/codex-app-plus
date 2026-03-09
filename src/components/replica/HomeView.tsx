@@ -68,6 +68,7 @@ interface HomeViewProps {
   readonly onInputChange: (text: string) => void;
   readonly onCreateThread: () => Promise<void>;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
+  readonly onPersistComposerSelection: (selection: ComposerSelection) => Promise<void>;
   readonly onSelectComposerPermissionLevel: (level: ComposerPermissionLevel) => void;
   readonly onInterruptTurn: () => Promise<void>;
   readonly onAddRoot: () => void;
@@ -109,6 +110,7 @@ interface MainContentProps {
   readonly onSelectWorkspaceOpener: (opener: WorkspaceOpener) => void;
   readonly onInputChange: (text: string) => void;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
+  readonly onPersistComposerSelection: (selection: ComposerSelection) => Promise<void>;
   readonly onSelectComposerPermissionLevel: (level: ComposerPermissionLevel) => void;
   readonly onInterruptTurn: () => Promise<void>;
   readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
@@ -164,6 +166,7 @@ function MainContent(props: MainContentProps): JSX.Element {
         interruptPending={props.interruptPending}
         onInputChange={props.onInputChange}
         onSendTurn={props.onSendTurn}
+        onPersistComposerSelection={props.onPersistComposerSelection}
         onSelectPermissionLevel={props.onSelectComposerPermissionLevel}
         onInterruptTurn={props.onInterruptTurn}
         onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
@@ -265,6 +268,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         onSelectWorkspaceOpener={props.onSelectWorkspaceOpener}
         onInputChange={props.onInputChange}
         onSendTurn={props.onSendTurn}
+        onPersistComposerSelection={props.onPersistComposerSelection}
         onSelectComposerPermissionLevel={props.onSelectComposerPermissionLevel}
         onInterruptTurn={props.onInterruptTurn}
         onResolveServerRequest={props.onResolveServerRequest}

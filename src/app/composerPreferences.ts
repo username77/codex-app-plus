@@ -15,6 +15,10 @@ export interface ComposerSelection {
   readonly effort: ReasoningEffort | null;
 }
 
+export interface ResolvedComposerSelection extends ComposerSelection {
+  readonly modelOption: ComposerModelOption | null;
+}
+
 export interface ComposerModelOption {
   readonly id: string;
   readonly value: string;
@@ -114,15 +118,24 @@ export function readComposerSelectionFromConfig(configSnapshot: unknown): Compos
   };
 }
 
+export function findComposerModel(
+  models: ReadonlyArray<ComposerModelOption>,
+  value: string | null
+): ComposerModelOption | null {
+  if (value === null) {
+    return null;
+  }
+
+  return models.find((model) => model.value === value) ?? null;
+}
+
 export function resolveComposerModel(
   models: ReadonlyArray<ComposerModelOption>,
   preferredModel: string | null
 ): ComposerModelOption | null {
-  if (preferredModel !== null) {
-    const preferred = models.find((model) => model.value === preferredModel);
-    if (preferred !== undefined) {
-      return preferred;
-    }
+  const preferred = findComposerModel(models, preferredModel);
+  if (preferred !== null) {
+    return preferred;
   }
 
   return models.find((model) => model.isDefault) ?? models[0] ?? null;
@@ -139,6 +152,28 @@ export function resolveComposerEffort(
     return preferredEffort;
   }
   return model.defaultEffort;
+}
+
+export function resolveConfiguredComposerSelection(
+  models: ReadonlyArray<ComposerModelOption>,
+  preferredModel: string | null,
+  preferredEffort: ReasoningEffort | null
+): ResolvedComposerSelection {
+  if (preferredModel !== null) {
+    const matchedModel = findComposerModel(models, preferredModel);
+    return {
+      model: preferredModel,
+      effort: matchedModel === null ? preferredEffort : resolveComposerEffort(matchedModel, preferredEffort),
+      modelOption: matchedModel
+    };
+  }
+
+  const fallbackModel = resolveComposerModel(models, null);
+  return {
+    model: fallbackModel?.value ?? null,
+    effort: resolveComposerEffort(fallbackModel, preferredEffort),
+    modelOption: fallbackModel
+  };
 }
 
 export function getComposerModelLabel(models: ReadonlyArray<ComposerModelOption>, value: string | null): string {

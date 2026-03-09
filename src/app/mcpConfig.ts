@@ -4,15 +4,11 @@ import type { ConfigReadResponse } from "../protocol/generated/v2/ConfigReadResp
 import type { McpAuthStatus } from "../protocol/generated/v2/McpAuthStatus";
 import type { McpServerStatus } from "../protocol/generated/v2/McpServerStatus";
 import type { JsonValue } from "../protocol/generated/serde_json/JsonValue";
+import { readUserConfigWriteTarget, type UserConfigWriteTarget } from "./configWriteTarget";
 import { MCP_RECOMMENDED_PRESETS } from "./mcpPresets";
 
 export type McpTransportType = "stdio" | "http" | "sse";
 export type JsonObject = Record<string, JsonValue>;
-
-export interface McpConfigWriteTarget {
-  readonly filePath: string | null;
-  readonly expectedVersion: string | null;
-}
 
 export interface McpRuntimeSummary {
   readonly authStatus: McpAuthStatus;
@@ -33,7 +29,7 @@ export interface McpConfigServerView {
 }
 
 export interface McpConfigView {
-  readonly writeTarget: McpConfigWriteTarget;
+  readonly writeTarget: UserConfigWriteTarget;
   readonly userServers: ReadonlyArray<McpConfigServerView>;
   readonly readOnlyServers: ReadonlyArray<McpConfigServerView>;
   readonly userServerMap: JsonObject;
@@ -109,14 +105,6 @@ function getOriginLabel(source: ConfigLayerSource | null): string {
   return "托管配置";
 }
 
-function getWriteTarget(snapshot: ConfigReadResponse | null): McpConfigWriteTarget {
-  const userLayer = snapshot?.layers?.find((layer) => layer.name.type === "user") ?? null;
-  if (userLayer?.name.type === "user") {
-    return { filePath: userLayer.name.file, expectedVersion: userLayer.version };
-  }
-  return { filePath: null, expectedVersion: null };
-}
-
 function toServerView(
   id: string,
   config: JsonObject,
@@ -159,7 +147,7 @@ export function readMcpConfigView(
   );
 
   return {
-    writeTarget: getWriteTarget(typedSnapshot),
+    writeTarget: readUserConfigWriteTarget(typedSnapshot),
     userServers,
     readOnlyServers,
     userServerMap: Object.fromEntries(userServers.map((server) => [server.id, server.config])),

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReasoningEffort } from "../protocol/generated/ReasoningEffort";
 import {
+  type ComposerSelection,
   type ComposerModelOption,
-  resolveComposerEffort,
-  resolveComposerModel
+  findComposerModel,
+  resolveConfiguredComposerSelection
 } from "./composerPreferences";
 
 interface ComposerSelectionState {
@@ -12,6 +13,7 @@ interface ComposerSelectionState {
   readonly selectedModelOption: ComposerModelOption | null;
   readonly selectModel: (model: string) => void;
   readonly selectEffort: (effort: ReasoningEffort) => void;
+  readonly replaceSelection: (selection: ComposerSelection) => void;
 }
 
 export function useComposerSelection(
@@ -19,30 +21,37 @@ export function useComposerSelection(
   defaultModel: string | null,
   defaultEffort: ReasoningEffort | null
 ): ComposerSelectionState {
-  const [selectedModel, setSelectedModel] = useState<string | null>(defaultModel);
-  const [selectedEffort, setSelectedEffort] = useState<ReasoningEffort | null>(defaultEffort);
-  const defaultModelOption = useMemo(() => resolveComposerModel(models, defaultModel), [defaultModel, models]);
-  const selectedModelOption = useMemo(() => resolveComposerModel(models, selectedModel), [models, selectedModel]);
+  const persistedSelection = useMemo(
+    () => resolveConfiguredComposerSelection(models, defaultModel, defaultEffort),
+    [defaultEffort, defaultModel, models]
+  );
+  const [selectedModel, setSelectedModel] = useState<string | null>(persistedSelection.model);
+  const [selectedEffort, setSelectedEffort] = useState<ReasoningEffort | null>(persistedSelection.effort);
+  const previousPersistedSelectionRef = useRef<ComposerSelection>(persistedSelection);
+  const selectedModelOption = useMemo(() => findComposerModel(models, selectedModel), [models, selectedModel]);
 
   useEffect(() => {
-    const nextModel = selectedModelOption?.value ?? defaultModelOption?.value ?? selectedModel;
-    if (nextModel !== selectedModel) {
-      setSelectedModel(nextModel);
+    const previous = previousPersistedSelectionRef.current;
+    if (previous.model === persistedSelection.model && previous.effort === persistedSelection.effort) {
+      return;
     }
-  }, [defaultModelOption, selectedModel, selectedModelOption]);
 
-  useEffect(() => {
-    const nextEffort = resolveComposerEffort(selectedModelOption, selectedEffort ?? defaultEffort);
-    if (nextEffort !== selectedEffort) {
-      setSelectedEffort(nextEffort);
-    }
-  }, [defaultEffort, selectedEffort, selectedModelOption]);
+    previousPersistedSelectionRef.current = persistedSelection;
+    setSelectedModel(persistedSelection.model);
+    setSelectedEffort(persistedSelection.effort);
+  }, [persistedSelection]);
+
+  const replaceSelection = useCallback((selection: ComposerSelection) => {
+    setSelectedModel(selection.model);
+    setSelectedEffort(selection.effort);
+  }, []);
 
   return {
-    selectedModel: selectedModelOption?.value ?? selectedModel,
+    selectedModel,
     selectedEffort,
     selectedModelOption,
     selectModel: setSelectedModel,
-    selectEffort: setSelectedEffort
+    selectEffort: setSelectedEffort,
+    replaceSelection
   };
 }
