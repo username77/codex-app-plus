@@ -10,6 +10,7 @@ interface HomeAssistantTranscriptEntryProps {
 
 export function HomeAssistantTranscriptEntry(props: HomeAssistantTranscriptEntryProps): JSX.Element {
   const model = createAssistantTranscriptEntryModel(props.node);
+  const truncateSummaryWhenCollapsed = model.truncateSummaryWhenCollapsed === true;
 
   if (model.kind === "message" && model.message) {
     return (
@@ -30,7 +31,12 @@ export function HomeAssistantTranscriptEntry(props: HomeAssistantTranscriptEntry
     return (
       <section className="home-assistant-transcript-entry home-assistant-transcript-details">
         <details>
-          <summary className="home-assistant-transcript-line">{model.summary}</summary>
+          <summary
+            className="home-assistant-transcript-line home-assistant-transcript-summary"
+            data-truncate-summary={truncateSummaryWhenCollapsed ? "true" : undefined}
+          >
+            <span className="home-assistant-transcript-summary-text">{model.summary}</span>
+          </summary>
           {model.detail ? <pre className="home-assistant-transcript-detail">{model.detail}</pre> : null}
         </details>
       </section>

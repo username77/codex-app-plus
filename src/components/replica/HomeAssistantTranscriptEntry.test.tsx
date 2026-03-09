@@ -1,12 +1,20 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+﻿import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { ConversationMessage, TimelineEntry } from "../../domain/timeline";
+import type {
+  CollabAgentToolCallEntry,
+  CommandExecutionEntry,
+  ConversationMessage,
+  DynamicToolCallEntry,
+  McpToolCallEntry,
+  TurnPlanSnapshotEntry,
+} from "../../domain/timeline";
 import { HomeAssistantTranscriptEntry } from "./HomeAssistantTranscriptEntry";
 
-function createAssistantMessage(text: string): Extract<
-  Parameters<typeof HomeAssistantTranscriptEntry>[0]["node"],
-  { kind: "assistantMessage" }
-> {
+type AssistantNode = Parameters<typeof HomeAssistantTranscriptEntry>[0]["node"];
+
+const LONG_COMMAND = "pnpm test --filter @very-long/package-name -- --runInBand --reporter=verbose";
+
+function createAssistantMessage(text: string): Extract<AssistantNode, { kind: "assistantMessage" }> {
   const message: ConversationMessage = {
     id: "assistant-1",
     kind: "agentMessage",
@@ -17,20 +25,22 @@ function createAssistantMessage(text: string): Extract<
     text,
     status: "done",
   };
+
   return { key: message.id, kind: "assistantMessage", message, showThinkingIndicator: false };
 }
 
-function createCommandNode(): Extract<
-  Parameters<typeof HomeAssistantTranscriptEntry>[0]["node"],
-  { kind: "traceItem" }
-> {
-  const item: TimelineEntry = {
+function createTraceNode(entry: Extract<AssistantNode, { kind: "traceItem" }>['item']): Extract<AssistantNode, { kind: "traceItem" }> {
+  return { key: entry.id, kind: "traceItem", item: entry };
+}
+
+function createCommandNode(command = LONG_COMMAND): Extract<AssistantNode, { kind: "traceItem" }> {
+  const item: CommandExecutionEntry = {
     id: "command-1",
     kind: "commandExecution",
     threadId: "thread-1",
     turnId: "turn-1",
     itemId: "item-command",
-    command: "pnpm test",
+    command,
     cwd: "E:/code/codex-app-plus",
     processId: "proc-1",
     status: "completed",
@@ -41,7 +51,83 @@ function createCommandNode(): Extract<
     terminalInteractions: [],
     approvalRequestId: null,
   };
-  return { key: item.id, kind: "traceItem", item };
+
+  return createTraceNode(item);
+}
+
+function createMcpToolNode(): Extract<AssistantNode, { kind: "traceItem" }> {
+  const item: McpToolCallEntry = {
+    id: "mcp-1",
+    kind: "mcpToolCall",
+    threadId: "thread-1",
+    turnId: "turn-1",
+    itemId: "item-mcp",
+    server: "server-alpha",
+    tool: "tool/with/a/very/long/name",
+    status: "completed",
+    arguments: { query: "status" },
+    result: null,
+    error: null,
+    durationMs: 250,
+    progress: [],
+  };
+
+  return createTraceNode(item);
+}
+
+function createDynamicToolNode(): Extract<AssistantNode, { kind: "traceItem" }> {
+  const item: DynamicToolCallEntry = {
+    id: "dynamic-1",
+    kind: "dynamicToolCall",
+    threadId: "thread-1",
+    turnId: "turn-1",
+    itemId: "item-dynamic",
+    tool: "dynamic-tool-with-an-extremely-long-name",
+    arguments: { mode: "full" },
+    status: "completed",
+    contentItems: [],
+    success: true,
+    durationMs: 400,
+  };
+
+  return createTraceNode(item);
+}
+
+function createCollabToolNode(): Extract<AssistantNode, { kind: "traceItem" }> {
+  const item: CollabAgentToolCallEntry = {
+    id: "collab-1",
+    kind: "collabAgentToolCall",
+    threadId: "thread-1",
+    turnId: "turn-1",
+    itemId: "item-collab",
+    tool: "spawnAgent",
+    status: "completed",
+    senderThreadId: "thread-main",
+    receiverThreadIds: ["thread-helper"],
+    prompt: "inspect the command UI",
+    agentsStates: {
+      "thread-helper": {
+        status: "completed",
+        message: null,
+      },
+    },
+  };
+
+  return createTraceNode(item);
+}
+
+function createTurnPlanNode(): Extract<AssistantNode, { kind: "auxiliaryBlock" }> {
+  const entry: TurnPlanSnapshotEntry = {
+    id: "turn-plan-1",
+    kind: "turnPlanSnapshot",
+    threadId: "thread-1",
+    turnId: "turn-1",
+    itemId: "item-plan",
+    explanation: "keep the plan visible",
+    plan: [{ step: "Inspect UI", status: "completed" }],
+  };
+
+  return { key: entry.id, kind: "auxiliaryBlock", entry };
 }
 
 describe("HomeAssistantTranscriptEntry", () => {
@@ -57,12 +143,15 @@ describe("HomeAssistantTranscriptEntry", () => {
     expect(screen.getByText("after")).toBeInTheDocument();
   });
 
-  it("renders command summaries in collapsed transcript details", () => {
+  it("marks command summaries for collapsed truncation without shortening text content", () => {
     const { container } = render(<HomeAssistantTranscriptEntry node={createCommandNode()} />);
     const summary = container.querySelector("summary");
     const details = container.querySelector("details");
+    const summaryText = container.querySelector(".home-assistant-transcript-summary-text");
 
-    expect(screen.getByText(/pnpm test/)).toBeInTheDocument();
+    expect(summary).toHaveAttribute("data-truncate-summary", "true");
+    expect(summaryText?.textContent).toContain(LONG_COMMAND);
+    expect(summaryText?.textContent).not.toContain("…");
     expect(details?.open).toBe(false);
 
     if (summary !== null) {
@@ -70,5 +159,33 @@ describe("HomeAssistantTranscriptEntry", () => {
     }
 
     expect(details?.open).toBe(true);
+  });
+
+  it("marks MCP, dynamic, and collab tool summaries for collapsed truncation", () => {
+    const { container } = render(
+      <>
+        <HomeAssistantTranscriptEntry node={createMcpToolNode()} />
+        <HomeAssistantTranscriptEntry node={createDynamicToolNode()} />
+        <HomeAssistantTranscriptEntry node={createCollabToolNode()} />
+      </>,
+    );
+
+    const summaries = Array.from(container.querySelectorAll('summary[data-truncate-summary="true"]'));
+    const texts = Array.from(container.querySelectorAll(".home-assistant-transcript-summary-text")).map(
+      (element) => element.textContent,
+    );
+
+    expect(summaries).toHaveLength(3);
+    expect(texts).toContain("工具调用：server-alpha/tool/with/a/very/long/name");
+    expect(texts).toContain("工具调用：dynamic-tool-with-an-extremely-long-name");
+    expect(texts).toContain("协作工具：spawnAgent");
+  });
+
+  it("does not mark turn plan summaries for collapsed truncation", () => {
+    const { container } = render(<HomeAssistantTranscriptEntry node={createTurnPlanNode()} />);
+    const summary = container.querySelector("summary");
+
+    expect(screen.getByText("Turn plan")).toBeInTheDocument();
+    expect(summary?.hasAttribute("data-truncate-summary")).toBe(false);
   });
 });

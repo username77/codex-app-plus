@@ -1,4 +1,4 @@
-.home-thinking-block,
+﻿.home-thinking-block,
 .home-entry-card,
 .home-request-card,
 .home-auxiliary-card {
@@ -57,6 +57,35 @@
 
 .home-assistant-transcript-details summary {
   cursor: pointer;
+}
+
+.home-assistant-transcript-summary {
+  display: block;
+  max-width: 100%;
+  list-style: none;
+}
+
+.home-assistant-transcript-summary::-webkit-details-marker {
+  display: none;
+}
+
+.home-assistant-transcript-summary::marker {
+  content: "";
+}
+
+.home-assistant-transcript-summary-text {
+  display: block;
+  min-width: 0;
+}
+
+.home-assistant-transcript-details details:not([open]) .home-assistant-transcript-summary[data-truncate-summary="true"] {
+  overflow: hidden;
+}
+
+.home-assistant-transcript-details details:not([open]) .home-assistant-transcript-summary[data-truncate-summary="true"] .home-assistant-transcript-summary-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .home-assistant-transcript-detail {
@@ -309,3 +338,4 @@
     -webkit-text-fill-color: currentColor;
   }
 }
+

@@ -1,4 +1,4 @@
-import type { ConversationMessage } from "../../domain/timeline";
+﻿import type { ConversationMessage } from "../../domain/timeline";
 import type { AuxiliaryBlock, ConversationRenderNode, TraceEntry } from "./localConversationGroups";
 
 const EMPTY_VALUE = "-";
@@ -8,8 +8,16 @@ export interface AssistantTranscriptEntryModel {
   readonly kind: "message" | "line" | "details";
   readonly summary: string | null;
   readonly detail: string | null;
+  readonly truncateSummaryWhenCollapsed?: boolean;
   readonly message?: ConversationMessage;
   readonly showThinkingIndicator?: boolean;
+}
+
+interface DetailsModelOptions {
+  readonly key: string;
+  readonly summary: string;
+  readonly detail: string | null;
+  readonly truncateSummaryWhenCollapsed?: boolean;
 }
 
 type AssistantNode = Extract<ConversationRenderNode, { kind: "assistantMessage" | "reasoningBlock" | "traceItem" | "auxiliaryBlock" }>;
@@ -25,113 +33,181 @@ export function createAssistantTranscriptEntryModel(node: AssistantNode): Assist
       showThinkingIndicator: node.showThinkingIndicator,
     };
   }
+
   if (node.kind === "reasoningBlock") {
-    return createLineModel(node.key, node.block.summary ?? "正在思考…");
+    return createLineModel(node.key, node.block.summary ?? "正在思考...");
   }
+
   if (node.kind === "traceItem") {
     return createTraceModel(node.key, node.item);
   }
+
   return createAuxiliaryModel(node.key, node.entry);
 }
 
 function createTraceModel(key: string, entry: TraceEntry): AssistantTranscriptEntryModel {
-  if (entry.kind === "commandExecution") {
-    return {
+  if (entry.kind === "commandExecution") return createCommandTraceModel(key, entry);
+  if (entry.kind === "fileChange") return createFileChangeTraceModel(key, entry);
+  if (entry.kind === "mcpToolCall") return createMcpTraceModel(key, entry);
+  if (entry.kind === "dynamicToolCall") return createDynamicToolTraceModel(key, entry);
+  if (entry.kind === "collabAgentToolCall") return createCollabAgentToolTraceModel(key, entry);
+  if (entry.kind === "webSearch") {
+    return createDetailsModel({
       key,
-      kind: "details",
-      summary: createCommandSummary(entry.command, entry.status),
-      detail: joinDetailLines([
-        `工作目录：${entry.cwd}`,
-        `退出码：${entry.exitCode === null ? EMPTY_VALUE : String(entry.exitCode)}`,
-        `耗时：${formatDuration(entry.durationMs)}`,
-        entry.output.trim().length > 0 ? entry.output : null,
-      ]),
-    };
+      summary: `网页搜索：${entry.query}`,
+      detail: entry.action === null ? null : safeJson(entry.action),
+    });
   }
-  if (entry.kind === "fileChange") {
-    return {
-      key,
-      kind: "details",
-      summary: createFileChangeSummary(entry.status, entry.changes.length),
-      detail: joinDetailLines([
-        entry.changes.length > 0 ? "变更文件：" : null,
-        ...entry.changes.map((change) => change.path),
-        entry.output.trim().length > 0 ? entry.output : null,
-      ]),
-    };
-  }
-  if (entry.kind === "mcpToolCall") {
-    return createDetailsModel(key, `工具调用：${entry.server}/${entry.tool}`, joinDetailLines([
+  return createDetailsModel({ key, summary: `查看图片：${entry.path}`, detail: null });
+}
+
+function createCommandTraceModel(key: string, entry: Extract<TraceEntry, { kind: "commandExecution" }>): AssistantTranscriptEntryModel {
+  return createDetailsModel({
+    key,
+    summary: createCommandSummary(entry.command, entry.status),
+    detail: joinDetailLines([
+      `工作目录：${entry.cwd}`,
+      `退出码：${entry.exitCode === null ? EMPTY_VALUE : String(entry.exitCode)}`,
+      `耗时：${formatDuration(entry.durationMs)}`,
+      entry.output.trim().length > 0 ? entry.output : null,
+    ]),
+    truncateSummaryWhenCollapsed: true,
+  });
+}
+
+function createFileChangeTraceModel(key: string, entry: Extract<TraceEntry, { kind: "fileChange" }>): AssistantTranscriptEntryModel {
+  return createDetailsModel({
+    key,
+    summary: createFileChangeSummary(entry.status, entry.changes.length),
+    detail: joinDetailLines([
+      entry.changes.length > 0 ? "变更文件：" : null,
+      ...entry.changes.map((change) => change.path),
+      entry.output.trim().length > 0 ? entry.output : null,
+    ]),
+  });
+}
+
+function createMcpTraceModel(key: string, entry: Extract<TraceEntry, { kind: "mcpToolCall" }>): AssistantTranscriptEntryModel {
+  return createDetailsModel({
+    key,
+    summary: `工具调用：${entry.server}/${entry.tool}`,
+    detail: joinDetailLines([
       `参数：${safeJson(entry.arguments)}`,
       `耗时：${formatDuration(entry.durationMs)}`,
       entry.error?.message ?? safeJson(entry.result),
-    ]));
-  }
-  if (entry.kind === "dynamicToolCall") {
-    return createDetailsModel(key, `工具调用：${entry.tool}`, joinDetailLines([
+    ]),
+    truncateSummaryWhenCollapsed: true,
+  });
+}
+
+function createDynamicToolTraceModel(key: string, entry: Extract<TraceEntry, { kind: "dynamicToolCall" }>): AssistantTranscriptEntryModel {
+  return createDetailsModel({
+    key,
+    summary: `工具调用：${entry.tool}`,
+    detail: joinDetailLines([
       `参数：${safeJson(entry.arguments)}`,
       `状态：${formatToolStatus(entry.status)}`,
       `耗时：${formatDuration(entry.durationMs)}`,
       entry.contentItems.length > 0 ? safeJson(entry.contentItems) : null,
-    ]));
-  }
-  if (entry.kind === "collabAgentToolCall") {
-    return createDetailsModel(key, `协作工具：${entry.tool}`, joinDetailLines([
+    ]),
+    truncateSummaryWhenCollapsed: true,
+  });
+}
+
+function createCollabAgentToolTraceModel(
+  key: string,
+  entry: Extract<TraceEntry, { kind: "collabAgentToolCall" }>,
+): AssistantTranscriptEntryModel {
+  return createDetailsModel({
+    key,
+    summary: `协作工具：${entry.tool}`,
+    detail: joinDetailLines([
       `状态：${formatToolStatus(entry.status)}`,
       `发送线程：${entry.senderThreadId}`,
       entry.receiverThreadIds.length > 0 ? `接收线程：${entry.receiverThreadIds.join(", ")}` : null,
       entry.prompt,
-    ]));
-  }
-  if (entry.kind === "webSearch") {
-    return createDetailsModel(key, `网页搜索：${entry.query}`, entry.action === null ? null : safeJson(entry.action));
-  }
-  return createDetailsModel(key, `查看图片：${entry.path}`, null);
+    ]),
+    truncateSummaryWhenCollapsed: true,
+  });
 }
 
 function createAuxiliaryModel(key: string, entry: AuxiliaryBlock): AssistantTranscriptEntryModel {
   if (entry.kind === "plan") {
-    return createDetailsModel(key, entry.status === "streaming" ? "计划草稿更新中" : "计划草稿", entry.text);
+    return createDetailsModel({
+      key,
+      summary: entry.status === "streaming" ? "计划草稿更新中" : "计划草稿",
+      detail: entry.text,
+    });
   }
+
   if (entry.kind === "turnPlanSnapshot") {
-    return createDetailsModel(key, "Turn plan", joinDetailLines([
-      entry.explanation,
-      ...entry.plan.map((step, index) => `${index + 1}. ${step.step} [${step.status}]`),
-    ]));
+    return createDetailsModel({
+      key,
+      summary: "Turn plan",
+      detail: joinDetailLines([
+        entry.explanation,
+        ...entry.plan.map((step, index) => `${index + 1}. ${step.step} [${step.status}]`),
+      ]),
+    });
   }
+
   if (entry.kind === "turnDiffSnapshot") {
-    return createDetailsModel(key, "代码 diff 已更新", entry.diff);
+    return createDetailsModel({ key, summary: "代码 diff 已更新", detail: entry.diff });
   }
+
   if (entry.kind === "reviewMode") {
-    return createLineModel(key, entry.state === "entered" ? `已进入 review 模式：${entry.review}` : `已退出 review 模式：${entry.review}`);
+    return createLineModel(
+      key,
+      entry.state === "entered" ? `已进入 review 模式：${entry.review}` : `已退出 review 模式：${entry.review}`,
+    );
   }
+
   if (entry.kind === "contextCompaction") {
     return createLineModel(key, "上下文已压缩");
   }
+
   if (entry.kind === "rawResponse") {
-    return createDetailsModel(key, entry.title, entry.detail ?? safeJson(entry.payload));
+    return createDetailsModel({ key, summary: entry.title, detail: entry.detail ?? safeJson(entry.payload) });
   }
+
   if (entry.kind === "systemNotice") {
-    return createDetailsModel(key, entry.title, entry.detail);
+    return createDetailsModel({ key, summary: entry.title, detail: entry.detail });
   }
+
   if (entry.kind === "realtimeSession") {
     return createLineModel(key, `Realtime 会话 ${entry.status}${entry.message ? `：${entry.message}` : ""}`);
   }
+
   if (entry.kind === "realtimeAudio") {
-    return createLineModel(key, `Realtime 音频块 #${entry.chunkIndex + 1}：${entry.audio.sampleRate} Hz，${entry.audio.numChannels} 声道`);
+    return createLineModel(
+      key,
+      `Realtime 音频块 #${entry.chunkIndex + 1}：${entry.audio.sampleRate} Hz，${entry.audio.numChannels} 声道`,
+    );
   }
-  return createDetailsModel(key, `模糊搜索：${entry.query}`, entry.files.length === 0 ? null : entry.files.map((file) => file.path).join("\n"));
+
+  return createDetailsModel({
+    key,
+    summary: `模糊搜索：${entry.query}`,
+    detail: entry.files.length === 0 ? null : entry.files.map((file) => file.path).join("\n"),
+  });
 }
 
 function createLineModel(key: string, summary: string): AssistantTranscriptEntryModel {
   return { key, kind: "line", summary, detail: null };
 }
 
-function createDetailsModel(key: string, summary: string, detail: string | null): AssistantTranscriptEntryModel {
-  if (detail === null || detail.trim().length === 0) {
-    return createLineModel(key, summary);
+function createDetailsModel(options: DetailsModelOptions): AssistantTranscriptEntryModel {
+  if (options.detail === null || options.detail.trim().length === 0) {
+    return createLineModel(options.key, options.summary);
   }
-  return { key, kind: "details", summary, detail };
+
+  return {
+    key: options.key,
+    kind: "details",
+    summary: options.summary,
+    detail: options.detail,
+    truncateSummaryWhenCollapsed: options.truncateSummaryWhenCollapsed,
+  };
 }
 
 function createCommandSummary(command: string, status: string): string {
@@ -158,9 +234,11 @@ function formatDuration(durationMs: number | null): string {
   if (durationMs === null) {
     return EMPTY_VALUE;
   }
+
   if (durationMs < 1000) {
     return `${durationMs} ms`;
   }
+
   return `${(durationMs / 1000).toFixed(1)} s`;
 }
 
@@ -168,9 +246,11 @@ function safeJson(value: unknown): string {
   if (value === null || value === undefined) {
     return EMPTY_VALUE;
   }
+
   if (typeof value === "string") {
     return value;
   }
+
   return JSON.stringify(value, null, 2);
 }
 
