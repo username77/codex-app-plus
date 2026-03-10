@@ -8,7 +8,7 @@
 }
 
 .settings-section-head strong {
-  font-size: 18px;
+  font-size: 17px;
   color: #1f2937;
   line-height: 1.3;
   font-weight: 600;
@@ -18,7 +18,7 @@
   border: 1px solid #e2e8f0;
   background: #f8fafc;
   color: #475569;
-  font-size: 13px;
+  font-size: 12px;
   padding: 6px 12px;
   border-radius: 999px;
   cursor: pointer;
@@ -40,7 +40,7 @@
   margin: 0;
   padding: 0 18px 12px;
   color: #64748b;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
@@ -50,7 +50,7 @@
 
 .settings-note code {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 13px;
+  font-size: 12px;
   color: #475569;
 }
 
@@ -67,14 +67,14 @@
 .settings-row-note {
   margin: 8px 0 0;
   color: #9a6b0f;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.5;
 }
 
 .settings-status-note {
   margin: 0;
   padding: 0 18px 16px;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.6;
 }
 
@@ -94,7 +94,7 @@
   background: #f8fafc;
   color: #1f2937;
   padding: 0 12px;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   display: inline-flex;
   align-items: center;
@@ -153,7 +153,7 @@
   align-items: center;
   gap: 8px;
   color: #64748b;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .settings-toggle {
@@ -205,12 +205,12 @@
   align-items: center;
   justify-content: center;
   color: #64748b;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .settings-reco-text strong {
   display: block;
-  font-size: 16px;
+  font-size: 15px;
   color: #1f2937;
   line-height: 1.4;
 }
@@ -218,13 +218,13 @@
 .settings-reco-text strong span {
   font-weight: 400;
   color: #64748b;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .settings-reco-text p {
   margin: 6px 0 0;
   color: #64748b;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
@@ -235,7 +235,7 @@
   padding: 0 14px;
   background: #f8fafc;
   color: #334155;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
@@ -250,7 +250,7 @@
 }
 
 .settings-config-card .settings-row-heading {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: #1f2937;
   line-height: 1.5;
@@ -259,7 +259,7 @@
 .settings-config-card .settings-row-meta {
   margin: 6px 0 0;
   color: #64748b;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
