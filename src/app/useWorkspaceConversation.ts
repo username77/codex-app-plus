@@ -19,6 +19,7 @@ import type { TurnSteerParams } from "../protocol/generated/v2/TurnSteerParams";
 import type { TurnInterruptParams } from "../protocol/generated/v2/TurnInterruptParams";
 import type { UserInput } from "../protocol/generated/v2/UserInput";
 import { createConversationFromThread } from "./conversationState";
+import { deriveConversationPreviewTitle, pickConversationTitle } from "./conversationTitle";
 import { mapConversationToThreadSummary, getActiveTurnId, isConversationStreaming } from "./conversationSelectors";
 import { mapConversationToTimelineEntries } from "./conversationTimeline";
 import { consumePrewarmedThread } from "./prewarmedThreadManager";
@@ -162,7 +163,11 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     const prewarmedResponse = await consumePrewarmedThread(workspacePath);
     const response = prewarmedResponse ?? (await options.hostBridge.rpc.request({ method: "thread/start", params: { model: sendOptions.selection.model ?? undefined, cwd: workspacePath, experimentalRawEvents: false, persistExtendedHistory: true, ...createThreadPermissionOverrides(sendOptions.permissionLevel) } })).result as ThreadStartResponse;
     const conversation = createConversationFromThread(response.thread, { hidden: false, resumeState: "resumed" });
+    const localPreviewTitle = pickConversationTitle(conversation.title, deriveConversationPreviewTitle(createInput(sendOptions.text, sendOptions.attachments)));
     dispatch({ type: "conversation/upserted", conversation });
+    if (localPreviewTitle !== null && localPreviewTitle !== conversation.title) {
+      dispatch({ type: "conversation/titleChanged", conversationId: conversation.id, title: localPreviewTitle });
+    }
     dispatch({ type: "conversation/selected", conversationId: conversation.id });
     await startTurn(conversation.id, sendOptions, response.thread.cwd || response.cwd || workspacePath);
   }, [dispatch, options.hostBridge.rpc, options.selectedRootPath, startTurn, state.draftConversation]);

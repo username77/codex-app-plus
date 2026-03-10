@@ -26,6 +26,7 @@ import {
   touchConversation,
   upsertConversationItem,
 } from "../app/conversationState";
+import { pickConversationTitle } from "../app/conversationTitle";
 
 const MAX_NOTIFICATION_LOG = 500;
 const MAX_BANNERS = 20;
@@ -40,6 +41,7 @@ function mergeConversation(existing: ConversationState | undefined, nextConversa
   }
   return {
     ...nextConversation,
+    title: pickConversationTitle(nextConversation.title, existing.title),
     turns: nextConversation.turns.length > 0 ? nextConversation.turns : existing.turns,
     queuedFollowUps: existing.queuedFollowUps,
     interruptRequestedTurnId: existing.interruptRequestedTurnId,
