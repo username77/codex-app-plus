@@ -14,7 +14,44 @@ const MODELS: ReadonlyArray<ComposerModelOption> = [{
   supportedEfforts: ["minimal", "low", "medium", "high", "xhigh"],
   isDefault: true
 }];
-
+function createGitController(): import("./git/types").WorkspaceGitController {
+  return {
+    loading: false,
+    pendingAction: null,
+    status: null,
+    statusLoaded: false,
+    hasRepository: false,
+    error: null,
+    notice: null,
+    commitMessage: "",
+    selectedBranch: "",
+    newBranchName: "",
+    diff: null,
+    diffCache: {},
+    diffTarget: null,
+    loadingDiffKeys: [],
+    staleDiffKeys: [],
+    refresh: vi.fn().mockResolvedValue(undefined),
+    initRepository: vi.fn().mockResolvedValue(undefined),
+    fetch: vi.fn().mockResolvedValue(undefined),
+    pull: vi.fn().mockResolvedValue(undefined),
+    push: vi.fn().mockResolvedValue(undefined),
+    stagePaths: vi.fn().mockResolvedValue(undefined),
+    unstagePaths: vi.fn().mockResolvedValue(undefined),
+    discardPaths: vi.fn().mockResolvedValue(undefined),
+    commit: vi.fn().mockResolvedValue(undefined),
+    checkoutBranch: vi.fn().mockResolvedValue(true),
+    createBranchFromName: vi.fn().mockResolvedValue(true),
+    checkoutSelectedBranch: vi.fn().mockResolvedValue(true),
+    createBranch: vi.fn().mockResolvedValue(true),
+    ensureDiff: vi.fn().mockResolvedValue(undefined),
+    selectDiff: vi.fn().mockResolvedValue(undefined),
+    clearDiff: vi.fn(),
+    setCommitMessage: vi.fn(),
+    setSelectedBranch: vi.fn(),
+    setNewBranchName: vi.fn()
+  };
+}
 function ComposerHarness(props: {
   readonly initialPermissionLevel: ComposerPermissionLevel;
   readonly onSendTurn: ReturnType<typeof vi.fn>;
@@ -32,12 +69,16 @@ function ComposerHarness(props: {
       followUpQueueMode="queue"
       composerEnterBehavior="enter"
       permissionLevel={permissionLevel}
+      gitController={createGitController()}
+      selectedThreadId={"thread-1"}
+      selectedThreadBranch={null}
       isResponding={false}
       interruptPending={false}
       onInputChange={vi.fn()}
       onSendTurn={props.onSendTurn}
       onPersistComposerSelection={vi.fn().mockResolvedValue(undefined)}
       onSelectPermissionLevel={setPermissionLevel}
+      onUpdateThreadBranch={vi.fn().mockResolvedValue(undefined)}
       onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
       onRemoveQueuedFollowUp={vi.fn()}
       onClearQueuedFollowUps={vi.fn()}
@@ -55,8 +96,8 @@ describe("HomeComposer permission", () => {
     const onSendTurn = vi.fn().mockResolvedValue(undefined);
     render(<ComposerHarness initialPermissionLevel="default" onSendTurn={onSendTurn} />);
 
-    fireEvent.click(screen.getByRole("button", { name: permissionLabel("default") }));
-    fireEvent.click(screen.getByRole("menuitem", { name: permissionLabel("full") }));
+    fireEvent.click(screen.getByRole("button", { name: /默认权限/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /完全访问权限/ }));
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(onSendTurn).toHaveBeenCalledWith(expect.objectContaining({ permissionLevel: "full" }));
@@ -66,10 +107,11 @@ describe("HomeComposer permission", () => {
     const onSendTurn = vi.fn().mockResolvedValue(undefined);
     render(<ComposerHarness initialPermissionLevel="full" onSendTurn={onSendTurn} />);
 
-    fireEvent.click(screen.getByRole("button", { name: permissionLabel("full") }));
-    fireEvent.click(screen.getByRole("menuitem", { name: permissionLabel("default") }));
+    fireEvent.click(screen.getByRole("button", { name: /完全访问权限/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /默认权限/ }));
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(onSendTurn).toHaveBeenCalledWith(expect.objectContaining({ permissionLevel: "default" }));
   });
 });
+
