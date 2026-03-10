@@ -149,7 +149,7 @@ export function applyAppServerNotification(context: NotificationContext, method:
     if (isPrewarmedThread(payload.thread.id)) {
       return;
     }
-    dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(payload.thread) });
+    dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(payload.thread, { resumeState: "resumed" }) });
     return;
   }
   if (method === "thread/status/changed") {

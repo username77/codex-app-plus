@@ -3,7 +3,10 @@ import type { PropsWithChildren } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { HostBridge } from "../bridge/types";
 import { AppStoreProvider, useAppStore } from "../state/store";
+import { applyAppServerNotification } from "./appControllerNotifications";
 import { createConversationFromThread } from "./conversationState";
+import { FrameTextDeltaQueue } from "./frameTextDeltaQueue";
+import { OutputDeltaQueue } from "./outputDeltaQueue";
 import { useWorkspaceConversation } from "./useWorkspaceConversation";
 
 function Wrapper(props: PropsWithChildren): JSX.Element {
@@ -47,6 +50,14 @@ function renderConversation(hostBridge: HostBridge) {
     });
     return { store, conversation };
   }, { wrapper: Wrapper });
+}
+
+function createNotificationContext(dispatch: ReturnType<typeof useAppStore>["dispatch"]) {
+  return {
+    dispatch,
+    textDeltaQueue: new FrameTextDeltaQueue({ onFlush: () => undefined }),
+    outputDeltaQueue: new OutputDeltaQueue({ onFlush: () => undefined }),
+  };
 }
 
 describe("useWorkspaceConversation", () => {
@@ -127,6 +138,77 @@ describe("useWorkspaceConversation", () => {
     expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ method: "turn/start", params: expect.objectContaining({ approvalPolicy: "on-request", sandboxPolicy: expect.objectContaining({ type: "workspaceWrite", networkAccess: false }) }) }));
     expect(result.current.conversation.draftActive).toBe(false);
     expect(result.current.conversation.selectedThreadId).toBe("thread-1");
+  });
+
+  it("does not resume the brand new thread after thread/started and still allows interrupt", async () => {
+    let resumeCalls = 0;
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "thread/start") {
+        return {
+          requestId: "request-1",
+          result: {
+            thread: createThread(),
+            model: "gpt-5.2",
+            modelProvider: "openai",
+            serviceTier: null,
+            cwd: "E:/code/FPGA",
+            approvalPolicy: "on-request",
+            sandbox: { type: "workspace-write", networkAccess: false, writableRoots: [], readableRoots: null },
+            reasoningEffort: "medium",
+          },
+        };
+      }
+      if (input.method === "turn/start") {
+        return { requestId: "request-2", result: { turn: createTurn() } };
+      }
+      if (input.method === "turn/interrupt") {
+        return { requestId: "request-3", result: { success: true } };
+      }
+      if (input.method === "thread/resume") {
+        resumeCalls += 1;
+        return { requestId: "request-4", result: { thread: createThread({ turns: [createTurn()] }) } };
+      }
+      throw new Error(`unexpected method: ${input.method}`);
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    await act(async () => {
+      await result.current.conversation.createThread();
+    });
+
+    act(() => {
+      result.current.store.dispatch({ type: "input/changed", value: "璇峰垎鏋愬綋鍓嶅伐浣滃尯" });
+    });
+
+    await act(async () => {
+      await result.current.conversation.sendTurn({ selection: { model: "gpt-5.2", effort: "medium" }, permissionLevel: "default", planModeEnabled: false });
+    });
+
+    act(() => {
+      applyAppServerNotification(createNotificationContext(result.current.store.dispatch), "thread/started", { thread: createThread() });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(resumeCalls).toBe(0);
+    expect(result.current.conversation.isResponding).toBe(true);
+
+    await act(async () => {
+      await result.current.conversation.interruptActiveTurn();
+    });
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/interrupt", params: { threadId: "thread-1", turnId: "turn-1" } }));
+
+    act(() => {
+      const notificationContext = createNotificationContext(result.current.store.dispatch);
+      applyAppServerNotification(notificationContext, "turn/completed", { threadId: "thread-1", turn: createTurn("completed") });
+      applyAppServerNotification(notificationContext, "thread/status/changed", { threadId: "thread-1", status: { type: "idle" } });
+    });
+
+    expect(result.current.conversation.isResponding).toBe(false);
   });
 
   it("queues follow-ups when selected conversation is active", async () => {
