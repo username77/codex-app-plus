@@ -81,11 +81,11 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
         />
         <SettingsSelectRow
           label="线程详情级别"
-          description="控制会话内命令与调试信息的显示粒度。"
+          description="控制会话内命令、工具与辅助信息的显示粒度。"
           value={preferences.threadDetailLevel}
           options={THREAD_DETAIL_LEVEL_OPTIONS}
           onChange={preferences.setThreadDetailLevel}
-          statusNote="用于控制时间线细节展示。"
+          statusNote="已作用于时间线；完整输出会额外显示 raw response 与调试项。"
         />
         <SettingsSelectRow
           label="Follow-up 模式"

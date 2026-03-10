@@ -53,10 +53,10 @@ describe("GeneralSettingsSection", () => {
     expect(screen.queryByRole("menuitemradio", { name: "Git Bash" })).toBeNull();
   });
 
-  it("shows the pending-effect notes for language and thread detail", () => {
+  it("shows the language pending note and the active thread-detail note", () => {
     renderSection();
 
     expect(screen.getByText("当前先保存偏好，未做完整 UI 国际化切换。")).toBeInTheDocument();
-    expect(screen.getByText("用于控制时间线细节展示。")).toBeInTheDocument();
+    expect(screen.getByText("已作用于时间线；完整输出会额外显示 raw response 与调试项。")).toBeInTheDocument();
   });
 });

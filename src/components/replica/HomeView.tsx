@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ComposerPermissionLevel } from "../../app/composerPermission";
 import type { ComposerModelOption, ComposerSelection } from "../../app/composerPreferences";
+import type { ThreadDetailLevel } from "../../app/useAppPreferences";
 import type { SendTurnOptions } from "../../app/useWorkspaceConversation";
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
 import type { EmbeddedTerminalShell, HostBridge, WorkspaceOpener } from "../../bridge/types";
@@ -50,6 +51,7 @@ interface HomeViewProps {
   readonly defaultEffort: ComposerSelection["effort"];
   readonly workspaceOpener: WorkspaceOpener;
   readonly embeddedTerminalShell: EmbeddedTerminalShell;
+  readonly threadDetailLevel: ThreadDetailLevel;
   readonly followUpQueueMode: FollowUpMode;
   readonly composerEnterBehavior: ComposerEnterBehavior;
   readonly composerPermissionLevel: ComposerPermissionLevel;
@@ -99,6 +101,7 @@ interface MainContentProps {
   readonly selectedRootPath: string | null;
   readonly selectedThread: ThreadSummary | null;
   readonly activeTurnId: string | null;
+  readonly threadDetailLevel: ThreadDetailLevel;
   readonly isResponding: boolean;
   readonly interruptPending: boolean;
   readonly draftActive: boolean;
@@ -149,7 +152,14 @@ function MainContent(props: MainContentProps): JSX.Element {
         onToggleTerminal={props.onToggleTerminal}
       />
       {conversationActive ? (
-        <HomeConversationCanvas activities={props.activities} selectedThread={props.selectedThread} activeTurnId={props.activeTurnId} placeholder={placeholder} onResolveServerRequest={props.onResolveServerRequest} />
+        <HomeConversationCanvas
+          activities={props.activities}
+          selectedThread={props.selectedThread}
+          activeTurnId={props.activeTurnId}
+          threadDetailLevel={props.threadDetailLevel}
+          placeholder={placeholder}
+          onResolveServerRequest={props.onResolveServerRequest}
+        />
       ) : (
         <EmptyCanvas selectedRootName={props.selectedRootName} selectedRootPath={props.selectedRootPath} />
       )}
@@ -262,6 +272,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         selectedRootPath={props.selectedRootPath}
         selectedThread={props.selectedThread}
         activeTurnId={props.activeTurnId}
+        threadDetailLevel={props.threadDetailLevel}
         isResponding={props.isResponding}
         interruptPending={props.interruptPending}
         draftActive={props.draftActive}

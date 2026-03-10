@@ -10,6 +10,7 @@
 @import "./replica-terminal.css";
 @import "./replica-settings.css";
 @import "./replica-settings-extra.css";
+@import "./replica-settings-layout.css";
 @import "./replica-conversation.css";
 @import "./replica-conversation-home.css";
 @import "./replica-conversation-home-transcript.css";

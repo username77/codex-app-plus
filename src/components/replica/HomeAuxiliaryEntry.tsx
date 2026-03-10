@@ -19,6 +19,7 @@ export function HomeAuxiliaryEntry(props: HomeAuxiliaryEntryProps): JSX.Element 
   if (props.entry.kind === "systemNotice") return <NoticeCard title={props.entry.title} detail={props.entry.detail} status={props.entry.level} />;
   if (props.entry.kind === "realtimeSession") return <NoticeCard title={`Realtime session ${props.entry.status}`} detail={props.entry.message ?? props.entry.sessionId} />;
   if (props.entry.kind === "realtimeAudio") return <NoticeCard title={`Realtime audio chunk #${props.entry.chunkIndex + 1}`} detail={`${props.entry.audio.sampleRate} Hz · ${props.entry.audio.numChannels} channel(s)`} />;
+  if (props.entry.kind === "debug") return <NoticeCard title={`Debug · ${props.entry.title}`} detail={JSON.stringify(props.entry.payload, null, 2)} status="info" />;
   return <FuzzySearchBlock entry={props.entry} />;
 }
 

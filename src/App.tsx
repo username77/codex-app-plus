@@ -204,6 +204,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       defaultEffort={composerPicker.defaultEffort}
       workspaceOpener={preferences.workspaceOpener}
       embeddedTerminalShell={preferences.embeddedTerminalShell}
+      threadDetailLevel={preferences.threadDetailLevel}
       followUpQueueMode={preferences.followUpQueueMode}
       composerEnterBehavior={preferences.composerEnterBehavior}
       composerPermissionLevel={preferences.composerPermissionLevel}

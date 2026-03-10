@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import type { ThreadDetailLevel } from "../../app/useAppPreferences";
 import type { ServerRequestResolution, ThreadSummary, TimelineEntry } from "../../domain/types";
 import { HomeTimelineEntry } from "./HomeTimelineEntry";
 import { HomeTurnThinkingIndicator } from "./HomeTurnThinkingIndicator";
@@ -8,6 +9,7 @@ interface HomeConversationCanvasProps {
   readonly activities: ReadonlyArray<TimelineEntry>;
   readonly selectedThread: ThreadSummary | null;
   readonly activeTurnId: string | null;
+  readonly threadDetailLevel: ThreadDetailLevel;
   readonly placeholder: { readonly title: string; readonly body: string } | null;
   readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
 }
@@ -20,7 +22,10 @@ interface RenderGroup {
 
 export function HomeConversationCanvas(props: HomeConversationCanvasProps): JSX.Element {
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const renderGroups = useMemo(() => createRenderGroups(props.activities, props.activeTurnId), [props.activities, props.activeTurnId]);
+  const renderGroups = useMemo(
+    () => createRenderGroups(props.activities, props.activeTurnId, props.threadDetailLevel),
+    [props.activities, props.activeTurnId, props.threadDetailLevel]
+  );
   const scrollKey = useMemo(() => createScrollKey(renderGroups), [renderGroups]);
 
   useEffect(() => {
@@ -52,8 +57,9 @@ export function HomeConversationCanvas(props: HomeConversationCanvasProps): JSX.
 function createRenderGroups(
   activities: ReadonlyArray<TimelineEntry>,
   activeTurnId: string | null,
+  threadDetailLevel: ThreadDetailLevel,
 ): Array<RenderGroup> {
-  return splitActivitiesIntoRenderGroups(activities, activeTurnId)
+  return splitActivitiesIntoRenderGroups(activities, activeTurnId, threadDetailLevel)
     .map((group) => ({
       key: group.key,
       nodes: flattenConversationRenderGroup(group),

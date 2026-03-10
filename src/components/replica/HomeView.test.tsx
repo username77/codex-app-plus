@@ -104,6 +104,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       defaultEffort="xhigh"
       workspaceOpener="vscode"
       embeddedTerminalShell="powerShell"
+      threadDetailLevel="commands"
       followUpQueueMode="queue"
       composerEnterBehavior="enter"
       composerPermissionLevel="default"
@@ -243,9 +244,96 @@ describe("HomeView", () => {
 
     renderHomeView({ activities });
 
-    expect(screen.getByText("姝ｅ湪鎵ц鍛戒护锛歱npm test")).toBeInTheDocument();
+    expect(screen.getByText("正在执行命令：pnpm test")).toBeInTheDocument();
     expect(screen.getByText("Additional input required")).toBeInTheDocument();
-    expect(screen.getByText("璇烽€夋嫨澶勭悊鏂瑰紡")).toBeInTheDocument();
+    expect(screen.getByText("Queue")).toBeInTheDocument();
+  });
+
+  it("applies thread detail level to the timeline immediately", () => {
+    const activities: ReadonlyArray<TimelineEntry> = [
+      {
+        id: "cmd-compact-1",
+        kind: "commandExecution",
+        threadId: "thread-1",
+        turnId: "turn-1",
+        itemId: "item-cmd-compact",
+        command: "pnpm test",
+        cwd: "E:/code/FPGA",
+        processId: "proc-1",
+        status: "inProgress",
+        commandActions: [],
+        output: "running...",
+        exitCode: null,
+        durationMs: null,
+        terminalInteractions: [],
+        approvalRequestId: null,
+      },
+    ];
+
+    const { rerender } = renderHomeView({ activities, threadDetailLevel: "compact" });
+    expect(screen.queryByText("正在执行命令：pnpm test")).toBeNull();
+
+    rerender(
+      <AppStoreProvider><HomeView
+        hostBridge={{} as HostBridge}
+        busy={false}
+        inputText="妫€鏌ュ伐浣滃尯"
+        roots={[{ id: "root-1", name: "FPGA", path: "E:/code/FPGA" }]}
+        selectedRootId="root-1"
+        selectedRootName="FPGA"
+        selectedRootPath="E:/code/FPGA"
+        threads={[createThread()]}
+        selectedThread={createThread()}
+        selectedThreadId="thread-1"
+        activeTurnId={null}
+        isResponding={false}
+        interruptPending={false}
+        activities={activities}
+        banners={[]}
+        account={null}
+        rateLimitSummary={null}
+        queuedFollowUps={[]}
+        draftActive={false}
+        selectedConversationLoading={false}
+        models={MODELS}
+        defaultModel="gpt-5.2"
+        defaultEffort="xhigh"
+        workspaceOpener="vscode"
+        embeddedTerminalShell="powerShell"
+        threadDetailLevel="commands"
+        followUpQueueMode="queue"
+        composerEnterBehavior="enter"
+        composerPermissionLevel="default"
+        connectionStatus="connected"
+        fatalError={null}
+        authStatus="authenticated"
+        authMode="chatgpt"
+        retryScheduledAt={null}
+        settingsMenuOpen={false}
+        onToggleSettingsMenu={vi.fn()}
+        onDismissSettingsMenu={vi.fn()}
+        onOpenSettings={vi.fn()}
+        onSelectWorkspaceOpener={vi.fn()}
+        onSelectComposerPermissionLevel={vi.fn()}
+        onSelectRoot={vi.fn()}
+        onSelectThread={vi.fn()}
+        onInputChange={vi.fn()}
+        onCreateThread={vi.fn().mockResolvedValue(undefined)}
+        onSendTurn={vi.fn().mockResolvedValue(undefined)}
+        onPersistComposerSelection={vi.fn().mockResolvedValue(undefined)}
+        onUpdateThreadBranch={vi.fn().mockResolvedValue(undefined)}
+        onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
+        onAddRoot={vi.fn()}
+        onRemoveRoot={vi.fn()}
+        onRetryConnection={vi.fn().mockResolvedValue(undefined)}
+        onLogin={vi.fn().mockResolvedValue(undefined)}
+        onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
+        onRemoveQueuedFollowUp={vi.fn()}
+        onClearQueuedFollowUps={vi.fn()}
+      /></AppStoreProvider>
+    );
+
+    expect(screen.getByText("正在执行命令：pnpm test")).toBeInTheDocument();
   });
 
   it("hides Auth/Plan pills and info banners above the conversation", () => {
@@ -307,8 +395,8 @@ describe("HomeView", () => {
     });
 
     expect(screen.getByText("Queued follow-ups")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "绉婚櫎" }));
-    fireEvent.click(screen.getByRole("button", { name: "娓呯┖" }));
+    fireEvent.click(screen.getByRole("button", { name: "移除" }));
+    fireEvent.click(screen.getByRole("button", { name: "清空" }));
 
     expect(onRemoveQueuedFollowUp).toHaveBeenCalledWith("follow-1");
     expect(onClearQueuedFollowUps).toHaveBeenCalledTimes(1);

@@ -243,6 +243,14 @@ function createAuxiliaryModel(key: string, entry: AuxiliaryBlock): AssistantTran
     );
   }
 
+  if (entry.kind === "debug") {
+    return createDetailsModel({
+      key,
+      summary: `调试：${entry.title}`,
+      detailPanel: createDetailBlockPanel({ body: safeJson(entry.payload), label: "Debug" }),
+    });
+  }
+
   return createDetailsModel({
     key,
     summary: `模糊搜索：${entry.query}`,

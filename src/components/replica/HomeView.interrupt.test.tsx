@@ -109,6 +109,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       defaultEffort="xhigh"
       workspaceOpener="vscode"
       embeddedTerminalShell="powerShell"
+      threadDetailLevel="commands"
       followUpQueueMode="queue"
       composerEnterBehavior="enter"
       composerPermissionLevel="default"

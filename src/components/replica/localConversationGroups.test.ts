@@ -86,6 +86,59 @@ function createFileChange(): TimelineEntry {
   };
 }
 
+function createPlan(): TimelineEntry {
+  return {
+    id: "plan-1",
+    kind: "plan",
+    threadId: "thread-1",
+    turnId: "turn-1",
+    itemId: "item-plan",
+    text: "1. 看设置页\n2. 修布局",
+    status: "done",
+  };
+}
+
+function createRawResponse(): TimelineEntry {
+  return {
+    id: "raw-1",
+    kind: "rawResponse",
+    threadId: "thread-1",
+    turnId: "turn-1",
+    itemId: "item-raw",
+    responseType: "message",
+    title: "Raw response",
+    detail: "{\"ok\":true}",
+    phase: null,
+    payload: { ok: true },
+  };
+}
+
+function createDebug(): TimelineEntry {
+  return {
+    id: "debug-1",
+    kind: "debug",
+    threadId: "thread-1",
+    turnId: "turn-1",
+    itemId: "item-debug",
+    title: "turn:error",
+    payload: { message: "boom" },
+  };
+}
+
+function createSystemNotice(level: "info" | "warning" | "error"): TimelineEntry {
+  return {
+    id: `notice-${level}`,
+    kind: "systemNotice",
+    threadId: "thread-1",
+    turnId: "turn-1",
+    itemId: `item-notice-${level}`,
+    level,
+    title: `${level} notice`,
+    detail: `${level} detail`,
+    source: "test",
+  };
+}
+
 function createUserInputRequest(): TimelineEntry {
   return {
     id: "request-1",
@@ -166,5 +219,61 @@ describe("localConversationGroups", () => {
 
     expect(flattenConversationRenderGroup(group).map((node) => node.kind)).toEqual(["userBubble", "requestBlock"]);
     expect(group.showThinkingIndicator).toBe(false);
+  });
+
+  it("keeps only messages, plans, requests, and warning/error notices in compact mode", () => {
+    const [group] = splitActivitiesIntoRenderGroups(
+      [
+        createUserMessage(),
+        createAssistantMessage(),
+        createPlan(),
+        createReasoning(),
+        createCommand(),
+        createRawResponse(),
+        createDebug(),
+        createSystemNotice("info"),
+        createSystemNotice("warning"),
+        createUserInputRequest(),
+      ],
+      null,
+      "compact"
+    );
+
+    expect(flattenConversationRenderGroup(group).map((node) => node.kind)).toEqual([
+      "userBubble",
+      "assistantMessage",
+      "auxiliaryBlock",
+      "auxiliaryBlock",
+      "requestBlock",
+    ]);
+  });
+
+  it("shows reasoning and trace items but still hides raw/debug in commands mode", () => {
+    const [group] = splitActivitiesIntoRenderGroups(
+      [createUserMessage(), createReasoning(), createCommand(), createRawResponse(), createDebug(), createSystemNotice("info")],
+      null,
+      "commands"
+    );
+
+    expect(flattenConversationRenderGroup(group).map((node) => node.kind)).toEqual([
+      "userBubble",
+      "reasoningBlock",
+      "traceItem",
+      "auxiliaryBlock",
+    ]);
+  });
+
+  it("includes raw responses and debug entries in full mode", () => {
+    const [group] = splitActivitiesIntoRenderGroups(
+      [createUserMessage(), createRawResponse(), createDebug()],
+      null,
+      "full"
+    );
+
+    expect(flattenConversationRenderGroup(group).map((node) => node.kind)).toEqual([
+      "userBubble",
+      "auxiliaryBlock",
+      "auxiliaryBlock",
+    ]);
   });
 });

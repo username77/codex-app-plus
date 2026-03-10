@@ -3,6 +3,7 @@ import type {
   CommandExecutionEntry,
   ContextCompactionEntry,
   ConversationMessage,
+  DebugEntry,
   DynamicToolCallEntry,
   FileChangeEntry,
   FuzzySearchEntry,
@@ -24,6 +25,7 @@ import type {
   TurnPlanSnapshotEntry,
   WebSearchEntry,
 } from "../../domain/timeline";
+import type { ThreadDetailLevel } from "../../app/useAppPreferences";
 
 const REASONING_LABEL = "Reasoning";
 
@@ -52,7 +54,8 @@ export type AuxiliaryBlock =
   | SystemNoticeEntry
   | RealtimeSessionEntry
   | RealtimeAudioEntry
-  | FuzzySearchEntry;
+  | FuzzySearchEntry
+  | DebugEntry;
 
 export interface ReasoningBlock {
   readonly id: string;
@@ -82,8 +85,9 @@ export type ConversationRenderNode =
 export function splitActivitiesIntoRenderGroups(
   entries: ReadonlyArray<TimelineEntry>,
   activeTurnId: string | null,
+  detailLevel: ThreadDetailLevel = "commands",
 ): Array<ConversationRenderGroup> {
-  return groupActivitiesByTurn(entries.filter(isVisibleEntry))
+  return groupActivitiesByTurn(entries.filter((entry) => isVisibleEntry(entry, detailLevel)))
     .map((group) => buildConversationRenderGroup(group, group[0]?.turnId === activeTurnId))
     .filter((group) => group.userBubble !== null || group.assistantFlow.length > 0);
 }
@@ -93,8 +97,31 @@ export function flattenConversationRenderGroup(group: ConversationRenderGroup): 
   return group.userBubble === null ? nodes : [{ key: group.userBubble.id, kind: "userBubble", message: group.userBubble }, ...nodes];
 }
 
-function isVisibleEntry(entry: TimelineEntry): boolean {
-  return entry.kind !== "queuedFollowUp" && entry.kind !== "debug";
+function isVisibleEntry(entry: TimelineEntry, detailLevel: ThreadDetailLevel): boolean {
+  if (entry.kind === "queuedFollowUp") {
+    return false;
+  }
+  if (detailLevel === "full") {
+    return true;
+  }
+  if (detailLevel === "commands") {
+    return entry.kind !== "rawResponse" && entry.kind !== "debug";
+  }
+  return isCompactVisibleEntry(entry);
+}
+
+function isCompactVisibleEntry(entry: TimelineEntry): boolean {
+  if (entry.kind === "systemNotice") {
+    return entry.level === "warning" || entry.level === "error";
+  }
+  return entry.kind === "userMessage"
+    || entry.kind === "agentMessage"
+    || entry.kind === "plan"
+    || entry.kind === "turnPlanSnapshot"
+    || entry.kind === "pendingApproval"
+    || entry.kind === "pendingUserInput"
+    || entry.kind === "pendingToolCall"
+    || entry.kind === "pendingTokenRefresh";
 }
 
 function groupActivitiesByTurn(entries: ReadonlyArray<TimelineEntry>): Array<Array<TimelineEntry>> {
@@ -219,5 +246,6 @@ function isAuxiliaryBlock(entry: TimelineEntry): entry is AuxiliaryBlock {
     || entry.kind === "systemNotice"
     || entry.kind === "realtimeSession"
     || entry.kind === "realtimeAudio"
-    || entry.kind === "fuzzySearch";
+    || entry.kind === "fuzzySearch"
+    || entry.kind === "debug";
 }

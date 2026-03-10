@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { ThreadDetailLevel } from "../../app/useAppPreferences";
 import type { ConversationState, ConversationTurnState } from "../../domain/conversation";
 import { syncCompletedTurn } from "../../app/conversationState";
 import { mapConversationToTimelineEntries } from "../../app/conversationTimeline";
@@ -32,13 +33,18 @@ function createThread(status: ThreadSummary["status"]): ThreadSummary {
 
 function renderCanvas(
   activities: ReadonlyArray<TimelineEntry>,
-  options?: { readonly status?: ThreadSummary["status"]; readonly activeTurnId?: string | null },
+  options?: {
+    readonly status?: ThreadSummary["status"];
+    readonly activeTurnId?: string | null;
+    readonly threadDetailLevel?: ThreadDetailLevel;
+  },
 ) {
   return render(
     <HomeConversationCanvas
       activities={activities}
       selectedThread={createThread(options?.status ?? "idle")}
       activeTurnId={options?.activeTurnId ?? null}
+      threadDetailLevel={options?.threadDetailLevel ?? "commands"}
       placeholder={null}
       onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
     />,
@@ -201,6 +207,29 @@ const REQUEST_ENTRY: TimelineEntry = {
   },
 };
 
+const RAW_RESPONSE_ENTRY: TimelineEntry = {
+  id: "raw-1",
+  kind: "rawResponse",
+  threadId: "thread-1",
+  turnId: "turn-1",
+  itemId: "item-raw",
+  responseType: "message",
+  title: "Raw response",
+  detail: "{\"ok\":true}",
+  phase: null,
+  payload: { ok: true },
+};
+
+const DEBUG_ENTRY: TimelineEntry = {
+  id: "debug-1",
+  kind: "debug",
+  threadId: "thread-1",
+  turnId: "turn-1",
+  itemId: "item-debug",
+  title: "turn:error",
+  payload: { ok: false },
+};
+
 describe("HomeConversationCanvas", () => {
   it("renders a single bottom thinking indicator immediately after user input", () => {
     const { container } = renderCanvas([USER_MESSAGE], { activeTurnId: "turn-1" });
@@ -256,6 +285,20 @@ describe("HomeConversationCanvas", () => {
     expect(classNames[0]).toContain("home-chat-message-user");
     expect(classNames[1]).toContain("home-assistant-transcript-details");
     expect(classNames[2]).toContain("home-turn-thinking-indicator");
+  });
+
+  it("hides command summaries in compact mode", () => {
+    renderCanvas([USER_MESSAGE, COMMAND_ENTRY], { activeTurnId: "turn-1", threadDetailLevel: "compact" });
+
+    expect(screen.queryByText("正在执行命令：pnpm test")).toBeNull();
+    expect(screen.getByText(/正在思考/)).toBeInTheDocument();
+  });
+
+  it("shows raw responses and debug entries in full mode", () => {
+    renderCanvas([USER_MESSAGE, RAW_RESPONSE_ENTRY, DEBUG_ENTRY], { threadDetailLevel: "full" });
+
+    expect(screen.getByText("Raw response")).toBeInTheDocument();
+    expect(screen.getByText("调试：turn:error")).toBeInTheDocument();
   });
 
   it("does not render an inline fake thinking line for empty reasoning summaries", () => {
