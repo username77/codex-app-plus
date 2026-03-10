@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ComposerPermissionLevel } from "../../app/composerPermission";
 import type { ComposerModelOption } from "../../app/composerPreferences";
 import { HomeComposer } from "./HomeComposer";
+import { permissionLabel } from "./ComposerFooterPopovers";
 
 const MODELS: ReadonlyArray<ComposerModelOption> = [{
   id: "model-1",
@@ -47,15 +48,15 @@ function ComposerHarness(props: {
 describe("HomeComposer permission", () => {
   it("renders persisted permission label", () => {
     render(<ComposerHarness initialPermissionLevel="full" onSendTurn={vi.fn().mockResolvedValue(undefined)} />);
-    expect(screen.getByRole("button", { name: /完全访问权限/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: permissionLabel("full") })).toBeInTheDocument();
   });
 
   it("submits with the selected permission level", () => {
     const onSendTurn = vi.fn().mockResolvedValue(undefined);
     render(<ComposerHarness initialPermissionLevel="default" onSendTurn={onSendTurn} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /默认权限/ }));
-    fireEvent.click(screen.getByRole("menuitem", { name: /完全访问权限/ }));
+    fireEvent.click(screen.getByRole("button", { name: permissionLabel("default") }));
+    fireEvent.click(screen.getByRole("menuitem", { name: permissionLabel("full") }));
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(onSendTurn).toHaveBeenCalledWith(expect.objectContaining({ permissionLevel: "full" }));
@@ -65,8 +66,8 @@ describe("HomeComposer permission", () => {
     const onSendTurn = vi.fn().mockResolvedValue(undefined);
     render(<ComposerHarness initialPermissionLevel="full" onSendTurn={onSendTurn} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /完全访问权限/ }));
-    fireEvent.click(screen.getByRole("menuitem", { name: /默认权限/ }));
+    fireEvent.click(screen.getByRole("button", { name: permissionLabel("full") }));
+    fireEvent.click(screen.getByRole("menuitem", { name: permissionLabel("default") }));
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(onSendTurn).toHaveBeenCalledWith(expect.objectContaining({ permissionLevel: "default" }));

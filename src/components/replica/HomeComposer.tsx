@@ -108,7 +108,7 @@ function QueuedFollowUpsPanel(props: {
       <header className="composer-queue-header">
         <strong>Queued follow-ups</strong>
         <button type="button" className="composer-queue-clear" onClick={props.onClearQueuedFollowUps}>
-          娓呯┖
+          清空
         </button>
       </header>
       <ul className="composer-queue-list">
@@ -119,7 +119,7 @@ function QueuedFollowUpsPanel(props: {
               <p>{followUp.text}</p>
             </div>
             <button type="button" className="composer-queue-remove" onClick={() => props.onRemoveQueuedFollowUp(followUp.id)}>
-              绉婚櫎
+              移除
             </button>
           </li>
         ))}
