@@ -1,0 +1,79 @@
+.composer-footer-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.composer-context-window-anchor {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.composer-context-window-trigger {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 0;
+  cursor: default;
+}
+
+.composer-context-window-trigger:hover,
+.composer-context-window-trigger:focus-visible,
+.composer-context-window-trigger-open {
+  background: #ececec;
+  outline: none;
+}
+
+.composer-context-window-trigger-dot {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid #c8c8c8;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.composer-context-window-trigger-dot::after {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #c8c8c8;
+}
+
+.composer-context-window-tooltip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  min-width: 210px;
+  border: 1px solid #dedede;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 6px 10px 22px rgba(0, 0, 0, 0.12);
+  padding: 10px 14px;
+  z-index: 42;
+  text-align: center;
+  color: #3f3f46;
+  white-space: nowrap;
+}
+
+.composer-context-window-tooltip-title {
+  font-size: 13px;
+  color: #9a9a9a;
+  margin-bottom: 4px;
+}
+
+.composer-context-window-tooltip-line {
+  font-size: 13px;
+  line-height: 1.45;
+}

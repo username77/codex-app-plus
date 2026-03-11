@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { WorkspaceGitController } from "./git/types";
 import { ComposerFooterBranchPopover } from "./ComposerFooterBranchPopover";
+import { ComposerContextWindowIndicator } from "./ComposerContextWindowIndicator";
 import { permissionLabel, PermissionsPopover, type PermissionLevel, WorkspacePopover } from "./ComposerFooterPopovers";
 import { OfficialAlertCircleIcon, OfficialChevronRightIcon, OfficialWorktreeIcon } from "./officialIcons";
 
@@ -107,7 +108,10 @@ export function ComposerFooter(props: {
         <WorkspaceFooterButton active={openPopover === "workspace"} onToggle={() => togglePopover("workspace")} onClose={closePopover} />
         <PermissionsFooterButton active={openPopover === "permissions"} selected={props.permissionLevel} onToggle={() => togglePopover("permissions")} onSelect={handleSelectPermission} />
       </div>
-      <BranchFooterButton active={openPopover === "branch"} controller={props.gitController} selectedThreadId={props.selectedThreadId} selectedThreadBranch={props.selectedThreadBranch} onToggle={() => togglePopover("branch")} onClose={closePopover} onUpdateThreadBranch={props.onUpdateThreadBranch} />
+      <div className="composer-footer-right">
+        <BranchFooterButton active={openPopover === "branch"} controller={props.gitController} selectedThreadId={props.selectedThreadId} selectedThreadBranch={props.selectedThreadBranch} onToggle={() => togglePopover("branch")} onClose={closePopover} onUpdateThreadBranch={props.onUpdateThreadBranch} />
+        <ComposerContextWindowIndicator />
+      </div>
     </div>
   );
 }
