@@ -130,6 +130,8 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       fatalError={null}
       authStatus="authenticated"
       authMode="chatgpt"
+      authBusy={false}
+      authLoginPending={false}
       retryScheduledAt={null}
       settingsMenuOpen={false}
       onToggleSettingsMenu={vi.fn()}
@@ -149,6 +151,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       onRemoveRoot={vi.fn()}
       onRetryConnection={vi.fn().mockResolvedValue(undefined)}
       onLogin={vi.fn().mockResolvedValue(undefined)}
+      onLogout={vi.fn().mockResolvedValue(undefined)}
       onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
       onRemoveQueuedFollowUp={vi.fn()}
       onClearQueuedFollowUps={vi.fn()}
@@ -422,6 +425,8 @@ describe("HomeView", () => {
         fatalError={null}
         authStatus="authenticated"
         authMode="chatgpt"
+        authBusy={false}
+        authLoginPending={false}
         retryScheduledAt={null}
         settingsMenuOpen={false}
         onToggleSettingsMenu={vi.fn()}
@@ -441,6 +446,7 @@ describe("HomeView", () => {
         onRemoveRoot={vi.fn()}
         onRetryConnection={vi.fn().mockResolvedValue(undefined)}
         onLogin={vi.fn().mockResolvedValue(undefined)}
+        onLogout={vi.fn().mockResolvedValue(undefined)}
         onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
         onRemoveQueuedFollowUp={vi.fn()}
         onClearQueuedFollowUps={vi.fn()}
@@ -460,6 +466,17 @@ describe("HomeView", () => {
     expect(screen.queryByText(/Auth:/)).toBeNull();
     expect(screen.queryByText(/Rate limit:/)).toBeNull();
     expect(screen.queryByText("Skills changed")).toBeNull();
+  });
+
+  it("shows a login callout when authentication is required", () => {
+    const onLogin = vi.fn().mockResolvedValue(undefined);
+
+    renderHomeView({ authStatus: "needs_login", authMode: null, onLogin });
+
+    expect(screen.getByText("需要登录 ChatGPT")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "登录 ChatGPT" }));
+
+    expect(onLogin).toHaveBeenCalledTimes(1);
   });
 
   it("truncates long toolbar titles while preserving the full title in tooltip", () => {

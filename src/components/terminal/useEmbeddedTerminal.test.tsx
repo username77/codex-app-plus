@@ -43,6 +43,7 @@ function createHostBridge(): HostBridge {
       openExternal: vi.fn(),
       openWorkspace: vi.fn(),
       openCodexConfigToml: vi.fn(),
+      clearChatgptAuthState: vi.fn(),
       showNotification: vi.fn(),
     showContextMenu: vi.fn(),
     importOfficialData: vi.fn(),

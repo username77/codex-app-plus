@@ -68,6 +68,7 @@ function createHostBridge(): HostBridge {
         chatgptPlanType: "plus",
         source: "cache"
       }),
+      clearChatgptAuthState: vi.fn().mockResolvedValue(undefined),
       showNotification: vi.fn().mockResolvedValue(undefined),
       showContextMenu: vi.fn().mockResolvedValue(undefined),
       importOfficialData: vi.fn().mockResolvedValue(undefined),

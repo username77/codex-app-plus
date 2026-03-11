@@ -324,6 +324,7 @@ export interface HostBridge {
     applyCodexProvider(input: ApplyCodexProviderInput): Promise<CodexProviderApplyResult>;
     readChatgptAuthTokens(): Promise<ChatgptAuthTokensOutput>;
     writeChatgptAuthTokens(input: UpdateChatgptAuthTokensInput): Promise<ChatgptAuthTokensOutput>;
+    clearChatgptAuthState(): Promise<void>;
     showNotification(input: ShowNotificationInput): Promise<void>;
     showContextMenu(input: ShowContextMenuInput): Promise<void>;
     importOfficialData(input: ImportOfficialDataInput): Promise<void>;

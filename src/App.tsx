@@ -184,6 +184,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
   const rateLimitSummary = controller.state.rateLimits === null
     ? null
     : `Rate limit: ${controller.state.rateLimits.limitName ?? controller.state.rateLimits.limitId ?? "default"}`;
+  const authBusy = controller.state.bootstrapBusy || controller.state.authLogin.pending;
 
   if (screen !== "home") {
     return (
@@ -251,6 +252,8 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       fatalError={controller.state.fatalError}
       authStatus={controller.state.authStatus}
       authMode={controller.state.authMode}
+      authBusy={authBusy}
+      authLoginPending={controller.state.authLogin.pending}
       retryScheduledAt={controller.state.retryScheduledAt}
       settingsMenuOpen={settingsMenuOpen}
       onToggleSettingsMenu={() => setSettingsMenuOpen((openValue) => !openValue)}
@@ -273,6 +276,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       onRemoveRoot={workspace.removeRoot}
       onRetryConnection={controller.retryConnection}
       onLogin={controller.login}
+      onLogout={controller.logout}
       onResolveServerRequest={controller.resolveServerRequest}
       onRemoveQueuedFollowUp={conversation.removeQueuedFollowUp}
       onClearQueuedFollowUps={conversation.clearQueuedFollowUps}

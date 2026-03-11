@@ -40,6 +40,10 @@ import { useAppStore } from "../state/store";
 const APP_VERSION = "0.1.0";
 const RETRY_DELAY_MS = 3_000;
 const WINDOWS_SANDBOX_STATE_IDLE_RESET_MS = 120_000;
+
+type AccountRequestClient = Pick<ProtocolClient, "request">;
+type AppHostBridge = Pick<HostBridge, "app">;
+
 interface AppController {
   readonly state: AppState;
   setInput: (text: string) => void;
@@ -53,6 +57,7 @@ interface AppController {
   setMultiAgentEnabled: (enabled: boolean) => Promise<void>;
   startWindowsSandboxSetup: (mode: WindowsSandboxSetupMode) => Promise<WindowsSandboxSetupStartResponse>;
   login: () => Promise<void>;
+  logout: () => Promise<void>;
   resolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
 }
 
@@ -74,7 +79,7 @@ function mapAuthStatus(response: GetAuthStatusResponse): { status: AuthStatus; m
   return { status: "unknown", mode: response.authMethod };
 }
 
-async function loadAuthStatus(client: ProtocolClient, dispatch: (action: AppAction) => void): Promise<void> {
+async function loadAuthStatus(client: AccountRequestClient, dispatch: (action: AppAction) => void): Promise<void> {
   try {
     const response = (await client.request("getAuthStatus", { includeToken: false, refreshToken: false })) as GetAuthStatusResponse;
     const auth = mapAuthStatus(response);
@@ -97,7 +102,7 @@ async function loadConversationCatalog(
   dispatch({ type: "conversations/catalogLoaded", conversations });
 }
 
-async function loadAccountSnapshot(client: ProtocolClient, dispatch: (action: AppAction) => void): Promise<void> {
+async function loadAccountSnapshot(client: AccountRequestClient, dispatch: (action: AppAction) => void): Promise<void> {
   try {
     const response = (await client.request("account/read", { refreshToken: false })) as GetAccountResponse;
     if (response.account === null) {
@@ -110,7 +115,7 @@ async function loadAccountSnapshot(client: ProtocolClient, dispatch: (action: Ap
   }
 }
 
-async function loadRateLimits(client: ProtocolClient, dispatch: (action: AppAction) => void): Promise<void> {
+async function loadRateLimits(client: AccountRequestClient, dispatch: (action: AppAction) => void): Promise<void> {
   try {
     const response = (await client.request("account/rateLimits/read", undefined)) as GetAccountRateLimitsResponse;
     dispatch({ type: "rateLimits/updated", rateLimits: response.rateLimits });
@@ -119,12 +124,18 @@ async function loadRateLimits(client: ProtocolClient, dispatch: (action: AppActi
   }
 }
 
-async function loadBootstrapSnapshot(client: ProtocolClient, hostBridge: HostBridge, dispatch: (action: AppAction) => void): Promise<void> {
-  const [, , , , config, collaborationModes, experimentalFeatures, statuses] = await Promise.all([
+export async function refreshAccountState(client: AccountRequestClient, dispatch: (action: AppAction) => void): Promise<void> {
+  await Promise.all([
     loadAuthStatus(client, dispatch),
-    loadConversationCatalog(client, hostBridge, dispatch),
     loadAccountSnapshot(client, dispatch),
     loadRateLimits(client, dispatch),
+  ]);
+}
+
+async function loadBootstrapSnapshot(client: ProtocolClient, hostBridge: HostBridge, dispatch: (action: AppAction) => void): Promise<void> {
+  const [, , config, collaborationModes, experimentalFeatures, statuses] = await Promise.all([
+    refreshAccountState(client, dispatch),
+    loadConversationCatalog(client, hostBridge, dispatch),
     client.request("config/read", { includeLayers: true }),
     client.request("collaborationMode/list", {}),
     listAllExperimentalFeatures(client),
@@ -147,17 +158,18 @@ async function startOrReuseAppServer(client: ProtocolClient): Promise<void> {
   }
 }
 
-async function openChatgptLogin(client: ProtocolClient, hostBridge: HostBridge, dispatch: (action: AppAction) => void): Promise<void> {
+export async function openChatgptLogin(client: AccountRequestClient, hostBridge: AppHostBridge, dispatch: (action: AppAction) => void): Promise<boolean> {
   const response = (await client.request("account/login/start", { type: "chatgpt" })) as LoginAccountResponse;
   if (response.type !== "chatgpt") {
     dispatch({ type: "authLogin/completed", success: true, error: null });
-    return;
+    return false;
   }
   dispatch({ type: "authLogin/started", loginId: response.loginId, authUrl: response.authUrl });
   await hostBridge.app.openExternal(response.authUrl);
+  return true;
 }
 
-async function loginWithStoredTokens(client: ProtocolClient, hostBridge: HostBridge): Promise<boolean> {
+export async function loginWithStoredTokens(client: AccountRequestClient, hostBridge: AppHostBridge): Promise<boolean> {
   try {
     const tokens = await hostBridge.app.readChatgptAuthTokens();
     await hostBridge.app.writeChatgptAuthTokens(tokens);
@@ -166,6 +178,12 @@ async function loginWithStoredTokens(client: ProtocolClient, hostBridge: HostBri
   } catch {
     return false;
   }
+}
+
+export async function logoutWithLocalCleanup(client: AccountRequestClient, hostBridge: AppHostBridge, dispatch: (action: AppAction) => void): Promise<void> {
+  await client.request("account/logout", undefined);
+  await hostBridge.app.clearChatgptAuthState();
+  await refreshAccountState(client, dispatch);
 }
 
 export function useAppController(hostBridge: HostBridge): AppController {
@@ -216,6 +234,9 @@ export function useAppController(hostBridge: HostBridge): AppController {
       onNotification: (method, params) => {
         dispatch({ type: "notification/received", notification: { method, params } });
         applyAppServerNotification({ dispatch, textDeltaQueue: textDeltaQueueRef.current!, outputDeltaQueue: outputDeltaQueueRef.current! }, method, params);
+        if (method === "account/login/completed" && clientRef.current !== null && (params as { success?: boolean }).success === true) {
+          void refreshAccountState(clientRef.current, dispatch);
+        }
         if (method === "windowsSandbox/setupCompleted" && clientRef.current !== null) {
           void refreshConfigAfterWindowsSandboxSetup(clientRef.current, dispatch, params as WindowsSandboxSetupCompletedNotification).catch((error) => dispatch({ type: "fatal/error", message: toErrorMessage(error) }));
         }
@@ -332,11 +353,19 @@ export function useAppController(hostBridge: HostBridge): AppController {
       const loggedInWithTokens = await loginWithStoredTokens(client, hostBridge);
       if (loggedInWithTokens) {
         dispatch({ type: "authLogin/completed", success: true, error: null });
-        await loadAuthStatus(client, dispatch);
-        await loadAccountSnapshot(client, dispatch);
+        await refreshAccountState(client, dispatch);
         return;
       }
-      await openChatgptLogin(client, hostBridge, dispatch);
+      const openedBrowser = await openChatgptLogin(client, hostBridge, dispatch);
+      if (!openedBrowser) {
+        await refreshAccountState(client, dispatch);
+      }
+    });
+  }, [client, dispatch, hostBridge, runBusy]);
+
+  const logout = useCallback(async () => {
+    await runBusy(async () => {
+      await logoutWithLocalCleanup(client, hostBridge, dispatch);
     });
   }, [client, dispatch, hostBridge, runBusy]);
 
@@ -373,5 +402,5 @@ export function useAppController(hostBridge: HostBridge): AppController {
     dispatch({ type: "serverRequest/resolved", requestId: resolution.requestId });
   }, [client, dispatch, hostBridge.app]);
 
-  return { state, setInput: (text) => dispatch({ type: "input/changed", value: text }), retryConnection: () => bootstrap(true), refreshConfigSnapshot: refreshConfig, refreshMcpData: refreshMcp, listMcpServerStatuses: listStatuses, writeConfigValue, batchWriteConfig, batchWriteConfigSnapshot, setMultiAgentEnabled, startWindowsSandboxSetup, login, resolveServerRequest };
+  return { state, setInput: (text) => dispatch({ type: "input/changed", value: text }), retryConnection: () => bootstrap(true), refreshConfigSnapshot: refreshConfig, refreshMcpData: refreshMcp, listMcpServerStatuses: listStatuses, writeConfigValue, batchWriteConfig, batchWriteConfigSnapshot, setMultiAgentEnabled, startWindowsSandboxSetup, login, logout, resolveServerRequest };
 }

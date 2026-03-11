@@ -120,6 +120,8 @@ export function createTauriHostBridge(): HostBridge {
         invoke<ChatgptAuthTokensOutput>("app_write_chatgpt_auth_tokens", {
           input
         }),
+      clearChatgptAuthState: () =>
+        invoke("app_clear_chatgpt_auth_state"),
       showNotification: (input: ShowNotificationInput) =>
         invoke("app_show_notification", {
           input

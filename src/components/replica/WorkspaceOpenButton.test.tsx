@@ -26,6 +26,7 @@ function createHostBridge(overrides?: {
       openExternal: overrides?.openExternal ?? vi.fn().mockResolvedValue(undefined),
       openWorkspace: overrides?.openWorkspace ?? vi.fn().mockResolvedValue(undefined),
       openCodexConfigToml: vi.fn(),
+      clearChatgptAuthState: vi.fn(),
       showNotification: vi.fn(),
     showContextMenu: vi.fn(),
     importOfficialData: vi.fn(),

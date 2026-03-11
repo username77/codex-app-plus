@@ -60,6 +60,11 @@
   outline-offset: 1px;
 }
 
+.settings-popover-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .settings-popover-danger {
   color: #b33131;
 }

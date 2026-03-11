@@ -1,7 +1,7 @@
 import { memo, useCallback } from "react";
 import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
 import type { HostBridge } from "../../bridge/types";
-import type { ThreadSummary } from "../../domain/types";
+import type { AuthStatus, ThreadSummary } from "../../domain/types";
 import { useAppStore } from "../../state/store";
 import { SidebarIcon } from "./icons";
 import { OfficialSettingsGearIcon } from "./officialIcons";
@@ -16,11 +16,17 @@ export interface HomeSidebarProps {
   readonly codexSessionsError: string | null;
   readonly selectedRootId: string | null;
   readonly selectedThreadId: string | null;
+  readonly authStatus: AuthStatus;
+  readonly authMode: string | null;
+  readonly authBusy: boolean;
+  readonly authLoginPending: boolean;
   readonly settingsMenuOpen: boolean;
   readonly collapsed: boolean;
   readonly onToggleSettingsMenu: () => void;
   readonly onDismissSettingsMenu: () => void;
   readonly onOpenSettings: () => void;
+  readonly onLogin: () => Promise<void>;
+  readonly onLogout: () => Promise<void>;
   readonly onSelectRoot: (rootId: string) => void;
   readonly onSelectThread: (threadId: string | null) => void;
   readonly onCreateThread: () => Promise<void>;
@@ -75,7 +81,17 @@ function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
         onRemoveRoot={props.onRemoveRoot}
       />
       <div className="settings-slot">
-        {props.settingsMenuOpen ? <SettingsPopover onOpenSettings={props.onOpenSettings} /> : null}
+        {props.settingsMenuOpen ? (
+          <SettingsPopover
+            authStatus={props.authStatus}
+            authMode={props.authMode}
+            authBusy={props.authBusy}
+            authLoginPending={props.authLoginPending}
+            onOpenSettings={props.onOpenSettings}
+            onLogin={props.onLogin}
+            onLogout={props.onLogout}
+          />
+        ) : null}
         <button type="button" className="sidebar-settings" onClick={props.onToggleSettingsMenu}>
           <OfficialSettingsGearIcon className="settings-gear" />
           <span>设置</span>

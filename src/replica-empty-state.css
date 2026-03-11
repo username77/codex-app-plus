@@ -56,6 +56,53 @@
   transform: rotate(90deg);
 }
 
+.home-auth-callout {
+  margin: 0 20px 16px;
+  border: 1px solid #f5d38a;
+  border-radius: 16px;
+  background: #fff9eb;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.home-auth-callout-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #7c5a10;
+  min-width: 0;
+}
+
+.home-auth-callout-copy strong {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.home-auth-callout-copy span {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.home-auth-callout-button {
+  border: 0;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.home-auth-callout-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 @media (max-width: 1080px) {
   .empty-title {
     font-size: 30px;
@@ -68,5 +115,11 @@
 
   .workspace-selector-label {
     font-size: 16px;
+  }
+
+  .home-auth-callout {
+    margin: 0 12px 12px;
+    flex-direction: column;
+    align-items: stretch;
   }
 }

@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+﻿use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, State};
@@ -21,6 +21,10 @@ use crate::models::{
 };
 use crate::process_manager::ProcessManager;
 use crate::terminal_manager::TerminalManager;
+
+const CHATGPT_AUTH_DIR: &str = "auth";
+const CHATGPT_AUTH_CACHE_FILE: &str = "chatgpt-auth.json";
+const CHATGPT_AUTH_LOGOUT_MARKER: &str = "chatgpt-logged-out";
 
 fn to_result<T>(result: AppResult<T>) -> Result<T, String> {
     result.map_err(|error| error.to_string())
@@ -87,7 +91,7 @@ pub async fn server_request_resolve(
 #[tauri::command]
 pub fn app_open_external(url: String) -> Result<(), String> {
     if url.trim().is_empty() {
-        return Err("url 不能为空".to_string());
+        return Err("url 涓嶈兘涓虹┖".to_string());
     }
     to_result(open::that_detached(url).map_err(|e| AppError::Io(e.to_string())))
 }
@@ -99,10 +103,10 @@ pub fn app_open_workspace(input: OpenWorkspaceInput) -> Result<(), String> {
 
 #[tauri::command]
 pub fn app_open_codex_config_toml() -> Result<(), String> {
-    let home = dirs::home_dir().ok_or_else(|| "无法解析用户目录".to_string())?;
+    let home = dirs::home_dir().ok_or_else(|| "鏃犳硶瑙ｆ瀽鐢ㄦ埛鐩綍".to_string())?;
     let config_path = home.join(".codex").join("config.toml");
     if !config_path.exists() {
-        return Err(format!("config.toml 不存在: {}", config_path.display()));
+        return Err(format!("config.toml 涓嶅瓨鍦? {}", config_path.display()));
     }
     to_result(open::that_detached(config_path).map_err(|e| AppError::Io(e.to_string())))
 }
@@ -158,9 +162,14 @@ pub fn app_write_chatgpt_auth_tokens(
 }
 
 #[tauri::command]
+pub fn app_clear_chatgpt_auth_state() -> Result<(), String> {
+    to_result(clear_chatgpt_auth_state())
+}
+
+#[tauri::command]
 pub fn app_show_notification(app: AppHandle, input: ShowNotificationInput) -> Result<(), String> {
     if input.title.trim().is_empty() {
-        return Err("notification.title 不能为空".to_string());
+        return Err("notification.title 涓嶈兘涓虹┖".to_string());
     }
     app.emit(EVENT_NOTIFICATION_REQUESTED, input)
         .map_err(|e| e.to_string())
@@ -169,7 +178,7 @@ pub fn app_show_notification(app: AppHandle, input: ShowNotificationInput) -> Re
 #[tauri::command]
 pub fn app_show_context_menu(app: AppHandle, input: ShowContextMenuInput) -> Result<(), String> {
     if input.items.is_empty() {
-        return Err("context menu items 不能为空".to_string());
+        return Err("context menu items 涓嶈兘涓虹┖".to_string());
     }
     app.emit(EVENT_CONTEXT_MENU_REQUESTED, input)
         .map_err(|e| e.to_string())
@@ -240,33 +249,66 @@ fn import_official_data(input: ImportOfficialDataInput) -> AppResult<()> {
         return Err(AppError::InvalidInput("sourcePath 不存在".to_string()));
     }
 
-    let local_data = dirs::data_local_dir()
-        .ok_or_else(|| AppError::InvalidInput("无法解析 LOCALAPPDATA".to_string()))?;
-    let destination = local_data.join("CodexAppPlus").join("imported-official");
-    copy_directory(&source, &destination)
+    import_official_data_into_root(&source, &app_data_root()?)
 }
 
 fn app_data_root() -> AppResult<PathBuf> {
     let local_data = dirs::data_local_dir()
-        .ok_or_else(|| AppError::InvalidInput("无法解析 LOCALAPPDATA".to_string()))?;
+        .ok_or_else(|| AppError::InvalidInput("鏃犳硶瑙ｆ瀽 LOCALAPPDATA".to_string()))?;
     Ok(local_data.join("CodexAppPlus"))
 }
 
-fn imported_official_path() -> AppResult<PathBuf> {
-    Ok(app_data_root()?.join("imported-official"))
-}
-
-fn chatgpt_auth_cache_path() -> AppResult<PathBuf> {
-    Ok(app_data_root()?.join("auth").join("chatgpt-auth.json"))
-}
-
 fn read_chatgpt_auth_tokens() -> AppResult<ChatgptAuthTokensOutput> {
-    read_chatgpt_auth_tokens_from_cache().or_else(|_| read_chatgpt_auth_tokens_from_imported())
+    let root = app_data_root()?;
+    read_chatgpt_auth_tokens_from_root(&root)
 }
 
-fn read_chatgpt_auth_tokens_from_cache() -> AppResult<ChatgptAuthTokensOutput> {
-    let path = chatgpt_auth_cache_path()?;
-    let text = std::fs::read_to_string(&path)?;
+fn write_chatgpt_auth_tokens(
+    input: UpdateChatgptAuthTokensInput,
+) -> AppResult<ChatgptAuthTokensOutput> {
+    write_chatgpt_auth_tokens_to_root(&app_data_root()?, input)
+}
+
+fn clear_chatgpt_auth_state() -> AppResult<()> {
+    clear_chatgpt_auth_state_in_root(&app_data_root()?)
+}
+
+fn imported_official_path_for_root(root: &Path) -> PathBuf {
+    root.join("imported-official")
+}
+
+fn chatgpt_auth_dir_for_root(root: &Path) -> PathBuf {
+    root.join(CHATGPT_AUTH_DIR)
+}
+
+fn chatgpt_auth_cache_path_for_root(root: &Path) -> PathBuf {
+    chatgpt_auth_dir_for_root(root).join(CHATGPT_AUTH_CACHE_FILE)
+}
+
+fn chatgpt_auth_logout_marker_path_for_root(root: &Path) -> PathBuf {
+    chatgpt_auth_dir_for_root(root).join(CHATGPT_AUTH_LOGOUT_MARKER)
+}
+
+fn import_official_data_into_root(source: &Path, root: &Path) -> AppResult<()> {
+    let destination = imported_official_path_for_root(root);
+    copy_directory(source, &destination)?;
+    clear_chatgpt_logout_marker_in_root(root)
+}
+
+fn read_chatgpt_auth_tokens_from_root(root: &Path) -> AppResult<ChatgptAuthTokensOutput> {
+    let cache_path = chatgpt_auth_cache_path_for_root(root);
+    read_chatgpt_auth_tokens_from_cache_at(&cache_path).or_else(|_| {
+        if is_chatgpt_auth_logged_out(root) {
+            return Err(AppError::InvalidInput(
+                "chatgpt auth tokens were cleared on logout".to_string(),
+            ));
+        }
+        read_chatgpt_auth_tokens_from_imported_at(&imported_official_path_for_root(root))
+    })
+}
+
+fn read_chatgpt_auth_tokens_from_cache_at(path: &Path) -> AppResult<ChatgptAuthTokensOutput> {
+    let text = std::fs::read_to_string(path)?;
     let value: Value = serde_json::from_str(&text).map_err(|error| {
         AppError::InvalidInput(format!("failed to parse cached auth tokens: {error}"))
     })?;
@@ -274,15 +316,14 @@ fn read_chatgpt_auth_tokens_from_cache() -> AppResult<ChatgptAuthTokensOutput> {
         .ok_or_else(|| AppError::InvalidInput("cached auth tokens are incomplete".to_string()))
 }
 
-fn read_chatgpt_auth_tokens_from_imported() -> AppResult<ChatgptAuthTokensOutput> {
-    let root = imported_official_path()?;
+fn read_chatgpt_auth_tokens_from_imported_at(root: &Path) -> AppResult<ChatgptAuthTokensOutput> {
     if !root.exists() {
         return Err(AppError::InvalidInput(
             "imported official data does not exist".to_string(),
         ));
     }
     let mut files = Vec::new();
-    collect_candidate_files(&root, &mut files)?;
+    collect_candidate_files(root, &mut files)?;
     for file in files {
         let Ok(text) = std::fs::read_to_string(&file) else {
             continue;
@@ -299,18 +340,19 @@ fn read_chatgpt_auth_tokens_from_imported() -> AppResult<ChatgptAuthTokensOutput
     ))
 }
 
-fn write_chatgpt_auth_tokens(
+fn write_chatgpt_auth_tokens_to_root(
+    root: &Path,
     input: UpdateChatgptAuthTokensInput,
 ) -> AppResult<ChatgptAuthTokensOutput> {
     if input.access_token.trim().is_empty() {
-        return Err(AppError::InvalidInput("accessToken 不能为空".to_string()));
+        return Err(AppError::InvalidInput("accessToken 娑撳秷鍏樻稉铏光敄".to_string()));
     }
     if input.chatgpt_account_id.trim().is_empty() {
         return Err(AppError::InvalidInput(
-            "chatgptAccountId 不能为空".to_string(),
+            "chatgptAccountId 娑撳秷鍏樻稉铏光敄".to_string(),
         ));
     }
-    let path = chatgpt_auth_cache_path()?;
+    let path = chatgpt_auth_cache_path_for_root(root);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
@@ -321,7 +363,32 @@ fn write_chatgpt_auth_tokens(
         source: "cache".to_string(),
     };
     std::fs::write(&path, serde_json::to_vec_pretty(&output)?)?;
+    clear_chatgpt_logout_marker_in_root(root)?;
     Ok(output)
+}
+
+fn clear_chatgpt_auth_state_in_root(root: &Path) -> AppResult<()> {
+    let auth_dir = chatgpt_auth_dir_for_root(root);
+    std::fs::create_dir_all(&auth_dir)?;
+    remove_file_if_exists(&chatgpt_auth_cache_path_for_root(root))?;
+    std::fs::write(chatgpt_auth_logout_marker_path_for_root(root), b"logged-out")?;
+    Ok(())
+}
+
+fn clear_chatgpt_logout_marker_in_root(root: &Path) -> AppResult<()> {
+    remove_file_if_exists(&chatgpt_auth_logout_marker_path_for_root(root))
+}
+
+fn is_chatgpt_auth_logged_out(root: &Path) -> bool {
+    chatgpt_auth_logout_marker_path_for_root(root).is_file()
+}
+
+fn remove_file_if_exists(path: &Path) -> AppResult<()> {
+    match std::fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error.into()),
+    }
 }
 
 fn collect_candidate_files(root: &Path, files: &mut Vec<PathBuf>) -> AppResult<()> {
@@ -392,7 +459,7 @@ fn find_tokens(
 
 fn global_agents_path() -> AppResult<PathBuf> {
     let home =
-        dirs::home_dir().ok_or_else(|| AppError::InvalidInput("无法解析用户目录".to_string()))?;
+        dirs::home_dir().ok_or_else(|| AppError::InvalidInput("鏃犳硶瑙ｆ瀽鐢ㄦ埛鐩綍".to_string()))?;
     Ok(home.join(".codex").join("AGENTS.md"))
 }
 
@@ -418,13 +485,13 @@ fn write_global_agent_instructions(
 
 fn open_workspace(input: OpenWorkspaceInput) -> AppResult<()> {
     if input.path.trim().is_empty() {
-        return Err(AppError::InvalidInput("path 不能为空".to_string()));
+        return Err(AppError::InvalidInput("path 涓嶈兘涓虹┖".to_string()));
     }
 
     let path = PathBuf::from(&input.path);
     if !path.exists() {
         return Err(AppError::InvalidInput(format!(
-            "path 不存在: {}",
+            "path 涓嶅瓨鍦? {}",
             path.display()
         )));
     }
@@ -476,3 +543,98 @@ fn copy_directory(source: &Path, destination: &Path) -> AppResult<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn unique_dir(name: &str) -> PathBuf {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("codex-app-plus-{name}-{timestamp}"))
+    }
+
+    fn sample_tokens() -> UpdateChatgptAuthTokensInput {
+        UpdateChatgptAuthTokensInput {
+            access_token: "token-123".to_string(),
+            chatgpt_account_id: "account-123".to_string(),
+            chatgpt_plan_type: Some("plus".to_string()),
+        }
+    }
+
+    fn write_imported_tokens(root: &Path) {
+        let imported = imported_official_path_for_root(root);
+        fs::create_dir_all(&imported).unwrap();
+        fs::write(
+            imported.join("tokens.json"),
+            r#"{"accessToken":"imported-token","chatgptAccountId":"imported-account","chatgptPlanType":"plus"}"#,
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn clear_chatgpt_auth_state_removes_cache_and_sets_marker() {
+        let root = unique_dir("clear-auth-state");
+        let cache_path = chatgpt_auth_cache_path_for_root(&root);
+        fs::create_dir_all(cache_path.parent().unwrap()).unwrap();
+        fs::write(&cache_path, b"{}").unwrap();
+
+        clear_chatgpt_auth_state_in_root(&root).unwrap();
+
+        assert!(!cache_path.exists());
+        assert!(chatgpt_auth_logout_marker_path_for_root(&root).exists());
+    }
+
+    #[test]
+    fn logged_out_marker_blocks_imported_token_fallback() {
+        let root = unique_dir("logout-marker");
+        write_imported_tokens(&root);
+        clear_chatgpt_auth_state_in_root(&root).unwrap();
+
+        let result = read_chatgpt_auth_tokens_from_root(&root);
+
+        assert!(result.is_err());
+        assert!(result
+            .err()
+            .unwrap()
+            .to_string()
+            .contains("cleared on logout"));
+    }
+
+    #[test]
+    fn write_chatgpt_auth_tokens_clears_logout_marker() {
+        let root = unique_dir("write-auth-state");
+        clear_chatgpt_auth_state_in_root(&root).unwrap();
+
+        let output = write_chatgpt_auth_tokens_to_root(&root, sample_tokens()).unwrap();
+
+        assert_eq!(output.source, "cache");
+        assert!(!chatgpt_auth_logout_marker_path_for_root(&root).exists());
+        assert!(chatgpt_auth_cache_path_for_root(&root).exists());
+    }
+
+    #[test]
+    fn import_official_data_clears_logout_marker() {
+        let root = unique_dir("import-auth-state");
+        let source = unique_dir("import-source");
+        fs::create_dir_all(&source).unwrap();
+        fs::write(
+            source.join("tokens.json"),
+            r#"{"accessToken":"source-token","chatgptAccountId":"source-account"}"#,
+        )
+        .unwrap();
+        clear_chatgpt_auth_state_in_root(&root).unwrap();
+
+        import_official_data_into_root(&source, &root).unwrap();
+        let output = read_chatgpt_auth_tokens_from_root(&root).unwrap();
+
+        assert_eq!(output.source, "imported");
+        assert_eq!(output.access_token, "source-token");
+        assert!(!chatgpt_auth_logout_marker_path_for_root(&root).exists());
+    }
+}
+

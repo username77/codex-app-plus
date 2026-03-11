@@ -117,6 +117,8 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       fatalError={null}
       authStatus="authenticated"
       authMode="chatgpt"
+      authBusy={false}
+      authLoginPending={false}
       retryScheduledAt={null}
       settingsMenuOpen={false}
       onToggleSettingsMenu={vi.fn()}
@@ -136,6 +138,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       onRemoveRoot={vi.fn()}
       onRetryConnection={vi.fn().mockResolvedValue(undefined)}
       onLogin={vi.fn().mockResolvedValue(undefined)}
+      onLogout={vi.fn().mockResolvedValue(undefined)}
       onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
       onRemoveQueuedFollowUp={vi.fn()}
       onClearQueuedFollowUps={vi.fn()}
