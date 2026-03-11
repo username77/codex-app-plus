@@ -42,6 +42,7 @@ interface SettingsViewProps {
   onAddRoot: () => void;
   onOpenConfigToml: () => Promise<void>;
   refreshConfigSnapshot: () => Promise<ConfigReadResponse>;
+  refreshAuthState: () => Promise<void>;
   readGlobalAgentInstructions: () => Promise<GlobalAgentInstructionsOutput>;
   writeGlobalAgentInstructions: (
     input: UpdateGlobalAgentInstructionsInput
@@ -218,6 +219,7 @@ function SettingsContent(props: SettingsViewProps): JSX.Element {
         configSnapshot={props.configSnapshot}
         onOpenConfigToml={props.onOpenConfigToml}
         refreshConfigSnapshot={props.refreshConfigSnapshot}
+        refreshAuthState={props.refreshAuthState}
         listCodexProviders={props.listCodexProviders}
         upsertCodexProvider={props.upsertCodexProvider}
         deleteCodexProvider={props.deleteCodexProvider}

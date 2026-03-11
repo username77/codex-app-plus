@@ -49,6 +49,7 @@ interface AppController {
   setInput: (text: string) => void;
   retryConnection: () => Promise<void>;
   refreshConfigSnapshot: () => Promise<ConfigReadResponse>;
+  refreshAuthState: () => Promise<void>;
   refreshMcpData: () => Promise<McpRefreshResult>;
   listMcpServerStatuses: () => Promise<ReadonlyArray<McpServerStatus>>;
   writeConfigValue: (params: ConfigValueWriteParams) => Promise<ConfigMutationResult>;
@@ -370,6 +371,7 @@ export function useAppController(hostBridge: HostBridge): AppController {
   }, [client, dispatch, hostBridge, runBusy]);
 
   const refreshConfig = useCallback(() => readConfigSnapshot(client, dispatch), [client, dispatch]);
+  const refreshAuth = useCallback(() => refreshAccountState(client, dispatch), [client, dispatch]);
   const refreshMcp = useCallback(() => refreshMcpData(client, dispatch), [client, dispatch]);
   const listStatuses = useCallback(async () => {
     const statuses = await listAllMcpServerStatuses(client);
@@ -402,5 +404,5 @@ export function useAppController(hostBridge: HostBridge): AppController {
     dispatch({ type: "serverRequest/resolved", requestId: resolution.requestId });
   }, [client, dispatch, hostBridge.app]);
 
-  return { state, setInput: (text) => dispatch({ type: "input/changed", value: text }), retryConnection: () => bootstrap(true), refreshConfigSnapshot: refreshConfig, refreshMcpData: refreshMcp, listMcpServerStatuses: listStatuses, writeConfigValue, batchWriteConfig, batchWriteConfigSnapshot, setMultiAgentEnabled, startWindowsSandboxSetup, login, logout, resolveServerRequest };
+  return { state, setInput: (text) => dispatch({ type: "input/changed", value: text }), retryConnection: () => bootstrap(true), refreshConfigSnapshot: refreshConfig, refreshAuthState: refreshAuth, refreshMcpData: refreshMcp, listMcpServerStatuses: listStatuses, writeConfigValue, batchWriteConfig, batchWriteConfigSnapshot, setMultiAgentEnabled, startWindowsSandboxSetup, login, logout, resolveServerRequest };
 }

@@ -56,51 +56,94 @@
   transform: rotate(90deg);
 }
 
-.home-auth-callout {
-  margin: 0 20px 16px;
-  border: 1px solid #f5d38a;
-  border-radius: 16px;
-  background: #fff9eb;
-  padding: 14px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+.auth-choice-layout {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
 }
 
-.home-auth-callout-copy {
+.auth-choice-card {
+  width: min(560px, 100%);
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+  padding: 32px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  color: #7c5a10;
-  min-width: 0;
+  gap: 24px;
 }
 
-.home-auth-callout-copy strong {
-  font-size: 14px;
-  line-height: 1.4;
+.auth-choice-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.home-auth-callout-copy span {
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.home-auth-callout-button {
-  border: 0;
+.auth-choice-badge {
+  align-self: flex-start;
   border-radius: 999px;
-  background: #111827;
-  color: #ffffff;
-  font-size: 13px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 12px;
   font-weight: 600;
-  padding: 10px 14px;
-  cursor: pointer;
-  flex-shrink: 0;
+  line-height: 1;
+  padding: 8px 10px;
 }
 
-.home-auth-callout-button:disabled {
+.auth-choice-title {
+  margin: 0;
+  color: #111827;
+  font-size: 34px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.auth-choice-subtitle {
+  margin: 0;
+  color: #4b5563;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.auth-choice-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-choice-button {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.auth-choice-button:hover {
+  background: #f9fafb;
+}
+
+.auth-choice-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.auth-choice-button-primary {
+  border-color: #111827;
+  background: #111827;
+  color: #ffffff;
+}
+
+.auth-choice-button-primary:hover {
+  background: #1f2937;
 }
 
 @media (max-width: 1080px) {
@@ -117,9 +160,12 @@
     font-size: 16px;
   }
 
-  .home-auth-callout {
-    margin: 0 12px 12px;
-    flex-direction: column;
-    align-items: stretch;
+  .auth-choice-card {
+    padding: 24px;
+    border-radius: 20px;
+  }
+
+  .auth-choice-title {
+    font-size: 28px;
   }
 }

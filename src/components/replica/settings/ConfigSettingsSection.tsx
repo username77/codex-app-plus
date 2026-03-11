@@ -26,6 +26,7 @@ interface ConfigSettingsSectionProps {
   readonly configSnapshot: unknown;
   onOpenConfigToml: () => Promise<void>;
   refreshConfigSnapshot: () => Promise<unknown>;
+  refreshAuthState: () => Promise<void>;
   listCodexProviders: () => Promise<CodexProviderStore>;
   upsertCodexProvider: (input: CodexProviderDraft) => Promise<CodexProviderRecord>;
   deleteCodexProvider: (input: DeleteCodexProviderInput) => Promise<CodexProviderStore>;
@@ -80,7 +81,7 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
       const saved = await props.upsertCodexProvider(draft);
       if (applyAfterSave) {
         await props.applyCodexProvider({ id: saved.id });
-        await props.refreshConfigSnapshot();
+        await Promise.all([props.refreshConfigSnapshot(), props.refreshAuthState()]);
         setNoticeMessage(`已应用提供商：${saved.name}`);
       } else {
         setNoticeMessage(`已保存提供商：${saved.name}`);
@@ -100,7 +101,7 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
     setErrorMessage(null);
     try {
       await props.applyCodexProvider({ id: provider.id });
-      await props.refreshConfigSnapshot();
+      await Promise.all([props.refreshConfigSnapshot(), props.refreshAuthState()]);
       setNoticeMessage(`已应用提供商：${provider.name}`);
     } catch (error) {
       setErrorMessage(toErrorMessage(error));

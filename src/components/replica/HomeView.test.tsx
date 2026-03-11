@@ -468,17 +468,6 @@ describe("HomeView", () => {
     expect(screen.queryByText("Skills changed")).toBeNull();
   });
 
-  it("shows a login callout when authentication is required", () => {
-    const onLogin = vi.fn().mockResolvedValue(undefined);
-
-    renderHomeView({ authStatus: "needs_login", authMode: null, onLogin });
-
-    expect(screen.getByText("需要登录 ChatGPT")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "登录 ChatGPT" }));
-
-    expect(onLogin).toHaveBeenCalledTimes(1);
-  });
-
   it("truncates long toolbar titles while preserving the full title in tooltip", () => {
     const longTitle = "閻滄澘婀懗鎴掔瑝閼宠姤鏁奸柅鐘宠閺屾悥i閿涘苯瀵橀幏顒傛暏閹村嘲褰傞柅浣圭Х閹垯绠ｉ崥搴ｆ畱ai濮濓絽婀幀婵娾偓鍐т簰閸欏﹥顒滅敮绋夸紣閸忕柉鐨熼悽銊╂懠鐠侯垰娼＄粵澶嬭閺屾挻鏌熷蹇撴嫲鐎规ɑ鏌熼幓鎺嶆娑撯偓閼疯揪绱?E:/code/openai.chatgpt-26.304.20706-win32-x64";
 

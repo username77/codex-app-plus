@@ -129,9 +129,6 @@ interface MainContentProps {
   readonly connectionStatus: ConnectionStatus;
   readonly connectionRetryInfo: ReturnType<typeof extractConnectionRetryInfo>["retryInfo"];
   readonly fatalError: string | null;
-  readonly authStatus: AuthStatus;
-  readonly authBusy: boolean;
-  readonly authLoginPending: boolean;
   readonly retryScheduledAt: number | null;
   readonly onSelectWorkspaceOpener: (opener: WorkspaceOpener) => void;
   readonly onInputChange: (text: string) => void;
@@ -150,7 +147,6 @@ interface MainContentProps {
   readonly onToggleDiff: () => void;
   readonly onToggleTerminal: () => void;
   readonly onRetryConnection: () => Promise<void>;
-  readonly onLogin: () => Promise<void>;
 }
 
 function MainContent(props: MainContentProps): JSX.Element {
@@ -201,9 +197,6 @@ function MainContent(props: MainContentProps): JSX.Element {
         onToggleDiff={props.onToggleDiff}
         onToggleTerminal={props.onToggleTerminal}
       />
-      {props.authStatus === "needs_login" ? (
-        <AuthRequiredCallout loginPending={props.authLoginPending} busy={props.authBusy} onLogin={props.onLogin} />
-      ) : null}
       {conversationActive ? (
         <HomeConversationCanvas
           activities={renderableActivities}
@@ -273,20 +266,6 @@ function MainContent(props: MainContentProps): JSX.Element {
 
 function createTurnPlanChangeKey(plan: TurnPlanModel): string {
   return `${plan.entry.id}:${plan.totalSteps}:${plan.completedSteps}`;
-}
-
-function AuthRequiredCallout(props: { readonly loginPending: boolean; readonly busy: boolean; readonly onLogin: () => Promise<void> }): JSX.Element {
-  return (
-    <section className="home-auth-callout" aria-label="登录提示">
-      <div className="home-auth-callout-copy">
-        <strong>需要登录 ChatGPT</strong>
-        <span>当前工作区未连接官方账户，请先完成登录再继续使用官方鉴权能力。</span>
-      </div>
-      <button type="button" className="home-auth-callout-button" onClick={() => void props.onLogin()} disabled={props.busy}>
-        {props.loginPending ? "正在登录…" : "登录 ChatGPT"}
-      </button>
-    </section>
-  );
 }
 
 function EmptyCanvas(props: { readonly selectedRootName: string; readonly selectedRootPath: string | null }): JSX.Element {
@@ -394,9 +373,6 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         connectionStatus={props.connectionStatus}
         connectionRetryInfo={retryInfo}
         fatalError={props.fatalError}
-        authStatus={props.authStatus}
-        authBusy={props.authBusy}
-        authLoginPending={props.authLoginPending}
         retryScheduledAt={props.retryScheduledAt}
         onSelectWorkspaceOpener={props.onSelectWorkspaceOpener}
         onInputChange={props.onInputChange}
@@ -415,7 +391,6 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         onToggleDiff={toggleDiffSidebar}
         onToggleTerminal={toggleTerminal}
         onRetryConnection={props.onRetryConnection}
-        onLogin={props.onLogin}
       />
       {canShowDiffSidebar ? (
         <WorkspaceDiffSidebarHost

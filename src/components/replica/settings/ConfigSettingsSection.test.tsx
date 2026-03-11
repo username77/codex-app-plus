@@ -45,6 +45,7 @@ describe("ConfigSettingsSection", () => {
         configSnapshot={{ config: { model_provider: "right_code" } }}
         onOpenConfigToml={vi.fn().mockResolvedValue(undefined)}
         refreshConfigSnapshot={vi.fn().mockResolvedValue(undefined)}
+        refreshAuthState={vi.fn().mockResolvedValue(undefined)}
         listCodexProviders={vi.fn().mockResolvedValue({ version: 1, providers: [createProvider()] })}
         upsertCodexProvider={vi.fn()}
         deleteCodexProvider={vi.fn()}
@@ -65,6 +66,7 @@ describe("ConfigSettingsSection", () => {
         configSnapshot={{ config: {} }}
         onOpenConfigToml={vi.fn().mockResolvedValue(undefined)}
         refreshConfigSnapshot={vi.fn().mockResolvedValue(undefined)}
+        refreshAuthState={vi.fn().mockResolvedValue(undefined)}
         listCodexProviders={vi.fn().mockResolvedValue({ version: 1, providers: [] })}
         upsertCodexProvider={vi.fn()}
         deleteCodexProvider={vi.fn()}
@@ -96,6 +98,7 @@ describe("ConfigSettingsSection", () => {
       configPath: "C:/Users/Administrator/.codex/config.toml",
     });
     const refreshConfigSnapshot = vi.fn().mockResolvedValue(undefined);
+    const refreshAuthState = vi.fn().mockResolvedValue(undefined);
     const listCodexProviders = vi
       .fn()
       .mockResolvedValueOnce({ version: 1, providers: [] })
@@ -107,6 +110,7 @@ describe("ConfigSettingsSection", () => {
         configSnapshot={{ config: {} }}
         onOpenConfigToml={vi.fn().mockResolvedValue(undefined)}
         refreshConfigSnapshot={refreshConfigSnapshot}
+        refreshAuthState={refreshAuthState}
         listCodexProviders={listCodexProviders}
         upsertCodexProvider={upsertCodexProvider}
         deleteCodexProvider={vi.fn()}
@@ -129,6 +133,7 @@ describe("ConfigSettingsSection", () => {
     await waitFor(() => expect(upsertCodexProvider).toHaveBeenCalled());
     expect(applyCodexProvider).toHaveBeenCalledWith({ id: savedProvider.id });
     expect(refreshConfigSnapshot).toHaveBeenCalled();
+    expect(refreshAuthState).toHaveBeenCalled();
   });
 
   it("does not render the model input for provider settings", async () => {
@@ -138,6 +143,7 @@ describe("ConfigSettingsSection", () => {
         configSnapshot={{ config: {} }}
         onOpenConfigToml={vi.fn().mockResolvedValue(undefined)}
         refreshConfigSnapshot={vi.fn().mockResolvedValue(undefined)}
+        refreshAuthState={vi.fn().mockResolvedValue(undefined)}
         listCodexProviders={vi.fn().mockResolvedValue({ version: 1, providers: [] })}
         upsertCodexProvider={vi.fn()}
         deleteCodexProvider={vi.fn()}

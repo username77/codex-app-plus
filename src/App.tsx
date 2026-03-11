@@ -10,6 +10,7 @@ import { useWorkspaceConversation } from "./app/useWorkspaceConversation";
 import { useWorkspaceRoots } from "./app/useWorkspaceRoots";
 import { inferWorkspaceNameFromPath } from "./app/workspacePath";
 import type { HostBridge } from "./bridge/types";
+import { AuthChoiceView } from "./components/replica/AuthChoiceView";
 import { HomeView } from "./components/replica/HomeView";
 import type { SettingsSection } from "./components/replica/SettingsView";
 
@@ -185,6 +186,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
     ? null
     : `Rate limit: ${controller.state.rateLimits.limitName ?? controller.state.rateLimits.limitId ?? "default"}`;
   const authBusy = controller.state.bootstrapBusy || controller.state.authLogin.pending;
+  const shouldShowAuthChoice = controller.state.authStatus === "needs_login" && screen === "home";
 
   if (screen !== "home") {
     return (
@@ -201,6 +203,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
           onAddRoot={addRoot}
           onOpenConfigToml={openConfigToml}
           refreshConfigSnapshot={controller.refreshConfigSnapshot}
+          refreshAuthState={controller.refreshAuthState}
           readGlobalAgentInstructions={readGlobalAgentInstructions}
           writeGlobalAgentInstructions={writeGlobalAgentInstructions}
           listCodexProviders={listCodexProviders}
@@ -213,6 +216,17 @@ export function App({ hostBridge }: AppProps): JSX.Element {
           startWindowsSandboxSetup={controller.startWindowsSandboxSetup}
         />
       </Suspense>
+    );
+  }
+
+  if (shouldShowAuthChoice) {
+    return (
+      <AuthChoiceView
+        busy={authBusy}
+        loginPending={controller.state.authLogin.pending}
+        onLogin={controller.login}
+        onUseApiKey={() => setScreen("config")}
+      />
     );
   }
 
