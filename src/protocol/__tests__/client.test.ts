@@ -36,7 +36,6 @@ function createHostBridge(): HostBridge {
         providerKey: "right_code",
         apiKey: "secret-1",
         baseUrl: "https://right.codes/codex/v1",
-        model: "gpt-5.4",
         authJsonText: "{}",
         configTomlText: "",
         createdAt: 1,

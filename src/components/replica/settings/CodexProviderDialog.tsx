@@ -6,6 +6,7 @@ import {
   createEmptyCodexProviderDraft,
   extractApiKeyFromAuthJson,
   extractCodexConfigFields,
+  normalizeConfigTomlText,
   parseAuthJsonText,
   parseConfigTomlText,
   updateAuthJsonWithApiKey,
@@ -53,10 +54,9 @@ function safeParseConfig(draft: CodexProviderDraft): Record<string, unknown> {
     return parseConfigTomlText(
       createConfigTomlText({
         providerKey: draft.providerKey,
-        baseUrl: draft.baseUrl,
-        model: draft.model,
         providerName: draft.name.trim() || draft.providerKey,
-      })
+        baseUrl: draft.baseUrl,
+      }),
     );
   }
 }
@@ -72,12 +72,13 @@ export function CodexProviderDialog(props: CodexProviderDialogProps): JSX.Elemen
 
   const errors = useMemo(
     () => validateCodexProviderDraft(state.draft, props.providers),
-    [props.providers, state.draft]
+    [props.providers, state.draft],
   );
   const canSubmit = useMemo(
     () => Object.values(errors).every((value) => value === undefined),
-    [errors]
+    [errors],
   );
+  const dialogTitle = state.draft.id ? "Edit Provider" : "Add Provider";
 
   if (!props.open) {
     return null;
@@ -98,17 +99,16 @@ export function CodexProviderDialog(props: CodexProviderDialogProps): JSX.Elemen
     });
   };
 
-  const handleConfigFieldChange = (
-    key: "providerKey" | "baseUrl" | "model",
-    value: string
+  const handleBasicFieldChange = (
+    key: "name" | "providerKey" | "baseUrl",
+    value: string,
   ) => {
     setDraft((current) => {
       const nextDraft = { ...current.draft, [key]: value };
       const configTomlText = updateConfigTomlWithBasics(current.lastValidConfig, {
         providerKey: nextDraft.providerKey,
-        baseUrl: nextDraft.baseUrl,
-        model: nextDraft.model,
         providerName: nextDraft.name,
+        baseUrl: nextDraft.baseUrl,
       });
       return {
         draft: { ...nextDraft, configTomlText },
@@ -142,9 +142,9 @@ export function CodexProviderDialog(props: CodexProviderDialogProps): JSX.Elemen
           draft: {
             ...current.draft,
             configTomlText,
+            name: fields.providerName,
             providerKey: fields.providerKey,
             baseUrl: fields.baseUrl,
-            model: fields.model,
           },
           lastValidAuth: current.lastValidAuth,
           lastValidConfig: config,
@@ -159,7 +159,17 @@ export function CodexProviderDialog(props: CodexProviderDialogProps): JSX.Elemen
     if (!canSubmit || props.saving) {
       return;
     }
-    await props.onSave({ ...state.draft }, applyAfterSave);
+    await props.onSave(
+      {
+        ...state.draft,
+        configTomlText: normalizeConfigTomlText(state.draft.configTomlText, {
+          providerKey: state.draft.providerKey,
+          providerName: state.draft.name,
+          baseUrl: state.draft.baseUrl,
+        }),
+      },
+      applyAfterSave,
+    );
   };
 
   return (
@@ -168,25 +178,25 @@ export function CodexProviderDialog(props: CodexProviderDialogProps): JSX.Elemen
         className="settings-dialog codex-provider-dialog"
         role="dialog"
         aria-modal="true"
-        aria-label={state.draft.id ? "编辑提供商" : "新增提供商"}
+        aria-label={dialogTitle}
         onClick={(event) => event.stopPropagation()}
       >
         <header className="settings-dialog-header">
-          <strong>{state.draft.id ? "编辑提供商" : "新增提供商"}</strong>
-          <button type="button" className="settings-dialog-close" onClick={props.onClose} aria-label="关闭">
+          <strong>{dialogTitle}</strong>
+          <button type="button" className="settings-dialog-close" onClick={props.onClose} aria-label="Close">
             ×
           </button>
         </header>
         <div className="settings-dialog-body codex-provider-form">
           <div className="codex-provider-form-grid">
             <label className="mcp-form-field">
-              <span className="mcp-form-label">名称</span>
-              <input aria-label="名称" className="mcp-form-input" value={state.draft.name} onChange={(event) => setDraft((current) => ({ ...current, draft: { ...current.draft, name: event.target.value } }))} />
+              <span className="mcp-form-label">Name</span>
+              <input aria-label="Name" className="mcp-form-input" value={state.draft.name} onChange={(event) => handleBasicFieldChange("name", event.target.value)} />
               {errors.name ? <span className="mcp-form-error">{errors.name}</span> : null}
             </label>
             <label className="mcp-form-field">
               <span className="mcp-form-label">providerKey</span>
-              <input aria-label="providerKey" className="mcp-form-input" value={state.draft.providerKey} onChange={(event) => handleConfigFieldChange("providerKey", event.target.value)} />
+              <input aria-label="providerKey" className="mcp-form-input" value={state.draft.providerKey} onChange={(event) => handleBasicFieldChange("providerKey", event.target.value)} />
               {errors.providerKey ? <span className="mcp-form-error">{errors.providerKey}</span> : null}
             </label>
             <label className="mcp-form-field">
@@ -196,13 +206,8 @@ export function CodexProviderDialog(props: CodexProviderDialogProps): JSX.Elemen
             </label>
             <label className="mcp-form-field">
               <span className="mcp-form-label">Base URL</span>
-              <input aria-label="Base URL" className="mcp-form-input" value={state.draft.baseUrl} onChange={(event) => handleConfigFieldChange("baseUrl", event.target.value)} />
+              <input aria-label="Base URL" className="mcp-form-input" value={state.draft.baseUrl} onChange={(event) => handleBasicFieldChange("baseUrl", event.target.value)} />
               {errors.baseUrl ? <span className="mcp-form-error">{errors.baseUrl}</span> : null}
-            </label>
-            <label className="mcp-form-field codex-provider-form-full">
-              <span className="mcp-form-label">模型</span>
-              <input aria-label="模型" className="mcp-form-input" value={state.draft.model} onChange={(event) => handleConfigFieldChange("model", event.target.value)} />
-              {errors.model ? <span className="mcp-form-error">{errors.model}</span> : null}
             </label>
           </div>
           <label className="mcp-form-field codex-provider-form-full">
@@ -217,9 +222,9 @@ export function CodexProviderDialog(props: CodexProviderDialogProps): JSX.Elemen
           </label>
           {props.submitError ? <div className="mcp-form-submit-error">{props.submitError}</div> : null}
           <div className="mcp-form-actions">
-            <button type="button" className="settings-action-btn" onClick={props.onClose} disabled={props.saving}>取消</button>
-            <button type="button" className="settings-action-btn" onClick={() => void handleSave(false)} disabled={!canSubmit || props.saving}>{props.saving ? "保存中…" : "保存"}</button>
-            <button type="button" className="settings-action-btn settings-action-btn-primary" onClick={() => void handleSave(true)} disabled={!canSubmit || props.saving}>{props.saving ? "应用中…" : "保存并应用"}</button>
+            <button type="button" className="settings-action-btn" onClick={props.onClose} disabled={props.saving}>Cancel</button>
+            <button type="button" className="settings-action-btn" onClick={() => void handleSave(false)} disabled={!canSubmit || props.saving}>{props.saving ? "Saving..." : "Save"}</button>
+            <button type="button" className="settings-action-btn settings-action-btn-primary" onClick={() => void handleSave(true)} disabled={!canSubmit || props.saving}>{props.saving ? "Applying..." : "Save & Apply"}</button>
           </div>
         </div>
       </section>

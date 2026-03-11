@@ -9,18 +9,37 @@ function createProvider() {
     providerKey: "right_code",
     apiKey: "secret-1",
     baseUrl: "https://right.codes/codex/v1",
-    model: "gpt-5.4",
     authJsonText: '{\n  "OPENAI_API_KEY": "secret-1"\n}\n',
     configTomlText:
-      'model_provider = "right_code"\nmodel = "gpt-5.4"\nmodel_reasoning_effort = "high"\ndisable_response_storage = true\n\n[model_providers.right_code]\nname = "Right Code"\nbase_url = "https://right.codes/codex/v1"\nwire_api = "responses"\nrequires_openai_auth = true\n',
+      'model_provider = "right_code"\n\n[model_providers.right_code]\nname = "Right Code"\nbase_url = "https://right.codes/codex/v1"\nwire_api = "responses"\nrequires_openai_auth = true\n',
     createdAt: 1,
     updatedAt: 2,
   };
 }
 
+function openAddProviderDialog(root: HTMLElement) {
+  const addButton = root.querySelector<HTMLButtonElement>(".settings-head-action");
+  if (addButton === null) {
+    throw new Error("missing add provider button");
+  }
+  fireEvent.click(addButton);
+}
+
+function getDialogInputs(root: HTMLElement) {
+  const inputs = root.querySelectorAll<HTMLInputElement>(".codex-provider-form input");
+  const textareas = root.querySelectorAll<HTMLTextAreaElement>(".codex-provider-form textarea");
+  return {
+    nameInput: inputs[0],
+    providerKeyInput: inputs[1],
+    apiKeyInput: inputs[2],
+    baseUrlInput: inputs[3],
+    authTextarea: textareas[0],
+  };
+}
+
 describe("ConfigSettingsSection", () => {
   it("renders provider rows and marks the current provider", async () => {
-    render(
+    const { container } = render(
       <ConfigSettingsSection
         busy={false}
         configSnapshot={{ config: { model_provider: "right_code" } }}
@@ -30,15 +49,15 @@ describe("ConfigSettingsSection", () => {
         upsertCodexProvider={vi.fn()}
         deleteCodexProvider={vi.fn()}
         applyCodexProvider={vi.fn()}
-      />
+      />,
     );
 
     expect(await screen.findByText("Right Code")).toBeInTheDocument();
-    expect(screen.getByText("当前已应用")).toBeInTheDocument();
+    expect(container.querySelectorAll(".codex-provider-current")).toHaveLength(1);
   });
 
   it("disables save when advanced content is invalid", async () => {
-    render(
+    const { container } = render(
       <ConfigSettingsSection
         busy={false}
         configSnapshot={{ config: {} }}
@@ -48,15 +67,18 @@ describe("ConfigSettingsSection", () => {
         upsertCodexProvider={vi.fn()}
         deleteCodexProvider={vi.fn()}
         applyCodexProvider={vi.fn()}
-      />
+      />,
     );
 
-    fireEvent.click(await screen.findByRole("button", { name: "新增提供商" }));
-    fireEvent.change(screen.getByLabelText("名称"), { target: { value: "Right Code" } });
-    fireEvent.change(screen.getByLabelText("API Key"), { target: { value: "secret-1" } });
-    fireEvent.change(screen.getByLabelText("auth.json"), { target: { value: "{bad json}" } });
+    openAddProviderDialog(container);
+    const { nameInput, apiKeyInput, authTextarea } = getDialogInputs(container);
+    const dialogButtons = container.querySelectorAll<HTMLButtonElement>(".mcp-form-actions button");
 
-    expect(screen.getByRole("button", { name: "保存" })).toBeDisabled();
+    fireEvent.change(nameInput, { target: { value: "Right Code" } });
+    fireEvent.change(apiKeyInput, { target: { value: "secret-1" } });
+    fireEvent.change(authTextarea, { target: { value: "{bad json}" } });
+
+    expect(dialogButtons[1]).toBeDisabled();
     expect(screen.getAllByText(/JSON/i).length).toBeGreaterThan(0);
   });
 
@@ -75,7 +97,7 @@ describe("ConfigSettingsSection", () => {
       .mockResolvedValueOnce({ version: 1, providers: [] })
       .mockResolvedValueOnce({ version: 1, providers: [savedProvider] });
 
-    render(
+    const { container } = render(
       <ConfigSettingsSection
         busy={false}
         configSnapshot={{ config: {} }}
@@ -85,19 +107,40 @@ describe("ConfigSettingsSection", () => {
         upsertCodexProvider={upsertCodexProvider}
         deleteCodexProvider={vi.fn()}
         applyCodexProvider={applyCodexProvider}
-      />
+      />,
     );
 
-    fireEvent.click(await screen.findByRole("button", { name: "新增提供商" }));
-    fireEvent.change(screen.getByLabelText("名称"), { target: { value: "Right Code" } });
-    fireEvent.change(screen.getByLabelText("API Key"), { target: { value: "secret-1" } });
-    fireEvent.change(screen.getByLabelText("providerKey"), { target: { value: "right_code" } });
-    fireEvent.change(screen.getByLabelText("Base URL"), { target: { value: "https://right.codes/codex/v1" } });
-    fireEvent.change(screen.getByLabelText("模型"), { target: { value: "gpt-5.4" } });
-    fireEvent.click(screen.getByRole("button", { name: "保存并应用" }));
+    openAddProviderDialog(container);
+    const { nameInput, providerKeyInput, apiKeyInput, baseUrlInput } = getDialogInputs(container);
+    const dialogButtons = container.querySelectorAll<HTMLButtonElement>(".mcp-form-actions button");
+
+    fireEvent.change(nameInput, { target: { value: "Right Code" } });
+    fireEvent.change(apiKeyInput, { target: { value: "secret-1" } });
+    fireEvent.change(providerKeyInput, { target: { value: "right_code" } });
+    fireEvent.change(baseUrlInput, { target: { value: "https://right.codes/codex/v1" } });
+    fireEvent.click(dialogButtons[2]);
 
     await waitFor(() => expect(upsertCodexProvider).toHaveBeenCalled());
     expect(applyCodexProvider).toHaveBeenCalledWith({ id: savedProvider.id });
     expect(refreshConfigSnapshot).toHaveBeenCalled();
+  });
+
+  it("does not render the model input for provider settings", async () => {
+    const { container } = render(
+      <ConfigSettingsSection
+        busy={false}
+        configSnapshot={{ config: {} }}
+        onOpenConfigToml={vi.fn().mockResolvedValue(undefined)}
+        refreshConfigSnapshot={vi.fn().mockResolvedValue(undefined)}
+        listCodexProviders={vi.fn().mockResolvedValue({ version: 1, providers: [] })}
+        upsertCodexProvider={vi.fn()}
+        deleteCodexProvider={vi.fn()}
+        applyCodexProvider={vi.fn()}
+      />,
+    );
+
+    openAddProviderDialog(container);
+
+    expect(container.querySelectorAll(".codex-provider-form input")).toHaveLength(4);
   });
 });

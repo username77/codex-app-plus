@@ -142,7 +142,6 @@ export interface CodexProviderDraft {
   readonly providerKey: string;
   readonly apiKey: string;
   readonly baseUrl: string;
-  readonly model: string;
   readonly authJsonText: string;
   readonly configTomlText: string;
 }
@@ -153,7 +152,6 @@ export interface CodexProviderRecord {
   readonly providerKey: string;
   readonly apiKey: string;
   readonly baseUrl: string;
-  readonly model: string;
   readonly authJsonText: string;
   readonly configTomlText: string;
   readonly createdAt: number;

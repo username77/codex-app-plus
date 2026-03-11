@@ -113,7 +113,6 @@ pub struct CodexProviderRecord {
     pub provider_key: String,
     pub api_key: String,
     pub base_url: String,
-    pub model: String,
     pub auth_json_text: String,
     pub config_toml_text: String,
     pub created_at: i64,
@@ -135,7 +134,6 @@ pub struct UpsertCodexProviderInput {
     pub provider_key: String,
     pub api_key: String,
     pub base_url: String,
-    pub model: String,
     pub auth_json_text: String,
     pub config_toml_text: String,
 }

@@ -170,7 +170,6 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
                     {provider.providerKey === currentProviderKey ? <span className="settings-chip settings-chip-sm codex-provider-current">当前已应用</span> : null}
                   </div>
                   <div className="codex-provider-meta-row">
-                    <span>{provider.model}</span>
                     <span>{provider.baseUrl}</span>
                   </div>
                 </div>
