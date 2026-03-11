@@ -48,4 +48,28 @@ describe("applyAppServerNotification", () => {
       }),
     }));
   });
+
+  it("records windows sandbox setup completion", () => {
+    const dispatch = vi.fn<(action: AppAction) => void>();
+
+    applyAppServerNotification(createContext(dispatch), "windowsSandbox/setupCompleted", {
+      mode: "unelevated",
+      success: false,
+      error: "setup failed",
+    });
+
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "windowsSandbox/setupCompleted",
+      mode: "unelevated",
+      success: false,
+      error: "setup failed",
+    });
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
+      type: "banner/pushed",
+      banner: expect.objectContaining({
+        source: "windows-sandbox",
+        level: "error",
+      }),
+    }));
+  });
 });

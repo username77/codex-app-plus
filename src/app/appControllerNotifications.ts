@@ -296,6 +296,7 @@ export function applyAppServerNotification(context: NotificationContext, method:
   }
   if (method === "windowsSandbox/setupCompleted") {
     const payload = params as WindowsSandboxSetupCompletedNotification;
+    dispatch({ type: "windowsSandbox/setupCompleted", mode: payload.mode, success: payload.success, error: payload.error });
     pushBanner(dispatch, payload.success ? "info" : "error", `Windows sandbox setup ${payload.success ? "completed" : "failed"}`, payload.error, "windows-sandbox");
   }
 }

@@ -6,12 +6,15 @@ import type {
   CodexProviderStore,
   DeleteCodexProviderInput,
 } from "../../../bridge/types";
+import type { WindowsSandboxSetupState } from "../../../domain/types";
+import type { WindowsSandboxSetupMode } from "../../../protocol/generated/v2/WindowsSandboxSetupMode";
 import {
   createEmptyCodexProviderDraft,
   createDraftFromRecord,
   readCurrentCodexProviderKey,
 } from "../../../app/codexProviderConfig";
 import { CodexProviderDialog } from "./CodexProviderDialog";
+import { WindowsSandboxSettingsCard } from "./WindowsSandboxSettingsCard";
 
 const LazyOpenSourceLicensesDialog = lazy(async () => {
   const module = await import("../OpenSourceLicensesDialog");
@@ -27,6 +30,8 @@ interface ConfigSettingsSectionProps {
   upsertCodexProvider: (input: CodexProviderDraft) => Promise<CodexProviderRecord>;
   deleteCodexProvider: (input: DeleteCodexProviderInput) => Promise<CodexProviderStore>;
   applyCodexProvider: (input: { readonly id: string }) => Promise<CodexProviderApplyResult>;
+  readonly windowsSandboxSetup: WindowsSandboxSetupState;
+  readonly startWindowsSandboxSetup: (mode: WindowsSandboxSetupMode) => Promise<unknown>;
 }
 
 function toErrorMessage(error: unknown): string {
@@ -149,6 +154,7 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
           </button>
         </div>
       </section>
+      <WindowsSandboxSettingsCard busy={props.busy} configSnapshot={props.configSnapshot} setupState={props.windowsSandboxSetup} onStartSetup={props.startWindowsSandboxSetup} />
       <section className="settings-card codex-provider-card">
         <div className="settings-section-head">
           <strong>提供商配置</strong>

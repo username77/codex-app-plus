@@ -179,6 +179,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
           preferences={preferences}
           configSnapshot={controller.state.configSnapshot}
           busy={controller.state.bootstrapBusy}
+          windowsSandboxSetup={controller.state.windowsSandboxSetup}
           onBackHome={() => setScreen("home")}
           onSelectSection={setScreen}
           onAddRoot={addRoot}
@@ -193,6 +194,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
           refreshMcpData={controller.refreshMcpData}
           writeConfigValue={controller.writeConfigValue}
           batchWriteConfig={controller.batchWriteConfig}
+          startWindowsSandboxSetup={controller.startWindowsSandboxSetup}
         />
       </Suspense>
     );

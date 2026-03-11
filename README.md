@@ -1,14 +1,20 @@
 # Codex App Plus
 
-基于 `React + Vite + Tauri` 的 Codex Windows 复刻工程骨架，协议基线锁定在 `26.304.1528`。
+基于 `React + Vite + Tauri` 的 Codex Windows 桌面壳工程。
 
 ## 本地开发
 
 ```bash
 pnpm install
-pnpm run generate:protocol
+CODEX_BINARY_PATH=codex pnpm run generate:protocol
 pnpm run dev:tauri
 ```
+
+## 协议生成
+
+- `scripts/generate-protocol.mjs` 现在要求显式传入 `CODEX_BINARY_PATH`。
+- 该变量应指向当前官方 `codex` CLI，例如 `codex`、`codex.cmd` 或对应绝对路径。
+- Windows 沙盒相关能力依赖最新官方 `codex app-server` 协议生成物，不再使用固定旧版本解包产物。
 
 ## 关键约束
 

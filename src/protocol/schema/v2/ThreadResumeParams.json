@@ -147,6 +147,10 @@
                 "mcp_elicitations": {
                   "type": "boolean"
                 },
+                "request_permissions": {
+                  "default": false,
+                  "type": "boolean"
+                },
                 "rules": {
                   "type": "boolean"
                 },
@@ -779,7 +783,7 @@
             "action": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/WebSearchAction"
+                  "$ref": "#/definitions/ResponsesApiWebSearchAction"
                 },
                 {
                   "type": "null"
@@ -808,6 +812,40 @@
             }
           },
           "title": "WebSearchCallResponseItem"
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "result",
+            "status",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "result": {
+              "type": "string"
+            },
+            "revised_prompt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "image_generation_call"
+              ],
+              "title": "ImageGenerationCallResponseItemType"
+            }
+          },
+          "title": "ImageGenerationCallResponseItem"
         },
         {
           "type": "object",
@@ -867,21 +905,7 @@
         }
       ]
     },
-    "SandboxMode": {
-      "type": "string",
-      "enum": [
-        "read-only",
-        "workspace-write",
-        "danger-full-access"
-      ]
-    },
-    "ServiceTier": {
-      "type": "string",
-      "enum": [
-        "fast"
-      ]
-    },
-    "WebSearchAction": {
+    "ResponsesApiWebSearchAction": {
       "oneOf": [
         {
           "type": "object",
@@ -909,10 +933,10 @@
               "enum": [
                 "search"
               ],
-              "title": "SearchWebSearchActionType"
+              "title": "SearchResponsesApiWebSearchActionType"
             }
           },
-          "title": "SearchWebSearchAction"
+          "title": "SearchResponsesApiWebSearchAction"
         },
         {
           "type": "object",
@@ -925,7 +949,7 @@
               "enum": [
                 "open_page"
               ],
-              "title": "OpenPageWebSearchActionType"
+              "title": "OpenPageResponsesApiWebSearchActionType"
             },
             "url": {
               "type": [
@@ -934,7 +958,7 @@
               ]
             }
           },
-          "title": "OpenPageWebSearchAction"
+          "title": "OpenPageResponsesApiWebSearchAction"
         },
         {
           "type": "object",
@@ -953,7 +977,7 @@
               "enum": [
                 "find_in_page"
               ],
-              "title": "FindInPageWebSearchActionType"
+              "title": "FindInPageResponsesApiWebSearchActionType"
             },
             "url": {
               "type": [
@@ -962,7 +986,7 @@
               ]
             }
           },
-          "title": "FindInPageWebSearchAction"
+          "title": "FindInPageResponsesApiWebSearchAction"
         },
         {
           "type": "object",
@@ -975,11 +999,26 @@
               "enum": [
                 "other"
               ],
-              "title": "OtherWebSearchActionType"
+              "title": "OtherResponsesApiWebSearchActionType"
             }
           },
-          "title": "OtherWebSearchAction"
+          "title": "OtherResponsesApiWebSearchAction"
         }
+      ]
+    },
+    "SandboxMode": {
+      "type": "string",
+      "enum": [
+        "read-only",
+        "workspace-write",
+        "danger-full-access"
+      ]
+    },
+    "ServiceTier": {
+      "type": "string",
+      "enum": [
+        "fast",
+        "flex"
       ]
     }
   }

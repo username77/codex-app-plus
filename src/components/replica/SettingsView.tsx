@@ -1,5 +1,6 @@
 import type { ConfigMutationResult, McpRefreshResult } from "../../app/configOperations";
 import type { AppPreferencesController } from "../../app/useAppPreferences";
+import type { WindowsSandboxSetupState } from "../../domain/types";
 import type {
   CodexProviderApplyResult,
   CodexProviderDraft,
@@ -13,6 +14,7 @@ import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
 import type { ConfigBatchWriteParams } from "../../protocol/generated/v2/ConfigBatchWriteParams";
 import type { ConfigReadResponse } from "../../protocol/generated/v2/ConfigReadResponse";
 import type { ConfigValueWriteParams } from "../../protocol/generated/v2/ConfigValueWriteParams";
+import type { WindowsSandboxSetupMode } from "../../protocol/generated/v2/WindowsSandboxSetupMode";
 import { McpSettingsPanel } from "./mcp/McpSettingsPanel";
 import { ConfigSettingsSection } from "./settings/ConfigSettingsSection";
 import { GeneralSettingsSection } from "./settings/GeneralSettingsSection";
@@ -34,6 +36,7 @@ interface SettingsViewProps {
   readonly preferences: AppPreferencesController;
   readonly configSnapshot: unknown;
   readonly busy: boolean;
+  readonly windowsSandboxSetup: WindowsSandboxSetupState;
   onBackHome: () => void;
   onSelectSection: (section: SettingsSection) => void;
   onAddRoot: () => void;
@@ -50,6 +53,7 @@ interface SettingsViewProps {
   refreshMcpData: () => Promise<McpRefreshResult>;
   writeConfigValue: (params: ConfigValueWriteParams) => Promise<ConfigMutationResult>;
   batchWriteConfig: (params: ConfigBatchWriteParams) => Promise<ConfigMutationResult>;
+  readonly startWindowsSandboxSetup: (mode: WindowsSandboxSetupMode) => Promise<unknown>;
 }
 
 interface NavItem {
@@ -218,6 +222,8 @@ function SettingsContent(props: SettingsViewProps): JSX.Element {
         upsertCodexProvider={props.upsertCodexProvider}
         deleteCodexProvider={props.deleteCodexProvider}
         applyCodexProvider={props.applyCodexProvider}
+        windowsSandboxSetup={props.windowsSandboxSetup}
+        startWindowsSandboxSetup={props.startWindowsSandboxSetup}
       />
     );
   }

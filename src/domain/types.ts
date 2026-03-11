@@ -75,6 +75,13 @@ export interface TokenRefreshState {
   readonly error: string | null;
 }
 
+export interface WindowsSandboxSetupState {
+  readonly pending: boolean;
+  readonly mode: "elevated" | "unelevated" | null;
+  readonly success: boolean | null;
+  readonly error: string | null;
+}
+
 export interface UiBanner {
   readonly id: string;
   readonly level: NoticeLevel;
@@ -120,6 +127,7 @@ export interface AppState {
   readonly rateLimits: RateLimitSnapshot | null;
   readonly authLogin: AuthLoginState;
   readonly tokenRefresh: TokenRefreshState;
+  readonly windowsSandboxSetup: WindowsSandboxSetupState;
   readonly realtimeByThreadId: Readonly<Record<string, RealtimeState>>;
   readonly fuzzySearchSessionsById: Readonly<Record<string, FuzzySearchSessionState>>;
   readonly banners: ReadonlyArray<UiBanner>;
@@ -180,6 +188,8 @@ export type AppAction =
   | { type: "authLogin/completed"; success: boolean; error: string | null }
   | { type: "tokenRefresh/started"; requestId: string; previousAccountId: string | null }
   | { type: "tokenRefresh/completed"; requestId: string; error: string | null }
+  | { type: "windowsSandbox/setupStarted"; mode: "elevated" | "unelevated" }
+  | { type: "windowsSandbox/setupCompleted"; mode: "elevated" | "unelevated"; success: boolean; error: string | null }
   | { type: "realtime/started"; threadId: string; sessionId: string | null }
   | { type: "realtime/itemAdded"; threadId: string; item: unknown }
   | { type: "realtime/audioAdded"; threadId: string; audio: ThreadRealtimeAudioChunk }
@@ -215,6 +225,7 @@ export const INITIAL_STATE: AppState = {
   rateLimits: null,
   authLogin: { loginId: null, authUrl: null, pending: false, error: null },
   tokenRefresh: { requestId: null, previousAccountId: null, pending: false, error: null },
+  windowsSandboxSetup: { pending: false, mode: null, success: null, error: null },
   realtimeByThreadId: {},
   fuzzySearchSessionsById: {},
   banners: [],

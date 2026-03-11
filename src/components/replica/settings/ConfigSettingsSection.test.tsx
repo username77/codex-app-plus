@@ -49,6 +49,8 @@ describe("ConfigSettingsSection", () => {
         upsertCodexProvider={vi.fn()}
         deleteCodexProvider={vi.fn()}
         applyCodexProvider={vi.fn()}
+        windowsSandboxSetup={{ pending: false, mode: null, success: null, error: null }}
+        startWindowsSandboxSetup={vi.fn().mockResolvedValue({ started: true })}
       />,
     );
 
@@ -67,6 +69,8 @@ describe("ConfigSettingsSection", () => {
         upsertCodexProvider={vi.fn()}
         deleteCodexProvider={vi.fn()}
         applyCodexProvider={vi.fn()}
+        windowsSandboxSetup={{ pending: false, mode: null, success: null, error: null }}
+        startWindowsSandboxSetup={vi.fn().mockResolvedValue({ started: true })}
       />,
     );
 
@@ -107,6 +111,8 @@ describe("ConfigSettingsSection", () => {
         upsertCodexProvider={upsertCodexProvider}
         deleteCodexProvider={vi.fn()}
         applyCodexProvider={applyCodexProvider}
+        windowsSandboxSetup={{ pending: false, mode: null, success: null, error: null }}
+        startWindowsSandboxSetup={vi.fn().mockResolvedValue({ started: true })}
       />,
     );
 
@@ -136,6 +142,8 @@ describe("ConfigSettingsSection", () => {
         upsertCodexProvider={vi.fn()}
         deleteCodexProvider={vi.fn()}
         applyCodexProvider={vi.fn()}
+        windowsSandboxSetup={{ pending: false, mode: null, success: null, error: null }}
+        startWindowsSandboxSetup={vi.fn().mockResolvedValue({ started: true })}
       />,
     );
 

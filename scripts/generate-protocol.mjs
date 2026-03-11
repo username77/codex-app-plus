@@ -4,15 +4,17 @@ import { resolve } from "node:path";
 
 const OUTPUT_TS = resolve("src/protocol/generated");
 const OUTPUT_SCHEMA = resolve("src/protocol/schema");
-const defaultCodexPath = resolve(
-  "E:/code/codex-official-deconstructed/unpacked/resources-runtime/codex.exe"
-);
-const codexBinary = process.env.CODEX_BINARY_PATH ?? defaultCodexPath;
+const codexBinary = process.env.CODEX_BINARY_PATH;
+
+if (typeof codexBinary !== "string" || codexBinary.trim().length === 0) {
+  throw new Error("CODEX_BINARY_PATH is required and must point to the official codex binary.");
+}
 
 function runCodex(args) {
   const result = spawnSync(codexBinary, args, {
     stdio: "inherit",
-    windowsHide: true
+    windowsHide: true,
+    shell: process.platform === "win32"
   });
   if (result.error) {
     throw result.error;

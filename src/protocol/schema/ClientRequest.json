@@ -149,6 +149,56 @@
       "title": "Thread/unsubscribeRequest"
     },
     {
+      "description": "Increment the thread-local out-of-band elicitation counter.\n\nThis is used by external helpers to pause timeout accounting while a user approval or other elicitation is pending outside the app-server request flow.",
+      "type": "object",
+      "required": [
+        "id",
+        "method",
+        "params"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "thread/increment_elicitation"
+          ],
+          "title": "Thread/incrementElicitationRequestMethod"
+        },
+        "params": {
+          "$ref": "#/definitions/ThreadIncrementElicitationParams"
+        }
+      },
+      "title": "Thread/incrementElicitationRequest"
+    },
+    {
+      "description": "Decrement the thread-local out-of-band elicitation counter.\n\nWhen the count reaches zero, timeout accounting resumes for the thread.",
+      "type": "object",
+      "required": [
+        "id",
+        "method",
+        "params"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "thread/decrement_elicitation"
+          ],
+          "title": "Thread/decrementElicitationRequestMethod"
+        },
+        "params": {
+          "$ref": "#/definitions/ThreadDecrementElicitationParams"
+        }
+      },
+      "title": "Thread/decrementElicitationRequest"
+    },
+    {
       "type": "object",
       "required": [
         "id",
@@ -402,6 +452,30 @@
         "method": {
           "type": "string",
           "enum": [
+            "plugin/list"
+          ],
+          "title": "Plugin/listRequestMethod"
+        },
+        "params": {
+          "$ref": "#/definitions/PluginListParams"
+        }
+      },
+      "title": "Plugin/listRequest"
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "method",
+        "params"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
             "skills/remote/list"
           ],
           "title": "Skills/remote/listRequestMethod"
@@ -483,6 +557,54 @@
         }
       },
       "title": "Skills/config/writeRequest"
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "method",
+        "params"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "plugin/install"
+          ],
+          "title": "Plugin/installRequestMethod"
+        },
+        "params": {
+          "$ref": "#/definitions/PluginInstallParams"
+        }
+      },
+      "title": "Plugin/installRequest"
+    },
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "method",
+        "params"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "plugin/uninstall"
+          ],
+          "title": "Plugin/uninstallRequestMethod"
+        },
+        "params": {
+          "$ref": "#/definitions/PluginUninstallParams"
+        }
+      },
+      "title": "Plugin/uninstallRequest"
     },
     {
       "type": "object",
@@ -988,7 +1110,7 @@
       "title": "Feedback/uploadRequest"
     },
     {
-      "description": "Execute a command (argv vector) under the server's sandbox.",
+      "description": "Execute a standalone command (argv vector) under the server's sandbox.",
       "type": "object",
       "required": [
         "id",
@@ -1011,6 +1133,81 @@
         }
       },
       "title": "Command/execRequest"
+    },
+    {
+      "description": "Write stdin bytes to a running `command/exec` session or close stdin.",
+      "type": "object",
+      "required": [
+        "id",
+        "method",
+        "params"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "command/exec/write"
+          ],
+          "title": "Command/exec/writeRequestMethod"
+        },
+        "params": {
+          "$ref": "#/definitions/CommandExecWriteParams"
+        }
+      },
+      "title": "Command/exec/writeRequest"
+    },
+    {
+      "description": "Terminate a running `command/exec` session by client-supplied `processId`.",
+      "type": "object",
+      "required": [
+        "id",
+        "method",
+        "params"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "command/exec/terminate"
+          ],
+          "title": "Command/exec/terminateRequestMethod"
+        },
+        "params": {
+          "$ref": "#/definitions/CommandExecTerminateParams"
+        }
+      },
+      "title": "Command/exec/terminateRequest"
+    },
+    {
+      "description": "Resize a running PTY-backed `command/exec` session by client-supplied `processId`.",
+      "type": "object",
+      "required": [
+        "id",
+        "method",
+        "params"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "command/exec/resize"
+          ],
+          "title": "Command/exec/resizeRequestMethod"
+        },
+        "params": {
+          "$ref": "#/definitions/CommandExecResizeParams"
+        }
+      },
+      "title": "Command/exec/resizeRequest"
     },
     {
       "type": "object",
@@ -1342,6 +1539,10 @@
                 "mcp_elicitations": {
                   "type": "boolean"
                 },
+                "request_permissions": {
+                  "default": false,
+                  "type": "boolean"
+                },
                 "rules": {
                   "type": "boolean"
                 },
@@ -1428,24 +1629,65 @@
       "type": "object"
     },
     "CommandExecParams": {
+      "description": "Run a standalone command (argv vector) in the server sandbox without creating a thread or turn.\n\nThe final `command/exec` response is deferred until the process exits and is sent only after all `command/exec/outputDelta` notifications for that connection have been emitted.",
       "type": "object",
       "required": [
         "command"
       ],
       "properties": {
         "command": {
+          "description": "Command argv vector. Empty arrays are rejected.",
           "type": "array",
           "items": {
             "type": "string"
           }
         },
         "cwd": {
+          "description": "Optional working directory. Defaults to the server cwd.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "disableOutputCap": {
+          "description": "Disable stdout/stderr capture truncation for this request.\n\nCannot be combined with `outputBytesCap`.",
+          "type": "boolean"
+        },
+        "disableTimeout": {
+          "description": "Disable the timeout entirely for this request.\n\nCannot be combined with `timeoutMs`.",
+          "type": "boolean"
+        },
+        "env": {
+          "description": "Optional environment overrides merged into the server-computed environment.\n\nMatching names override inherited values. Set a key to `null` to unset an inherited variable.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "outputBytesCap": {
+          "description": "Optional per-stream stdout/stderr capture cap in bytes.\n\nWhen omitted, the server default applies. Cannot be combined with `disableOutputCap`.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0.0
+        },
+        "processId": {
+          "description": "Optional client-supplied, connection-scoped process id.\n\nRequired for `tty`, `streamStdin`, `streamStdoutStderr`, and follow-up `command/exec/write`, `command/exec/resize`, and `command/exec/terminate` calls. When omitted, buffered execution gets an internal id that is not exposed to the client.",
           "type": [
             "string",
             "null"
           ]
         },
         "sandboxPolicy": {
+          "description": "Optional sandbox policy for this command.\n\nUses the same shape as thread/turn execution sandbox configuration and defaults to the user's configured policy when omitted.",
           "anyOf": [
             {
               "$ref": "#/definitions/SandboxPolicy"
@@ -1455,12 +1697,117 @@
             }
           ]
         },
+        "size": {
+          "description": "Optional initial PTY size in character cells. Only valid when `tty` is true.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/CommandExecTerminalSize"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "streamStdin": {
+          "description": "Allow follow-up `command/exec/write` requests to write stdin bytes.\n\nRequires a client-supplied `processId`.",
+          "type": "boolean"
+        },
+        "streamStdoutStderr": {
+          "description": "Stream stdout/stderr via `command/exec/outputDelta` notifications.\n\nStreamed bytes are not duplicated into the final response and require a client-supplied `processId`.",
+          "type": "boolean"
+        },
         "timeoutMs": {
+          "description": "Optional timeout in milliseconds.\n\nWhen omitted, the server default applies. Cannot be combined with `disableTimeout`.",
           "type": [
             "integer",
             "null"
           ],
           "format": "int64"
+        },
+        "tty": {
+          "description": "Enable PTY mode.\n\nThis implies `streamStdin` and `streamStdoutStderr`.",
+          "type": "boolean"
+        }
+      }
+    },
+    "CommandExecResizeParams": {
+      "description": "Resize a running PTY-backed `command/exec` session.",
+      "type": "object",
+      "required": [
+        "processId",
+        "size"
+      ],
+      "properties": {
+        "processId": {
+          "description": "Client-supplied, connection-scoped `processId` from the original `command/exec` request.",
+          "type": "string"
+        },
+        "size": {
+          "description": "New PTY size in character cells.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CommandExecTerminalSize"
+            }
+          ]
+        }
+      }
+    },
+    "CommandExecTerminalSize": {
+      "description": "PTY size in character cells for `command/exec` PTY sessions.",
+      "type": "object",
+      "required": [
+        "cols",
+        "rows"
+      ],
+      "properties": {
+        "cols": {
+          "description": "Terminal width in character cells.",
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0.0
+        },
+        "rows": {
+          "description": "Terminal height in character cells.",
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0.0
+        }
+      }
+    },
+    "CommandExecTerminateParams": {
+      "description": "Terminate a running `command/exec` session.",
+      "type": "object",
+      "required": [
+        "processId"
+      ],
+      "properties": {
+        "processId": {
+          "description": "Client-supplied, connection-scoped `processId` from the original `command/exec` request.",
+          "type": "string"
+        }
+      }
+    },
+    "CommandExecWriteParams": {
+      "description": "Write stdin bytes to a running `command/exec` session, close stdin, or both.",
+      "type": "object",
+      "required": [
+        "processId"
+      ],
+      "properties": {
+        "closeStdin": {
+          "description": "Close stdin after writing `deltaBase64`, if present.",
+          "type": "boolean"
+        },
+        "deltaBase64": {
+          "description": "Optional base64-encoded stdin bytes to write.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "processId": {
+          "description": "Client-supplied, connection-scoped `processId` from the original `command/exec` request.",
+          "type": "string"
         }
       }
     },
@@ -1488,6 +1835,10 @@
             "string",
             "null"
           ]
+        },
+        "reloadUserConfig": {
+          "description": "When true, hot-reload the updated user config into all loaded threads after writing.",
+          "type": "boolean"
         }
       }
     },
@@ -2287,6 +2638,47 @@
         "pragmatic"
       ]
     },
+    "PluginInstallParams": {
+      "type": "object",
+      "required": [
+        "marketplacePath",
+        "pluginName"
+      ],
+      "properties": {
+        "marketplacePath": {
+          "$ref": "#/definitions/AbsolutePathBuf"
+        },
+        "pluginName": {
+          "type": "string"
+        }
+      }
+    },
+    "PluginListParams": {
+      "type": "object",
+      "properties": {
+        "cwds": {
+          "description": "Optional working directories used to discover repo marketplaces. When omitted, only home-scoped marketplaces and the official curated marketplace are considered.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/AbsolutePathBuf"
+          }
+        }
+      }
+    },
+    "PluginUninstallParams": {
+      "type": "object",
+      "required": [
+        "pluginId"
+      ],
+      "properties": {
+        "pluginId": {
+          "type": "string"
+        }
+      }
+    },
     "ProductSurface": {
       "type": "string",
       "enum": [
@@ -2722,7 +3114,7 @@
             "action": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/WebSearchAction"
+                  "$ref": "#/definitions/ResponsesApiWebSearchAction"
                 },
                 {
                   "type": "null"
@@ -2751,6 +3143,40 @@
             }
           },
           "title": "WebSearchCallResponseItem"
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "result",
+            "status",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "result": {
+              "type": "string"
+            },
+            "revised_prompt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "image_generation_call"
+              ],
+              "title": "ImageGenerationCallResponseItemType"
+            }
+          },
+          "title": "ImageGenerationCallResponseItem"
         },
         {
           "type": "object",
@@ -2807,6 +3233,107 @@
             }
           },
           "title": "OtherResponseItem"
+        }
+      ]
+    },
+    "ResponsesApiWebSearchAction": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "queries": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            },
+            "query": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "search"
+              ],
+              "title": "SearchResponsesApiWebSearchActionType"
+            }
+          },
+          "title": "SearchResponsesApiWebSearchAction"
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "open_page"
+              ],
+              "title": "OpenPageResponsesApiWebSearchActionType"
+            },
+            "url": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "title": "OpenPageResponsesApiWebSearchAction"
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "pattern": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "find_in_page"
+              ],
+              "title": "FindInPageResponsesApiWebSearchActionType"
+            },
+            "url": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "title": "FindInPageResponsesApiWebSearchAction"
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "other"
+              ],
+              "title": "OtherResponsesApiWebSearchActionType"
+            }
+          },
+          "title": "OtherResponsesApiWebSearchAction"
         }
       ]
     },
@@ -2977,6 +3504,10 @@
                 }
               ]
             },
+            "networkAccess": {
+              "default": false,
+              "type": "boolean"
+            },
             "type": {
               "type": "string",
               "enum": [
@@ -3061,7 +3592,8 @@
     "ServiceTier": {
       "type": "string",
       "enum": [
-        "fast"
+        "fast",
+        "flex"
       ]
     },
     "Settings": {
@@ -3244,6 +3776,19 @@
         }
       }
     },
+    "ThreadDecrementElicitationParams": {
+      "description": "Parameters for `thread/decrement_elicitation`.",
+      "type": "object",
+      "required": [
+        "threadId"
+      ],
+      "properties": {
+        "threadId": {
+          "description": "Thread whose out-of-band elicitation counter should be decremented.",
+          "type": "string"
+        }
+      }
+    },
     "ThreadForkParams": {
       "description": "There are two ways to fork a thread: 1. By thread_id: load the thread from disk by thread_id and fork it into a new thread. 2. By path: load the thread from disk by path and fork it into a new thread.\n\nIf using path, the thread_id param will be ignored.\n\nPrefer using thread_id whenever possible.",
       "type": "object",
@@ -3339,6 +3884,19 @@
           ]
         },
         "threadId": {
+          "type": "string"
+        }
+      }
+    },
+    "ThreadIncrementElicitationParams": {
+      "description": "Parameters for `thread/increment_elicitation`.",
+      "type": "object",
+      "required": [
+        "threadId"
+      ],
+      "properties": {
+        "threadId": {
+          "description": "Thread whose out-of-band elicitation counter should be incremented.",
           "type": "string"
         }
       }
@@ -4199,107 +4757,6 @@
         }
       ]
     },
-    "WebSearchAction": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "queries": {
-              "type": [
-                "array",
-                "null"
-              ],
-              "items": {
-                "type": "string"
-              }
-            },
-            "query": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "search"
-              ],
-              "title": "SearchWebSearchActionType"
-            }
-          },
-          "title": "SearchWebSearchAction"
-        },
-        {
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "open_page"
-              ],
-              "title": "OpenPageWebSearchActionType"
-            },
-            "url": {
-              "type": [
-                "string",
-                "null"
-              ]
-            }
-          },
-          "title": "OpenPageWebSearchAction"
-        },
-        {
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "pattern": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "find_in_page"
-              ],
-              "title": "FindInPageWebSearchActionType"
-            },
-            "url": {
-              "type": [
-                "string",
-                "null"
-              ]
-            }
-          },
-          "title": "FindInPageWebSearchAction"
-        },
-        {
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "other"
-              ],
-              "title": "OtherWebSearchActionType"
-            }
-          },
-          "title": "OtherWebSearchAction"
-        }
-      ]
-    },
     "WindowsSandboxSetupMode": {
       "type": "string",
       "enum": [
@@ -4313,6 +4770,16 @@
         "mode"
       ],
       "properties": {
+        "cwd": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/AbsolutePathBuf"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "mode": {
           "$ref": "#/definitions/WindowsSandboxSetupMode"
         }

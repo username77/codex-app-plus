@@ -11,6 +11,9 @@ import type { ConfigReadResponse } from "../protocol/generated/v2/ConfigReadResp
 import type { ConfigValueWriteParams } from "../protocol/generated/v2/ConfigValueWriteParams";
 import type { LoginAccountResponse } from "../protocol/generated/v2/LoginAccountResponse";
 import type { McpServerStatus } from "../protocol/generated/v2/McpServerStatus";
+import type { WindowsSandboxSetupCompletedNotification } from "../protocol/generated/v2/WindowsSandboxSetupCompletedNotification";
+import type { WindowsSandboxSetupMode } from "../protocol/generated/v2/WindowsSandboxSetupMode";
+import type { WindowsSandboxSetupStartResponse } from "../protocol/generated/v2/WindowsSandboxSetupStartResponse";
 import {
   batchWriteConfigAndReadSnapshot,
   batchWriteConfigAndRefresh,
@@ -28,6 +31,7 @@ import { FrameTextDeltaQueue } from "./frameTextDeltaQueue";
 import { OutputDeltaQueue } from "./outputDeltaQueue";
 import { createServerRequestPayload, normalizeServerRequest } from "./serverRequests";
 import { loadThreadCatalog } from "./threadCatalog";
+import { refreshConfigAfterWindowsSandboxSetup, startWindowsSandboxSetupRequest } from "./windowsSandboxSetup";
 import { ProtocolClient } from "../protocol/client";
 import { useAppStore } from "../state/store";
 
@@ -43,6 +47,7 @@ interface AppController {
   writeConfigValue: (params: ConfigValueWriteParams) => Promise<ConfigMutationResult>;
   batchWriteConfig: (params: ConfigBatchWriteParams) => Promise<ConfigMutationResult>;
   batchWriteConfigSnapshot: (params: ConfigBatchWriteParams) => Promise<ConfigSnapshotMutationResult>;
+  startWindowsSandboxSetup: (mode: WindowsSandboxSetupMode) => Promise<WindowsSandboxSetupStartResponse>;
   login: () => Promise<void>;
   resolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
 }
@@ -204,6 +209,9 @@ export function useAppController(hostBridge: HostBridge): AppController {
       onNotification: (method, params) => {
         dispatch({ type: "notification/received", notification: { method, params } });
         applyAppServerNotification({ dispatch, textDeltaQueue: textDeltaQueueRef.current!, outputDeltaQueue: outputDeltaQueueRef.current! }, method, params);
+        if (method === "windowsSandbox/setupCompleted" && clientRef.current !== null) {
+          void refreshConfigAfterWindowsSandboxSetup(clientRef.current, dispatch, params as WindowsSandboxSetupCompletedNotification).catch((error) => dispatch({ type: "fatal/error", message: toErrorMessage(error) }));
+        }
       },
       onServerRequest: (id, method, params) => {
         const request = normalizeServerRequest(id, method, params);
@@ -311,6 +319,7 @@ export function useAppController(hostBridge: HostBridge): AppController {
   const writeConfigValue = useCallback((params: ConfigValueWriteParams) => runBusy(() => writeConfigValueAndRefresh(client, dispatch, params)), [client, dispatch, runBusy]);
   const batchWriteConfig = useCallback((params: ConfigBatchWriteParams) => runBusy(() => batchWriteConfigAndRefresh(client, dispatch, params)), [client, dispatch, runBusy]);
   const batchWriteConfigSnapshot = useCallback((params: ConfigBatchWriteParams) => runBusy(() => batchWriteConfigAndReadSnapshot(client, dispatch, params)), [client, dispatch, runBusy]);
+  const startWindowsSandboxSetup = useCallback((mode: WindowsSandboxSetupMode) => startWindowsSandboxSetupRequest(client, dispatch, mode), [client, dispatch]);
 
   const resolveServerRequest = useCallback(async (resolution: ServerRequestResolution) => {
     if (resolution.kind === "tokenRefresh") {
@@ -320,5 +329,5 @@ export function useAppController(hostBridge: HostBridge): AppController {
     dispatch({ type: "serverRequest/resolved", requestId: resolution.requestId });
   }, [client, dispatch, hostBridge.app]);
 
-  return { state, setInput: (text) => dispatch({ type: "input/changed", value: text }), retryConnection: () => bootstrap(true), refreshConfigSnapshot: refreshConfig, refreshMcpData: refreshMcp, listMcpServerStatuses: listStatuses, writeConfigValue, batchWriteConfig, batchWriteConfigSnapshot, login, resolveServerRequest };
+  return { state, setInput: (text) => dispatch({ type: "input/changed", value: text }), retryConnection: () => bootstrap(true), refreshConfigSnapshot: refreshConfig, refreshMcpData: refreshMcp, listMcpServerStatuses: listStatuses, writeConfigValue, batchWriteConfig, batchWriteConfigSnapshot, startWindowsSandboxSetup, login, resolveServerRequest };
 }

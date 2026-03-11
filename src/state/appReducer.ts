@@ -228,6 +228,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, tokenRefresh: { requestId: action.requestId, previousAccountId: action.previousAccountId, pending: true, error: null } };
     case "tokenRefresh/completed":
       return state.tokenRefresh.requestId !== action.requestId ? state : { ...state, tokenRefresh: { requestId: null, previousAccountId: null, pending: false, error: action.error } };
+    case "windowsSandbox/setupStarted":
+      return { ...state, windowsSandboxSetup: { pending: true, mode: action.mode, success: null, error: null } };
+    case "windowsSandbox/setupCompleted":
+      return { ...state, windowsSandboxSetup: { pending: false, mode: action.mode, success: action.success, error: action.error } };
     case "realtime/started":
       return updateRealtimeState(state, action.threadId, (current) => ({ ...current, sessionId: action.sessionId, closed: false, error: null }));
     case "realtime/itemAdded":
