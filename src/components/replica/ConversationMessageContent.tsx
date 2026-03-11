@@ -1,18 +1,9 @@
-import type { ComponentProps } from "react";
-import ReactMarkdown, { type Components } from "react-markdown";
-import remarkBreaks from "remark-breaks";
-import remarkGfm from "remark-gfm";
 import type { ConversationMessage } from "../../domain/types";
 import { HomePlanDraftCard } from "./HomePlanDraftCard";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 const PROPOSED_PLAN_CLOSE_TAG = "</proposed_plan>";
 const PROPOSED_PLAN_OPEN_TAG = "<proposed_plan>";
-
-const MARKDOWN_COMPONENTS = {
-  a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noreferrer" />
-} satisfies Components;
-
-const MARKDOWN_PLUGINS = [remarkGfm, remarkBreaks] as unknown as NonNullable<ComponentProps<typeof ReactMarkdown>["remarkPlugins"]>;
 
 type MessageSegment = { readonly type: "markdown" | "proposed-plan"; readonly text: string };
 type ConversationMessageContentVariant = "user-bubble" | "assistant-inline";
@@ -70,9 +61,5 @@ function renderSegment(segment: MessageSegment, index: number): JSX.Element {
     return <HomePlanDraftCard key={`segment-${index}`} markdown={segment.text} />;
   }
 
-  return (
-    <ReactMarkdown key={`segment-${index}`} components={MARKDOWN_COMPONENTS} remarkPlugins={MARKDOWN_PLUGINS}>
-      {segment.text}
-    </ReactMarkdown>
-  );
+  return <MarkdownRenderer key={`segment-${index}`} markdown={segment.text} />;
 }

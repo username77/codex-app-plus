@@ -1,25 +1,11 @@
-import type { ComponentProps } from "react";
-import ReactMarkdown, { type Components } from "react-markdown";
-import remarkBreaks from "remark-breaks";
-import remarkGfm from "remark-gfm";
 import { ConversationMessageContent } from "./ConversationMessageContent";
 import type { ConversationRenderNode } from "./localConversationGroups";
 import { createAssistantTranscriptEntryModel } from "./assistantTranscript";
 import { HomeAssistantTranscriptDetailBlock } from "./HomeAssistantTranscriptDetailBlock";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 import { HomePlanDraftCard } from "./HomePlanDraftCard";
 
 type AssistantNode = Extract<ConversationRenderNode, { kind: "assistantMessage" | "reasoningBlock" | "traceItem" | "auxiliaryBlock" }>;
-
-const BASE_MARKDOWN_COMPONENTS = {
-  a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noreferrer" />,
-} satisfies Components;
-
-const TITLE_MARKDOWN_COMPONENTS = {
-  ...BASE_MARKDOWN_COMPONENTS,
-  p: ({ node: _node, ...props }) => <span {...props} />,
-} satisfies Components;
-
-const MARKDOWN_PLUGINS = [remarkGfm, remarkBreaks] as unknown as NonNullable<ComponentProps<typeof ReactMarkdown>["remarkPlugins"]>;
 
 interface HomeAssistantTranscriptEntryProps {
   readonly node: AssistantNode;
@@ -103,19 +89,5 @@ function ReasoningTranscriptEntry(props: { readonly block: Extract<AssistantNode
 }
 
 function TranscriptMarkdown(props: { readonly className: string; readonly text: string; readonly variant?: "body" | "title" }): JSX.Element {
-  const components = props.variant === "title" ? TITLE_MARKDOWN_COMPONENTS : BASE_MARKDOWN_COMPONENTS;
-
-  if (props.variant === "title") {
-    return (
-      <span className={props.className}>
-        <ReactMarkdown components={components} remarkPlugins={MARKDOWN_PLUGINS}>{props.text}</ReactMarkdown>
-      </span>
-    );
-  }
-
-  return (
-    <div className={props.className}>
-      <ReactMarkdown components={components} remarkPlugins={MARKDOWN_PLUGINS}>{props.text}</ReactMarkdown>
-    </div>
-  );
+  return <MarkdownRenderer className={props.className} markdown={props.text} variant={props.variant} />;
 }
