@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from "react";
+import { useCallback, useRef, useState, type KeyboardEvent } from "react";
 import { getAttachmentLabel } from "../../app/composerAttachments";
 import type { ComposerPermissionLevel } from "../../app/composerPermission";
 import type { ComposerModelOption, ComposerSelection } from "../../app/composerPreferences";
@@ -7,12 +7,17 @@ import { useComposerSelection } from "../../app/useComposerSelection";
 import type { ComposerEnterBehavior, FollowUpMode, QueuedFollowUp } from "../../domain/timeline";
 import { AttachmentClip } from "./AttachmentClip";
 import { ComposerAttachmentMenu } from "./ComposerAttachmentMenu";
+import { ComposerCommandPalette } from "./ComposerCommandPalette";
 import { ComposerFooter } from "./ComposerFooter";
-import type { WorkspaceGitController } from "./git/types";
 import { ComposerModelControls } from "./ComposerModelControls";
+import { ComposerQueuedFollowUpsPanel } from "./ComposerQueuedFollowUpsPanel";
+import type { ComposerCommandBridge } from "./composerCommandBridge";
+import type { WorkspaceGitController } from "./git/types";
 import { OfficialPlusIcon } from "./officialIcons";
+import { useComposerCommandPalette } from "./useComposerCommandPalette";
 import { useComposerSelectionPersistence } from "./useComposerSelectionPersistence";
 import { useComposerAttachments } from "./useComposerAttachments";
+import { useToolbarMenuDismissal } from "./useToolbarMenuDismissal";
 
 const MIN_TRIMMED_MESSAGE_LENGTH = 1;
 
@@ -32,51 +37,107 @@ export interface HomeComposerProps {
   readonly selectedThreadBranch: string | null;
   readonly isResponding: boolean;
   readonly interruptPending: boolean;
+  readonly composerCommandBridge: ComposerCommandBridge;
   readonly onInputChange: (text: string) => void;
+  readonly onCreateThread: () => Promise<void>;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
   readonly onPersistComposerSelection: (selection: ComposerSelection) => Promise<void>;
   readonly onSelectPermissionLevel: (level: ComposerPermissionLevel) => void;
+  readonly onToggleDiff: () => void;
   readonly onUpdateThreadBranch: (branch: string) => Promise<void>;
   readonly onInterruptTurn: () => Promise<void>;
   readonly onRemoveQueuedFollowUp: (followUpId: string) => void;
   readonly onClearQueuedFollowUps: () => void;
 }
 
-function createSelection(model: string | null, effort: ComposerSelection["effort"]): ComposerSelection {
-  return { model, effort };
+export function HomeComposer(props: HomeComposerProps): JSX.Element {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [planModeEnabled, setPlanModeEnabled] = useState(false);
+  const { attachments, appendPaths, clearAttachments, openFilePicker, removeAttachment, handlePaste } = useComposerAttachments({ selectedThreadId: props.selectedThreadId });
+  const composerSelection = useComposerSelection(props.models, props.defaultModel, props.defaultEffort);
+  const { handleSelectModel, handleSelectEffort } = useComposerSelectionPersistence({ models: props.models, defaultModel: props.defaultModel, defaultEffort: props.defaultEffort, selectedModel: composerSelection.selectedModel, selectedEffort: composerSelection.selectedEffort, replaceSelection: composerSelection.replaceSelection, persistSelection: props.onPersistComposerSelection });
+  const commandPalette = useComposerCommandPalette({ inputText: props.inputText, selectedRootPath: props.selectedRootPath, selectedThreadId: props.selectedThreadId, models: props.models, selectedModel: composerSelection.selectedModel, permissionLevel: props.permissionLevel, composerCommandBridge: props.composerCommandBridge, onInputChange: props.onInputChange, onAppendMentionPath: (path) => appendPaths([path]), onCreateThread: props.onCreateThread, onToggleDiff: props.onToggleDiff, onSelectModel: handleSelectModel, onSelectPermissionLevel: props.onSelectPermissionLevel });
+  const canSend = !props.busy && (props.inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH || attachments.length > 0);
+  const buttonDisabled = props.isResponding ? props.interruptPending : !canSend;
+  const buttonLabel = props.isResponding ? "Pause response" : "Send message";
+
+  useToolbarMenuDismissal(commandPalette.open, containerRef, () => void commandPalette.dismiss());
+
+  const submit = useCallback((followUpOverride?: FollowUpMode) => {
+    void submitTurn(props, canSend, attachments, composerSelection, clearAttachments, commandPalette.dismiss, planModeEnabled, followUpOverride);
+  }, [attachments, canSend, clearAttachments, commandPalette.dismiss, composerSelection, planModeEnabled, props]);
+
+  return (
+    <footer className="composer-area">
+      <ComposerQueuedFollowUpsPanel queuedFollowUps={props.queuedFollowUps} onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp} onClearQueuedFollowUps={props.onClearQueuedFollowUps} />
+      <div className="composer-card" ref={containerRef}>
+        {menuOpen ? <button type="button" className="composer-popover-backdrop" aria-label="Close attachment menu" onClick={() => setMenuOpen(false)} /> : null}
+        {commandPalette.open ? <ComposerCommandPalette open={true} title={commandPalette.title} items={commandPalette.items} selectedIndex={commandPalette.selectedIndex} onSelectItem={commandPalette.onSelectItem} /> : null}
+        {attachments.length === 0 ? null : <AttachmentDraft attachments={attachments} onRemove={removeAttachment} />}
+        <textarea ref={commandPalette.textareaRef} className="composer-input" placeholder={getComposerPlaceholder(props.selectedRootPath)} value={props.inputText} onPaste={(event) => void handlePaste(event)} onSelect={commandPalette.syncFromTextareaSelection} onKeyDown={(event) => handleInputKeyDown(event, props, commandPalette.handleKeyDown, submit)} onChange={(event) => handleInputChange(event.currentTarget.value, event.currentTarget.selectionStart, props.onInputChange, commandPalette.syncFromTextInput)} />
+        <div className="composer-bar">
+          <div className="composer-left">
+            <div className="composer-plus-anchor">
+              {menuOpen ? <ComposerAttachmentMenu planModeEnabled={planModeEnabled} onAddAttachments={() => handleAddAttachments(openFilePicker, setMenuOpen)} onTogglePlanMode={() => setPlanModeEnabled((value) => !value)} onClose={() => setMenuOpen(false)} /> : null}
+              <button type="button" className={menuOpen ? "composer-mini-btn composer-mini-btn-active" : "composer-mini-btn"} aria-label="Open attachment menu" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => void toggleAttachmentMenu(menuOpen, setMenuOpen, commandPalette.dismiss)}>
+                <OfficialPlusIcon className="composer-plus-icon" />
+              </button>
+            </div>
+            <ComposerModelControls models={props.models} selectedModel={composerSelection.selectedModel} selectedEffort={composerSelection.selectedEffort} supportedEfforts={composerSelection.selectedModelOption?.supportedEfforts ?? []} onSelectModel={handleSelectModel} onSelectEffort={handleSelectEffort} />
+          </div>
+          <button type="button" className="send-btn" aria-label={buttonLabel} disabled={buttonDisabled} onClick={() => props.isResponding ? void props.onInterruptTurn() : submit()}>
+            {props.isResponding ? <PauseResponseIcon className="send-icon" /> : <SendArrowIcon className="send-icon" />}
+          </button>
+        </div>
+      </div>
+      <ComposerFooter permissionLevel={props.permissionLevel} gitController={props.gitController} selectedThreadId={props.selectedThreadId} selectedThreadBranch={props.selectedThreadBranch} onSelectPermission={props.onSelectPermissionLevel} onUpdateThreadBranch={props.onUpdateThreadBranch} />
+    </footer>
+  );
+}
+
+function AttachmentDraft(props: { readonly attachments: ReturnType<typeof useComposerAttachments>["attachments"]; readonly onRemove: (attachmentId: string) => void }): JSX.Element {
+  return <div className="composer-attachment-draft" aria-label="Attached files and images">{props.attachments.map((attachment) => <AttachmentDraftChip key={attachment.id} attachment={attachment} onRemove={props.onRemove} />)}</div>;
+}
+
+function AttachmentDraftChip(props: { readonly attachment: ReturnType<typeof useComposerAttachments>["attachments"][number]; readonly onRemove: (attachmentId: string) => void }): JSX.Element {
+  return <AttachmentClip label={getAttachmentLabel(props.attachment)} tone={props.attachment.kind} onRemove={() => props.onRemove(props.attachment.id)} />;
 }
 
 function getComposerPlaceholder(selectedRootPath: string | null): string {
   return selectedRootPath === null ? "Ask Codex anything" : "Describe the task, ask a question, or queue a follow-up";
 }
 
-function getOppositeMode(mode: FollowUpMode): FollowUpMode {
-  if (mode === "queue") {
-    return "steer";
-  }
-  return "queue";
+function handleInputChange(
+  value: string,
+  caret: number,
+  onInputChange: (text: string) => void,
+  syncFromTextInput: (value: string, caret: number) => void,
+): void {
+  onInputChange(value);
+  syncFromTextInput(value, caret);
 }
 
-function shouldSendOnEnter(inputText: string, behavior: ComposerEnterBehavior, metaPressed: boolean): boolean {
-  if (metaPressed) {
-    return true;
+function handleInputKeyDown(
+  event: KeyboardEvent<HTMLTextAreaElement>,
+  props: HomeComposerProps,
+  handlePaletteKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => boolean,
+  submit: (followUpOverride?: FollowUpMode) => void,
+): void {
+  if (handlePaletteKeyDown(event)) {
+    return;
   }
-  if (behavior === "enter") {
-    return true;
-  }
-  return !inputText.includes("\n");
+  handleComposerEnterKey(event, props.inputText, props.composerEnterBehavior, props.followUpQueueMode, props.isResponding, submit, () => void props.onInterruptTurn());
 }
 
 function handleComposerEnterKey(
   event: KeyboardEvent<HTMLTextAreaElement>,
-  options: {
-    readonly inputText: string;
-    readonly composerEnterBehavior: ComposerEnterBehavior;
-    readonly followUpQueueMode: FollowUpMode;
-    readonly isResponding: boolean;
-    readonly submit: (followUpOverride?: FollowUpMode) => void;
-    readonly interrupt: () => void;
-  }
+  inputText: string,
+  composerEnterBehavior: ComposerEnterBehavior,
+  followUpQueueMode: FollowUpMode,
+  isResponding: boolean,
+  submit: (followUpOverride?: FollowUpMode) => void,
+  interrupt: () => void,
 ): void {
   if (event.key !== "Enter") {
     return;
@@ -84,211 +145,73 @@ function handleComposerEnterKey(
   const metaPressed = event.metaKey || event.ctrlKey;
   if (event.shiftKey && metaPressed) {
     event.preventDefault();
-    if (options.isResponding) {
-      options.interrupt();
+    if (isResponding) {
+      interrupt();
       return;
     }
-    options.submit(getOppositeMode(options.followUpQueueMode));
+    submit(followUpQueueMode === "queue" ? "steer" : "queue");
     return;
   }
-  if (event.shiftKey || !shouldSendOnEnter(options.inputText, options.composerEnterBehavior, metaPressed)) {
+  if (event.shiftKey || !shouldSendOnEnter(inputText, composerEnterBehavior, metaPressed)) {
     return;
   }
   event.preventDefault();
-  if (options.isResponding) {
-    options.interrupt();
+  if (isResponding) {
+    interrupt();
     return;
   }
-  options.submit();
+  submit();
 }
 
-function reportComposerSubmitError(error: unknown): void {
-  const detail = error instanceof Error ? error.message : String(error);
-  console.error("发送消息失败", error);
-  window.alert(`发送消息失败: ${detail}`);
-}
-
-function QueuedFollowUpsPanel(props: {
-  readonly queuedFollowUps: ReadonlyArray<QueuedFollowUp>;
-  readonly onRemoveQueuedFollowUp: (followUpId: string) => void;
-  readonly onClearQueuedFollowUps: () => void;
-}): JSX.Element | null {
-  if (props.queuedFollowUps.length === 0) {
-    return null;
+function shouldSendOnEnter(inputText: string, behavior: ComposerEnterBehavior, metaPressed: boolean): boolean {
+  if (metaPressed || behavior === "enter") {
+    return true;
   }
-
-  return (
-    <section className="composer-queue-panel">
-      <header className="composer-queue-header">
-        <strong>Queued follow-ups</strong>
-        <button type="button" className="composer-queue-clear" onClick={props.onClearQueuedFollowUps}>
-          清空
-        </button>
-      </header>
-      <ul className="composer-queue-list">
-        {props.queuedFollowUps.map((followUp) => (
-          <li key={followUp.id} className="composer-queue-item">
-            <div>
-              <strong>{followUp.mode}</strong>
-              {followUp.text.trim().length === 0 ? null : <p>{followUp.text}</p>}
-              {followUp.attachments.length === 0 ? null : (
-                <div className="composer-queue-attachments">
-                  {followUp.attachments.map((attachment) => (
-                    <AttachmentClip key={attachment.id} label={getAttachmentLabel(attachment)} tone={attachment.kind} />
-                  ))}
-                </div>
-              )}
-            </div>
-            <button type="button" className="composer-queue-remove" onClick={() => props.onRemoveQueuedFollowUp(followUp.id)}>
-              移除
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
+  return !inputText.includes("\n");
 }
 
-export function HomeComposer(props: HomeComposerProps): JSX.Element {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [planModeEnabled, setPlanModeEnabled] = useState(false);
-  const { attachments, clearAttachments, openFilePicker, removeAttachment, handlePaste } = useComposerAttachments({ selectedThreadId: props.selectedThreadId });
-  const composerSelection = useComposerSelection(props.models, props.defaultModel, props.defaultEffort);
-  const { handleSelectModel, handleSelectEffort } = useComposerSelectionPersistence({
-    models: props.models,
-    defaultModel: props.defaultModel,
-    defaultEffort: props.defaultEffort,
-    selectedModel: composerSelection.selectedModel,
-    selectedEffort: composerSelection.selectedEffort,
-    replaceSelection: composerSelection.replaceSelection,
-    persistSelection: props.onPersistComposerSelection
-  });
-  const hasMessageText = props.inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH;
-  const canSend = !props.busy && (hasMessageText || attachments.length > 0);
-  const buttonDisabled = props.isResponding ? props.interruptPending : !canSend;
-  const buttonLabel = props.isResponding ? "Pause response" : "Send message";
-  const placeholder = getComposerPlaceholder(props.selectedRootPath);
+async function submitTurn(
+  props: HomeComposerProps,
+  canSend: boolean,
+  attachments: ReturnType<typeof useComposerAttachments>["attachments"],
+  composerSelection: ReturnType<typeof useComposerSelection>,
+  clearAttachments: () => void,
+  dismissPalette: () => Promise<void>,
+  planModeEnabled: boolean,
+  followUpOverride?: FollowUpMode,
+): Promise<void> {
+  if (!canSend) {
+    return;
+  }
+  try {
+    await dismissPalette();
+    await props.onSendTurn({ text: props.inputText, attachments, selection: { model: composerSelection.selectedModel, effort: composerSelection.selectedEffort }, permissionLevel: props.permissionLevel, planModeEnabled, followUpOverride });
+    clearAttachments();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error("发送消息失败", error);
+    window.alert(`发送消息失败: ${detail}`);
+  }
+}
 
-  const submit = (followUpOverride?: FollowUpMode) => {
-    void submitTurn(followUpOverride);
-  };
+async function handleAddAttachments(openFilePicker: () => Promise<void>, setMenuOpen: (updater: (value: boolean) => boolean) => void): Promise<void> {
+  await openFilePicker();
+  setMenuOpen(() => false);
+}
 
-  const submitTurn = async (followUpOverride?: FollowUpMode) => {
-    if (!canSend) {
-      return;
-    }
-
-    try {
-      await props.onSendTurn({
-        text: props.inputText,
-        attachments,
-        selection: createSelection(composerSelection.selectedModel, composerSelection.selectedEffort),
-        permissionLevel: props.permissionLevel,
-        planModeEnabled,
-        followUpOverride,
-      });
-      clearAttachments();
-    } catch (error) {
-      reportComposerSubmitError(error);
-    }
-  };
-
-  const handleAddAttachments = async () => {
-    await openFilePicker();
-    setMenuOpen(false);
-  };
-
-  return (
-    <footer className="composer-area">
-      <QueuedFollowUpsPanel
-        queuedFollowUps={props.queuedFollowUps}
-        onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
-        onClearQueuedFollowUps={props.onClearQueuedFollowUps}
-      />
-      <div className="composer-card">
-        {menuOpen ? <button type="button" className="composer-popover-backdrop" aria-label="Close attachment menu" onClick={() => setMenuOpen(false)} /> : null}
-        {attachments.length === 0 ? null : (
-          <div className="composer-attachment-draft" aria-label="Attached files and images">
-            {attachments.map((attachment) => (
-              <AttachmentClip key={attachment.id} label={getAttachmentLabel(attachment)} tone={attachment.kind} onRemove={() => removeAttachment(attachment.id)} />
-            ))}
-          </div>
-        )}
-        <textarea
-          className="composer-input"
-          placeholder={placeholder}
-          value={props.inputText}
-          onPaste={(event) => void handlePaste(event)}
-          onKeyDown={(event) => handleComposerEnterKey(event, {
-            inputText: props.inputText,
-            composerEnterBehavior: props.composerEnterBehavior,
-            followUpQueueMode: props.followUpQueueMode,
-            isResponding: props.isResponding,
-            submit,
-            interrupt: () => void props.onInterruptTurn()
-          })}
-          onChange={(event) => props.onInputChange(event.currentTarget.value)}
-        />
-        <div className="composer-bar">
-          <div className="composer-left">
-            <div className="composer-plus-anchor">
-              {menuOpen ? <ComposerAttachmentMenu planModeEnabled={planModeEnabled} onAddAttachments={handleAddAttachments} onTogglePlanMode={() => setPlanModeEnabled((value) => !value)} onClose={() => setMenuOpen(false)} /> : null}
-              <button
-                type="button"
-                className={menuOpen ? "composer-mini-btn composer-mini-btn-active" : "composer-mini-btn"}
-                aria-label="Open attachment menu"
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((value) => !value)}
-              >
-                <OfficialPlusIcon className="composer-plus-icon" />
-              </button>
-            </div>
-            <ComposerModelControls
-              models={props.models}
-              selectedModel={composerSelection.selectedModel}
-              selectedEffort={composerSelection.selectedEffort}
-              supportedEfforts={composerSelection.selectedModelOption?.supportedEfforts ?? []}
-              onSelectModel={handleSelectModel}
-              onSelectEffort={handleSelectEffort}
-            />
-          </div>
-          <button
-            type="button"
-            className="send-btn"
-            aria-label={buttonLabel}
-            disabled={buttonDisabled}
-            onClick={() => props.isResponding ? void props.onInterruptTurn() : submit()}
-          >
-            {props.isResponding ? <PauseResponseIcon className="send-icon" /> : <SendArrowIcon className="send-icon" />}
-          </button>
-        </div>
-      </div>
-      <ComposerFooter
-        permissionLevel={props.permissionLevel}
-        gitController={props.gitController}
-        selectedThreadId={props.selectedThreadId}
-        selectedThreadBranch={props.selectedThreadBranch}
-        onSelectPermission={props.onSelectPermissionLevel}
-        onUpdateThreadBranch={props.onUpdateThreadBranch}
-      />
-    </footer>
-  );
+async function toggleAttachmentMenu(
+  menuOpen: boolean,
+  setMenuOpen: (updater: (value: boolean) => boolean) => void,
+  dismissPalette: () => Promise<void>,
+): Promise<void> {
+  await dismissPalette();
+  setMenuOpen(() => !menuOpen);
 }
 
 function SendArrowIcon(props: { readonly className?: string }): JSX.Element {
-  return (
-    <svg className={props.className} viewBox="0 0 16 16" aria-hidden="true">
-      <path d="M8 13.3V2.8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M3.2 7.1L8 2.3l4.8 4.8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <svg className={props.className} viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13.3V2.8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><path d="M3.2 7.1L8 2.3l4.8 4.8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
 function PauseResponseIcon(props: { readonly className?: string }): JSX.Element {
-  return (
-    <svg className={props.className} viewBox="0 0 16 16" aria-hidden="true">
-      <rect x="4" y="4" width="8" height="8" rx="1.5" fill="currentColor" />
-    </svg>
-  );
+  return <svg className={props.className} viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="4" width="8" height="8" rx="1.5" fill="currentColor" /></svg>;
 }

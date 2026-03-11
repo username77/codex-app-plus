@@ -1,9 +1,8 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { GitCommitIcon, GitBranchIcon, GitPullIcon, GitPushIcon } from "./git/gitIcons";
+import { GitCommitIcon, GitPullIcon, GitPushIcon } from "./git/gitIcons";
 import { GitPushConfirmDialog } from "./git/GitPushConfirmDialog";
 import { canCommitChanges, canPullChanges, canPushChanges } from "./git/gitActionAvailability";
 import type { WorkspaceGitController } from "./git/types";
-import { WorkspaceGitView } from "./git/WorkspaceGitView";
 import { OfficialChevronRightIcon } from "./officialIcons";
 import { useToolbarMenuDismissal } from "./useToolbarMenuDismissal";
 
@@ -11,13 +10,11 @@ const CURRENT_WORKSPACE_LABEL = "当前工作区";
 const GIT_MENU_LABEL = "Git 操作";
 const GIT_TRIGGER_LABEL = "选择 Git 操作";
 const COMMIT_LABEL = "提交";
-const OPEN_PANEL_LABEL = "打开 Git 工作台";
 const PUSH_LABEL = "推送";
 const PULL_LABEL = "拉取";
 
 interface WorkspaceGitButtonProps {
   readonly controller: WorkspaceGitController;
-  readonly selectedRootName: string;
   readonly selectedRootPath: string | null;
 }
 
@@ -28,12 +25,11 @@ interface GitMenuAction {
   readonly renderIcon: (className: string) => JSX.Element;
 }
 
-function createMenuActions(controller: WorkspaceGitController, openPanel: () => void, requestPush: () => void): ReadonlyArray<GitMenuAction> {
+function createMenuActions(controller: WorkspaceGitController, requestPush: () => void): ReadonlyArray<GitMenuAction> {
   return [
     { label: COMMIT_LABEL, disabled: !canCommitChanges(controller), onClick: controller.commit, renderIcon: (className) => <GitCommitIcon className={className} /> },
     { label: PUSH_LABEL, disabled: !canPushChanges(controller), onClick: requestPush, renderIcon: (className) => <GitPushIcon className={className} /> },
-    { label: PULL_LABEL, disabled: !canPullChanges(controller), onClick: controller.pull, renderIcon: (className) => <GitPullIcon className={className} /> },
-    { label: OPEN_PANEL_LABEL, disabled: false, onClick: openPanel, renderIcon: (className) => <GitBranchIcon className={className} /> }
+    { label: PULL_LABEL, disabled: !canPullChanges(controller), onClick: controller.pull, renderIcon: (className) => <GitPullIcon className={className} /> }
   ];
 }
 
@@ -68,42 +64,12 @@ function WorkspaceGitMenu(props: {
   );
 }
 
-function GitWorkspaceDialog(props: {
-  readonly controller: WorkspaceGitController;
-  readonly open: boolean;
-  readonly selectedRootName: string;
-  readonly selectedRootPath: string | null;
-  readonly onClose: () => void;
-  readonly onRequestPush: () => void;
-}): JSX.Element | null {
-  if (!props.open || props.selectedRootPath === null) {
-    return null;
-  }
-
-  return (
-    <div className="git-dialog-backdrop" role="presentation" onClick={props.onClose}>
-      <section className="git-dialog" role="dialog" aria-modal="true" aria-label="Git 工作台" onClick={(event) => event.stopPropagation()}>
-        <header className="git-dialog-header">
-          <strong>Git 工作台</strong>
-          <button type="button" className="git-dialog-close" onClick={props.onClose} aria-label="关闭 Git 工作台">×</button>
-        </header>
-        <div className="git-dialog-body">
-          <WorkspaceGitView selectedRootName={props.selectedRootName} controller={props.controller} onRequestPush={props.onRequestPush} />
-        </div>
-      </section>
-    </div>
-  );
-}
-
 export function WorkspaceGitButton(props: WorkspaceGitButtonProps): JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(false);
   const [pushConfirmOpen, setPushConfirmOpen] = useState(false);
   const [pushConfirmPending, setPushConfirmPending] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
-  const openPanel = useCallback(() => setPanelOpen(true), []);
-  const closePanel = useCallback(() => setPanelOpen(false), []);
   const closePushConfirm = useCallback(() => {
     if (!pushConfirmPending) {
       setPushConfirmOpen(false);
@@ -125,7 +91,7 @@ export function WorkspaceGitButton(props: WorkspaceGitButtonProps): JSX.Element 
   }, [props.controller]);
   const triggerDisabled = props.selectedRootPath === null || props.controller.pendingAction !== null || props.controller.loading || !props.controller.statusLoaded;
   const pushDisabled = props.selectedRootPath === null || !canPushChanges(props.controller);
-  const menuActions = useMemo(() => createMenuActions(props.controller, openPanel, requestPush), [props.controller, openPanel, requestPush]);
+  const menuActions = useMemo(() => createMenuActions(props.controller, requestPush), [props.controller, requestPush]);
   const branchName = props.controller.status?.branch?.head ?? null;
 
   useToolbarMenuDismissal(menuOpen, containerRef, closeMenu);
@@ -142,7 +108,6 @@ export function WorkspaceGitButton(props: WorkspaceGitButtonProps): JSX.Element 
         </button>
         {menuOpen ? <WorkspaceGitMenu actions={menuActions} onClose={closeMenu} /> : null}
       </div>
-      <GitWorkspaceDialog controller={props.controller} open={panelOpen} selectedRootName={props.selectedRootName} selectedRootPath={props.selectedRootPath} onClose={closePanel} onRequestPush={requestPush} />
       <GitPushConfirmDialog branchName={branchName} open={pushConfirmOpen} pending={pushConfirmPending} onClose={closePushConfirm} onConfirm={() => void confirmPush()} />
     </>
   );

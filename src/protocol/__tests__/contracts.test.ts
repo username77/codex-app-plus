@@ -11,8 +11,8 @@ function expectUnique(items: ReadonlyArray<string>): void {
 }
 
 describe("protocol method coverage", () => {
-  it("contains all 47 client request methods", () => {
-    expect(CLIENT_REQUEST_METHODS.length).toBe(47);
+  it("contains all 50 client request methods", () => {
+    expect(CLIENT_REQUEST_METHODS.length).toBe(50);
     expectUnique(CLIENT_REQUEST_METHODS);
   });
 

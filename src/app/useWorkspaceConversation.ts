@@ -31,6 +31,7 @@ import {
 } from "./composerPermission";
 import { buildComposerUserInputs } from "./composerAttachments";
 import { listThreadsForWorkspace } from "./workspaceThread";
+import { isComposerFuzzySessionId } from "../components/replica/composerCommandBridge";
 export interface SendTurnOptions {
   readonly text: string;
   readonly attachments: ReadonlyArray<ComposerAttachment>;
@@ -100,7 +101,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
   const activeTurnId = useMemo(() => getActiveTurnId(selectedConversation), [selectedConversation]);
   const selectedRequests = selectedConversation === null ? [] : state.pendingRequestsByConversationId[selectedConversation.id] ?? [];
   const selectedRealtime = selectedConversation === null ? null : state.realtimeByThreadId[selectedConversation.id] ?? null;
-  const fuzzySessions = useMemo(() => Object.values(state.fuzzySearchSessionsById), [state.fuzzySearchSessionsById]);
+  const fuzzySessions = useMemo(() => Object.values(state.fuzzySearchSessionsById).filter((session) => !isComposerFuzzySessionId(session.sessionId)), [state.fuzzySearchSessionsById]);
   const activities = useMemo(() => mapConversationToTimelineEntries(selectedConversation, selectedRequests, { realtime: selectedRealtime, fuzzySessions }), [fuzzySessions, selectedConversation, selectedRealtime, selectedRequests]);
   const queuedFollowUps = selectedConversation?.queuedFollowUps ?? [];
   const isResponding = activeTurnId !== null;

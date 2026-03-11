@@ -99,7 +99,6 @@ export function HomeMainToolbar(props: HomeMainToolbarProps): JSX.Element {
         />
         <WorkspaceGitButton
           controller={props.gitController}
-          selectedRootName={props.selectedRootName}
           selectedRootPath={props.selectedRootPath}
         />
         <div className="toolbar-icon-row" aria-label={TOOLBAR_ACTIONS_LABEL}>

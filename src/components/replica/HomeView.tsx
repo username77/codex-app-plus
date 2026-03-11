@@ -23,6 +23,7 @@ import type { TurnPlanModel } from "./homeTurnPlanModel";
 import { HomeMainToolbar } from "./HomeMainToolbar";
 import { HomeSidebar } from "./HomeSidebar";
 import { removeTurnPlanEntries, selectLatestTurnPlan } from "./homeTurnPlanModel";
+import { createComposerCommandBridge } from "./composerCommandBridge";
 import { WorkspaceDiffSidebar } from "./git/WorkspaceDiffSidebar";
 import type { WorkspaceGitController } from "./git/types";
 import { useWorkspaceGit } from "./git/useWorkspaceGit";
@@ -129,12 +130,14 @@ interface MainContentProps {
   readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
   readonly onRemoveQueuedFollowUp: (followUpId: string) => void;
   readonly onClearQueuedFollowUps: () => void;
+  readonly onCreateThread: () => Promise<void>;
   readonly onToggleDiff: () => void;
   readonly onToggleTerminal: () => void;
   readonly onRetryConnection: () => Promise<void>;
 }
 
 function MainContent(props: MainContentProps): JSX.Element {
+  const composerCommandBridge = useMemo(() => createComposerCommandBridge(props.hostBridge), [props.hostBridge]);
   const renderableActivities = useMemo(() => removeTurnPlanEntries(props.activities), [props.activities]);
   const currentTurnPlan = useMemo(() => selectLatestTurnPlan(props.activities), [props.activities]);
   const [planDrawerCollapsed, setPlanDrawerCollapsed] = useState(true);
@@ -217,10 +220,13 @@ function MainContent(props: MainContentProps): JSX.Element {
         selectedThreadBranch={props.selectedThread?.branch ?? null}
         isResponding={props.isResponding}
         interruptPending={props.interruptPending}
+        composerCommandBridge={composerCommandBridge}
         onInputChange={props.onInputChange}
+        onCreateThread={props.onCreateThread}
         onSendTurn={props.onSendTurn}
         onPersistComposerSelection={props.onPersistComposerSelection}
         onSelectPermissionLevel={props.onSelectComposerPermissionLevel}
+        onToggleDiff={props.onToggleDiff}
         onUpdateThreadBranch={props.onUpdateThreadBranch}
         onInterruptTurn={props.onInterruptTurn}
         onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
@@ -342,6 +348,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         onResolveServerRequest={props.onResolveServerRequest}
         onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
         onClearQueuedFollowUps={props.onClearQueuedFollowUps}
+        onCreateThread={props.onCreateThread}
         onToggleDiff={toggleDiffSidebar}
         onToggleTerminal={toggleTerminal}
         onRetryConnection={props.onRetryConnection}

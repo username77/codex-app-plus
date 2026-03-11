@@ -9,6 +9,7 @@ import { createConversationFromThread } from "./conversationState";
 import { FrameTextDeltaQueue } from "./frameTextDeltaQueue";
 import { OutputDeltaQueue } from "./outputDeltaQueue";
 import { useWorkspaceConversation } from "./useWorkspaceConversation";
+import { createComposerFuzzySessionId } from "../components/replica/composerCommandBridge";
 
 function Wrapper(props: PropsWithChildren): JSX.Element {
   return <AppStoreProvider>{props.children}</AppStoreProvider>;
@@ -88,6 +89,20 @@ describe("useWorkspaceConversation", () => {
     expect(result.current.conversation.selectedThreadId).toBeNull();
     expect(result.current.conversation.selectedThread).toBeNull();
     expect(result.current.conversation.workspaceThreads).toHaveLength(0);
+  });
+
+  it("filters composer-owned fuzzy search sessions from timeline activities", () => {
+    const request = vi.fn(async () => ({ requestId: "noop", result: {} }));
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({ type: "fuzzySearch/updated", sessionId: createComposerFuzzySessionId(), query: "app", files: [] });
+      result.current.store.dispatch({ type: "fuzzySearch/updated", sessionId: "plain-session", query: "app", files: [{ root: "E:/code/FPGA", path: "src/App.tsx", file_name: "App.tsx", score: 1, indices: null }] });
+    });
+
+    expect(result.current.conversation.activities.filter((entry) => entry.kind === "fuzzySearch")).toHaveLength(1);
+    expect(result.current.conversation.activities.find((entry) => entry.kind === "fuzzySearch")?.itemId).toBe("plain-session");
   });
 
   it("clears draft mode after selecting an existing thread", async () => {

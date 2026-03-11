@@ -45,7 +45,10 @@ export const CLIENT_REQUEST_METHODS = [
   "getConversationSummary",
   "gitDiffToRemote",
   "getAuthStatus",
-  "fuzzyFileSearch"
+  "fuzzyFileSearch",
+  "fuzzyFileSearch/sessionStart",
+  "fuzzyFileSearch/sessionUpdate",
+  "fuzzyFileSearch/sessionStop"
 ] as const;
 
 export const SERVER_NOTIFICATION_METHODS = [

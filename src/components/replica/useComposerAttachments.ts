@@ -12,6 +12,7 @@ interface UseComposerAttachmentsOptions {
 
 interface ComposerAttachmentsState {
   readonly attachments: ReadonlyArray<ComposerAttachment>;
+  readonly appendPaths: (paths: ReadonlyArray<string>) => void;
   readonly clearAttachments: () => void;
   readonly openFilePicker: () => Promise<void>;
   readonly removeAttachment: (attachmentId: string) => void;
@@ -32,6 +33,12 @@ export function useComposerAttachments(options: UseComposerAttachmentsOptions): 
     setAttachments([]);
   }, [options.selectedThreadId]);
 
+  const appendPaths = useCallback((paths: ReadonlyArray<string>) => {
+    if (paths.length === 0) {
+      return;
+    }
+    setAttachments((current) => [...current, ...createComposerAttachmentsFromPaths(paths)]);
+  }, []);
   const clearAttachments = useCallback(() => setAttachments([]), []);
   const removeAttachment = useCallback((attachmentId: string) => {
     setAttachments((current) => current.filter((attachment) => attachment.id !== attachmentId));
@@ -42,12 +49,12 @@ export function useComposerAttachments(options: UseComposerAttachmentsOptions): 
       const selected = await open({ title: DIALOG_TITLE, multiple: true });
       const paths = normalizeDialogSelection(selected);
       if (paths.length > 0) {
-        setAttachments((current) => [...current, ...createComposerAttachmentsFromPaths(paths)]);
+        appendPaths(paths);
       }
     } catch (error) {
       reportAttachmentError("添加文件或图片失败", error);
     }
-  }, []);
+  }, [appendPaths]);
 
   const handlePaste = useCallback(async (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const files = getClipboardImageFiles(event);
@@ -65,7 +72,7 @@ export function useComposerAttachments(options: UseComposerAttachmentsOptions): 
     }
   }, []);
 
-  return { attachments, clearAttachments, openFilePicker, removeAttachment, handlePaste };
+  return { attachments, appendPaths, clearAttachments, openFilePicker, removeAttachment, handlePaste };
 }
 
 function getClipboardImageFiles(event: ClipboardEvent<HTMLTextAreaElement>): Array<File> {

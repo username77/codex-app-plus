@@ -247,6 +247,14 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       }
       return { ...state, fuzzySearchSessionsById: { ...state.fuzzySearchSessionsById, [action.sessionId]: { ...current, completed: true } } };
     }
+    case "fuzzySearch/removed": {
+      if (state.fuzzySearchSessionsById[action.sessionId] === undefined) {
+        return state;
+      }
+      const fuzzySearchSessionsById = { ...state.fuzzySearchSessionsById };
+      delete fuzzySearchSessionsById[action.sessionId];
+      return { ...state, fuzzySearchSessionsById };
+    }
     case "banner/pushed":
       return pushBanner(state, action.banner);
     case "initialized/changed":

@@ -187,6 +187,7 @@ export type AppAction =
   | { type: "realtime/closed"; threadId: string }
   | { type: "fuzzySearch/updated"; sessionId: string; query: string; files: ReadonlyArray<FuzzyFileSearchResult> }
   | { type: "fuzzySearch/completed"; sessionId: string }
+  | { type: "fuzzySearch/removed"; sessionId: string }
   | { type: "banner/pushed"; banner: UiBanner }
   | { type: "initialized/changed"; ready: boolean }
   | { type: "retry/scheduled"; at: number | null }

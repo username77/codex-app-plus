@@ -1,5 +1,5 @@
 ﻿import type { ComponentProps } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { ComposerModelOption } from "../../app/composerPreferences";
 import type { HostBridge } from "../../bridge/types";
@@ -157,18 +157,18 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
   );
 }
 describe("HomeView", () => {
-  it("submits with plan mode after toggling the attachment switch", () => {
+  it("submits with plan mode after toggling the attachment switch", async () => {
     const onSendTurn = vi.fn().mockResolvedValue(undefined);
     renderHomeView({ onSendTurn });
     fireEvent.click(screen.getByRole("button", { name: "Open attachment menu" }));
-    fireEvent.click(screen.getByRole("switch", { name: "Toggle plan mode" }));
+    fireEvent.click(await screen.findByRole("switch", { name: "Toggle plan mode" }));
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
-    expect(onSendTurn).toHaveBeenCalledWith(
+    await waitFor(() => expect(onSendTurn).toHaveBeenCalledWith(
       expect.objectContaining({
         planModeEnabled: true,
         selection: expect.objectContaining({ model: "gpt-5.2", effort: "xhigh" })
       })
-    );
+    ));
   });
 
   it("does not render MCP shortcuts in the attachment menu", () => {

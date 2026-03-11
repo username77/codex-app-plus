@@ -59,15 +59,10 @@ function createController(overrides?: Partial<WorkspaceGitController>): Workspac
   };
 }
 
-vi.mock("./git/WorkspaceGitView", () => ({
-  WorkspaceGitView: () => <div>git-workspace-view</div>
-}));
-
 function renderButton(overrides?: Partial<ComponentProps<typeof WorkspaceGitButton>>) {
   return render(
     <WorkspaceGitButton
       controller={createController()}
-      selectedRootName="codex-app-plus"
       selectedRootPath="E:/code/project"
       {...overrides}
     />
@@ -75,25 +70,25 @@ function renderButton(overrides?: Partial<ComponentProps<typeof WorkspaceGitButt
 }
 
 describe("WorkspaceGitButton", () => {
-  it("在未选择工作区时禁用快捷入口", () => {
+  it("未选择工作区时禁用快捷入口", () => {
     renderButton({ selectedRootPath: null });
 
     expect(screen.getByRole("button", { name: "推送当前工作区" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "选择 Git 操作" })).toBeDisabled();
   });
 
-  it("下拉菜单只保留四个 Git 功能", () => {
+  it("下拉菜单只保留提交、推送和拉取", () => {
     renderButton();
     fireEvent.click(screen.getByRole("button", { name: "选择 Git 操作" }));
 
     const menuItems = screen.getAllByRole("menuitem");
 
     expect(screen.getByRole("menu")).toBeInTheDocument();
-    expect(menuItems).toHaveLength(4);
+    expect(menuItems).toHaveLength(3);
     expect(menuItems[0]).toHaveTextContent("提交");
     expect(menuItems[1]).toHaveTextContent("推送");
     expect(menuItems[2]).toHaveTextContent("拉取");
-    expect(menuItems[3]).toHaveTextContent("打开 Git 工作台");
+    expect(screen.queryByRole("menuitem", { name: "打开 Git 工作台" })).not.toBeInTheDocument();
   });
 
   it("提交和推送在不可执行时置灰", () => {
@@ -112,7 +107,6 @@ describe("WorkspaceGitButton", () => {
     expect(menuItems[0]).toBeDisabled();
     expect(menuItems[1]).toBeDisabled();
     expect(menuItems[2]).not.toBeDisabled();
-    expect(menuItems[3]).not.toBeDisabled();
   });
 
   it("点击推送会先弹出确认框", () => {
@@ -128,14 +122,5 @@ describe("WorkspaceGitButton", () => {
     expect(screen.getByRole("dialog", { name: "推送更改" })).toBeInTheDocument();
     expect(screen.getByText("main")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "推送" })).toBeInTheDocument();
-  });
-
-  it("可以从菜单打开 Git 工作台", () => {
-    renderButton();
-    fireEvent.click(screen.getByRole("button", { name: "选择 Git 操作" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "打开 Git 工作台" }));
-
-    expect(screen.getByRole("dialog", { name: "Git 工作台" })).toBeInTheDocument();
-    expect(screen.getByText("git-workspace-view")).toBeInTheDocument();
   });
 });

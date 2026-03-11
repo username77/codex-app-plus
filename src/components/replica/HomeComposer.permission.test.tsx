@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { ComposerPermissionLevel } from "../../app/composerPermission";
 import type { ComposerModelOption } from "../../app/composerPreferences";
+import { AppStoreProvider } from "../../state/store";
+import type { ComposerCommandBridge } from "./composerCommandBridge";
 import { HomeComposer } from "./HomeComposer";
 import { permissionLabel } from "./ComposerFooterPopovers";
 
@@ -12,8 +14,9 @@ const MODELS: ReadonlyArray<ComposerModelOption> = [{
   label: "GPT-5.2",
   defaultEffort: "xhigh",
   supportedEfforts: ["minimal", "low", "medium", "high", "xhigh"],
-  isDefault: true
+  isDefault: true,
 }];
+
 function createGitController(): import("./git/types").WorkspaceGitController {
   return {
     loading: false,
@@ -49,40 +52,55 @@ function createGitController(): import("./git/types").WorkspaceGitController {
     clearDiff: vi.fn(),
     setCommitMessage: vi.fn(),
     setSelectedBranch: vi.fn(),
-    setNewBranchName: vi.fn()
+    setNewBranchName: vi.fn(),
   };
 }
+
+function createCommandBridge(): ComposerCommandBridge {
+  return {
+    startFuzzySession: vi.fn().mockResolvedValue(undefined),
+    updateFuzzySession: vi.fn().mockResolvedValue(undefined),
+    stopFuzzySession: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
 function ComposerHarness(props: {
   readonly initialPermissionLevel: ComposerPermissionLevel;
   readonly onSendTurn: ReturnType<typeof vi.fn>;
 }): JSX.Element {
   const [permissionLevel, setPermissionLevel] = useState<ComposerPermissionLevel>(props.initialPermissionLevel);
+
   return (
-    <HomeComposer
-      busy={false}
-      inputText="检查权限链路"
-      models={MODELS}
-      defaultModel="gpt-5.2"
-      defaultEffort="xhigh"
-      selectedRootPath="E:/code/FPGA"
-      queuedFollowUps={[]}
-      followUpQueueMode="queue"
-      composerEnterBehavior="enter"
-      permissionLevel={permissionLevel}
-      gitController={createGitController()}
-      selectedThreadId={"thread-1"}
-      selectedThreadBranch={null}
-      isResponding={false}
-      interruptPending={false}
-      onInputChange={vi.fn()}
-      onSendTurn={props.onSendTurn}
-      onPersistComposerSelection={vi.fn().mockResolvedValue(undefined)}
-      onSelectPermissionLevel={setPermissionLevel}
-      onUpdateThreadBranch={vi.fn().mockResolvedValue(undefined)}
-      onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
-      onRemoveQueuedFollowUp={vi.fn()}
-      onClearQueuedFollowUps={vi.fn()}
-    />
+    <AppStoreProvider>
+      <HomeComposer
+        busy={false}
+        inputText="检查权限链路"
+        models={MODELS}
+        defaultModel="gpt-5.2"
+        defaultEffort="xhigh"
+        selectedRootPath="E:/code/FPGA"
+        queuedFollowUps={[]}
+        followUpQueueMode="queue"
+        composerEnterBehavior="enter"
+        permissionLevel={permissionLevel}
+        gitController={createGitController()}
+        selectedThreadId="thread-1"
+        selectedThreadBranch={null}
+        isResponding={false}
+        interruptPending={false}
+        composerCommandBridge={createCommandBridge()}
+        onInputChange={vi.fn()}
+        onCreateThread={vi.fn().mockResolvedValue(undefined)}
+        onSendTurn={props.onSendTurn}
+        onPersistComposerSelection={vi.fn().mockResolvedValue(undefined)}
+        onSelectPermissionLevel={setPermissionLevel}
+        onToggleDiff={vi.fn()}
+        onUpdateThreadBranch={vi.fn().mockResolvedValue(undefined)}
+        onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
+        onRemoveQueuedFollowUp={vi.fn()}
+        onClearQueuedFollowUps={vi.fn()}
+      />
+    </AppStoreProvider>
   );
 }
 
@@ -92,26 +110,25 @@ describe("HomeComposer permission", () => {
     expect(screen.getByRole("button", { name: permissionLabel("full") })).toBeInTheDocument();
   });
 
-  it("submits with the selected permission level", () => {
+  it("submits with the selected permission level", async () => {
     const onSendTurn = vi.fn().mockResolvedValue(undefined);
     render(<ComposerHarness initialPermissionLevel="default" onSendTurn={onSendTurn} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /默认权限/ }));
-    fireEvent.click(screen.getByRole("menuitem", { name: /完全访问权限/ }));
+    fireEvent.click(screen.getByRole("button", { name: permissionLabel("default") }));
+    fireEvent.click(screen.getByRole("menuitem", { name: permissionLabel("full") }));
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
-    expect(onSendTurn).toHaveBeenCalledWith(expect.objectContaining({ permissionLevel: "full" }));
+    await waitFor(() => expect(onSendTurn).toHaveBeenCalledWith(expect.objectContaining({ permissionLevel: "full" })));
   });
 
-  it("switches back to default permission before submit", () => {
+  it("switches back to default permission before submit", async () => {
     const onSendTurn = vi.fn().mockResolvedValue(undefined);
     render(<ComposerHarness initialPermissionLevel="full" onSendTurn={onSendTurn} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /完全访问权限/ }));
-    fireEvent.click(screen.getByRole("menuitem", { name: /默认权限/ }));
+    fireEvent.click(screen.getByRole("button", { name: permissionLabel("full") }));
+    fireEvent.click(screen.getByRole("menuitem", { name: permissionLabel("default") }));
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
-    expect(onSendTurn).toHaveBeenCalledWith(expect.objectContaining({ permissionLevel: "default" }));
+    await waitFor(() => expect(onSendTurn).toHaveBeenCalledWith(expect.objectContaining({ permissionLevel: "default" })));
   });
 });
-

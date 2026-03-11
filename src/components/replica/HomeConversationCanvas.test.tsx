@@ -47,6 +47,12 @@ function renderCanvas(
       threadDetailLevel={options?.threadDetailLevel ?? "commands"}
       placeholder={null}
       onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
+      connectionStatus="connected"
+      connectionRetryInfo={null}
+      fatalError={null}
+      retryScheduledAt={null}
+      busy={false}
+      onRetryConnection={vi.fn().mockResolvedValue(undefined)}
     />,
   );
 }
@@ -257,7 +263,7 @@ describe("HomeConversationCanvas", () => {
     const classNames = Array.from(group?.children ?? []).map((element) => (element as HTMLElement).className);
 
     expect(classNames[0]).toContain("home-chat-message-user");
-    expect(classNames[1]).toContain("home-assistant-transcript-line");
+    expect(classNames[1]).toContain("home-assistant-transcript-reasoning");
     expect(classNames[2]).toContain("home-assistant-transcript-details");
     expect(classNames[3]).toContain("home-assistant-transcript-message");
     expect(screen.queryByText(/正在思考/)).toBeNull();
@@ -307,8 +313,9 @@ describe("HomeConversationCanvas", () => {
     const classNames = Array.from(group?.children ?? []).map((element) => (element as HTMLElement).className);
 
     expect(classNames[0]).toContain("home-chat-message-user");
-    expect(classNames[1]).toContain("home-assistant-transcript-details");
-    expect(classNames[2]).toContain("home-turn-thinking-indicator");
+    expect(classNames[1]).toContain("home-assistant-transcript-reasoning");
+    expect(classNames[2]).toContain("home-assistant-transcript-details");
+    expect(classNames[3]).toContain("home-turn-thinking-indicator");
     expect(screen.queryByText("正在思考...")).toBeNull();
     expect(screen.queryByText("正在思考…")).toBeNull();
   });

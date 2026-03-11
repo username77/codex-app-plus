@@ -1,4 +1,4 @@
-import type { TimelineEntry } from "../../domain/timeline";
+import type { ConversationMessage, TimelineEntry } from "../../domain/timeline";
 
 export interface ConnectionRetryInfo {
   readonly attempt: number;
@@ -32,7 +32,7 @@ export function extractConnectionRetryInfo(activities: ReadonlyArray<TimelineEnt
   return { activities: filtered, retryInfo: latestInfo };
 }
 
-function parseRetryInfo(entry: Extract<TimelineEntry, { kind: "agentMessage" }>): ConnectionRetryInfo | null {
+function parseRetryInfo(entry: ConversationMessage): ConnectionRetryInfo | null {
   const match = entry.text.match(RETRY_PATTERN);
   if (match === null) {
     return null;

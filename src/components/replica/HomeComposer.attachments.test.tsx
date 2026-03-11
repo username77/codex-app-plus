@@ -2,6 +2,8 @@ import { createEvent, fireEvent, render, screen, waitFor } from "@testing-librar
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComposerModelOption } from "../../app/composerPreferences";
+import { AppStoreProvider } from "../../state/store";
+import type { ComposerCommandBridge } from "./composerCommandBridge";
 import { HomeComposer } from "./HomeComposer";
 
 const openMock = vi.fn();
@@ -58,36 +60,49 @@ function createGitController(): import("./git/types").WorkspaceGitController {
   };
 }
 
+function createCommandBridge(): ComposerCommandBridge {
+  return {
+    startFuzzySession: vi.fn().mockResolvedValue(undefined),
+    updateFuzzySession: vi.fn().mockResolvedValue(undefined),
+    stopFuzzySession: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
 function renderComposer(overrides?: Partial<ComponentProps<typeof HomeComposer>>) {
   const onSendTurn = vi.fn().mockResolvedValue(undefined);
 
   render(
-    <HomeComposer
-      busy={false}
-      inputText=""
-      models={MODELS}
-      defaultModel="gpt-5.2"
-      defaultEffort="medium"
-      selectedRootPath="E:/code/codex-app-plus"
-      queuedFollowUps={[]}
-      followUpQueueMode="queue"
-      composerEnterBehavior="enter"
-      permissionLevel="default"
-      gitController={createGitController()}
-      selectedThreadId={null}
-      selectedThreadBranch={null}
-      isResponding={false}
-      interruptPending={false}
-      onInputChange={vi.fn()}
-      onSendTurn={onSendTurn}
-      onPersistComposerSelection={vi.fn().mockResolvedValue(undefined)}
-      onSelectPermissionLevel={vi.fn()}
-      onUpdateThreadBranch={vi.fn().mockResolvedValue(undefined)}
-      onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
-      onRemoveQueuedFollowUp={vi.fn()}
-      onClearQueuedFollowUps={vi.fn()}
-      {...overrides}
-    />,
+    <AppStoreProvider>
+      <HomeComposer
+        busy={false}
+        inputText=""
+        models={MODELS}
+        defaultModel="gpt-5.2"
+        defaultEffort="medium"
+        selectedRootPath="E:/code/codex-app-plus"
+        queuedFollowUps={[]}
+        followUpQueueMode="queue"
+        composerEnterBehavior="enter"
+        permissionLevel="default"
+        gitController={createGitController()}
+        selectedThreadId={null}
+        selectedThreadBranch={null}
+        isResponding={false}
+        interruptPending={false}
+        composerCommandBridge={createCommandBridge()}
+        onInputChange={vi.fn()}
+        onCreateThread={vi.fn().mockResolvedValue(undefined)}
+        onSendTurn={onSendTurn}
+        onPersistComposerSelection={vi.fn().mockResolvedValue(undefined)}
+        onSelectPermissionLevel={vi.fn()}
+        onToggleDiff={vi.fn()}
+        onUpdateThreadBranch={vi.fn().mockResolvedValue(undefined)}
+        onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
+        onRemoveQueuedFollowUp={vi.fn()}
+        onClearQueuedFollowUps={vi.fn()}
+        {...overrides}
+      />
+    </AppStoreProvider>,
   );
 
   return { onSendTurn };
@@ -107,7 +122,7 @@ describe("HomeComposer attachments", () => {
     renderComposer();
 
     fireEvent.click(screen.getByRole("button", { name: "Open attachment menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: /Add files and photos/i }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Add files and photos/i }));
 
     await waitFor(() => expect(openMock).toHaveBeenCalledWith({ title: "Add files and photos", multiple: true }));
     expect(screen.getByText("image.png")).toBeInTheDocument();
@@ -149,7 +164,7 @@ describe("HomeComposer attachments", () => {
     renderComposer({ onSendTurn });
 
     fireEvent.click(screen.getByRole("button", { name: "Open attachment menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: /Add files and photos/i }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Add files and photos/i }));
     await waitFor(() => expect(screen.getByText("notes.md")).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
