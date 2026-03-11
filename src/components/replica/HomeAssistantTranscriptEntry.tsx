@@ -6,6 +6,7 @@ import { ConversationMessageContent } from "./ConversationMessageContent";
 import type { ConversationRenderNode } from "./localConversationGroups";
 import { createAssistantTranscriptEntryModel } from "./assistantTranscript";
 import { HomeAssistantTranscriptDetailBlock } from "./HomeAssistantTranscriptDetailBlock";
+import { HomePlanDraftCard } from "./HomePlanDraftCard";
 
 type AssistantNode = Extract<ConversationRenderNode, { kind: "assistantMessage" | "reasoningBlock" | "traceItem" | "auxiliaryBlock" }>;
 
@@ -29,8 +30,17 @@ export function HomeAssistantTranscriptEntry(props: HomeAssistantTranscriptEntry
     return <ReasoningTranscriptEntry block={props.node.block} />;
   }
 
+  if (props.node.kind === "auxiliaryBlock" && props.node.entry.kind === "plan") {
+    return (
+      <article className="home-assistant-transcript-entry home-assistant-transcript-plan">
+        <HomePlanDraftCard markdown={props.node.entry.text} />
+      </article>
+    );
+  }
+
   const model = createAssistantTranscriptEntryModel(props.node);
   const truncateSummaryWhenCollapsed = model.kind === "details" && model.truncateSummaryWhenCollapsed === true;
+  const traceEntry = props.node.kind === "traceItem";
 
   if (model.kind === "message" && model.message) {
     if (model.message.text.trim().length === 0) {
@@ -50,7 +60,7 @@ export function HomeAssistantTranscriptEntry(props: HomeAssistantTranscriptEntry
 
   if (model.kind === "details") {
     return (
-      <section className="home-assistant-transcript-entry home-assistant-transcript-details">
+      <section className={`home-assistant-transcript-entry home-assistant-transcript-details${traceEntry ? " home-assistant-transcript-details-trace" : ""}`}>
         <details>
           <summary
             className="home-assistant-transcript-line home-assistant-transcript-summary"
@@ -64,7 +74,7 @@ export function HomeAssistantTranscriptEntry(props: HomeAssistantTranscriptEntry
     );
   }
 
-  return <p className="home-assistant-transcript-entry home-assistant-transcript-line">{model.summary}</p>;
+  return <p className={`home-assistant-transcript-entry home-assistant-transcript-line${traceEntry ? " home-assistant-transcript-line-trace" : ""}`}>{model.summary}</p>;
 }
 
 function ReasoningTranscriptEntry(props: { readonly block: Extract<AssistantNode, { kind: "reasoningBlock" }>["block"] }): JSX.Element {

@@ -1,4 +1,4 @@
-import type { HostBridge } from "../bridge/types";
+import type { BridgeEventName, BridgeEventPayloadMap, HostBridge } from "../bridge/types";
 import { parseConnectionStatus, parseNotificationEnvelope, parseServerRequestEnvelope } from "./guards";
 import type { ClientRequest } from "./generated/ClientRequest";
 import type { InitializeParams } from "./generated/InitializeParams";
@@ -17,6 +17,8 @@ type ProtocolHandlers = {
   onFatalError: (message: string) => void;
 };
 
+type AttachPhase = "idle" | "attaching" | "attached";
+
 function normalizeRequestParams(params: unknown): unknown {
   return params === undefined ? null : params;
 }
@@ -25,6 +27,9 @@ export class ProtocolClient {
   readonly #hostBridge: HostBridge;
   readonly #handlers: ProtocolHandlers;
   readonly #unsubscribers: Array<() => void> = [];
+  #attachPhase: AttachPhase = "idle";
+  #attachToken = 0;
+  #attachPromise: Promise<void> | null = null;
   #initialized = false;
 
   constructor(hostBridge: HostBridge, handlers: ProtocolHandlers) {
@@ -33,27 +38,24 @@ export class ProtocolClient {
   }
 
   async attach(): Promise<void> {
-    const unlistenConnection = await this.#hostBridge.subscribe("connection-changed", (payload) => {
-      this.#handlers.onConnectionChanged(parseConnectionStatus(payload.status));
-    });
-    const unlistenNotification = await this.#hostBridge.subscribe("notification-received", (payload) => {
-      const envelope = parseNotificationEnvelope(payload);
-      this.#handlers.onNotification(envelope.method, envelope.params);
-    });
-    const unlistenServerRequest = await this.#hostBridge.subscribe("server-request-received", (payload) => {
-      const envelope = parseServerRequestEnvelope(payload);
-      this.#handlers.onServerRequest(envelope.id, envelope.method, envelope.params);
-    });
-    const unlistenFatal = await this.#hostBridge.subscribe("fatal-error", (payload) => {
-      this.#handlers.onFatalError(payload.message);
-    });
-    this.#unsubscribers.push(unlistenConnection, unlistenNotification, unlistenServerRequest, unlistenFatal);
+    if (this.#attachPhase === "attached") {
+      return;
+    }
+    if (this.#attachPromise !== null) {
+      await this.#attachPromise;
+      return;
+    }
+    const token = ++this.#attachToken;
+    this.#attachPhase = "attaching";
+    this.#attachPromise = this.#runAttach(token);
+    await this.#attachPromise;
   }
 
   detach(): void {
-    while (this.#unsubscribers.length > 0) {
-      this.#unsubscribers.pop()?.();
-    }
+    this.#attachToken += 1;
+    this.#attachPhase = "idle";
+    this.#attachPromise = null;
+    this.#clearUnsubscribers();
   }
 
   startAppServer(codexPath?: string): Promise<void> {
@@ -102,6 +104,76 @@ export class ProtocolClient {
         message
       }
     });
+  }
+
+  async #runAttach(token: number): Promise<void> {
+    try {
+      if (!(await this.#attachSubscription(token, "connection-changed", (payload) => {
+        this.#handlers.onConnectionChanged(parseConnectionStatus(payload.status));
+      }))) {
+        return;
+      }
+      if (!(await this.#attachSubscription(token, "notification-received", (payload) => {
+        const envelope = parseNotificationEnvelope(payload);
+        this.#handlers.onNotification(envelope.method, envelope.params);
+      }))) {
+        return;
+      }
+      if (!(await this.#attachSubscription(token, "server-request-received", (payload) => {
+        const envelope = parseServerRequestEnvelope(payload);
+        this.#handlers.onServerRequest(envelope.id, envelope.method, envelope.params);
+      }))) {
+        return;
+      }
+      if (!(await this.#attachSubscription(token, "fatal-error", (payload) => {
+        this.#handlers.onFatalError(payload.message);
+      }))) {
+        return;
+      }
+      if (this.#isAttachTokenActive(token)) {
+        this.#attachPhase = "attached";
+      }
+    } catch (error) {
+      if (this.#isAttachTokenActive(token)) {
+        this.#attachPhase = "idle";
+      }
+      throw error;
+    } finally {
+      if (this.#isAttachTokenActive(token)) {
+        this.#attachPromise = null;
+      }
+    }
+  }
+
+  async #attachSubscription<E extends BridgeEventName>(
+    token: number,
+    eventName: E,
+    handler: (payload: BridgeEventPayloadMap[E]) => void,
+  ): Promise<boolean> {
+    if (!this.#isAttachTokenActive(token)) {
+      return false;
+    }
+    const unlisten = await this.#hostBridge.subscribe(eventName, handler);
+    return this.#storeUnsubscriber(token, unlisten);
+  }
+
+  #storeUnsubscriber(token: number, unlisten: () => void): boolean {
+    if (!this.#isAttachTokenActive(token)) {
+      unlisten();
+      return false;
+    }
+    this.#unsubscribers.push(unlisten);
+    return true;
+  }
+
+  #isAttachTokenActive(token: number): boolean {
+    return this.#attachToken === token;
+  }
+
+  #clearUnsubscribers(): void {
+    while (this.#unsubscribers.length > 0) {
+      this.#unsubscribers.pop()?.();
+    }
   }
 
   private async requestRaw(method: string, params: unknown): Promise<unknown> {

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AppAction } from "../domain/types";
+import { INITIAL_STATE } from "../domain/types";
+import { appReducer } from "../state/appReducer";
 import { applyAppServerNotification } from "./appControllerNotifications";
+import { createConversationFromThread } from "./conversationState";
 import { FrameTextDeltaQueue } from "./frameTextDeltaQueue";
 import { OutputDeltaQueue } from "./outputDeltaQueue";
 
@@ -71,5 +74,45 @@ describe("applyAppServerNotification", () => {
         level: "error",
       }),
     }));
+  });
+
+  it("flushes pending text deltas before completing an item", () => {
+    let state = appReducer(INITIAL_STATE, {
+      type: "conversation/upserted",
+      conversation: createConversationFromThread(createThread()),
+    });
+    const dispatch = (action: AppAction) => {
+      state = appReducer(state, action);
+    };
+    const textDeltaEntry = {
+      conversationId: "thread-1",
+      turnId: "turn-1",
+      itemId: "item-1",
+      target: { type: "agentMessage" as const },
+      delta: "草稿",
+    };
+
+    applyAppServerNotification({
+      dispatch,
+      textDeltaQueue: {
+        enqueue: () => undefined,
+        flushNow: () => dispatch({ type: "conversation/textDeltasFlushed", entries: [textDeltaEntry] }),
+      } as unknown as FrameTextDeltaQueue,
+      outputDeltaQueue: {
+        enqueue: () => undefined,
+        flushNow: () => undefined,
+      } as unknown as OutputDeltaQueue,
+    }, "item/completed", {
+      threadId: "thread-1",
+      turnId: "turn-1",
+      item: { type: "agentMessage", id: "item-1", text: "完整答案", phase: null },
+    });
+
+    const completedItem = state.conversationsById["thread-1"]?.turns[0]?.items[0]?.item;
+
+    expect(completedItem).toMatchObject({ type: "agentMessage", id: "item-1" });
+    if (completedItem?.type === "agentMessage") {
+      expect(completedItem.text).toBe("完整答案");
+    }
   });
 });

@@ -6,6 +6,142 @@
   padding-bottom: 10px;
 }
 
+.plan-request-composer {
+  width: min(760px, calc(100% - 80px));
+  border: 1px solid #e3e8f4;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 8px 12px 26px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.plan-request-header,
+.plan-request-actions {
+  padding: 14px 18px;
+}
+
+.plan-request-header {
+  border-bottom: 1px solid #eef2f7;
+}
+
+.plan-request-title,
+.plan-request-subtitle,
+.plan-request-question-header {
+  margin: 0;
+}
+
+.plan-request-title {
+  color: #111827;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.plan-request-subtitle {
+  margin-top: 6px;
+  color: #667085;
+  font-size: 13px;
+}
+
+.plan-request-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.plan-request-question {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.plan-request-question-header {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.plan-request-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #f8fafc;
+  color: #111827;
+  cursor: pointer;
+  text-align: left;
+}
+
+.plan-request-option[data-selected="true"] {
+  border-color: #111827;
+  background: #f3f4f6;
+}
+
+.plan-request-option-index {
+  color: #667085;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.plan-request-option-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.plan-request-option-copy strong {
+  font-size: 14px;
+}
+
+.plan-request-option-copy small {
+  color: #667085;
+  font-size: 12px;
+}
+
+.plan-request-notes {
+  min-height: 88px;
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 14px;
+  outline: none;
+  resize: vertical;
+  padding: 12px 14px;
+  font: inherit;
+  color: #111827;
+}
+
+.plan-request-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid #eef2f7;
+}
+
+.plan-request-escape,
+.plan-request-submit {
+  min-width: 78px;
+  height: 36px;
+  border-radius: 999px;
+  padding: 0 16px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.plan-request-escape {
+  border: 1px solid #d0d5dd;
+  background: #ffffff;
+  color: #475467;
+}
+
+.plan-request-submit {
+  border: 1px solid #111827;
+  background: #0f6fff;
+  color: #ffffff;
+}
+
 .composer-queue-panel {
   width: min(760px, calc(100% - 80px));
   border: 1px solid #e5e7eb;

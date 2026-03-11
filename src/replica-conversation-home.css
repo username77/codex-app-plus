@@ -232,6 +232,30 @@
   margin: 0 0 8px;
 }
 
+.home-plan-draft-card {
+  width: min(900px, 100%);
+  padding: 16px 18px;
+  border: 1px solid #e3e8f4;
+  border-radius: 24px;
+  background: #f3f4f6;
+  box-shadow: 0 12px 32px rgba(17, 23, 34, 0.08);
+}
+
+.home-plan-draft-label {
+  margin-bottom: 12px;
+  color: #475467;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.home-plan-draft-body > * {
+  margin: 0 0 10px;
+}
+
+.home-plan-draft-body > *:last-child {
+  margin-bottom: 0;
+}
+
 .home-chat-markdown h1,
 .home-chat-markdown h2,
 .home-chat-markdown h3 {

@@ -12,6 +12,11 @@
   white-space: pre-wrap;
 }
 
+.home-assistant-transcript-line-trace,
+.home-assistant-transcript-details-trace .home-assistant-transcript-summary {
+  color: #6b7280;
+}
+
 .home-assistant-transcript-message .home-chat-markdown {
   color: #111827;
 }

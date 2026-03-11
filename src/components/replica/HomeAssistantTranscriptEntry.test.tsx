@@ -6,6 +6,7 @@ import type {
   ConversationMessage,
   DynamicToolCallEntry,
   McpToolCallEntry,
+  PlanEntry,
   TurnPlanSnapshotEntry,
 } from "../../domain/timeline";
 import { HomeAssistantTranscriptEntry } from "./HomeAssistantTranscriptEntry";
@@ -130,6 +131,20 @@ function createTurnPlanNode(): Extract<AssistantNode, { kind: "auxiliaryBlock" }
   return { key: entry.id, kind: "auxiliaryBlock", entry };
 }
 
+function createPlanDraftNode(): Extract<AssistantNode, { kind: "auxiliaryBlock" }> {
+  const entry: PlanEntry = {
+    id: "plan-draft-1",
+    kind: "plan",
+    threadId: "thread-1",
+    turnId: "turn-1",
+    itemId: "item-plan-draft",
+    text: "## 计划书\n- 第一步\n- 第二步",
+    status: "done",
+  };
+
+  return { key: entry.id, kind: "auxiliaryBlock", entry };
+}
+
 function createReasoningNode(
   titleMarkdown = "**Inspecting code behavior**",
   bodyMarkdown = "I need to inspect the component before patching it.",
@@ -146,16 +161,24 @@ function createReasoningNode(
 }
 
 describe("HomeAssistantTranscriptEntry", () => {
-  it("renders assistant proposed plans without the card wrapper", () => {
+  it("renders assistant proposed plans inside the plan draft card", () => {
     const { container } = render(
       <HomeAssistantTranscriptEntry
         node={createAssistantMessage("before\n<proposed_plan>\n# Plan\n- one\n</proposed_plan>\nafter")}
       />,
     );
 
-    expect(container.querySelector(".home-chat-proposed-plan")).toBeNull();
+    expect(container.querySelector(".home-plan-draft-card")).not.toBeNull();
     expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument();
     expect(screen.getByText("after")).toBeInTheDocument();
+  });
+
+  it("renders plan items as markdown cards", () => {
+    const { container } = render(<HomeAssistantTranscriptEntry node={createPlanDraftNode()} />);
+
+    expect(container.querySelector(".home-plan-draft-card")).not.toBeNull();
+    expect(screen.getByText("计划草稿")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "计划书" })).toBeInTheDocument();
   });
 
   it("omits empty assistant message placeholders", () => {
@@ -169,11 +192,13 @@ describe("HomeAssistantTranscriptEntry", () => {
     const summary = container.querySelector("summary");
     const details = container.querySelector("details");
     const summaryText = container.querySelector(".home-assistant-transcript-summary-text");
+    const entry = container.querySelector(".home-assistant-transcript-details-trace");
     const detailPanel = container.querySelector('.home-assistant-transcript-detail-panel[data-variant="shell"]');
     const footerMeta = container.querySelector(".home-assistant-transcript-detail-footer-meta");
     const footerStatus = container.querySelector(".home-assistant-transcript-detail-footer-status");
     const body = container.querySelector(".home-assistant-transcript-detail-body");
 
+    expect(entry).not.toBeNull();
     expect(summary).toHaveAttribute("data-truncate-summary", "true");
     expect(summaryText?.textContent).toContain(LONG_COMMAND);
     expect(summaryText?.textContent).not.toContain("…");
@@ -261,5 +286,6 @@ describe("HomeAssistantTranscriptEntry", () => {
     expect(container.querySelector(".home-assistant-transcript-reasoning-title-markdown strong")?.textContent).toBe(
       "Inspecting code behavior",
     );
+    expect(container.querySelector(".home-assistant-transcript-details-trace")).toBeNull();
   });
 });

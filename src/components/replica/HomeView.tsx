@@ -18,6 +18,7 @@ import type { ComposerEnterBehavior, FollowUpMode, QueuedFollowUp } from "../../
 import { TerminalPanel } from "../terminal/TerminalPanel";
 import { HomeConversationCanvas } from "./HomeConversationCanvas";
 import { HomeComposer } from "./HomeComposer";
+import { HomePlanRequestComposer } from "./HomePlanRequestComposer";
 import { HomeTurnPlanDrawer } from "./HomeTurnPlanDrawer";
 import type { TurnPlanModel } from "./homeTurnPlanModel";
 import { HomeMainToolbar } from "./HomeMainToolbar";
@@ -28,6 +29,7 @@ import type { WorkspaceGitController } from "./git/types";
 import { useWorkspaceGit } from "./git/useWorkspaceGit";
 import { OfficialChevronRightIcon, OfficialSidebarToggleIcon } from "./officialIcons";
 import { extractConnectionRetryInfo } from "./homeConnectionRetry";
+import { removeTimelineEntryById, selectActivePlanModeRequest } from "./planModePrompt";
 import { WorkspaceDiffSidebarHost } from "./WorkspaceDiffSidebarHost";
 
 interface HomeViewProps {
@@ -146,7 +148,11 @@ interface MainContentProps {
 
 function MainContent(props: MainContentProps): JSX.Element {
   const composerCommandBridge = useMemo(() => createComposerCommandBridge(props.hostBridge), [props.hostBridge]);
-  const renderableActivities = useMemo(() => removeTurnPlanEntries(props.activities), [props.activities]);
+  const activePlanRequest = useMemo(() => selectActivePlanModeRequest(props.activities), [props.activities]);
+  const renderableActivities = useMemo(
+    () => removeTimelineEntryById(removeTurnPlanEntries(props.activities), activePlanRequest?.id ?? null),
+    [activePlanRequest, props.activities],
+  );
   const currentTurnPlan = useMemo(() => selectLatestTurnPlan(props.activities), [props.activities]);
   const [planDrawerCollapsed, setPlanDrawerCollapsed] = useState(true);
   const planSnapshotKeyRef = useRef<string | null>(null);
@@ -211,38 +217,46 @@ function MainContent(props: MainContentProps): JSX.Element {
         collapsed={planDrawerCollapsed}
         onToggle={() => setPlanDrawerCollapsed((value) => !value)}
       />
-      <HomeComposer
-        busy={props.busy}
-        inputText={props.inputText}
-        models={props.models}
-        defaultModel={props.defaultModel}
-        defaultEffort={props.defaultEffort}
-        defaultServiceTier={props.defaultServiceTier ?? null}
-        selectedRootPath={props.selectedRootPath}
-        queuedFollowUps={props.queuedFollowUps}
-        followUpQueueMode={props.followUpQueueMode}
-        composerEnterBehavior={props.composerEnterBehavior}
-        permissionLevel={props.composerPermissionLevel}
-        gitController={props.gitController}
-        selectedThreadId={props.selectedThread?.id ?? null}
-        selectedThreadBranch={props.selectedThread?.branch ?? null}
-        isResponding={props.isResponding}
-        interruptPending={props.interruptPending}
-        composerCommandBridge={composerCommandBridge}
-        onInputChange={props.onInputChange}
-        onCreateThread={props.onCreateThread}
-        onSendTurn={props.onSendTurn}
-        onPersistComposerSelection={props.onPersistComposerSelection}
-        multiAgentAvailable={props.multiAgentAvailable ?? false}
-        multiAgentEnabled={props.multiAgentEnabled ?? false}
-        onSetMultiAgentEnabled={props.onSetMultiAgentEnabled}
-        onSelectPermissionLevel={props.onSelectComposerPermissionLevel}
-        onToggleDiff={props.onToggleDiff}
-        onUpdateThreadBranch={props.onUpdateThreadBranch}
-        onInterruptTurn={props.onInterruptTurn}
-        onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
-        onClearQueuedFollowUps={props.onClearQueuedFollowUps}
-      />
+      {activePlanRequest === null ? (
+        <HomeComposer
+          busy={props.busy}
+          inputText={props.inputText}
+          models={props.models}
+          defaultModel={props.defaultModel}
+          defaultEffort={props.defaultEffort}
+          defaultServiceTier={props.defaultServiceTier ?? null}
+          selectedRootPath={props.selectedRootPath}
+          queuedFollowUps={props.queuedFollowUps}
+          followUpQueueMode={props.followUpQueueMode}
+          composerEnterBehavior={props.composerEnterBehavior}
+          permissionLevel={props.composerPermissionLevel}
+          gitController={props.gitController}
+          selectedThreadId={props.selectedThread?.id ?? null}
+          selectedThreadBranch={props.selectedThread?.branch ?? null}
+          isResponding={props.isResponding}
+          interruptPending={props.interruptPending}
+          composerCommandBridge={composerCommandBridge}
+          onInputChange={props.onInputChange}
+          onCreateThread={props.onCreateThread}
+          onSendTurn={props.onSendTurn}
+          onPersistComposerSelection={props.onPersistComposerSelection}
+          multiAgentAvailable={props.multiAgentAvailable ?? false}
+          multiAgentEnabled={props.multiAgentEnabled ?? false}
+          onSetMultiAgentEnabled={props.onSetMultiAgentEnabled}
+          onSelectPermissionLevel={props.onSelectComposerPermissionLevel}
+          onToggleDiff={props.onToggleDiff}
+          onUpdateThreadBranch={props.onUpdateThreadBranch}
+          onInterruptTurn={props.onInterruptTurn}
+          onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
+          onClearQueuedFollowUps={props.onClearQueuedFollowUps}
+        />
+      ) : (
+        <HomePlanRequestComposer
+          entry={activePlanRequest}
+          busy={props.busy}
+          onResolveServerRequest={props.onResolveServerRequest}
+        />
+      )}
     </div>
   );
 }

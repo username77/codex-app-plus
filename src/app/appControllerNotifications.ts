@@ -114,6 +114,8 @@ export function applyAppServerNotification(context: NotificationContext, method:
     return;
   }
   if (method === "item/completed") {
+    textDeltaQueue.flushNow();
+    outputDeltaQueue.flushNow();
     const payload = params as ItemCompletedNotification;
     dispatch({ type: "conversation/itemCompleted", conversationId: payload.threadId, turnId: payload.turnId, item: payload.item });
     if (payload.item.type === "enteredReviewMode") {

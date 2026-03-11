@@ -3,6 +3,7 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import type { ConversationMessage } from "../../domain/types";
+import { HomePlanDraftCard } from "./HomePlanDraftCard";
 
 const PROPOSED_PLAN_CLOSE_TAG = "</proposed_plan>";
 const PROPOSED_PLAN_OPEN_TAG = "<proposed_plan>";
@@ -25,7 +26,7 @@ interface ConversationMessageContentProps {
 export function ConversationMessageContent(props: ConversationMessageContentProps): JSX.Element {
   return (
     <div className={props.className}>
-      {splitMessageSegments(props.message.text).map((segment, index) => renderSegment(segment, index, props.variant ?? "user-bubble"))}
+      {splitMessageSegments(props.message.text).map((segment, index) => renderSegment(segment, index))}
     </div>
   );
 }
@@ -64,15 +65,9 @@ function pushSegment(segments: Array<MessageSegment>, type: MessageSegment["type
   segments.push({ type, text: normalizedText });
 }
 
-function renderSegment(segment: MessageSegment, index: number, variant: ConversationMessageContentVariant): JSX.Element {
-  if (segment.type === "proposed-plan" && variant === "user-bubble") {
-    return (
-      <div key={`segment-${index}`} className="home-chat-proposed-plan">
-        <ReactMarkdown components={MARKDOWN_COMPONENTS} remarkPlugins={MARKDOWN_PLUGINS}>
-          {segment.text}
-        </ReactMarkdown>
-      </div>
-    );
+function renderSegment(segment: MessageSegment, index: number): JSX.Element {
+  if (segment.type === "proposed-plan") {
+    return <HomePlanDraftCard key={`segment-${index}`} markdown={segment.text} />;
   }
 
   return (
