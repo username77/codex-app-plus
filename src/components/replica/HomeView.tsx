@@ -156,7 +156,7 @@ function MainContent(props: MainContentProps): JSX.Element {
     }
     const nextKey = createTurnPlanChangeKey(currentTurnPlan);
     if (nextKey !== planSnapshotKeyRef.current) {
-      setPlanDrawerCollapsed(false);
+      setPlanDrawerCollapsed(true);
       planSnapshotKeyRef.current = nextKey;
     }
   }, [currentTurnPlan]);

@@ -10,12 +10,16 @@ function createUserMessage(): TimelineEntry {
     threadId: "thread-1",
     turnId: "turn-1",
     itemId: "item-user",
-    text: "检查当前会话流",
+    text: "Inspect the current conversation flow",
     status: "done",
   };
 }
 
-function createAssistantMessage(id = "assistant-1", text = "先给出结论", status: "done" | "streaming" = "done"): TimelineEntry {
+function createAssistantMessage(
+  id = "assistant-1",
+  text = "Share the current result",
+  status: "done" | "streaming" = "done",
+): TimelineEntry {
   return {
     id,
     kind: "agentMessage",
@@ -35,8 +39,8 @@ function createReasoning(): TimelineEntry {
     threadId: "thread-1",
     turnId: "turn-1",
     itemId: "item-reasoning",
-    summary: ["先确认 turn 内可见顺序"],
-    content: ["详细推理"],
+    summary: ["Inspect the visible order inside the turn."],
+    content: ["Inspect the detailed reasoning trace."],
   };
 }
 
@@ -48,7 +52,7 @@ function createEmptyReasoning(): TimelineEntry {
     turnId: "turn-1",
     itemId: "item-reasoning-empty",
     summary: ["  ", ""],
-    content: ["详细推理"],
+    content: ["  ", ""],
   };
 }
 
@@ -93,7 +97,7 @@ function createPlan(): TimelineEntry {
     threadId: "thread-1",
     turnId: "turn-1",
     itemId: "item-plan",
-    text: "1. 看设置页\n2. 修布局",
+    text: "1. Inspect settings\n2. Update layout",
     status: "done",
   };
 }
@@ -140,6 +144,15 @@ function createSystemNotice(level: "info" | "warning" | "error"): TimelineEntry 
 }
 
 function createUserInputRequest(): TimelineEntry {
+  const questions = [{
+    id: "scope",
+    header: "Scope",
+    question: "Choose a scope",
+    isOther: false,
+    isSecret: false,
+    options: [{ label: "Main UI", description: "Only update the main UI" }],
+  }];
+
   return {
     id: "request-1",
     kind: "pendingUserInput",
@@ -158,11 +171,11 @@ function createUserInputRequest(): TimelineEntry {
         threadId: "thread-1",
         turnId: "turn-1",
         itemId: "item-request",
-        questions: [{ id: "scope", header: "范围", question: "请选择处理范围", isOther: false, isSecret: false, options: [{ label: "主界面", description: "只改主界面" }] }],
+        questions,
       },
-      questions: [{ id: "scope", header: "范围", question: "请选择处理范围", isOther: false, isSecret: false, options: [{ label: "主界面", description: "只改主界面" }] }],
+      questions,
     },
-  };
+  } as TimelineEntry;
 }
 
 describe("localConversationGroups", () => {
@@ -177,10 +190,10 @@ describe("localConversationGroups", () => {
   it("keeps assistant text, trace, and final reply in flow order", () => {
     const entries = [
       createUserMessage(),
-      createAssistantMessage("assistant-1", "先同步计划"),
+      createAssistantMessage("assistant-1", "Plan the update"),
       createCommand(),
       createFileChange(),
-      createAssistantMessage("assistant-2", "已完成修改"),
+      createAssistantMessage("assistant-2", "Finished the changes"),
     ];
     const [group] = splitActivitiesIntoRenderGroups(entries, null);
 
@@ -201,13 +214,16 @@ describe("localConversationGroups", () => {
   });
 
   it("keeps group thinking visible while assistant text is streaming", () => {
-    const [group] = splitActivitiesIntoRenderGroups([createUserMessage(), createCommand(), createAssistantMessage("assistant-streaming", "正在输出正文", "streaming")], "turn-1");
+    const [group] = splitActivitiesIntoRenderGroups(
+      [createUserMessage(), createCommand(), createAssistantMessage("assistant-streaming", "Streaming the reply", "streaming")],
+      "turn-1",
+    );
 
     expect(flattenConversationRenderGroup(group).map((node) => node.kind)).toEqual(["userBubble", "traceItem", "assistantMessage"]);
     expect(group.showThinkingIndicator).toBe(true);
   });
 
-  it("drops empty reasoning summaries instead of rendering a fake thinking line", () => {
+  it("drops fully empty reasoning items instead of rendering a fake thinking line", () => {
     const [group] = splitActivitiesIntoRenderGroups([createUserMessage(), createEmptyReasoning(), createCommand()], "turn-1");
 
     expect(flattenConversationRenderGroup(group).map((node) => node.kind)).toEqual(["userBubble", "traceItem"]);
@@ -236,7 +252,7 @@ describe("localConversationGroups", () => {
         createUserInputRequest(),
       ],
       null,
-      "compact"
+      "compact",
     );
 
     expect(flattenConversationRenderGroup(group).map((node) => node.kind)).toEqual([
@@ -252,7 +268,7 @@ describe("localConversationGroups", () => {
     const [group] = splitActivitiesIntoRenderGroups(
       [createUserMessage(), createReasoning(), createCommand(), createRawResponse(), createDebug(), createSystemNotice("info")],
       null,
-      "commands"
+      "commands",
     );
 
     expect(flattenConversationRenderGroup(group).map((node) => node.kind)).toEqual([
@@ -264,11 +280,7 @@ describe("localConversationGroups", () => {
   });
 
   it("includes raw responses and debug entries in full mode", () => {
-    const [group] = splitActivitiesIntoRenderGroups(
-      [createUserMessage(), createRawResponse(), createDebug()],
-      null,
-      "full"
-    );
+    const [group] = splitActivitiesIntoRenderGroups([createUserMessage(), createRawResponse(), createDebug()], null, "full");
 
     expect(flattenConversationRenderGroup(group).map((node) => node.kind)).toEqual([
       "userBubble",

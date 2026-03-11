@@ -193,10 +193,8 @@ function createReasoningBlock(entry: ReasoningEntry): ReasoningBlock | null {
   if (summaryBlocks.length === 0 && contentBlocks.length === 0) {
     return null;
   }
-
   const splitSummary = splitReasoningSummary(summaryBlocks);
   const bodyMarkdown = dedupeReasoningBlocks([splitSummary.bodyMarkdown, ...contentBlocks]).join("\n\n");
-
   return {
     id: entry.id,
     titleMarkdown: splitSummary.titleMarkdown,
@@ -207,29 +205,24 @@ function createReasoningBlock(entry: ReasoningEntry): ReasoningBlock | null {
 function normalizeReasoningBlocks(items: ReadonlyArray<string>): Array<string> {
   return items.map((item) => item.trim()).filter(Boolean);
 }
-
 function splitReasoningSummary(summaryBlocks: ReadonlyArray<string>): { titleMarkdown: string; bodyMarkdown: string } {
   const firstBlock = summaryBlocks[0];
   if (!firstBlock) {
     return { titleMarkdown: createDefaultReasoningTitle(), bodyMarkdown: "" };
   }
-
   const lines = firstBlock.split(/\r?\n/);
   const titleIndex = lines.findIndex((line) => line.trim().length > 0);
   const titleLine = titleIndex < 0 ? null : lines[titleIndex].trim();
   if (titleLine === null || !isReasoningTitleLine(titleLine)) {
     return { titleMarkdown: createDefaultReasoningTitle(), bodyMarkdown: summaryBlocks.join("\n\n") };
   }
-
   const remainingFirstBlock = lines.filter((_, index) => index !== titleIndex).join("\n").trim();
   const bodyBlocks = [remainingFirstBlock, ...summaryBlocks.slice(1)].filter(Boolean);
   return { titleMarkdown: titleLine, bodyMarkdown: bodyBlocks.join("\n\n") };
 }
-
 function dedupeReasoningBlocks(blocks: ReadonlyArray<string>): Array<string> {
   const seen = new Set<string>();
   const uniqueBlocks: Array<string> = [];
-
   for (const block of blocks) {
     const normalizedBlock = block.trim();
     if (normalizedBlock.length === 0) {
@@ -242,14 +235,11 @@ function dedupeReasoningBlocks(blocks: ReadonlyArray<string>): Array<string> {
     seen.add(dedupeKey);
     uniqueBlocks.push(normalizedBlock);
   }
-
   return uniqueBlocks;
 }
-
 function createDefaultReasoningTitle(): string {
   return `${REASONING_TITLE_PREFIX}${REASONING_LABEL}${REASONING_TITLE_PREFIX}`;
 }
-
 function isReasoningTitleLine(line: string): boolean {
   return line.startsWith(REASONING_TITLE_PREFIX)
     && line.endsWith(REASONING_TITLE_PREFIX)

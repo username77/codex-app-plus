@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { ComposerModelOption } from "../../app/composerPreferences";
 import type { HostBridge } from "../../bridge/types";
+import type { TurnPlanSnapshotEntry } from "../../domain/timeline";
 import type { ThreadSummary, TimelineEntry } from "../../domain/types";
 import { AppStoreProvider } from "../../state/store";
 import type { WorkspaceGitController } from "./git/types";
@@ -73,6 +74,23 @@ function createThread(overrides?: Partial<ThreadSummary>): ThreadSummary {
     ...overrides
   };
 }
+
+function createTurnPlanActivity(overrides?: Partial<TurnPlanSnapshotEntry>): TurnPlanSnapshotEntry {
+  return {
+    id: "plan-1",
+    kind: "turnPlanSnapshot",
+    threadId: "thread-1",
+    turnId: "turn-1",
+    itemId: "item-plan-1",
+    explanation: "Keep the checklist compact.",
+    plan: [
+      { step: "Inspect UI", status: "inProgress" },
+      { step: "Adjust spacing", status: "pending" },
+    ],
+    ...overrides
+  };
+}
+
 function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
   mockedUseWorkspaceGit.mockReturnValue(createController());
   const root = { id: "root-1", name: "FPGA", path: "E:/code/FPGA" };
@@ -178,6 +196,19 @@ describe("HomeView", () => {
     const { container } = renderHomeView({ activities });
     expect(container.querySelector(".home-chat-proposed-plan")).toBeNull();
     expect(screen.getByRole("heading", { name: "计划书" })).toBeInTheDocument();
+  });
+
+  it("keeps the task list collapsed by default", () => {
+    renderHomeView({ activities: [createTurnPlanActivity()] });
+
+    const toggle = screen.getByRole("button", { name: /任务清单/ });
+    expect(toggle).toBeInTheDocument();
+    expect(screen.queryByText("Inspect UI")).toBeNull();
+
+    fireEvent.click(toggle);
+
+    expect(screen.getByText("Inspect UI")).toBeInTheDocument();
+    expect(screen.getByText("Adjust spacing")).toBeInTheDocument();
   });
 
   it("renders command cards and inline request cards", () => {

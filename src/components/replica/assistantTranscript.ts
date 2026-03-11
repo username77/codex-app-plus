@@ -48,9 +48,7 @@ interface DetailBlockOptions {
   readonly footerStatus?: string | null;
   readonly variant?: AssistantTranscriptDetailPanel["variant"];
 }
-
 type AssistantNode = Extract<ConversationRenderNode, { kind: "assistantMessage" | "reasoningBlock" | "traceItem" | "auxiliaryBlock" }>;
-
 export function createAssistantTranscriptEntryModel(node: AssistantNode): AssistantTranscriptEntryModel {
   if (node.kind === "assistantMessage") {
     return {
@@ -61,9 +59,8 @@ export function createAssistantTranscriptEntryModel(node: AssistantNode): Assist
       message: node.message,
     };
   }
-
   if (node.kind === "reasoningBlock") {
-    return createLineModel(node.key, node.block.summary);
+    return createLineModel(node.key, node.block.bodyMarkdown || node.block.titleMarkdown);
   }
 
   if (node.kind === "traceItem") {

@@ -106,7 +106,7 @@ function createLastNodeScrollKey(nodes: ReadonlyArray<RenderGroup["nodes"][numbe
     return `${lastNode.key}:${lastNode.message.status}:${lastNode.message.text.length}`;
   }
   if (lastNode.kind === "reasoningBlock") {
-    return `${lastNode.key}:${lastNode.block.summary}`;
+    return `${lastNode.key}:${lastNode.block.titleMarkdown}:${lastNode.block.bodyMarkdown}`;
   }
   if (lastNode.kind === "traceItem") {
     return createTraceScrollKey(lastNode);

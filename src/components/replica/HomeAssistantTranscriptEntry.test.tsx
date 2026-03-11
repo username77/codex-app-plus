@@ -130,6 +130,21 @@ function createTurnPlanNode(): Extract<AssistantNode, { kind: "auxiliaryBlock" }
   return { key: entry.id, kind: "auxiliaryBlock", entry };
 }
 
+function createReasoningNode(
+  titleMarkdown = "**Inspecting code behavior**",
+  bodyMarkdown = "I need to inspect the component before patching it.",
+): Extract<AssistantNode, { kind: "reasoningBlock" }> {
+  return {
+    key: "reasoning-1",
+    kind: "reasoningBlock",
+    block: {
+      id: "reasoning-1",
+      titleMarkdown,
+      bodyMarkdown,
+    },
+  };
+}
+
 describe("HomeAssistantTranscriptEntry", () => {
   it("renders assistant proposed plans without the card wrapper", () => {
     const { container } = render(
@@ -213,5 +228,38 @@ describe("HomeAssistantTranscriptEntry", () => {
     expect(screen.getByText((content) => content.includes("进度：完成 1 / 共 1"))).toBeInTheDocument();
     expect(summary?.hasAttribute("data-truncate-summary")).toBe(false);
     expect(label?.textContent).toBe("Plan");
+  });
+
+  it("renders reasoning as collapsed plain text details with markdown title", () => {
+    const { container } = render(<HomeAssistantTranscriptEntry node={createReasoningNode()} />);
+    const details = container.querySelector("details");
+    const summary = container.querySelector("summary");
+    const strongTitle = container.querySelector(".home-assistant-transcript-reasoning-summary strong");
+
+    expect(details?.open).toBe(false);
+    expect(summary?.textContent).toBe("Inspecting code behavior");
+    expect(strongTitle?.textContent).toBe("Inspecting code behavior");
+    expect(container.querySelector(".home-assistant-transcript-detail-panel")).toBeNull();
+
+    if (summary !== null) {
+      fireEvent.click(summary);
+    }
+
+    expect(details?.open).toBe(true);
+    expect(container.querySelector(".home-assistant-transcript-reasoning-body")?.textContent).toContain(
+      "I need to inspect the component before patching it.",
+    );
+  });
+
+  it("renders a title-only reasoning block without a disclosure container", () => {
+    const { container } = render(
+      <HomeAssistantTranscriptEntry node={createReasoningNode("**Inspecting code behavior**", "")} />,
+    );
+
+    expect(container.querySelector("details")).toBeNull();
+    expect(container.querySelector("summary")).toBeNull();
+    expect(container.querySelector(".home-assistant-transcript-reasoning-title-markdown strong")?.textContent).toBe(
+      "Inspecting code behavior",
+    );
   });
 });
