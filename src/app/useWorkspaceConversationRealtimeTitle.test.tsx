@@ -42,9 +42,9 @@ function createSendOptions(text: string) {
   return {
     text,
     attachments: [],
-    selection: { model: "gpt-5.2", effort: "medium" as const },
+    selection: { model: "gpt-5.2", effort: "medium" as const, serviceTier: null },
     permissionLevel: "default" as const,
-    planModeEnabled: false,
+    collaborationPreset: "default" as const,
   };
 }
 

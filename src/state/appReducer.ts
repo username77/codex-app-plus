@@ -215,6 +215,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, models: [...action.models] };
     case "collaborationModes/loaded":
       return { ...state, collaborationModes: [...action.modes] };
+    case "experimentalFeatures/loaded":
+      return { ...state, experimentalFeatures: [...action.features] };
     case "config/loaded":
       return { ...state, configSnapshot: action.config };
     case "mcp/statusesLoaded":

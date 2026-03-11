@@ -3,11 +3,14 @@ import type { ConfigReadResponse } from "../protocol/generated/v2/ConfigReadResp
 import type { ConfigBatchWriteParams } from "../protocol/generated/v2/ConfigBatchWriteParams";
 import type { ConfigValueWriteParams } from "../protocol/generated/v2/ConfigValueWriteParams";
 import type { ConfigWriteResponse } from "../protocol/generated/v2/ConfigWriteResponse";
+import type { ExperimentalFeature } from "../protocol/generated/v2/ExperimentalFeature";
+import type { ExperimentalFeatureListResponse } from "../protocol/generated/v2/ExperimentalFeatureListResponse";
 import type { ListMcpServerStatusResponse } from "../protocol/generated/v2/ListMcpServerStatusResponse";
 import type { McpServerRefreshResponse } from "../protocol/generated/v2/McpServerRefreshResponse";
 import type { McpServerStatus } from "../protocol/generated/v2/McpServerStatus";
 import { ProtocolClient } from "../protocol/client";
 
+const EXPERIMENTAL_FEATURE_PAGE_SIZE = 100;
 const MCP_STATUS_PAGE_SIZE = 100;
 
 export interface McpRefreshResult {
@@ -52,6 +55,22 @@ export async function listAllMcpServerStatuses(client: ProtocolClient): Promise<
   } while (cursor !== null);
 
   return statuses;
+}
+
+export async function listAllExperimentalFeatures(client: ProtocolClient): Promise<ReadonlyArray<ExperimentalFeature>> {
+  const features: Array<ExperimentalFeature> = [];
+  let cursor: string | null = null;
+
+  do {
+    const response = (await client.request("experimentalFeature/list", {
+      cursor,
+      limit: EXPERIMENTAL_FEATURE_PAGE_SIZE
+    })) as ExperimentalFeatureListResponse;
+    features.push(...response.data);
+    cursor = response.nextCursor;
+  } while (cursor !== null);
+
+  return features;
 }
 
 export async function refreshMcpData(client: ProtocolClient, dispatch: Dispatch): Promise<McpRefreshResult> {

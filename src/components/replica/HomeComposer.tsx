@@ -4,7 +4,7 @@ import type { ComposerPermissionLevel } from "../../app/composerPermission";
 import type { ComposerModelOption, ComposerSelection } from "../../app/composerPreferences";
 import type { SendTurnOptions } from "../../app/useWorkspaceConversation";
 import { useComposerSelection } from "../../app/useComposerSelection";
-import type { ComposerEnterBehavior, FollowUpMode, QueuedFollowUp } from "../../domain/timeline";
+import type { CollaborationPreset, ComposerEnterBehavior, FollowUpMode, QueuedFollowUp } from "../../domain/timeline";
 import { AttachmentClip } from "./AttachmentClip";
 import { ComposerAttachmentMenu } from "./ComposerAttachmentMenu";
 import { ComposerCommandPalette } from "./ComposerCommandPalette";
@@ -27,6 +27,7 @@ export interface HomeComposerProps {
   readonly models: ReadonlyArray<ComposerModelOption>;
   readonly defaultModel: string | null;
   readonly defaultEffort: ComposerSelection["effort"];
+  readonly defaultServiceTier?: ComposerSelection["serviceTier"];
   readonly selectedRootPath: string | null;
   readonly queuedFollowUps: ReadonlyArray<QueuedFollowUp>;
   readonly followUpQueueMode: FollowUpMode;
@@ -38,10 +39,13 @@ export interface HomeComposerProps {
   readonly isResponding: boolean;
   readonly interruptPending: boolean;
   readonly composerCommandBridge: ComposerCommandBridge;
+  readonly multiAgentAvailable?: boolean;
+  readonly multiAgentEnabled?: boolean;
   readonly onInputChange: (text: string) => void;
   readonly onCreateThread: () => Promise<void>;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
   readonly onPersistComposerSelection: (selection: ComposerSelection) => Promise<void>;
+  readonly onSetMultiAgentEnabled?: (enabled: boolean) => Promise<void>;
   readonly onSelectPermissionLevel: (level: ComposerPermissionLevel) => void;
   readonly onToggleDiff: () => void;
   readonly onUpdateThreadBranch: (branch: string) => Promise<void>;
@@ -51,40 +55,57 @@ export interface HomeComposerProps {
 }
 
 export function HomeComposer(props: HomeComposerProps): JSX.Element {
+  const defaultServiceTier = props.defaultServiceTier ?? null;
+  const multiAgentAvailable = props.multiAgentAvailable ?? false;
+  const multiAgentEnabled = props.multiAgentEnabled ?? false;
+  const setMultiAgentEnabled = props.onSetMultiAgentEnabled ?? (async () => undefined);
   const containerRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [planModeEnabled, setPlanModeEnabled] = useState(false);
+  const [collaborationPreset, setCollaborationPreset] = useState<CollaborationPreset>("default");
+  const [multiAgentPending, setMultiAgentPending] = useState(false);
   const { attachments, appendPaths, clearAttachments, openFilePicker, removeAttachment, handlePaste } = useComposerAttachments({ selectedThreadId: props.selectedThreadId });
-  const composerSelection = useComposerSelection(props.models, props.defaultModel, props.defaultEffort);
-  const { handleSelectModel, handleSelectEffort } = useComposerSelectionPersistence({ models: props.models, defaultModel: props.defaultModel, defaultEffort: props.defaultEffort, selectedModel: composerSelection.selectedModel, selectedEffort: composerSelection.selectedEffort, replaceSelection: composerSelection.replaceSelection, persistSelection: props.onPersistComposerSelection });
+  const composerSelection = useComposerSelection(props.models, props.defaultModel, props.defaultEffort, defaultServiceTier);
+  const { handleSelectModel, handleSelectEffort, handleSelectServiceTier } = useComposerSelectionPersistence({ models: props.models, defaultModel: props.defaultModel, defaultEffort: props.defaultEffort, defaultServiceTier, selectedModel: composerSelection.selectedModel, selectedEffort: composerSelection.selectedEffort, selectedServiceTier: composerSelection.selectedServiceTier, replaceSelection: composerSelection.replaceSelection, persistSelection: props.onPersistComposerSelection });
   const commandPalette = useComposerCommandPalette({ inputText: props.inputText, selectedRootPath: props.selectedRootPath, selectedThreadId: props.selectedThreadId, models: props.models, selectedModel: composerSelection.selectedModel, permissionLevel: props.permissionLevel, composerCommandBridge: props.composerCommandBridge, onInputChange: props.onInputChange, onAppendMentionPath: (path) => appendPaths([path]), onCreateThread: props.onCreateThread, onToggleDiff: props.onToggleDiff, onSelectModel: handleSelectModel, onSelectPermissionLevel: props.onSelectPermissionLevel });
-  const canSend = !props.busy && (props.inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH || attachments.length > 0);
-  const buttonDisabled = props.isResponding ? props.interruptPending : !canSend;
+  const interactionDisabled = props.busy || multiAgentPending;
+  const canSend = !interactionDisabled && (props.inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH || attachments.length > 0);
+  const buttonDisabled = interactionDisabled || (props.isResponding ? props.interruptPending : !canSend);
   const buttonLabel = props.isResponding ? "Pause response" : "Send message";
 
   useToolbarMenuDismissal(commandPalette.open, containerRef, () => void commandPalette.dismiss());
 
   const submit = useCallback((followUpOverride?: FollowUpMode) => {
-    void submitTurn(props, canSend, attachments, composerSelection, clearAttachments, commandPalette.dismiss, planModeEnabled, followUpOverride);
-  }, [attachments, canSend, clearAttachments, commandPalette.dismiss, composerSelection, planModeEnabled, props]);
+    void submitTurn(props, canSend, attachments, composerSelection, clearAttachments, commandPalette.dismiss, collaborationPreset, followUpOverride);
+  }, [attachments, canSend, clearAttachments, collaborationPreset, commandPalette.dismiss, composerSelection, props]);
+
+  const handleToggleMultiAgent = useCallback(async () => {
+    setMenuOpen(false);
+    setMultiAgentPending(true);
+    try {
+      await setMultiAgentEnabled(!multiAgentEnabled);
+    } finally {
+      setMultiAgentPending(false);
+    }
+  }, [multiAgentEnabled, setMultiAgentEnabled]);
 
   return (
     <footer className="composer-area">
       <ComposerQueuedFollowUpsPanel queuedFollowUps={props.queuedFollowUps} onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp} onClearQueuedFollowUps={props.onClearQueuedFollowUps} />
       <div className="composer-card" ref={containerRef}>
+        {multiAgentPending ? <ComposerReloadOverlay /> : null}
         {menuOpen ? <button type="button" className="composer-popover-backdrop" aria-label="Close attachment menu" onClick={() => setMenuOpen(false)} /> : null}
         {commandPalette.open ? <ComposerCommandPalette open={true} title={commandPalette.title} items={commandPalette.items} selectedIndex={commandPalette.selectedIndex} onSelectItem={commandPalette.onSelectItem} /> : null}
         {attachments.length === 0 ? null : <AttachmentDraft attachments={attachments} onRemove={removeAttachment} />}
-        <textarea ref={commandPalette.textareaRef} className="composer-input" placeholder={getComposerPlaceholder(props.selectedRootPath)} value={props.inputText} onPaste={(event) => void handlePaste(event)} onSelect={commandPalette.syncFromTextareaSelection} onKeyDown={(event) => handleInputKeyDown(event, props, commandPalette.handleKeyDown, submit)} onChange={(event) => handleInputChange(event.currentTarget.value, event.currentTarget.selectionStart, props.onInputChange, commandPalette.syncFromTextInput)} />
+        <textarea ref={commandPalette.textareaRef} className="composer-input" placeholder={getComposerPlaceholder(props.selectedRootPath)} value={props.inputText} disabled={interactionDisabled} onPaste={(event) => void handlePaste(event)} onSelect={commandPalette.syncFromTextareaSelection} onKeyDown={(event) => handleInputKeyDown(event, props, commandPalette.handleKeyDown, submit)} onChange={(event) => handleInputChange(event.currentTarget.value, event.currentTarget.selectionStart, props.onInputChange, commandPalette.syncFromTextInput)} />
         <div className="composer-bar">
           <div className="composer-left">
             <div className="composer-plus-anchor">
-              {menuOpen ? <ComposerAttachmentMenu planModeEnabled={planModeEnabled} onAddAttachments={() => handleAddAttachments(openFilePicker, setMenuOpen)} onTogglePlanMode={() => setPlanModeEnabled((value) => !value)} onClose={() => setMenuOpen(false)} /> : null}
-              <button type="button" className={menuOpen ? "composer-mini-btn composer-mini-btn-active" : "composer-mini-btn"} aria-label="Open attachment menu" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => void toggleAttachmentMenu(menuOpen, setMenuOpen, commandPalette.dismiss)}>
+              {menuOpen ? <ComposerAttachmentMenu collaborationPreset={collaborationPreset} serviceTier={composerSelection.selectedServiceTier} multiAgentAvailable={multiAgentAvailable} multiAgentEnabled={multiAgentEnabled} multiAgentDisabled={interactionDisabled || props.isResponding} onAddAttachments={() => handleAddAttachments(openFilePicker, setMenuOpen)} onSelectCollaborationPreset={setCollaborationPreset} onSelectServiceTier={handleSelectServiceTier} onToggleMultiAgent={handleToggleMultiAgent} onClose={() => setMenuOpen(false)} /> : null}
+              <button type="button" className={menuOpen ? "composer-mini-btn composer-mini-btn-active" : "composer-mini-btn"} aria-label="Open attachment menu" aria-haspopup="menu" aria-expanded={menuOpen} disabled={interactionDisabled} onClick={() => void toggleAttachmentMenu(menuOpen, setMenuOpen, commandPalette.dismiss)}>
                 <OfficialPlusIcon className="composer-plus-icon" />
               </button>
             </div>
-            <ComposerModelControls models={props.models} selectedModel={composerSelection.selectedModel} selectedEffort={composerSelection.selectedEffort} supportedEfforts={composerSelection.selectedModelOption?.supportedEfforts ?? []} onSelectModel={handleSelectModel} onSelectEffort={handleSelectEffort} />
+            <ComposerModelControls disabled={interactionDisabled} models={props.models} selectedModel={composerSelection.selectedModel} selectedEffort={composerSelection.selectedEffort} supportedEfforts={composerSelection.selectedModelOption?.supportedEfforts ?? []} onSelectModel={handleSelectModel} onSelectEffort={handleSelectEffort} />
           </div>
           <button type="button" className="send-btn" aria-label={buttonLabel} disabled={buttonDisabled} onClick={() => props.isResponding ? void props.onInterruptTurn() : submit()}>
             {props.isResponding ? <PauseResponseIcon className="send-icon" /> : <SendArrowIcon className="send-icon" />}
@@ -93,6 +114,15 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
       </div>
       <ComposerFooter permissionLevel={props.permissionLevel} gitController={props.gitController} selectedThreadId={props.selectedThreadId} selectedThreadBranch={props.selectedThreadBranch} onSelectPermission={props.onSelectPermissionLevel} onUpdateThreadBranch={props.onUpdateThreadBranch} />
     </footer>
+  );
+}
+
+function ComposerReloadOverlay(): JSX.Element {
+  return (
+    <div className="composer-reload-overlay" role="status" aria-live="polite">
+      <span className="composer-reload-spinner" aria-hidden="true" />
+      <span>正在重载 Codex…</span>
+    </div>
   );
 }
 
@@ -177,7 +207,7 @@ async function submitTurn(
   composerSelection: ReturnType<typeof useComposerSelection>,
   clearAttachments: () => void,
   dismissPalette: () => Promise<void>,
-  planModeEnabled: boolean,
+  collaborationPreset: CollaborationPreset,
   followUpOverride?: FollowUpMode,
 ): Promise<void> {
   if (!canSend) {
@@ -185,7 +215,7 @@ async function submitTurn(
   }
   try {
     await dismissPalette();
-    await props.onSendTurn({ text: props.inputText, attachments, selection: { model: composerSelection.selectedModel, effort: composerSelection.selectedEffort }, permissionLevel: props.permissionLevel, planModeEnabled, followUpOverride });
+    await props.onSendTurn({ text: props.inputText, attachments, selection: { model: composerSelection.selectedModel, effort: composerSelection.selectedEffort, serviceTier: composerSelection.selectedServiceTier }, permissionLevel: props.permissionLevel, collaborationPreset, followUpOverride });
     clearAttachments();
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);

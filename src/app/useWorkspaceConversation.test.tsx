@@ -45,9 +45,9 @@ function createSendOptions(text: string, attachments: ReadonlyArray<ComposerAtta
   return {
     text,
     attachments,
-    selection: { model: "gpt-5.2", effort: "medium" as const },
+    selection: { model: "gpt-5.2", effort: "medium" as const, serviceTier: null },
     permissionLevel: "default" as const,
-    planModeEnabled: false,
+    collaborationPreset: "default" as const,
   };
 }
 
@@ -166,6 +166,48 @@ describe("useWorkspaceConversation", () => {
     expect(result.current.conversation.selectedThreadId).toBe("thread-1");
   });
 
+  it("forwards fast service tier to thread/start and turn/start without sending priority", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "thread/start") {
+        return {
+          requestId: "request-1",
+          result: {
+            thread: createThread(),
+            model: "gpt-5.2",
+            modelProvider: "openai",
+            serviceTier: "fast",
+            cwd: "E:/code/FPGA",
+            approvalPolicy: "on-request",
+            sandbox: { type: "workspace-write", networkAccess: false, writableRoots: [], readableRoots: null },
+            reasoningEffort: "medium",
+          },
+        };
+      }
+      if (input.method === "turn/start") {
+        return { requestId: "request-2", result: { turn: createTurn() } };
+      }
+      throw new Error(`unexpected method: ${input.method}`);
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    await act(async () => {
+      await result.current.conversation.createThread();
+    });
+
+    await act(async () => {
+      await result.current.conversation.sendTurn({
+        ...createSendOptions("first fast turn"),
+        selection: { model: "gpt-5.2", effort: "medium", serviceTier: "fast" }
+      });
+    });
+
+    expect(request).toHaveBeenNthCalledWith(1, expect.objectContaining({ method: "thread/start", params: expect.objectContaining({ serviceTier: "fast" }) }));
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ method: "turn/start", params: expect.objectContaining({ serviceTier: "fast" }) }));
+    expect(JSON.stringify(request.mock.calls[0]?.[0] ?? {})).not.toContain("priority");
+    expect(JSON.stringify(request.mock.calls[1]?.[0] ?? {})).not.toContain("priority");
+  });
+
   it("does not resume the brand new thread after thread/started and still allows interrupt", async () => {
     let resumeCalls = 0;
     const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
@@ -246,7 +288,7 @@ describe("useWorkspaceConversation", () => {
     act(() => {
       result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread(), { resumeState: "resumed" }) });
       result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-1" });
-      result.current.store.dispatch({ type: "conversation/turnPlaceholderAdded", conversationId: "thread-1", params: { input: [{ type: "text", text: "hello", text_elements: [] }], cwd: "E:/code/FPGA", model: "gpt-5.2", effort: "medium", collaborationMode: null } });
+      result.current.store.dispatch({ type: "conversation/turnPlaceholderAdded", conversationId: "thread-1", params: { input: [{ type: "text", text: "hello", text_elements: [] }], cwd: "E:/code/FPGA", model: "gpt-5.2", effort: "medium", serviceTier: null, collaborationMode: null } });
       result.current.store.dispatch({ type: "conversation/turnStarted", conversationId: "thread-1", turn: createTurn() });
       result.current.store.dispatch({ type: "conversation/statusChanged", conversationId: "thread-1", status: "active", activeFlags: [] });
       result.current.store.dispatch({ type: "input/changed", value: "继续修测试" });
@@ -309,7 +351,7 @@ describe("useWorkspaceConversation", () => {
     act(() => {
       result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread(), { resumeState: "resumed" }) });
       result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-1" });
-      result.current.store.dispatch({ type: "conversation/turnPlaceholderAdded", conversationId: "thread-1", params: { input: [{ type: "text", text: "hello", text_elements: [] }], cwd: "E:/code/FPGA", model: "gpt-5.2", effort: "medium", collaborationMode: null } });
+      result.current.store.dispatch({ type: "conversation/turnPlaceholderAdded", conversationId: "thread-1", params: { input: [{ type: "text", text: "hello", text_elements: [] }], cwd: "E:/code/FPGA", model: "gpt-5.2", effort: "medium", serviceTier: null, collaborationMode: null } });
       result.current.store.dispatch({ type: "conversation/turnStarted", conversationId: "thread-1", turn: createTurn() });
       result.current.store.dispatch({ type: "conversation/statusChanged", conversationId: "thread-1", status: "active", activeFlags: [] });
       result.current.store.dispatch({ type: "input/changed", value: "先看失败测试" });
@@ -382,7 +424,7 @@ describe("useWorkspaceConversation", () => {
     act(() => {
       result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread(), { resumeState: "resumed" }) });
       result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-1" });
-      result.current.store.dispatch({ type: "conversation/turnPlaceholderAdded", conversationId: "thread-1", params: { input: [{ type: "text", text: "hello", text_elements: [] }], cwd: "E:/code/FPGA", model: "gpt-5.2", effort: "medium", collaborationMode: null } });
+      result.current.store.dispatch({ type: "conversation/turnPlaceholderAdded", conversationId: "thread-1", params: { input: [{ type: "text", text: "hello", text_elements: [] }], cwd: "E:/code/FPGA", model: "gpt-5.2", effort: "medium", serviceTier: null, collaborationMode: null } });
       result.current.store.dispatch({ type: "conversation/turnStarted", conversationId: "thread-1", turn: createTurn() });
       result.current.store.dispatch({ type: "conversation/statusChanged", conversationId: "thread-1", status: "active", activeFlags: [] });
     });

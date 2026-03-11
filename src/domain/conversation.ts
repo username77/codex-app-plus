@@ -1,6 +1,7 @@
 import type { ReasoningEffort } from "../protocol/generated/ReasoningEffort";
 import type { ResponseItem } from "../protocol/generated/ResponseItem";
 import type { CollaborationMode } from "../protocol/generated/CollaborationMode";
+import type { ServiceTier } from "../protocol/generated/ServiceTier";
 import type { ThreadItem } from "../protocol/generated/v2/ThreadItem";
 import type { ThreadTokenUsage } from "../protocol/generated/v2/ThreadTokenUsage";
 import type { TurnError } from "../protocol/generated/v2/TurnError";
@@ -15,6 +16,7 @@ export interface ConversationTurnParams {
   cwd: string | null;
   model: string | null;
   effort: ReasoningEffort | null;
+  serviceTier: ServiceTier | null;
   collaborationMode: CollaborationMode | null;
 }
 

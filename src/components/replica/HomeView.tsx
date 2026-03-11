@@ -54,6 +54,7 @@ interface HomeViewProps {
   readonly models: ReadonlyArray<ComposerModelOption>;
   readonly defaultModel: string | null;
   readonly defaultEffort: ComposerSelection["effort"];
+  readonly defaultServiceTier?: ComposerSelection["serviceTier"];
   readonly workspaceOpener: WorkspaceOpener;
   readonly embeddedTerminalShell: EmbeddedTerminalShell;
   readonly threadDetailLevel: ThreadDetailLevel;
@@ -76,6 +77,9 @@ interface HomeViewProps {
   readonly onCreateThread: () => Promise<void>;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
   readonly onPersistComposerSelection: (selection: ComposerSelection) => Promise<void>;
+  readonly multiAgentAvailable?: boolean;
+  readonly multiAgentEnabled?: boolean;
+  readonly onSetMultiAgentEnabled?: (enabled: boolean) => Promise<void>;
   readonly onSelectComposerPermissionLevel: (level: ComposerPermissionLevel) => void;
   readonly onUpdateThreadBranch: (branch: string) => Promise<void>;
   readonly onInterruptTurn: () => Promise<void>;
@@ -101,6 +105,7 @@ interface MainContentProps {
   readonly models: ReadonlyArray<ComposerModelOption>;
   readonly defaultModel: string | null;
   readonly defaultEffort: ComposerSelection["effort"];
+  readonly defaultServiceTier?: ComposerSelection["serviceTier"];
   readonly workspaceOpener: WorkspaceOpener;
   readonly selectedRootName: string;
   readonly selectedRootPath: string | null;
@@ -124,6 +129,9 @@ interface MainContentProps {
   readonly onInputChange: (text: string) => void;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
   readonly onPersistComposerSelection: (selection: ComposerSelection) => Promise<void>;
+  readonly multiAgentAvailable?: boolean;
+  readonly multiAgentEnabled?: boolean;
+  readonly onSetMultiAgentEnabled?: (enabled: boolean) => Promise<void>;
   readonly onSelectComposerPermissionLevel: (level: ComposerPermissionLevel) => void;
   readonly onUpdateThreadBranch: (branch: string) => Promise<void>;
   readonly onInterruptTurn: () => Promise<void>;
@@ -209,6 +217,7 @@ function MainContent(props: MainContentProps): JSX.Element {
         models={props.models}
         defaultModel={props.defaultModel}
         defaultEffort={props.defaultEffort}
+        defaultServiceTier={props.defaultServiceTier ?? null}
         selectedRootPath={props.selectedRootPath}
         queuedFollowUps={props.queuedFollowUps}
         followUpQueueMode={props.followUpQueueMode}
@@ -224,6 +233,9 @@ function MainContent(props: MainContentProps): JSX.Element {
         onCreateThread={props.onCreateThread}
         onSendTurn={props.onSendTurn}
         onPersistComposerSelection={props.onPersistComposerSelection}
+        multiAgentAvailable={props.multiAgentAvailable ?? false}
+        multiAgentEnabled={props.multiAgentEnabled ?? false}
+        onSetMultiAgentEnabled={props.onSetMultiAgentEnabled}
         onSelectPermissionLevel={props.onSelectComposerPermissionLevel}
         onToggleDiff={props.onToggleDiff}
         onUpdateThreadBranch={props.onUpdateThreadBranch}
@@ -319,6 +331,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         models={props.models}
         defaultModel={props.defaultModel}
         defaultEffort={props.defaultEffort}
+        defaultServiceTier={props.defaultServiceTier ?? null}
         workspaceOpener={props.workspaceOpener}
         selectedRootName={props.selectedRootName}
         selectedRootPath={props.selectedRootPath}
@@ -342,6 +355,9 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         onInputChange={props.onInputChange}
         onSendTurn={props.onSendTurn}
         onPersistComposerSelection={props.onPersistComposerSelection}
+        multiAgentAvailable={props.multiAgentAvailable ?? false}
+        multiAgentEnabled={props.multiAgentEnabled ?? false}
+        onSetMultiAgentEnabled={props.onSetMultiAgentEnabled}
         onSelectComposerPermissionLevel={props.onSelectComposerPermissionLevel}
         onUpdateThreadBranch={props.onUpdateThreadBranch}
         onInterruptTurn={props.onInterruptTurn}

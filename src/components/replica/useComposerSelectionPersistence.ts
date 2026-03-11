@@ -7,6 +7,7 @@ import {
   resolveConfiguredComposerSelection
 } from "../../app/composerPreferences";
 import type { ReasoningEffort } from "../../protocol/generated/ReasoningEffort";
+import type { ServiceTier } from "../../protocol/generated/ServiceTier";
 
 const PERSIST_DELAY_MS = 250;
 
@@ -15,15 +16,17 @@ function toErrorMessage(error: unknown): string {
 }
 
 function sameSelection(left: ComposerSelection, right: ComposerSelection): boolean {
-  return left.model === right.model && left.effort === right.effort;
+  return left.model === right.model && left.effort === right.effort && left.serviceTier === right.serviceTier;
 }
 
 interface UseComposerSelectionPersistenceOptions {
   readonly models: ReadonlyArray<ComposerModelOption>;
   readonly defaultModel: string | null;
   readonly defaultEffort: ReasoningEffort | null;
+  readonly defaultServiceTier: ServiceTier | null;
   readonly selectedModel: string | null;
   readonly selectedEffort: ReasoningEffort | null;
+  readonly selectedServiceTier: ServiceTier | null;
   readonly replaceSelection: (selection: ComposerSelection) => void;
   readonly persistSelection: (selection: ComposerSelection) => Promise<void>;
 }
@@ -31,18 +34,25 @@ interface UseComposerSelectionPersistenceOptions {
 interface ComposerSelectionPersistence {
   readonly handleSelectModel: (model: string) => void;
   readonly handleSelectEffort: (effort: ReasoningEffort) => void;
+  readonly handleSelectServiceTier: (serviceTier: ServiceTier | null) => void;
 }
 
 export function useComposerSelectionPersistence(
   options: UseComposerSelectionPersistenceOptions
 ): ComposerSelectionPersistence {
   const persistedSelection = useMemo(
-    () => resolveConfiguredComposerSelection(options.models, options.defaultModel, options.defaultEffort),
-    [options.defaultEffort, options.defaultModel, options.models]
+    () => resolveConfiguredComposerSelection(
+      options.models,
+      options.defaultModel,
+      options.defaultEffort,
+      options.defaultServiceTier
+    ),
+    [options.defaultEffort, options.defaultModel, options.defaultServiceTier, options.models]
   );
   const lastPersistedSelectionRef = useRef<ComposerSelection>({
     model: persistedSelection.model,
-    effort: persistedSelection.effort
+    effort: persistedSelection.effort,
+    serviceTier: persistedSelection.serviceTier
   });
   const queuedSelectionRef = useRef<ComposerSelection | null>(null);
   const inFlightSelectionRef = useRef<ComposerSelection | null>(null);
@@ -51,9 +61,10 @@ export function useComposerSelectionPersistence(
   useEffect(() => {
     lastPersistedSelectionRef.current = {
       model: persistedSelection.model,
-      effort: persistedSelection.effort
+      effort: persistedSelection.effort,
+      serviceTier: persistedSelection.serviceTier
     };
-  }, [persistedSelection.effort, persistedSelection.model]);
+  }, [persistedSelection.effort, persistedSelection.model, persistedSelection.serviceTier]);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -109,7 +120,8 @@ export function useComposerSelectionPersistence(
       model,
       effort: nextModel === null
         ? options.selectedEffort
-        : resolveComposerEffort(nextModel, options.selectedEffort)
+        : resolveComposerEffort(nextModel, options.selectedEffort),
+      serviceTier: options.selectedServiceTier
     };
     options.replaceSelection(nextSelection);
     if (sameSelection(nextSelection, lastPersistedSelectionRef.current)) {
@@ -118,7 +130,7 @@ export function useComposerSelectionPersistence(
       return;
     }
     schedulePersist(nextSelection);
-  }, [clearTimer, options.models, options.replaceSelection, options.selectedEffort, schedulePersist]);
+  }, [clearTimer, options.models, options.replaceSelection, options.selectedEffort, options.selectedServiceTier, schedulePersist]);
 
   const handleSelectEffort = useCallback((effort: ReasoningEffort) => {
     if (options.selectedModel === null) {
@@ -127,7 +139,8 @@ export function useComposerSelectionPersistence(
 
     const nextSelection = {
       model: options.selectedModel,
-      effort
+      effort,
+      serviceTier: options.selectedServiceTier
     };
     options.replaceSelection(nextSelection);
     if (sameSelection(nextSelection, lastPersistedSelectionRef.current)) {
@@ -136,7 +149,22 @@ export function useComposerSelectionPersistence(
       return;
     }
     schedulePersist(nextSelection);
-  }, [clearTimer, options.replaceSelection, options.selectedModel, schedulePersist]);
+  }, [clearTimer, options.replaceSelection, options.selectedModel, options.selectedServiceTier, schedulePersist]);
 
-  return { handleSelectModel, handleSelectEffort };
+  const handleSelectServiceTier = useCallback((serviceTier: ServiceTier | null) => {
+    const nextSelection = {
+      model: options.selectedModel,
+      effort: options.selectedEffort,
+      serviceTier
+    };
+    options.replaceSelection(nextSelection);
+    if (sameSelection(nextSelection, lastPersistedSelectionRef.current)) {
+      queuedSelectionRef.current = null;
+      clearTimer();
+      return;
+    }
+    schedulePersist(nextSelection);
+  }, [clearTimer, options.replaceSelection, options.selectedEffort, options.selectedModel, schedulePersist]);
+
+  return { handleSelectModel, handleSelectEffort, handleSelectServiceTier };
 }

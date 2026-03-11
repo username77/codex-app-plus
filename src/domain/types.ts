@@ -3,6 +3,7 @@ import type { PlanType } from "../protocol/generated/PlanType";
 import type { FuzzyFileSearchResult } from "../protocol/generated/FuzzyFileSearchResult";
 import type { ResponseItem } from "../protocol/generated/ResponseItem";
 import type { ConfigReadResponse } from "../protocol/generated/v2/ConfigReadResponse";
+import type { ExperimentalFeature } from "../protocol/generated/v2/ExperimentalFeature";
 import type { McpServerStatus } from "../protocol/generated/v2/McpServerStatus";
 import type { RateLimitSnapshot } from "../protocol/generated/v2/RateLimitSnapshot";
 import type { ThreadRealtimeAudioChunk } from "../protocol/generated/v2/ThreadRealtimeAudioChunk";
@@ -119,6 +120,7 @@ export interface AppState {
   readonly notifications: ReadonlyArray<ReceivedNotification>;
   readonly models: ReadonlyArray<string>;
   readonly collaborationModes: ReadonlyArray<CollaborationModePreset>;
+  readonly experimentalFeatures: ReadonlyArray<ExperimentalFeature>;
   readonly configSnapshot: ConfigReadResponse | null;
   readonly mcpServerStatuses: ReadonlyArray<McpServerStatus>;
   readonly authStatus: AuthStatus;
@@ -179,6 +181,7 @@ export type AppAction =
   | { type: "notification/received"; notification: ReceivedNotification }
   | { type: "models/loaded"; models: ReadonlyArray<string> }
   | { type: "collaborationModes/loaded"; modes: ReadonlyArray<CollaborationModePreset> }
+  | { type: "experimentalFeatures/loaded"; features: ReadonlyArray<ExperimentalFeature> }
   | { type: "config/loaded"; config: ConfigReadResponse }
   | { type: "mcp/statusesLoaded"; statuses: ReadonlyArray<McpServerStatus> }
   | { type: "auth/changed"; status: AuthStatus; mode: string | null }
@@ -218,6 +221,7 @@ export const INITIAL_STATE: AppState = {
   notifications: [],
   models: [],
   collaborationModes: [],
+  experimentalFeatures: [],
   configSnapshot: null,
   mcpServerStatuses: [],
   authStatus: "unknown",

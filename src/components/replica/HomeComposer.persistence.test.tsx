@@ -124,7 +124,7 @@ describe("HomeComposer persistence", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     await waitFor(() => expect(onSendTurn).toHaveBeenCalledWith(expect.objectContaining({
-      selection: expect.objectContaining({ model: "custom-model", effort: "high" }),
+      selection: expect.objectContaining({ model: "custom-model", effort: "high", serviceTier: null }),
     })));
   });
 
@@ -134,7 +134,7 @@ describe("HomeComposer persistence", () => {
     fireEvent.click(screen.getByRole("button", { name: /选择模型/ }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "GPT-5.2" }));
 
-    await waitFor(() => expect(onPersistComposerSelection).toHaveBeenCalledWith({ model: "gpt-5.2", effort: "high" }));
+    await waitFor(() => expect(onPersistComposerSelection).toHaveBeenCalledWith({ model: "gpt-5.2", effort: "high", serviceTier: null }));
   });
 
   it("persists effort changes without altering the current model", async () => {
@@ -143,7 +143,7 @@ describe("HomeComposer persistence", () => {
     fireEvent.click(screen.getByRole("button", { name: /选择思考强度/ }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "高" }));
 
-    await waitFor(() => expect(onPersistComposerSelection).toHaveBeenCalledWith({ model: "gpt-5.4", effort: "high" }));
+    await waitFor(() => expect(onPersistComposerSelection).toHaveBeenCalledWith({ model: "gpt-5.4", effort: "high", serviceTier: null }));
   });
 
   it("rolls back to the last persisted selection when persistence fails", async () => {
@@ -163,7 +163,7 @@ describe("HomeComposer persistence", () => {
 
     expect(consoleSpy).toHaveBeenCalled();
     await waitFor(() => expect(onSendTurn).toHaveBeenCalledWith(expect.objectContaining({
-      selection: expect.objectContaining({ model: "custom-model", effort: "high" }),
+      selection: expect.objectContaining({ model: "custom-model", effort: "high", serviceTier: null }),
     })));
   });
 });

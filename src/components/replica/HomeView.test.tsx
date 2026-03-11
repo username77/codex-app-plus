@@ -157,16 +157,31 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
   );
 }
 describe("HomeView", () => {
-  it("submits with plan mode after toggling the attachment switch", async () => {
+  it("submits with plan mode after selecting the collaboration preset", async () => {
     const onSendTurn = vi.fn().mockResolvedValue(undefined);
     renderHomeView({ onSendTurn });
     fireEvent.click(screen.getByRole("button", { name: "Open attachment menu" }));
-    fireEvent.click(await screen.findByRole("switch", { name: "Toggle plan mode" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Plan" }));
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
     await waitFor(() => expect(onSendTurn).toHaveBeenCalledWith(
       expect.objectContaining({
-        planModeEnabled: true,
-        selection: expect.objectContaining({ model: "gpt-5.2", effort: "xhigh" })
+        collaborationPreset: "plan",
+        selection: expect.objectContaining({ model: "gpt-5.2", effort: "xhigh", serviceTier: null })
+      })
+    ));
+  });
+
+  it("submits with the selected fast service tier", async () => {
+    const onSendTurn = vi.fn().mockResolvedValue(undefined);
+    renderHomeView({ onSendTurn });
+
+    fireEvent.click(screen.getByRole("button", { name: "Open attachment menu" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Fast" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    await waitFor(() => expect(onSendTurn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selection: expect.objectContaining({ model: "gpt-5.2", effort: "xhigh", serviceTier: "fast" })
       })
     ));
   });
@@ -416,8 +431,9 @@ describe("HomeView", () => {
           text: "continue fix",
           model: "gpt-5.2",
           effort: "medium",
+          serviceTier: null,
           permissionLevel: "default",
-          planModeEnabled: false,
+          collaborationPreset: "default",
           mode: "queue",
           createdAt: "2026-03-06T09:00:00.000Z"
         }

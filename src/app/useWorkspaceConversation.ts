@@ -4,6 +4,7 @@ import type { ComposerSelection } from "./composerPreferences";
 import type { HostBridge } from "../bridge/types";
 import type {
   CollaborationModePreset,
+  CollaborationPreset,
   ComposerAttachment,
   FollowUpMode,
   QueuedFollowUp,
@@ -37,7 +38,7 @@ export interface SendTurnOptions {
   readonly attachments: ReadonlyArray<ComposerAttachment>;
   readonly selection: ComposerSelection;
   readonly permissionLevel: ComposerPermissionLevel;
-  readonly planModeEnabled: boolean;
+  readonly collaborationPreset: CollaborationPreset;
   readonly followUpOverride?: FollowUpMode | null;
 }
 interface WorkspaceConversationController {
@@ -75,8 +76,9 @@ function createQueuedFollowUp(options: SendTurnOptions): QueuedFollowUp {
     attachments: options.attachments,
     model: options.selection.model,
     effort: options.selection.effort,
+    serviceTier: options.selection.serviceTier,
     permissionLevel: options.permissionLevel,
-    planModeEnabled: options.planModeEnabled,
+    collaborationPreset: options.collaborationPreset,
     mode: options.followUpOverride ?? "queue",
     createdAt: new Date().toISOString(),
   };
@@ -169,10 +171,21 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     dispatch({ type: "conversation/draftOpened", draft: { workspacePath: options.selectedRootPath, createdAt: new Date().toISOString() } });
   }, [dispatch, options.selectedRootPath]);
   const startTurn = useCallback(async (conversationId: string, sendOptions: SendTurnOptions, cwdOverride: string | null) => {
-    const collaborationMode = sendOptions.planModeEnabled ? resolvePlanMode(options.collaborationModes, sendOptions.selection) : undefined;
+    const collaborationMode = sendOptions.collaborationPreset === "plan"
+      ? resolvePlanMode(options.collaborationModes, sendOptions.selection)
+      : undefined;
     const input = createInput(sendOptions.text, sendOptions.attachments);
-    dispatch({ type: "conversation/turnPlaceholderAdded", conversationId, params: { input, cwd: cwdOverride, model: sendOptions.selection.model, effort: sendOptions.selection.effort, collaborationMode: collaborationMode ?? null } });
-    const params: TurnStartParams = { threadId: conversationId, model: sendOptions.selection.model ?? undefined, effort: sendOptions.selection.effort ?? undefined, cwd: cwdOverride ?? undefined, input, collaborationMode, ...createTurnPermissionOverrides(sendOptions.permissionLevel) };
+    dispatch({ type: "conversation/turnPlaceholderAdded", conversationId, params: { input, cwd: cwdOverride, model: sendOptions.selection.model, effort: sendOptions.selection.effort, serviceTier: sendOptions.selection.serviceTier, collaborationMode: collaborationMode ?? null } });
+    const params: TurnStartParams = {
+      threadId: conversationId,
+      model: sendOptions.selection.model ?? undefined,
+      effort: sendOptions.selection.effort ?? undefined,
+      serviceTier: sendOptions.selection.serviceTier ?? null,
+      cwd: cwdOverride ?? undefined,
+      input,
+      collaborationMode,
+      ...createTurnPermissionOverrides(sendOptions.permissionLevel)
+    };
     const response = (await options.hostBridge.rpc.request({ method: "turn/start", params })).result as TurnStartResponse;
     dispatch({ type: "conversation/turnStarted", conversationId, turn: response.turn });
     dispatch({ type: "conversation/touched", conversationId, updatedAt: new Date().toISOString() });
@@ -183,7 +196,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
       throw new Error("请先选择工作区。");
     }
     const prewarmedResponse = await consumePrewarmedThread(workspacePath);
-    const response = prewarmedResponse ?? (await options.hostBridge.rpc.request({ method: "thread/start", params: { model: sendOptions.selection.model ?? undefined, cwd: workspacePath, experimentalRawEvents: false, persistExtendedHistory: true, ...createThreadPermissionOverrides(sendOptions.permissionLevel) } })).result as ThreadStartResponse;
+    const response = prewarmedResponse ?? (await options.hostBridge.rpc.request({ method: "thread/start", params: { model: sendOptions.selection.model ?? undefined, serviceTier: sendOptions.selection.serviceTier ?? null, cwd: workspacePath, experimentalRawEvents: false, persistExtendedHistory: true, ...createThreadPermissionOverrides(sendOptions.permissionLevel) } })).result as ThreadStartResponse;
     const conversation = createConversationFromThread(response.thread, { hidden: false, resumeState: "resumed" });
     const localPreviewTitle = pickConversationTitle(conversation.title, deriveConversationPreviewTitle(createInput(sendOptions.text, sendOptions.attachments)));
     dispatch({ type: "conversation/upserted", conversation });
@@ -226,7 +239,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     drainingConversationIds.current.add(conversationId);
     try {
       await ensureConversationResumed(conversationId);
-      await startTurn(conversationId, { text: queued.text, attachments: queued.attachments, selection: { model: queued.model, effort: queued.effort }, permissionLevel: queued.permissionLevel, planModeEnabled: queued.planModeEnabled, followUpOverride: queued.mode }, conversation.cwd ?? options.selectedRootPath);
+      await startTurn(conversationId, { text: queued.text, attachments: queued.attachments, selection: { model: queued.model, effort: queued.effort, serviceTier: queued.serviceTier }, permissionLevel: queued.permissionLevel, collaborationPreset: queued.collaborationPreset, followUpOverride: queued.mode }, conversation.cwd ?? options.selectedRootPath);
       dispatch({ type: "followUp/dequeued", conversationId, followUpId: queued.id });
     } finally {
       drainingConversationIds.current.delete(conversationId);

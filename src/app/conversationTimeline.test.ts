@@ -57,7 +57,7 @@ describe("conversationTimeline", () => {
   it("同一 turn 同时存在 params.input 与 userMessage item 时只生成一个用户气泡", () => {
     const conversation = createConversation([
       createTurn({
-        params: { input: [{ type: "text", text: "from params", text_elements: [] }], cwd: null, model: null, effort: null, collaborationMode: null },
+        params: { input: [{ type: "text", text: "from params", text_elements: [] }], cwd: null, model: null, effort: null, serviceTier: null, collaborationMode: null },
         items: [{ item: { type: "userMessage", id: "user-item-1", content: [{ type: "text", text: "from item", text_elements: [] }] }, approvalRequestId: null, outputText: "", terminalInteractions: [], rawResponse: null, progressMessages: [] }],
       }),
     ]);
@@ -74,7 +74,7 @@ describe("conversationTimeline", () => {
   it("没有 userMessage item 时回退到 params.input 作为用户起始气泡", () => {
     const conversation = createConversation([
       createTurn({
-        params: { input: [{ type: "text", text: "fallback input", text_elements: [] }], cwd: null, model: null, effort: null, collaborationMode: null },
+        params: { input: [{ type: "text", text: "fallback input", text_elements: [] }], cwd: null, model: null, effort: null, serviceTier: null, collaborationMode: null },
       }),
     ]);
 
@@ -88,7 +88,7 @@ describe("conversationTimeline", () => {
   it("保留 turn.items 中 assistant、工具与 webSearch 的原始顺序", () => {
     const conversation = createConversation([
       createTurn({
-        params: { input: [{ type: "text", text: "hello", text_elements: [] }], cwd: null, model: null, effort: null, collaborationMode: null },
+        params: { input: [{ type: "text", text: "hello", text_elements: [] }], cwd: null, model: null, effort: null, serviceTier: null, collaborationMode: null },
         items: [
           { item: { type: "agentMessage", id: "assistant-1", text: "先说结论", phase: null }, approvalRequestId: null, outputText: "", terminalInteractions: [], rawResponse: null, progressMessages: [] },
           { item: { type: "commandExecution", id: "command-1", command: "pnpm test", cwd: "E:/code/codex-app-plus", processId: "proc-1", status: "inProgress", commandActions: [], aggregatedOutput: null, exitCode: null, durationMs: null }, approvalRequestId: null, outputText: "running", terminalInteractions: [], rawResponse: null, progressMessages: [] },
@@ -107,7 +107,7 @@ describe("conversationTimeline", () => {
   it("keeps assistant content visible when a turn also stores token usage", () => {
     const conversation = createConversation([
       createTurn({
-        params: { input: [{ type: "text", text: "hello", text_elements: [] }], cwd: null, model: null, effort: null, collaborationMode: null },
+        params: { input: [{ type: "text", text: "hello", text_elements: [] }], cwd: null, model: null, effort: null, serviceTier: null, collaborationMode: null },
         items: [{ item: { type: "agentMessage", id: "assistant-1", text: "assistant reply", phase: null }, approvalRequestId: null, outputText: "", terminalInteractions: [], rawResponse: null, progressMessages: [] }],
         tokenUsage: TOKEN_USAGE,
       }),

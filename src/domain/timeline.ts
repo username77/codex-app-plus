@@ -1,5 +1,6 @@
 import type { ComposerPermissionLevel } from "../app/composerPermission";
 import type { ReasoningEffort } from "../protocol/generated/ReasoningEffort";
+import type { ServiceTier } from "../protocol/generated/ServiceTier";
 import type { Tool } from "../protocol/generated/Tool";
 import type { ModeKind } from "../protocol/generated/ModeKind";
 import type { MessagePhase } from "../protocol/generated/MessagePhase";
@@ -31,6 +32,7 @@ import type {
 export type MessageStatus = "streaming" | "done";
 export type ThreadRuntimeStatus = "notLoaded" | "idle" | "systemError" | "active";
 export type ThreadActiveFlag = "waitingOnApproval" | "waitingOnUserInput";
+export type CollaborationPreset = "default" | "plan";
 export type FollowUpMode = "queue" | "steer" | "interrupt";
 export type ComposerEnterBehavior = "enter" | "cmdIfMultiline";
 export type NoticeLevel = "info" | "warning" | "error";
@@ -211,8 +213,9 @@ export interface QueuedFollowUp {
   readonly attachments: ReadonlyArray<ComposerAttachment>;
   readonly model: string | null;
   readonly effort: ReasoningEffort | null;
+  readonly serviceTier: ServiceTier | null;
   readonly permissionLevel: ComposerPermissionLevel;
-  readonly planModeEnabled: boolean;
+  readonly collaborationPreset: CollaborationPreset;
   readonly mode: FollowUpMode;
   readonly createdAt: string;
 }

@@ -63,7 +63,7 @@ function createConversationTurn(overrides?: Partial<ConversationTurnState>): Con
     turnId: "turn-1",
     status: "completed",
     error: null,
-    params: { input: [{ type: "text", text: "请继续", text_elements: [] }], cwd: null, model: null, effort: null, collaborationMode: null },
+    params: { input: [{ type: "text", text: "请继续", text_elements: [] }], cwd: null, model: null, effort: null, serviceTier: null, collaborationMode: null },
     items: [{ item: { type: "agentMessage", id: "assistant-1", text: "已经完成。", phase: null }, approvalRequestId: null, outputText: "", terminalInteractions: [], rawResponse: null, progressMessages: [] }],
     turnStartedAtMs: null,
     planExplanation: null,

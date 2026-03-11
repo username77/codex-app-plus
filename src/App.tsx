@@ -1,7 +1,8 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { Suspense, lazy, useCallback, useState } from "react";
+import { Suspense, lazy, useCallback, useMemo, useState } from "react";
 import type { ComposerSelection } from "./app/composerPreferences";
 import { readUserConfigWriteTarget } from "./app/configWriteTarget";
+import { selectMultiAgentFeatureState } from "./app/experimentalFeatures";
 import { useAppController } from "./app/useAppController";
 import { useAppPreferences } from "./app/useAppPreferences";
 import { useComposerPicker } from "./app/useComposerPicker";
@@ -65,6 +66,10 @@ export function App({ hostBridge }: AppProps): JSX.Element {
     collaborationModes: controller.state.collaborationModes,
     followUpQueueMode: preferences.followUpQueueMode,
   });
+  const multiAgentState = useMemo(
+    () => selectMultiAgentFeatureState(controller.state.experimentalFeatures, controller.state.configSnapshot),
+    [controller.state.configSnapshot, controller.state.experimentalFeatures]
+  );
 
   const openConfigToml = useCallback(async () => {
     try {
@@ -157,7 +162,8 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       await controller.batchWriteConfigSnapshot({
         edits: [
           { keyPath: "model", value: selection.model, mergeStrategy: "upsert" },
-          { keyPath: "model_reasoning_effort", value: selection.effort, mergeStrategy: "upsert" }
+          { keyPath: "model_reasoning_effort", value: selection.effort, mergeStrategy: "upsert" },
+          { keyPath: "service_tier", value: selection.serviceTier, mergeStrategy: "replace" }
         ],
         filePath: writeTarget.filePath,
         expectedVersion: writeTarget.expectedVersion
@@ -165,6 +171,15 @@ export function App({ hostBridge }: AppProps): JSX.Element {
     },
     [controller.batchWriteConfigSnapshot, controller.state.configSnapshot]
   );
+  const setMultiAgentEnabled = useCallback(async (enabled: boolean) => {
+    try {
+      await controller.setMultiAgentEnabled(enabled);
+    } catch (error) {
+      console.error("切换多代理失败", error);
+      window.alert(`切换多代理失败: ${String(error)}`);
+      throw error;
+    }
+  }, [controller]);
 
   const rateLimitSummary = controller.state.rateLimits === null
     ? null
@@ -225,6 +240,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       models={composerPicker.models}
       defaultModel={composerPicker.defaultModel}
       defaultEffort={composerPicker.defaultEffort}
+      defaultServiceTier={composerPicker.defaultServiceTier}
       workspaceOpener={preferences.workspaceOpener}
       embeddedTerminalShell={preferences.embeddedTerminalShell}
       threadDetailLevel={preferences.threadDetailLevel}
@@ -248,6 +264,9 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       onCreateThread={createWorkspaceThread}
       onSendTurn={sendWorkspaceTurn}
       onPersistComposerSelection={persistComposerSelection}
+      multiAgentAvailable={multiAgentState.available}
+      multiAgentEnabled={multiAgentState.enabled}
+      onSetMultiAgentEnabled={setMultiAgentEnabled}
       onUpdateThreadBranch={conversation.updateThreadBranch}
       onInterruptTurn={conversation.interruptActiveTurn}
       onAddRoot={addRoot}

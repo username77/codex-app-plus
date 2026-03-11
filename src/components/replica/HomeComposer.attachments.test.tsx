@@ -176,4 +176,43 @@ describe("HomeComposer attachments", () => {
       attachments: [expect.objectContaining({ kind: "file", name: "notes.md", source: "mention" })],
     }));
   });
+
+  it("shows and toggles multi-agent when available", async () => {
+    const onSetMultiAgentEnabled = vi.fn().mockResolvedValue(undefined);
+    renderComposer({ multiAgentAvailable: true, multiAgentEnabled: false, onSetMultiAgentEnabled });
+
+    fireEvent.click(screen.getByRole("button", { name: "Open attachment menu" }));
+    fireEvent.click(await screen.findByRole("switch", { name: "Toggle multi-agent" }));
+
+    await waitFor(() => expect(onSetMultiAgentEnabled).toHaveBeenCalledWith(true));
+  });
+
+  it("disables multi-agent while a turn is responding", async () => {
+    renderComposer({ multiAgentAvailable: true, multiAgentEnabled: false, isResponding: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Open attachment menu" }));
+
+    expect(await screen.findByRole("switch", { name: "Toggle multi-agent" })).toBeDisabled();
+  });
+
+  it("shows a reload overlay and blocks composer interactions while multi-agent is reloading", async () => {
+    const resolveToggleRef: { current: null | (() => void) } = { current: null };
+    const onSetMultiAgentEnabled = vi.fn().mockImplementation(
+      () => new Promise<void>((resolve) => {
+        resolveToggleRef.current = resolve;
+      })
+    );
+    renderComposer({ multiAgentAvailable: true, multiAgentEnabled: false, onSetMultiAgentEnabled });
+
+    fireEvent.click(screen.getByRole("button", { name: "Open attachment menu" }));
+    fireEvent.click(await screen.findByRole("switch", { name: "Toggle multi-agent" }));
+
+    await waitFor(() => expect(onSetMultiAgentEnabled).toHaveBeenCalledWith(true));
+    expect(screen.getByText("正在重载 Codex…")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Describe the task, ask a question, or queue a follow-up")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
+
+    resolveToggleRef.current?.();
+    await waitFor(() => expect(screen.queryByText("正在重载 Codex…")).toBeNull());
+  });
 });

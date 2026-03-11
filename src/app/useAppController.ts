@@ -19,12 +19,14 @@ import {
   batchWriteConfigAndRefresh,
   type ConfigMutationResult,
   type ConfigSnapshotMutationResult,
+  listAllExperimentalFeatures,
   listAllMcpServerStatuses,
   readConfigSnapshot,
   refreshMcpData,
   type McpRefreshResult,
   writeConfigValueAndRefresh,
 } from "./configOperations";
+import { readUserConfigWriteTarget } from "./configWriteTarget";
 import { applyAppServerNotification } from "./appControllerNotifications";
 import { createConversationFromThreadSummary } from "./conversationState";
 import { FrameTextDeltaQueue } from "./frameTextDeltaQueue";
@@ -48,6 +50,7 @@ interface AppController {
   writeConfigValue: (params: ConfigValueWriteParams) => Promise<ConfigMutationResult>;
   batchWriteConfig: (params: ConfigBatchWriteParams) => Promise<ConfigMutationResult>;
   batchWriteConfigSnapshot: (params: ConfigBatchWriteParams) => Promise<ConfigSnapshotMutationResult>;
+  setMultiAgentEnabled: (enabled: boolean) => Promise<void>;
   startWindowsSandboxSetup: (mode: WindowsSandboxSetupMode) => Promise<WindowsSandboxSetupStartResponse>;
   login: () => Promise<void>;
   resolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
@@ -117,19 +120,21 @@ async function loadRateLimits(client: ProtocolClient, dispatch: (action: AppActi
 }
 
 async function loadBootstrapSnapshot(client: ProtocolClient, hostBridge: HostBridge, dispatch: (action: AppAction) => void): Promise<void> {
-  const [, , , , config, collaborationModes, statuses] = await Promise.all([
+  const [, , , , config, collaborationModes, experimentalFeatures, statuses] = await Promise.all([
     loadAuthStatus(client, dispatch),
     loadConversationCatalog(client, hostBridge, dispatch),
     loadAccountSnapshot(client, dispatch),
     loadRateLimits(client, dispatch),
     client.request("config/read", { includeLayers: true }),
     client.request("collaborationMode/list", {}),
+    listAllExperimentalFeatures(client),
     listAllMcpServerStatuses(client),
   ]);
   dispatch({ type: "config/loaded", config: config as ConfigReadResponse });
   dispatch({ type: "mcp/statusesLoaded", statuses: statuses as ReadonlyArray<McpServerStatus> });
   const response = collaborationModes as CollaborationModeListResponse;
   dispatch({ type: "collaborationModes/loaded", modes: response.data.map((mode) => ({ name: mode.name, mode: mode.mode, model: mode.model, reasoningEffort: mode.reasoning_effort })) });
+  dispatch({ type: "experimentalFeatures/loaded", features: experimentalFeatures });
 }
 
 async function startOrReuseAppServer(client: ProtocolClient): Promise<void> {
@@ -345,6 +350,19 @@ export function useAppController(hostBridge: HostBridge): AppController {
   const writeConfigValue = useCallback((params: ConfigValueWriteParams) => runBusy(() => writeConfigValueAndRefresh(client, dispatch, params)), [client, dispatch, runBusy]);
   const batchWriteConfig = useCallback((params: ConfigBatchWriteParams) => runBusy(() => batchWriteConfigAndRefresh(client, dispatch, params)), [client, dispatch, runBusy]);
   const batchWriteConfigSnapshot = useCallback((params: ConfigBatchWriteParams) => runBusy(() => batchWriteConfigAndReadSnapshot(client, dispatch, params)), [client, dispatch, runBusy]);
+  const setMultiAgentEnabled = useCallback(async (enabled: boolean) => {
+    await runBusy(async () => {
+      const writeTarget = readUserConfigWriteTarget(state.configSnapshot);
+      await client.request("config/value/write", {
+        keyPath: "features.multi_agent",
+        value: enabled,
+        mergeStrategy: "replace",
+        filePath: writeTarget.filePath,
+        expectedVersion: writeTarget.expectedVersion
+      });
+      await bootstrap(true);
+    });
+  }, [bootstrap, client, runBusy, state.configSnapshot]);
   const startWindowsSandboxSetup = useCallback((mode: WindowsSandboxSetupMode) => startWindowsSandboxSetupRequest(client, dispatch, mode), [client, dispatch]);
 
   const resolveServerRequest = useCallback(async (resolution: ServerRequestResolution) => {
@@ -355,5 +373,5 @@ export function useAppController(hostBridge: HostBridge): AppController {
     dispatch({ type: "serverRequest/resolved", requestId: resolution.requestId });
   }, [client, dispatch, hostBridge.app]);
 
-  return { state, setInput: (text) => dispatch({ type: "input/changed", value: text }), retryConnection: () => bootstrap(true), refreshConfigSnapshot: refreshConfig, refreshMcpData: refreshMcp, listMcpServerStatuses: listStatuses, writeConfigValue, batchWriteConfig, batchWriteConfigSnapshot, startWindowsSandboxSetup, login, resolveServerRequest };
+  return { state, setInput: (text) => dispatch({ type: "input/changed", value: text }), retryConnection: () => bootstrap(true), refreshConfigSnapshot: refreshConfig, refreshMcpData: refreshMcp, listMcpServerStatuses: listStatuses, writeConfigValue, batchWriteConfig, batchWriteConfigSnapshot, setMultiAgentEnabled, startWindowsSandboxSetup, login, resolveServerRequest };
 }

@@ -1,5 +1,6 @@
 import type { HostBridge } from "../bridge/types";
 import type { ReasoningEffort } from "../protocol/generated/ReasoningEffort";
+import type { ServiceTier } from "../protocol/generated/ServiceTier";
 import type { Model } from "../protocol/generated/v2/Model";
 import type { ModelListResponse } from "../protocol/generated/v2/ModelListResponse";
 
@@ -7,12 +8,15 @@ const MODEL_PAGE_SIZE = 100;
 const PRIMARY_COMPOSER_MODEL_COUNT = 5;
 const REASONING_EFFORT_VALUES = ["none", "minimal", "low", "medium", "high", "xhigh"] as const satisfies ReadonlyArray<ReasoningEffort>;
 const REASONING_EFFORT_SET = new Set<ReasoningEffort>(REASONING_EFFORT_VALUES);
+const SERVICE_TIER_VALUES = ["fast", "flex"] as const satisfies ReadonlyArray<ServiceTier>;
+const SERVICE_TIER_SET = new Set<ServiceTier>(SERVICE_TIER_VALUES);
 
 export const DEFAULT_COMPOSER_MODEL_LABEL = "gpt-5.4";
 
 export interface ComposerSelection {
   readonly model: string | null;
   readonly effort: ReasoningEffort | null;
+  readonly serviceTier: ServiceTier | null;
 }
 
 export interface ResolvedComposerSelection extends ComposerSelection {
@@ -51,6 +55,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function toReasoningEffort(value: unknown): ReasoningEffort | null {
   return typeof value === "string" && REASONING_EFFORT_SET.has(value as ReasoningEffort)
     ? (value as ReasoningEffort)
+    : null;
+}
+
+function toServiceTier(value: unknown): ServiceTier | null {
+  return typeof value === "string" && SERVICE_TIER_SET.has(value as ServiceTier)
+    ? (value as ServiceTier)
     : null;
 }
 
@@ -109,12 +119,13 @@ export function partitionComposerModels(
 
 export function readComposerSelectionFromConfig(configSnapshot: unknown): ComposerSelection {
   if (!isRecord(configSnapshot) || !isRecord(configSnapshot.config)) {
-    return { model: null, effort: null };
+    return { model: null, effort: null, serviceTier: null };
   }
 
   return {
     model: typeof configSnapshot.config.model === "string" ? configSnapshot.config.model : null,
-    effort: toReasoningEffort(configSnapshot.config.model_reasoning_effort)
+    effort: toReasoningEffort(configSnapshot.config.model_reasoning_effort),
+    serviceTier: toServiceTier(configSnapshot.config.service_tier)
   };
 }
 
@@ -157,13 +168,15 @@ export function resolveComposerEffort(
 export function resolveConfiguredComposerSelection(
   models: ReadonlyArray<ComposerModelOption>,
   preferredModel: string | null,
-  preferredEffort: ReasoningEffort | null
+  preferredEffort: ReasoningEffort | null,
+  preferredServiceTier: ServiceTier | null
 ): ResolvedComposerSelection {
   if (preferredModel !== null) {
     const matchedModel = findComposerModel(models, preferredModel);
     return {
       model: preferredModel,
       effort: matchedModel === null ? preferredEffort : resolveComposerEffort(matchedModel, preferredEffort),
+      serviceTier: preferredServiceTier,
       modelOption: matchedModel
     };
   }
@@ -172,6 +185,7 @@ export function resolveConfiguredComposerSelection(
   return {
     model: fallbackModel?.value ?? null,
     effort: resolveComposerEffort(fallbackModel, preferredEffort),
+    serviceTier: preferredServiceTier,
     modelOption: fallbackModel
   };
 }

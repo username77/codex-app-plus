@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { HostBridge } from "../bridge/types";
 import type { ReasoningEffort } from "../protocol/generated/ReasoningEffort";
+import type { ServiceTier } from "../protocol/generated/ServiceTier";
 import {
   type ComposerModelOption,
   listComposerModels,
@@ -11,6 +12,7 @@ interface ComposerPickerState {
   readonly models: ReadonlyArray<ComposerModelOption>;
   readonly defaultModel: string | null;
   readonly defaultEffort: ReasoningEffort | null;
+  readonly defaultServiceTier: ServiceTier | null;
 }
 
 export function useComposerPicker(
@@ -48,6 +50,7 @@ export function useComposerPicker(
   return {
     models,
     defaultModel: defaults.model,
-    defaultEffort: defaults.effort
+    defaultEffort: defaults.effort,
+    defaultServiceTier: defaults.serviceTier
   };
 }

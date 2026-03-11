@@ -23,11 +23,13 @@ describe("useComposerSelection", () => {
 
     expect(result.current.selectedModel).toBe("custom-model");
     expect(result.current.selectedEffort).toBe("high");
+    expect(result.current.selectedServiceTier).toBeNull();
 
     rerender({ models: MODELS });
 
     expect(result.current.selectedModel).toBe("custom-model");
     expect(result.current.selectedEffort).toBe("high");
+    expect(result.current.selectedServiceTier).toBeNull();
     expect(result.current.selectedModelOption).toBeNull();
   });
 
@@ -36,6 +38,7 @@ describe("useComposerSelection", () => {
 
     expect(result.current.selectedModel).toBe("gpt-5.2");
     expect(result.current.selectedEffort).toBe("medium");
+    expect(result.current.selectedServiceTier).toBeNull();
     expect(result.current.selectedModelOption?.value).toBe("gpt-5.2");
   });
 });
