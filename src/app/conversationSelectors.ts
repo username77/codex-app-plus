@@ -28,8 +28,12 @@ export function getActiveTurnId(conversation: ConversationState | null): string 
   return activeTurn?.turnId ?? null;
 }
 
+export function hasInProgressTurn(conversation: ConversationState | null): boolean {
+  return conversation?.turns.some((turn) => turn.status === "inProgress") ?? false;
+}
+
 export function isConversationStreaming(conversation: ConversationState | null): boolean {
-  return getActiveTurnId(conversation) !== null || conversation?.status === "active";
+  return hasInProgressTurn(conversation) || conversation?.status === "active";
 }
 
 export function hasVisibleConversationContent(conversation: ConversationState | null): boolean {

@@ -11,6 +11,14 @@ import { OutputDeltaQueue } from "./outputDeltaQueue";
 import { useWorkspaceConversation } from "./useWorkspaceConversation";
 import { createComposerFuzzySessionId } from "../components/replica/composerCommandBridge";
 
+function createDeferred<T>() {
+  let resolvePromise: (value: T | PromiseLike<T>) => void = () => undefined;
+  const promise = new Promise<T>((resolve) => {
+    resolvePromise = resolve;
+  });
+  return { promise, resolve: resolvePromise };
+}
+
 function Wrapper(props: PropsWithChildren): JSX.Element {
   return <AppStoreProvider>{props.children}</AppStoreProvider>;
 }
@@ -188,6 +196,53 @@ describe("useWorkspaceConversation", () => {
     expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ method: "turn/start", params: expect.objectContaining({ approvalPolicy: "on-request", sandboxPolicy: expect.objectContaining({ type: "workspaceWrite", networkAccess: false }) }) }));
     expect(result.current.conversation.draftActive).toBe(false);
     expect(result.current.conversation.selectedThreadId).toBe("thread-1");
+  });
+
+  it("keeps the first pending turn in responding state before turn/start resolves", async () => {
+    const turnStartDeferred = createDeferred<{ requestId: string; result: { turn: ReturnType<typeof createTurn> } }>();
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "thread/start") {
+        return {
+          requestId: "request-1",
+          result: {
+            thread: createThread(),
+            model: "gpt-5.2",
+            modelProvider: "openai",
+            serviceTier: null,
+            cwd: "E:/code/FPGA",
+            approvalPolicy: "on-request",
+            sandbox: { type: "workspace-write", networkAccess: false, writableRoots: [], readableRoots: null },
+            reasoningEffort: "medium",
+          },
+        };
+      }
+      if (input.method === "turn/start") {
+        return turnStartDeferred.promise;
+      }
+      throw new Error(`unexpected method: ${input.method}`);
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+    let sendPromise: Promise<void> | null = null;
+
+    await act(async () => {
+      await result.current.conversation.createThread();
+    });
+
+    await act(async () => {
+      sendPromise = result.current.conversation.sendTurn(createSendOptions("first turn"));
+      await Promise.resolve();
+    });
+
+    expect(result.current.conversation.selectedThreadId).toBe("thread-1");
+    expect(result.current.conversation.isResponding).toBe(true);
+
+    await act(async () => {
+      turnStartDeferred.resolve({ requestId: "request-2", result: { turn: createTurn() } });
+      await sendPromise;
+    });
+
+    expect(result.current.conversation.isResponding).toBe(true);
   });
 
   it("forwards fast service tier to thread/start and turn/start without sending priority", async () => {
@@ -476,6 +531,48 @@ describe("useWorkspaceConversation", () => {
 
     expect(result.current.conversation.isResponding).toBe(false);
     expect(result.current.conversation.interruptPending).toBe(false);
+  });
+
+  it("does not clean up a non-selected thread with only a placeholder in-progress turn", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "thread/backgroundTerminals/clean") {
+        return { requestId: "clean-1", result: {} };
+      }
+      if (input.method === "thread/unsubscribe") {
+        return { requestId: "unsubscribe-1", result: { status: "unsubscribed" } };
+      }
+      return { requestId: "noop", result: {} };
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread({ id: "thread-1" }), { resumeState: "resumed" }) });
+      result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread({ id: "thread-2", preview: "other" }), { resumeState: "resumed" }) });
+      result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-2" });
+      result.current.store.dispatch({
+        type: "conversation/turnPlaceholderAdded",
+        conversationId: "thread-1",
+        params: {
+          input: [{ type: "text", text: "pending", text_elements: [] }],
+          cwd: "E:/code/FPGA",
+          model: "gpt-5.2",
+          effort: "medium",
+          serviceTier: null,
+          collaborationMode: null,
+        },
+      });
+    });
+
+    expect(result.current.store.state.conversationsById["thread-1"]?.turns[0]?.turnId).toBeNull();
+    expect(result.current.store.state.conversationsById["thread-1"]?.turns[0]?.status).toBe("inProgress");
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ method: "thread/backgroundTerminals/clean", params: { threadId: "thread-1" } }));
+    expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe", params: { threadId: "thread-1" } }));
   });
 
   it("unloads a non-selected idle main thread after switching selection", async () => {

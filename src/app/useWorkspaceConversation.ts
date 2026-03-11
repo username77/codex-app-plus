@@ -21,7 +21,7 @@ import type { TurnInterruptParams } from "../protocol/generated/v2/TurnInterrupt
 import type { UserInput } from "../protocol/generated/v2/UserInput";
 import { createConversationFromThread } from "./conversationState";
 import { deriveConversationPreviewTitle, pickConversationTitle } from "./conversationTitle";
-import { mapConversationToThreadSummary, getActiveTurnId, isConversationStreaming } from "./conversationSelectors";
+import { mapConversationToThreadSummary, getActiveTurnId, hasInProgressTurn, isConversationStreaming } from "./conversationSelectors";
 import { mapConversationToTimelineEntries } from "./conversationTimeline";
 import { consumePrewarmedThread } from "./prewarmedThreadManager";
 import { useAppStore } from "../state/store";
@@ -112,7 +112,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
   const fuzzySessions = useMemo(() => Object.values(state.fuzzySearchSessionsById).filter((session) => !isComposerFuzzySessionId(session.sessionId)), [state.fuzzySearchSessionsById]);
   const activities = useMemo(() => mapConversationToTimelineEntries(selectedConversation, selectedRequests, { realtime: selectedRealtime, fuzzySessions }), [fuzzySessions, selectedConversation, selectedRealtime, selectedRequests]);
   const queuedFollowUps = selectedConversation?.queuedFollowUps ?? [];
-  const isResponding = activeTurnId !== null;
+  const isResponding = hasInProgressTurn(selectedConversation) || selectedConversation?.status === "active";
   const interruptPending = activeTurnId !== null && selectedConversation?.interruptRequestedTurnId === activeTurnId;
   useThreadResourceCleanup({
     hostBridge: options.hostBridge,
