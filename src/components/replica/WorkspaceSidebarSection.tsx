@@ -247,7 +247,13 @@ export function WorkspaceSidebarSection(props: WorkspaceSidebarSectionProps): JS
   const threadsByRootId = useMemo(() => createThreadsByRootId(props.roots, props.codexSessions), [props.codexSessions, props.roots]);
   const toggleShowAllThreads = useCallback((rootId: string) => setExpandedThreadRootIds((current) => toggleRootId(current, rootId)), []);
   const openThreadMenu = useCallback((event: MouseEvent<HTMLButtonElement>, thread: ThreadSummary) => { event.preventDefault(); setMenuState({ thread, x: event.clientX, y: event.clientY }); }, []);
-  const handleDeleteThread = useCallback(async () => { if (menuState === null) return; const { thread } = menuState; setMenuState(null); await props.onDeleteThread(thread); }, [menuState, props]);
+  const handleDeleteThread = useCallback(async () => {
+    if (menuState === null) {
+      return;
+    }
+
+    await props.onDeleteThread(menuState.thread);
+  }, [menuState, props]);
 
   return (
     <section className="thread-section">
@@ -283,7 +289,7 @@ export function WorkspaceSidebarSection(props: WorkspaceSidebarSectionProps): JS
         ))}
         {props.roots.length === 0 ? <li className="thread-empty">暂无工作区，点击左上角添加</li> : null}
       </ul>
-      {menuState !== null ? <ThreadContextMenu thread={menuState.thread} x={menuState.x} y={menuState.y} onDelete={handleDeleteThread} onClose={() => setMenuState(null)} /> : null}
+      {menuState !== null ? <ThreadContextMenu x={menuState.x} y={menuState.y} onDelete={handleDeleteThread} onClose={() => setMenuState(null)} /> : null}
     </section>
   );
 }

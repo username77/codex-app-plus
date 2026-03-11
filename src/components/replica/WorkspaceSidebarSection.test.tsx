@@ -132,7 +132,7 @@ describe("WorkspaceSidebarSection", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("加载会话失败：boom");
   });
 
-  it("shows an in-app delete dialog on right click and forwards the delete request", async () => {
+  it("deletes the session directly from the context menu", async () => {
     const thread = createThread(ROOTS[0]!, 1);
     const onDeleteThread = vi.fn().mockResolvedValue(undefined);
 
@@ -140,8 +140,6 @@ describe("WorkspaceSidebarSection", () => {
     fireEvent.click(screen.getByText("FPGA"));
     fireEvent.contextMenu(screen.getByRole("button", { name: /FPGA Thread 1/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "删除会话" }));
-    expect(screen.getByRole("dialog", { name: "删除会话" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "确认删除" }));
 
     await waitFor(() => expect(onDeleteThread).toHaveBeenCalledWith(thread));
   });
