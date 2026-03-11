@@ -1,5 +1,5 @@
 import type { Dispatch, RefObject, SetStateAction } from "react";
-import type { ComposerPermissionLevel } from "../../app/composerPermission";
+import type { ComposerPermissionLevel } from "../../app/conversation/composerPermission";
 import type { ComposerActiveTrigger } from "./composerInputTriggers";
 import { replaceComposerTrigger } from "./composerInputTriggers";
 

@@ -1,5 +1,5 @@
-import type { ComposerPermissionLevel } from "../../app/composerPermission";
-import type { ComposerModelOption } from "../../app/composerPreferences";
+import type { ComposerPermissionLevel } from "../../app/conversation/composerPermission";
+import type { ComposerModelOption } from "../../app/conversation/composerPreferences";
 import type { ComposerCommandPaletteItem } from "./ComposerCommandPalette";
 import type { ComposerActiveTrigger } from "./composerInputTriggers";
 import { listComposerSlashCommands } from "./composerSlashCommands";

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { ComposerModelOption } from "../../app/composerPreferences";
+import type { ComposerModelOption } from "../../app/conversation/composerPreferences";
 import { ComposerModelControls } from "./ComposerModelControls";
 
 function createModel(value: string, label: string): ComposerModelOption {

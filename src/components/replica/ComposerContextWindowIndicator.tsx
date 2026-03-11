@@ -1,5 +1,5 @@
 import { useId, useMemo, useRef, useState, type FocusEvent } from "react";
-import { selectConversationContextWindowUsage, formatContextWindowTokenCount } from "../../app/conversationContextWindow";
+import { selectConversationContextWindowUsage, formatContextWindowTokenCount } from "../../app/conversation/conversationContextWindow";
 import { useAppStore } from "../../state/store";
 
 const TEXT = {

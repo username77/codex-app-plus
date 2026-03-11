@@ -2,7 +2,7 @@ import type {
   AppPreferencesController,
   ThreadDetailLevel,
   UiLanguage
-} from "../../../app/useAppPreferences";
+} from "../../../app/preferences/useAppPreferences";
 import type { EmbeddedTerminalShell, WorkspaceOpener } from "../../../bridge/types";
 import type { ComposerEnterBehavior, FollowUpMode } from "../../../domain/timeline";
 import { SettingsSelectRow, type SettingsSelectOption } from "./SettingsSelectRow";

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import type { JsonObject, McpConfigServerView } from "../../../app/mcpConfig";
+import type { JsonObject, McpConfigServerView } from "../../../app/config/mcpConfig";
 import {
   buildMcpServerConfigValue,
   createMcpServerFormState,

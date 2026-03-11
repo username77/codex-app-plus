@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState, type KeyboardEvent } from "react";
-import { getAttachmentLabel } from "../../app/composerAttachments";
-import type { ComposerPermissionLevel } from "../../app/composerPermission";
-import type { ComposerModelOption, ComposerSelection } from "../../app/composerPreferences";
-import type { SendTurnOptions } from "../../app/useWorkspaceConversation";
-import { useComposerSelection } from "../../app/useComposerSelection";
+import { getAttachmentLabel } from "../../app/conversation/composerAttachments";
+import type { ComposerPermissionLevel } from "../../app/conversation/composerPermission";
+import type { ComposerModelOption, ComposerSelection } from "../../app/conversation/composerPreferences";
+import type { SendTurnOptions } from "../../app/conversation/useWorkspaceConversation";
+import { useComposerSelection } from "../../app/conversation/useComposerSelection";
 import type { CollaborationPreset, ComposerEnterBehavior, FollowUpMode, QueuedFollowUp } from "../../domain/timeline";
 import { AttachmentClip } from "./AttachmentClip";
 import { ComposerAttachmentMenu } from "./ComposerAttachmentMenu";

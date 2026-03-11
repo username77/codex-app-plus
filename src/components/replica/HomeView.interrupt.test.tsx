@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { ComposerModelOption } from "../../app/composerPreferences";
+import type { ComposerModelOption } from "../../app/conversation/composerPreferences";
 import type { HostBridge } from "../../bridge/types";
 import type { ThreadSummary } from "../../domain/types";
 import { AppStoreProvider } from "../../state/store";

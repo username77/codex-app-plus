@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { ComposerPermissionLevel } from "../../app/composerPermission";
-import type { ComposerModelOption } from "../../app/composerPreferences";
+import type { ComposerPermissionLevel } from "../../app/conversation/composerPermission";
+import type { ComposerModelOption } from "../../app/conversation/composerPreferences";
 import { AppStoreProvider } from "../../state/store";
 import type { ComposerCommandBridge } from "./composerCommandBridge";
 import { HomeComposer } from "./HomeComposer";

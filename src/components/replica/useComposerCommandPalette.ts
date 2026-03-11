@@ -9,8 +9,8 @@ import {
   type RefObject,
   type SetStateAction,
 } from "react";
-import type { ComposerPermissionLevel } from "../../app/composerPermission";
-import type { ComposerModelOption } from "../../app/composerPreferences";
+import type { ComposerPermissionLevel } from "../../app/conversation/composerPermission";
+import type { ComposerModelOption } from "../../app/conversation/composerPreferences";
 import { useAppStore } from "../../state/store";
 import type { ComposerCommandPaletteItem } from "./ComposerCommandPalette";
 import {

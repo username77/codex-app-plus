@@ -1,5 +1,5 @@
-import type { ConfigMutationResult, McpRefreshResult } from "../../app/configOperations";
-import type { AppPreferencesController } from "../../app/useAppPreferences";
+import type { ConfigMutationResult, McpRefreshResult } from "../../app/config/configOperations";
+import type { AppPreferencesController } from "../../app/preferences/useAppPreferences";
 import type { WindowsSandboxSetupState } from "../../domain/types";
 import type {
   CodexProviderApplyResult,
@@ -10,7 +10,7 @@ import type {
   GlobalAgentInstructionsOutput,
   UpdateGlobalAgentInstructionsInput,
 } from "../../bridge/types";
-import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
+import type { WorkspaceRoot } from "../../app/workspace/useWorkspaceRoots";
 import type { ConfigBatchWriteParams } from "../../protocol/generated/v2/ConfigBatchWriteParams";
 import type { ConfigReadResponse } from "../../protocol/generated/v2/ConfigReadResponse";
 import type { ConfigValueWriteParams } from "../../protocol/generated/v2/ConfigValueWriteParams";

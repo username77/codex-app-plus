@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ComposerPermissionLevel } from "../../app/composerPermission";
-import type { ComposerModelOption, ComposerSelection } from "../../app/composerPreferences";
-import type { ThreadDetailLevel } from "../../app/useAppPreferences";
-import type { SendTurnOptions } from "../../app/useWorkspaceConversation";
-import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
+import type { ComposerPermissionLevel } from "../../app/conversation/composerPermission";
+import type { ComposerModelOption, ComposerSelection } from "../../app/conversation/composerPreferences";
+import type { ThreadDetailLevel } from "../../app/preferences/useAppPreferences";
+import type { SendTurnOptions } from "../../app/conversation/useWorkspaceConversation";
+import type { WorkspaceRoot } from "../../app/workspace/useWorkspaceRoots";
 import type { EmbeddedTerminalShell, HostBridge, WorkspaceOpener } from "../../bridge/types";
 import type {
   AccountSummary,

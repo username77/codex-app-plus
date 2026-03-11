@@ -1,7 +1,7 @@
 import { createEvent, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ComposerModelOption } from "../../app/composerPreferences";
+import type { ComposerModelOption } from "../../app/conversation/composerPreferences";
 import { AppStoreProvider } from "../../state/store";
 import type { ComposerCommandBridge } from "./composerCommandBridge";
 import { HomeComposer } from "./HomeComposer";

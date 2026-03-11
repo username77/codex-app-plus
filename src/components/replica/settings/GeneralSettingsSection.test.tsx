@@ -1,7 +1,7 @@
 ﻿import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_APP_PREFERENCES } from "../../../app/useAppPreferences";
+import { DEFAULT_APP_PREFERENCES } from "../../../app/preferences/useAppPreferences";
 import { GeneralSettingsSection } from "./GeneralSettingsSection";
 
 function renderSection(): void {

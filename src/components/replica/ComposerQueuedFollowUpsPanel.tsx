@@ -1,4 +1,4 @@
-import { getAttachmentLabel } from "../../app/composerAttachments";
+import { getAttachmentLabel } from "../../app/conversation/composerAttachments";
 import type { QueuedFollowUp } from "../../domain/timeline";
 import { AttachmentClip } from "./AttachmentClip";
 

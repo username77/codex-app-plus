@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   getPersonalityCopy,
   readPersonalizationConfigView
-} from "../../../app/personalizationConfig";
+} from "../../../app/config/personalizationConfig";
 import type {
   GlobalAgentInstructionsOutput,
   UpdateGlobalAgentInstructionsInput

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import type { ThreadDetailLevel } from "../../app/useAppPreferences";
+import type { ThreadDetailLevel } from "../../app/preferences/useAppPreferences";
 import type { ConnectionStatus, ServerRequestResolution, ThreadSummary, TimelineEntry } from "../../domain/types";
 import { HomeTimelineEntry } from "./HomeTimelineEntry";
 import { HomeTurnThinkingIndicator } from "./HomeTurnThinkingIndicator";

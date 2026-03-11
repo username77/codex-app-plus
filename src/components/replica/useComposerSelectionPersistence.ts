@@ -5,7 +5,7 @@ import {
   findComposerModel,
   resolveComposerEffort,
   resolveConfiguredComposerSelection
-} from "../../app/composerPreferences";
+} from "../../app/conversation/composerPreferences";
 import type { ReasoningEffort } from "../../protocol/generated/ReasoningEffort";
 import type { ServiceTier } from "../../protocol/generated/ServiceTier";
 

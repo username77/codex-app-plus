@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
+import type { WorkspaceRoot } from "../../app/workspace/useWorkspaceRoots";
 import type { ThreadSummary } from "../../domain/types";
 import { WorkspaceSidebarSection } from "./WorkspaceSidebarSection";
 

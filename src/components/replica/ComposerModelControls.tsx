@@ -4,7 +4,7 @@ import {
   getComposerModelLabel,
   partitionComposerModels,
   type ComposerModelOption
-} from "../../app/composerPreferences";
+} from "../../app/conversation/composerPreferences";
 import type { ReasoningEffort } from "../../protocol/generated/ReasoningEffort";
 import { OfficialChevronRightIcon } from "./officialIcons";
 import {

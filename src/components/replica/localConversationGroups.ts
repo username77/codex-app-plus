@@ -25,7 +25,7 @@ import type {
   TurnPlanSnapshotEntry,
   WebSearchEntry,
 } from "../../domain/timeline";
-import type { ThreadDetailLevel } from "../../app/useAppPreferences";
+import type { ThreadDetailLevel } from "../../app/preferences/useAppPreferences";
 
 const REASONING_LABEL = "Reasoning";
 const REASONING_TITLE_PREFIX = "**";

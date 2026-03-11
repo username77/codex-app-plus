@@ -25,8 +25,8 @@ import {
   syncStartedTurn,
   touchConversation,
   upsertConversationItem,
-} from "../app/conversationState";
-import { pickConversationTitle } from "../app/conversationTitle";
+} from "../app/conversation/conversationState";
+import { pickConversationTitle } from "../app/conversation/conversationTitle";
 
 const MAX_NOTIFICATION_LOG = 500;
 const MAX_BANNERS = 20;

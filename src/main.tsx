@@ -1,9 +1,9 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { App } from "./App";
+import { App } from "./app/shell/App";
 import { createTauriHostBridge } from "./bridge/tauriHostBridge";
 import { AppStoreProvider } from "./state/store";
-import "./styles.css";
+import "./styles/index.css";
 
 const hostBridge = createTauriHostBridge();
 

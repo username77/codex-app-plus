@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ConfigMutationResult, McpRefreshResult } from "../../../app/configOperations";
-import { omitServer, readMcpConfigView, type JsonObject, type McpConfigServerView } from "../../../app/mcpConfig";
-import { MCP_RECOMMENDED_PRESETS } from "../../../app/mcpPresets";
+import type { ConfigMutationResult, McpRefreshResult } from "../../../app/config/configOperations";
+import { omitServer, readMcpConfigView, type JsonObject, type McpConfigServerView } from "../../../app/config/mcpConfig";
+import { MCP_RECOMMENDED_PRESETS } from "../../../app/config/mcpPresets";
 import type { ConfigBatchWriteParams } from "../../../protocol/generated/v2/ConfigBatchWriteParams";
 import type { ConfigValueWriteParams } from "../../../protocol/generated/v2/ConfigValueWriteParams";
 import type { McpServerStatus } from "../../../protocol/generated/v2/McpServerStatus";

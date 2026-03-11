@@ -1,5 +1,5 @@
 import { memo, useCallback } from "react";
-import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
+import type { WorkspaceRoot } from "../../app/workspace/useWorkspaceRoots";
 import type { HostBridge } from "../../bridge/types";
 import type { AuthStatus, ThreadSummary } from "../../domain/types";
 import { useAppStore } from "../../state/store";

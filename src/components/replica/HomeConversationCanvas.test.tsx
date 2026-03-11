@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { ThreadDetailLevel } from "../../app/useAppPreferences";
+import type { ThreadDetailLevel } from "../../app/preferences/useAppPreferences";
 import type { ConversationState, ConversationTurnState } from "../../domain/conversation";
-import { syncCompletedTurn } from "../../app/conversationState";
-import { mapConversationToTimelineEntries } from "../../app/conversationTimeline";
+import { syncCompletedTurn } from "../../app/conversation/conversationState";
+import { mapConversationToTimelineEntries } from "../../app/conversation/conversationTimeline";
 import type { ThreadSummary } from "../../domain/types";
 import type { TimelineEntry } from "../../domain/timeline";
 import type { ThreadTokenUsage } from "../../protocol/generated/v2/ThreadTokenUsage";

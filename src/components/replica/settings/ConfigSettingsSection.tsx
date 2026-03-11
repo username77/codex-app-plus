@@ -12,7 +12,7 @@ import {
   createEmptyCodexProviderDraft,
   createDraftFromRecord,
   readCurrentCodexProviderKey,
-} from "../../../app/codexProviderConfig";
+} from "../../../app/config/codexProviderConfig";
 import { CodexProviderDialog } from "./CodexProviderDialog";
 import { WindowsSandboxSettingsCard } from "./WindowsSandboxSettingsCard";
 

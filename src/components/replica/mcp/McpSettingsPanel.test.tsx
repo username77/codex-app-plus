@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { ConfigMutationResult, McpRefreshResult } from "../../../app/configOperations";
+import type { ConfigMutationResult, McpRefreshResult } from "../../../app/config/configOperations";
 import { McpSettingsPanel } from "./McpSettingsPanel";
 
 const USER_FILE = "C:/Users/Administrator/.codex/config.toml";

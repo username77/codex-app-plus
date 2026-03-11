@@ -12,7 +12,7 @@ import {
   updateAuthJsonWithApiKey,
   updateConfigTomlWithBasics,
   validateCodexProviderDraft,
-} from "../../../app/codexProviderConfig";
+} from "../../../app/config/codexProviderConfig";
 
 interface CodexProviderDialogProps {
   readonly open: boolean;

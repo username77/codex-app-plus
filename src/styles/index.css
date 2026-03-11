@@ -1,0 +1,44 @@
+@import "./replica/replica-shell.css";
+@import "./replica/replica-sidebar-tree.css";
+@import "./replica/replica-git.css";
+@import "./replica/replica-git-diff.css";
+@import "./replica/replica-git-diff-panel.css";
+@import "./replica/replica-empty-state.css";
+@import "./replica/replica-toolbar.css";
+@import "./replica/replica-composer.css";
+@import "./replica/replica-composer-command-palette.css";
+@import "./replica/replica-composer-context-window.css";
+@import "./replica/replica-composer-extras.css";
+@import "./replica/replica-terminal.css";
+@import "./replica/replica-settings.css";
+@import "./replica/replica-settings-extra.css";
+@import "./replica/replica-settings-layout.css";
+@import "./replica/replica-conversation.css";
+@import "./replica/replica-conversation-home.css";
+@import "./replica/replica-conversation-home-transcript.css";
+@import "./replica/replica-conversation-home-trace.css";
+
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f6f6f6;
+  color: #232323;
+}
+
+#root {
+  height: 100vh;
+}
+
+button,
+textarea {
+  font: inherit;
+}
+

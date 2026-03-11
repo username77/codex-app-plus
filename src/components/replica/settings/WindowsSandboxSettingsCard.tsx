@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { readWindowsSandboxConfigView } from "../../../app/windowsSandboxConfig";
+import { readWindowsSandboxConfigView } from "../../../app/sandbox/windowsSandboxConfig";
 import type { WindowsSandboxSetupState } from "../../../domain/types";
 import type { WindowsSandboxSetupMode } from "../../../protocol/generated/v2/WindowsSandboxSetupMode";
 

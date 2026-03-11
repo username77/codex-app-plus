@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from "r
 import {
   createComposerAttachmentsFromPaths,
   readClipboardImageAttachment,
-} from "../../app/composerAttachments";
+} from "../../app/conversation/composerAttachments";
 import type { ComposerAttachment } from "../../domain/timeline";
 
 interface UseComposerAttachmentsOptions {

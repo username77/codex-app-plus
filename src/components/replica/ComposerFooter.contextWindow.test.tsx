@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useEffect, type PropsWithChildren } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { createConversationFromThread } from "../../app/conversationState";
+import { createConversationFromThread } from "../../app/conversation/conversationState";
 import type { GitStatusOutput } from "../../bridge/types";
 import type { ConfigReadResponse } from "../../protocol/generated/v2/ConfigReadResponse";
 import type { WorkspaceGitController } from "./git/types";

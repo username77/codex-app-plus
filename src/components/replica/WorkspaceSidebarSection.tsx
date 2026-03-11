@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
-import { listThreadsForWorkspace } from "../../app/workspaceThread";
-import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
+import { listThreadsForWorkspace } from "../../app/threads/workspaceThread";
+import type { WorkspaceRoot } from "../../app/workspace/useWorkspaceRoots";
 import type { ThreadSummary } from "../../domain/types";
 import { OfficialChevronRightIcon, OfficialCloseIcon, OfficialFolderPlusIcon, OfficialSortIcon } from "./officialIcons";
 import { ThreadContextMenu } from "./ThreadContextMenu";

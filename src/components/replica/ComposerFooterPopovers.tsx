@@ -1,4 +1,4 @@
-import type { ComposerPermissionLevel } from "../../app/composerPermission";
+import type { ComposerPermissionLevel } from "../../app/conversation/composerPermission";
 import { OfficialArrowTopRightIcon } from "./officialIcons";
 
 export type PermissionLevel = ComposerPermissionLevel;

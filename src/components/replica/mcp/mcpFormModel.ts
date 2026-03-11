@@ -1,4 +1,4 @@
-import type { JsonObject, McpConfigServerView, McpTransportType } from "../../../app/mcpConfig";
+import type { JsonObject, McpConfigServerView, McpTransportType } from "../../../app/config/mcpConfig";
 
 export interface McpServerFormState {
   readonly id: string;
