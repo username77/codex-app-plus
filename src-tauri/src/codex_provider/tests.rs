@@ -10,7 +10,10 @@ use super::*;
 fn temp_dir(name: &str) -> PathBuf {
     let path = std::env::temp_dir().join(format!(
         "codex-app-plus-{name}-{}",
-        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
     ));
     fs::create_dir_all(&path).unwrap();
     path
@@ -34,7 +37,8 @@ fn sample_upsert_input(id: Option<&str>, provider_key: &str) -> UpsertCodexProvi
 fn upsert_creates_and_updates_provider_records() {
     let base_dir = temp_dir("store");
     let store_file = base_dir.join(STORE_FILE_NAME);
-    let created = upsert_codex_provider_at(&store_file, sample_upsert_input(None, "right_code")).unwrap();
+    let created =
+        upsert_codex_provider_at(&store_file, sample_upsert_input(None, "right_code")).unwrap();
 
     assert_eq!(created.provider_key, "right_code");
     assert!(created.config_toml_text.contains("name = \"Right Code\""));
@@ -73,12 +77,16 @@ fn upsert_rejects_duplicate_provider_key() {
 }
 
 #[test]
-fn apply_preserves_live_global_config_while_merging_provider_patch() {
+fn apply_preserves_live_global_config_while_replacing_provider_table() {
     let base_dir = temp_dir("apply");
     let store_file = base_dir.join(STORE_FILE_NAME);
     let auth_path = base_dir.join(AUTH_FILE_NAME);
     let config_path = base_dir.join(CONFIG_FILE_NAME);
-    fs::write(&auth_path, serde_json::to_vec_pretty(&json!({ "OTHER": "keep" })).unwrap()).unwrap();
+    fs::write(
+        &auth_path,
+        serde_json::to_vec_pretty(&json!({ "OTHER": "keep" })).unwrap(),
+    )
+    .unwrap();
     fs::write(
         &config_path,
         concat!(
@@ -117,7 +125,9 @@ fn apply_preserves_live_global_config_while_merging_provider_patch() {
         &store_file,
         &auth_path,
         &config_path,
-        ApplyCodexProviderInput { id: saved.id.clone() },
+        ApplyCodexProviderInput {
+            id: saved.id.clone(),
+        },
     )
     .unwrap();
     let auth_text = fs::read_to_string(&auth_path).unwrap();
@@ -131,9 +141,9 @@ fn apply_preserves_live_global_config_while_merging_provider_patch() {
     assert!(config_text.contains("model_reasoning_effort = \"xhigh\""));
     assert!(config_text.contains("model_context_window = 1000000"));
     assert!(config_text.contains("model_auto_compact_token_limit = 900000"));
-    assert!(config_text.contains("[model_providers.old]"));
     assert!(config_text.contains("[model_providers.right_code]"));
     assert!(config_text.contains("name = \"Right Code\""));
+    assert!(!config_text.contains("[model_providers.old]"));
     assert!(!config_text.contains("model = \"gpt-override\""));
     assert!(!config_text.contains("disable_response_storage = true"));
 }

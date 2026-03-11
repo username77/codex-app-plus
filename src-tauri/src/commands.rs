@@ -12,14 +12,12 @@ use crate::events::{EVENT_CONTEXT_MENU_REQUESTED, EVENT_NOTIFICATION_REQUESTED};
 use crate::models::{
     AppServerStartInput, ApplyCodexProviderInput, ChatgptAuthTokensOutput,
     CodexProviderApplyResult, CodexProviderRecord, CodexProviderStore, CodexSessionReadInput,
-    CodexSessionReadOutput, CodexSessionSummary, DeleteCodexProviderInput,
-    DeleteCodexSessionInput,
-    GlobalAgentInstructionsOutput, ImportOfficialDataInput, OpenWorkspaceInput,
-    RpcCancelInput, RpcNotifyInput, RpcRequestInput, RpcRequestOutput,
-    ServerRequestResolveInput, ShowContextMenuInput, ShowNotificationInput,
-    TerminalCloseInput, TerminalCreateInput, TerminalCreateOutput, TerminalResizeInput,
-    TerminalWriteInput, UpdateChatgptAuthTokensInput, UpdateGlobalAgentInstructionsInput,
-    UpsertCodexProviderInput, WorkspaceOpener,
+    CodexSessionReadOutput, CodexSessionSummary, DeleteCodexProviderInput, DeleteCodexSessionInput,
+    GlobalAgentInstructionsOutput, ImportOfficialDataInput, OpenWorkspaceInput, RpcCancelInput,
+    RpcNotifyInput, RpcRequestInput, RpcRequestOutput, ServerRequestResolveInput,
+    ShowContextMenuInput, ShowNotificationInput, TerminalCloseInput, TerminalCreateInput,
+    TerminalCreateOutput, TerminalResizeInput, TerminalWriteInput, UpdateChatgptAuthTokensInput,
+    UpdateGlobalAgentInstructionsInput, UpsertCodexProviderInput, WorkspaceOpener,
 };
 use crate::process_manager::ProcessManager;
 use crate::terminal_manager::TerminalManager;
@@ -127,17 +125,23 @@ pub fn app_list_codex_providers() -> Result<CodexProviderStore, String> {
 }
 
 #[tauri::command]
-pub fn app_upsert_codex_provider(input: UpsertCodexProviderInput) -> Result<CodexProviderRecord, String> {
+pub fn app_upsert_codex_provider(
+    input: UpsertCodexProviderInput,
+) -> Result<CodexProviderRecord, String> {
     to_result(upsert_codex_provider(input))
 }
 
 #[tauri::command]
-pub fn app_delete_codex_provider(input: DeleteCodexProviderInput) -> Result<CodexProviderStore, String> {
+pub fn app_delete_codex_provider(
+    input: DeleteCodexProviderInput,
+) -> Result<CodexProviderStore, String> {
     to_result(delete_codex_provider(input))
 }
 
 #[tauri::command]
-pub fn app_apply_codex_provider(input: ApplyCodexProviderInput) -> Result<CodexProviderApplyResult, String> {
+pub fn app_apply_codex_provider(
+    input: ApplyCodexProviderInput,
+) -> Result<CodexProviderApplyResult, String> {
     to_result(apply_codex_provider(input))
 }
 
@@ -263,8 +267,9 @@ fn read_chatgpt_auth_tokens() -> AppResult<ChatgptAuthTokensOutput> {
 fn read_chatgpt_auth_tokens_from_cache() -> AppResult<ChatgptAuthTokensOutput> {
     let path = chatgpt_auth_cache_path()?;
     let text = std::fs::read_to_string(&path)?;
-    let value: Value = serde_json::from_str(&text)
-        .map_err(|error| AppError::InvalidInput(format!("failed to parse cached auth tokens: {error}")))?;
+    let value: Value = serde_json::from_str(&text).map_err(|error| {
+        AppError::InvalidInput(format!("failed to parse cached auth tokens: {error}"))
+    })?;
     extract_tokens_from_value(&value, "cache")
         .ok_or_else(|| AppError::InvalidInput("cached auth tokens are incomplete".to_string()))
 }
@@ -301,7 +306,9 @@ fn write_chatgpt_auth_tokens(
         return Err(AppError::InvalidInput("accessToken 不能为空".to_string()));
     }
     if input.chatgpt_account_id.trim().is_empty() {
-        return Err(AppError::InvalidInput("chatgptAccountId 不能为空".to_string()));
+        return Err(AppError::InvalidInput(
+            "chatgptAccountId 不能为空".to_string(),
+        ));
     }
     let path = chatgpt_auth_cache_path()?;
     if let Some(parent) = path.parent() {
@@ -384,7 +391,8 @@ fn find_tokens(
 }
 
 fn global_agents_path() -> AppResult<PathBuf> {
-    let home = dirs::home_dir().ok_or_else(|| AppError::InvalidInput("无法解析用户目录".to_string()))?;
+    let home =
+        dirs::home_dir().ok_or_else(|| AppError::InvalidInput("无法解析用户目录".to_string()))?;
     Ok(home.join(".codex").join("AGENTS.md"))
 }
 

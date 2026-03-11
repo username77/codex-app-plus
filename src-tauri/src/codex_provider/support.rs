@@ -78,7 +78,10 @@ pub(super) fn codex_auth_path(code_directory: &str, auth_file_name: &str) -> App
     Ok(codex_dir(code_directory)?.join(auth_file_name))
 }
 
-pub(super) fn codex_config_path(code_directory: &str, config_file_name: &str) -> AppResult<PathBuf> {
+pub(super) fn codex_config_path(
+    code_directory: &str,
+    config_file_name: &str,
+) -> AppResult<PathBuf> {
     Ok(codex_dir(code_directory)?.join(config_file_name))
 }
 
@@ -86,7 +89,11 @@ pub(super) fn generate_provider_id() -> AppResult<String> {
     let duration = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|error| AppError::Protocol(error.to_string()))?;
-    Ok(format!("provider-{}-{}", std::process::id(), duration.as_nanos()))
+    Ok(format!(
+        "provider-{}-{}",
+        std::process::id(),
+        duration.as_nanos()
+    ))
 }
 
 pub(super) fn now_unix_ms() -> AppResult<i64> {
@@ -97,9 +104,14 @@ pub(super) fn now_unix_ms() -> AppResult<i64> {
 }
 
 fn write_bytes_atomic(path: &Path, bytes: &[u8]) -> AppResult<()> {
-    let parent = path.parent().ok_or_else(|| AppError::InvalidInput("无效路径".to_string()))?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| AppError::InvalidInput("无效路径".to_string()))?;
     fs::create_dir_all(parent)?;
-    let temp_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("temp");
+    let temp_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("temp");
     let temp_path = parent.join(format!("{temp_name}.tmp"));
     fs::write(&temp_path, bytes)?;
     if path.exists() {
@@ -125,6 +137,7 @@ fn read_optional_bytes(path: &Path) -> AppResult<Option<Vec<u8>>> {
 }
 
 fn codex_dir(code_directory: &str) -> AppResult<PathBuf> {
-    let home = dirs::home_dir().ok_or_else(|| AppError::InvalidInput("无法解析用户目录".to_string()))?;
+    let home =
+        dirs::home_dir().ok_or_else(|| AppError::InvalidInput("无法解析用户目录".to_string()))?;
     Ok(home.join(code_directory))
 }

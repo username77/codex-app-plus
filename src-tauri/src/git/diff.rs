@@ -13,7 +13,11 @@ const DIRECTORY_PREVIEW_MESSAGE: &str = "目录变更暂不支持内联预览。
 const BINARY_PREVIEW_MESSAGE: &str = "该文件不是 UTF-8 文本，无法显示预览。";
 
 pub fn get_diff_preview(repo_root: &Path, path: &str, staged: bool) -> AppResult<String> {
-    let tracked_diff = run_git(repo_root, &create_tracked_diff_args(path, staged), &DIFF_EXIT_CODES)?;
+    let tracked_diff = run_git(
+        repo_root,
+        &create_tracked_diff_args(path, staged),
+        &DIFF_EXIT_CODES,
+    )?;
     if !tracked_diff.is_empty() {
         return Ok(tracked_diff);
     }
@@ -37,7 +41,11 @@ fn build_fallback_preview(repo_root: &Path, path: &str, staged: bool) -> AppResu
     if staged || !is_untracked_path(repo_root, path)? {
         return Ok(EMPTY_DIFF_MESSAGE.to_string());
     }
-    let untracked_diff = run_git(repo_root, &create_untracked_diff_args(path), &DIFF_EXIT_CODES)?;
+    let untracked_diff = run_git(
+        repo_root,
+        &create_untracked_diff_args(path),
+        &DIFF_EXIT_CODES,
+    )?;
     if untracked_diff.is_empty() {
         return Ok(EMPTY_DIFF_MESSAGE.to_string());
     }
@@ -53,7 +61,11 @@ fn create_tracked_diff_args(path: &str, staged: bool) -> Vec<OsString> {
             OsString::from(path),
         ];
     }
-    vec![OsString::from("diff"), OsString::from("--"), OsString::from(path)]
+    vec![
+        OsString::from("diff"),
+        OsString::from("--"),
+        OsString::from(path),
+    ]
 }
 
 fn create_untracked_diff_args(path: &str) -> Vec<OsString> {
@@ -102,7 +114,9 @@ fn run_git(repo_root: &Path, args: &[OsString], allowed_exit_codes: &[i32]) -> A
             .map(|code| allowed_exit_codes.contains(&code))
             .unwrap_or(false);
     if succeeded {
-        return Ok(String::from_utf8_lossy(&output.stdout).trim_end().to_string());
+        return Ok(String::from_utf8_lossy(&output.stdout)
+            .trim_end()
+            .to_string());
     }
 
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
@@ -113,7 +127,9 @@ fn run_git(repo_root: &Path, args: &[OsString], allowed_exit_codes: &[i32]) -> A
         .map(|item| item.to_string_lossy().to_string())
         .collect::<Vec<_>>()
         .join(" ");
-    Err(AppError::Protocol(format!("git {command} 执行失败: {detail}")))
+    Err(AppError::Protocol(format!(
+        "git {command} 执行失败: {detail}"
+    )))
 }
 
 #[cfg(test)]

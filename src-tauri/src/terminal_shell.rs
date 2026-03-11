@@ -29,7 +29,9 @@ pub fn build_shell_command(shell: &ShellConfig) -> CommandBuilder {
     command
 }
 
-pub fn resolve_shell_config(requested_shell: Option<EmbeddedTerminalShell>) -> AppResult<ShellConfig> {
+pub fn resolve_shell_config(
+    requested_shell: Option<EmbeddedTerminalShell>,
+) -> AppResult<ShellConfig> {
     if cfg!(target_os = "windows") {
         let shell = requested_shell.unwrap_or(EmbeddedTerminalShell::PowerShell);
         return build_windows_shell_config(shell, Path::new(WINDOWS_GIT_BASH_PROGRAM));
@@ -103,9 +105,7 @@ fn build_git_bash_shell_config(git_bash_program: &Path) -> AppResult<ShellConfig
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        build_windows_shell_config, WINDOWS_COMMAND_PROMPT_INIT, WINDOWS_POWERSHELL_INIT,
-    };
+    use super::{build_windows_shell_config, WINDOWS_COMMAND_PROMPT_INIT, WINDOWS_POWERSHELL_INIT};
     use crate::models::EmbeddedTerminalShell;
     use std::path::PathBuf;
 
@@ -158,8 +158,9 @@ mod tests {
         ));
         std::fs::write(&temp_path, []).expect("expected temp file to be created");
 
-        let config = build_windows_shell_config(EmbeddedTerminalShell::GitBash, temp_path.as_path())
-            .expect("expected Git Bash config");
+        let config =
+            build_windows_shell_config(EmbeddedTerminalShell::GitBash, temp_path.as_path())
+                .expect("expected Git Bash config");
 
         assert_eq!(config.program, temp_path.display().to_string());
         assert_eq!(config.label, "Git Bash");
@@ -174,8 +175,9 @@ mod tests {
             "codex-app-plus-terminal-shell-{}-missing-git-bash.exe",
             std::process::id()
         ));
-        let error = build_windows_shell_config(EmbeddedTerminalShell::GitBash, missing_path.as_path())
-            .expect_err("expected Git Bash error");
+        let error =
+            build_windows_shell_config(EmbeddedTerminalShell::GitBash, missing_path.as_path())
+                .expect_err("expected Git Bash error");
 
         assert!(
             error.to_string().contains("Git Bash is not installed"),

@@ -78,7 +78,10 @@ mod tests {
     #[test]
     fn summarizes_first_meaningful_user_line() {
         let text = "Fix login issue\nDetailed description";
-        assert_eq!(summarize_user_message(text), Some("Fix login issue".to_string()));
+        assert_eq!(
+            summarize_user_message(text),
+            Some("Fix login issue".to_string())
+        );
     }
 
     #[test]

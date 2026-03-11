@@ -29,8 +29,7 @@ pub(super) fn merge_config_table(current: Table, template: Table) -> AppResult<T
     let mut merged = current;
     for (key, value) in template {
         if key == MODEL_PROVIDERS_KEY {
-            let provider_value = merge_model_providers(merged.remove(MODEL_PROVIDERS_KEY), value)?;
-            merged.insert(key, provider_value);
+            merged.insert(key, replace_model_providers(value)?);
             continue;
         }
         merged.insert(key, value);
@@ -45,24 +44,42 @@ fn build_provider_patch(
     base_url: &str,
 ) -> AppResult<Table> {
     let mut provider_config = find_source_provider(source, provider_key)?;
-    provider_config.insert(PROVIDER_NAME_KEY.to_string(), TomlValue::String(provider_name.to_string()));
-    provider_config.insert(PROVIDER_BASE_URL_KEY.to_string(), TomlValue::String(base_url.to_string()));
+    provider_config.insert(
+        PROVIDER_NAME_KEY.to_string(),
+        TomlValue::String(provider_name.to_string()),
+    );
+    provider_config.insert(
+        PROVIDER_BASE_URL_KEY.to_string(),
+        TomlValue::String(base_url.to_string()),
+    );
     ensure_provider_defaults(&mut provider_config);
 
     let mut providers = Table::new();
     providers.insert(provider_key.to_string(), TomlValue::Table(provider_config));
 
     let mut patch = Table::new();
-    patch.insert(MODEL_PROVIDER_KEY.to_string(), TomlValue::String(provider_key.to_string()));
+    patch.insert(
+        MODEL_PROVIDER_KEY.to_string(),
+        TomlValue::String(provider_key.to_string()),
+    );
     patch.insert(MODEL_PROVIDERS_KEY.to_string(), TomlValue::Table(providers));
     Ok(patch)
 }
 
 fn ensure_provider_defaults(provider_config: &mut Table) {
-    if !matches!(provider_config.get(PROVIDER_WIRE_API_KEY), Some(TomlValue::String(_))) {
-        provider_config.insert(PROVIDER_WIRE_API_KEY.to_string(), TomlValue::String(DEFAULT_WIRE_API.to_string()));
+    if !matches!(
+        provider_config.get(PROVIDER_WIRE_API_KEY),
+        Some(TomlValue::String(_))
+    ) {
+        provider_config.insert(
+            PROVIDER_WIRE_API_KEY.to_string(),
+            TomlValue::String(DEFAULT_WIRE_API.to_string()),
+        );
     }
-    if !matches!(provider_config.get(PROVIDER_REQUIRES_OPENAI_AUTH_KEY), Some(TomlValue::Boolean(_))) {
+    if !matches!(
+        provider_config.get(PROVIDER_REQUIRES_OPENAI_AUTH_KEY),
+        Some(TomlValue::Boolean(_))
+    ) {
         provider_config.insert(
             PROVIDER_REQUIRES_OPENAI_AUTH_KEY.to_string(),
             TomlValue::Boolean(DEFAULT_REQUIRES_OPENAI_AUTH),
@@ -71,9 +88,14 @@ fn ensure_provider_defaults(provider_config: &mut Table) {
 }
 
 fn find_source_provider(source: &Table, provider_key: &str) -> AppResult<Table> {
-    let providers = read_optional_table(source.get(MODEL_PROVIDERS_KEY), "config.toml 的 model_providers 必须是表")?;
+    let providers = read_optional_table(
+        source.get(MODEL_PROVIDERS_KEY),
+        "config.toml 的 model_providers 必须是表",
+    )?;
     if providers.is_empty() {
-        return Err(AppError::InvalidInput("config.toml 缺少当前 provider 配置".to_string()));
+        return Err(AppError::InvalidInput(
+            "config.toml 缺少当前 provider 配置".to_string(),
+        ));
     }
 
     let direct = read_optional_table(providers.get(provider_key), "provider 配置必须是表")?;
@@ -81,7 +103,11 @@ fn find_source_provider(source: &Table, provider_key: &str) -> AppResult<Table> 
         return Ok(direct);
     }
 
-    let active = source.get(MODEL_PROVIDER_KEY).and_then(TomlValue::as_str).unwrap_or_default().trim();
+    let active = source
+        .get(MODEL_PROVIDER_KEY)
+        .and_then(TomlValue::as_str)
+        .unwrap_or_default()
+        .trim();
     if !active.is_empty() && active != provider_key {
         let active_provider = read_optional_table(providers.get(active), "provider 配置必须是表")?;
         if !active_provider.is_empty() {
@@ -94,7 +120,9 @@ fn find_source_provider(source: &Table, provider_key: &str) -> AppResult<Table> 
 
 fn first_provider_table(providers: &Table) -> AppResult<Table> {
     let Some((_, value)) = providers.iter().next() else {
-        return Err(AppError::InvalidInput("config.toml 缺少当前 provider 配置".to_string()));
+        return Err(AppError::InvalidInput(
+            "config.toml 缺少当前 provider 配置".to_string(),
+        ));
     };
     value
         .as_table()
@@ -112,19 +140,9 @@ fn read_optional_table(value: Option<&TomlValue>, message: &str) -> AppResult<Ta
     }
 }
 
-fn merge_model_providers(current: Option<TomlValue>, template: TomlValue) -> AppResult<TomlValue> {
-    let mut merged = match current {
-        Some(value) => value
-            .as_table()
-            .cloned()
-            .ok_or_else(|| AppError::InvalidInput("当前 config.toml 的 model_providers 不是表".to_string()))?,
-        None => Table::new(),
-    };
-    let template_map = template
-        .as_table()
-        .ok_or_else(|| AppError::InvalidInput("config.toml 的 model_providers 必须是表".to_string()))?;
-    for (key, value) in template_map {
-        merged.insert(key.to_string(), value.clone());
-    }
-    Ok(TomlValue::Table(merged))
+fn replace_model_providers(template: TomlValue) -> AppResult<TomlValue> {
+    let template_map = template.as_table().ok_or_else(|| {
+        AppError::InvalidInput("config.toml 的 model_providers 必须是表".to_string())
+    })?;
+    Ok(TomlValue::Table(template_map.clone()))
 }

@@ -91,9 +91,17 @@ fn upsert_codex_provider_at(
 ) -> AppResult<CodexProviderRecord> {
     let candidate = validate_upsert_input(input)?;
     let mut store = read_store(store_path)?;
-    ensure_unique_provider_key(&store.providers, &candidate.provider_key, Some(candidate.id.as_str()))?;
+    ensure_unique_provider_key(
+        &store.providers,
+        &candidate.provider_key,
+        Some(candidate.id.as_str()),
+    )?;
     let timestamp = now_unix_ms()?;
-    let saved = if let Some(index) = store.providers.iter().position(|provider| provider.id == candidate.id) {
+    let saved = if let Some(index) = store
+        .providers
+        .iter()
+        .position(|provider| provider.id == candidate.id)
+    {
         let created_at = store.providers[index].created_at;
         let record = candidate.into_record(created_at, timestamp);
         store.providers[index] = record.clone();
@@ -134,13 +142,19 @@ fn read_store(path: &Path) -> AppResult<CodexProviderStore> {
 fn write_store(path: &Path, store: &CodexProviderStore) -> AppResult<()> {
     validate_store(store)?;
     let payload = serde_json::to_vec_pretty(store)?;
-    fs::create_dir_all(path.parent().ok_or_else(|| AppError::InvalidInput("无效路径".to_string()))?)?;
+    fs::create_dir_all(
+        path.parent()
+            .ok_or_else(|| AppError::InvalidInput("无效路径".to_string()))?,
+    )?;
     fs::write(path, payload)?;
     Ok(())
 }
 
 fn empty_store() -> CodexProviderStore {
-    CodexProviderStore { version: STORE_VERSION, providers: Vec::new() }
+    CodexProviderStore {
+        version: STORE_VERSION,
+        providers: Vec::new(),
+    }
 }
 
 fn validate_store(store: &CodexProviderStore) -> AppResult<()> {
@@ -152,10 +166,14 @@ fn validate_store(store: &CodexProviderStore) -> AppResult<()> {
     let mut seen_keys = std::collections::BTreeSet::new();
     for provider in &store.providers {
         if !seen_ids.insert(provider.id.clone()) {
-            return Err(AppError::InvalidInput("提供商存储中存在重复 id".to_string()));
+            return Err(AppError::InvalidInput(
+                "提供商存储中存在重复 id".to_string(),
+            ));
         }
         if !seen_keys.insert(provider.provider_key.clone()) {
-            return Err(AppError::InvalidInput("提供商存储中存在重复 providerKey".to_string()));
+            return Err(AppError::InvalidInput(
+                "提供商存储中存在重复 providerKey".to_string(),
+            ));
         }
         validate_provider_content(provider)?;
     }
@@ -168,7 +186,8 @@ fn ensure_unique_provider_key(
     current_id: Option<&str>,
 ) -> AppResult<()> {
     let duplicated = providers.iter().any(|provider| {
-        provider.provider_key == provider_key && current_id.map(|id| id != provider.id).unwrap_or(true)
+        provider.provider_key == provider_key
+            && current_id.map(|id| id != provider.id).unwrap_or(true)
     });
     if duplicated {
         return Err(AppError::InvalidInput("providerKey 已存在".to_string()));
@@ -186,7 +205,8 @@ fn validate_upsert_input(input: UpsertCodexProviderInput) -> AppResult<Validated
     let api_key = require_text(input.api_key, "apiKey")?;
     let base_url = require_text(input.base_url, "baseUrl")?;
     let auth_json_text = normalize_auth_json_text(&input.auth_json_text, &api_key)?;
-    let config_toml_text = normalize_config_toml_text(&input.config_toml_text, &provider_key, &name, &base_url)?;
+    let config_toml_text =
+        normalize_config_toml_text(&input.config_toml_text, &provider_key, &name, &base_url)?;
     let provider = ValidatedProvider {
         id: require_text(id, "id")?,
         name,
@@ -213,8 +233,14 @@ fn validate_provider_content(provider: &CodexProviderRecord) -> AppResult<()> {
 
 fn normalize_auth_json_text(text: &str, api_key: &str) -> AppResult<String> {
     let mut auth = parse_auth_object(text)?;
-    auth.insert(OPENAI_API_KEY.to_string(), JsonValue::String(api_key.to_string()));
-    Ok(format!("{}\n", serde_json::to_string_pretty(&JsonValue::Object(auth))?))
+    auth.insert(
+        OPENAI_API_KEY.to_string(),
+        JsonValue::String(api_key.to_string()),
+    );
+    Ok(format!(
+        "{}\n",
+        serde_json::to_string_pretty(&JsonValue::Object(auth))?
+    ))
 }
 
 fn normalize_config_toml_text(
@@ -224,7 +250,8 @@ fn normalize_config_toml_text(
     base_url: &str,
 ) -> AppResult<String> {
     let patch = build_provider_patch_from_text(text, provider_key, provider_name, base_url)?;
-    let serialized = toml::to_string_pretty(&patch).map_err(|error| AppError::Protocol(error.to_string()))?;
+    let serialized =
+        toml::to_string_pretty(&patch).map_err(|error| AppError::Protocol(error.to_string()))?;
     Ok(format!("{serialized}\n"))
 }
 
@@ -235,21 +262,28 @@ fn validate_auth_json(provider: &CodexProviderRecord) -> AppResult<()> {
         .and_then(JsonValue::as_str)
         .ok_or_else(|| AppError::InvalidInput("auth.json 缺少 OPENAI_API_KEY".to_string()))?;
     if api_key != provider.api_key {
-        return Err(AppError::InvalidInput("auth.json 与 apiKey 字段不一致".to_string()));
+        return Err(AppError::InvalidInput(
+            "auth.json 与 apiKey 字段不一致".to_string(),
+        ));
     }
     Ok(())
 }
 
 fn build_template_auth(provider: &CodexProviderRecord) -> AppResult<JsonMap<String, JsonValue>> {
     let mut auth = parse_auth_object(&provider.auth_json_text)?;
-    auth.insert(OPENAI_API_KEY.to_string(), JsonValue::String(provider.api_key.clone()));
+    auth.insert(
+        OPENAI_API_KEY.to_string(),
+        JsonValue::String(provider.api_key.clone()),
+    );
     Ok(auth)
 }
 
 fn parse_auth_object(text: &str) -> AppResult<JsonMap<String, JsonValue>> {
     match serde_json::from_str::<JsonValue>(text)? {
         JsonValue::Object(map) => Ok(map),
-        _ => Err(AppError::InvalidInput("auth.json 必须是 JSON 对象".to_string())),
+        _ => Err(AppError::InvalidInput(
+            "auth.json 必须是 JSON 对象".to_string(),
+        )),
     }
 }
 
