@@ -8,7 +8,7 @@ export function selectActivePlanModeRequest(entries: ReadonlyArray<TimelineEntry
     if (entry.kind !== "pendingUserInput") {
       continue;
     }
-    if (turnContainsPlanDraft(entries, entry.turnId)) {
+    if (entry.turnId !== null && turnContainsPlanDraft(entries, entry.turnId)) {
       return entry;
     }
   }
