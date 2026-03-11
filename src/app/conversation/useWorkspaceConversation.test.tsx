@@ -765,6 +765,46 @@ describe("useWorkspaceConversation", () => {
     expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe", params: { threadId: "thread-1" } }));
   });
 
+  it("does not unload a non-selected thread with pending user input", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "thread/backgroundTerminals/clean") {
+        return { requestId: "clean-1", result: {} };
+      }
+      if (input.method === "thread/unsubscribe") {
+        return { requestId: "unsubscribe-1", result: { status: "unsubscribed" } };
+      }
+      return { requestId: "noop", result: {} };
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread({ id: "thread-1", turns: [createTurn("completed")] }), { resumeState: "resumed" }) });
+      result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread({ id: "thread-2", preview: "thread 2" }), { resumeState: "resumed" }) });
+      result.current.store.dispatch({
+        type: "serverRequest/received",
+        request: {
+          kind: "userInput",
+          id: "request-1",
+          rpcId: 1,
+          method: "item/tool/requestUserInput",
+          threadId: "thread-1",
+          turnId: "turn-1",
+          itemId: "item-1",
+          params: { threadId: "thread-1", turnId: "turn-1", itemId: "item-1", questions: [] },
+          questions: [],
+        },
+      });
+      result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-2" });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe", params: { threadId: "thread-1" } }));
+  });
+
   it("unloads a hidden idle main thread", async () => {
     const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
       if (input.method === "thread/backgroundTerminals/clean") {

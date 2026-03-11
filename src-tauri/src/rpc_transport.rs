@@ -1,7 +1,7 @@
 use serde_json::{json, Value};
 
 use crate::error::{AppError, AppResult};
-use crate::models::{JsonRpcErrorBody, ServerRequestResolveInput};
+use crate::models::{JsonRpcErrorBody, RequestId, ServerRequestResolveInput};
 
 #[derive(Debug)]
 pub enum IncomingMessage {
@@ -15,16 +15,24 @@ pub enum IncomingMessage {
         params: Value,
     },
     ServerRequest {
-        id: String,
+        id: RequestId,
         method: String,
         params: Value,
     },
 }
 
-fn parse_id(value: &Value) -> Option<String> {
+fn parse_response_id(value: &Value) -> Option<String> {
     match value {
         Value::String(text) => Some(text.clone()),
         Value::Number(number) => Some(number.to_string()),
+        _ => None,
+    }
+}
+
+fn parse_request_id(value: &Value) -> Option<RequestId> {
+    match value {
+        Value::String(text) => Some(RequestId::String(text.clone())),
+        Value::Number(number) => Some(RequestId::Number(number.clone())),
         _ => None,
     }
 }
@@ -94,9 +102,9 @@ pub fn parse_incoming_line(line: &str) -> AppResult<IncomingMessage> {
         .ok_or_else(|| AppError::Protocol("RPC 消息必须是对象".to_string()))?;
 
     let method = object.get("method").and_then(Value::as_str);
-    let id = object.get("id").and_then(parse_id);
+    let id_value = object.get("id");
 
-    if let (Some(method), Some(id)) = (method, id.clone()) {
+    if let (Some(method), Some(id)) = (method, id_value.and_then(parse_request_id)) {
         return Ok(IncomingMessage::ServerRequest {
             id,
             method: method.to_string(),
@@ -111,7 +119,7 @@ pub fn parse_incoming_line(line: &str) -> AppResult<IncomingMessage> {
         });
     }
 
-    if let Some(id) = id {
+    if let Some(id) = id_value.and_then(parse_response_id) {
         let result = object.get("result").cloned();
         let error = object
             .get("error")
@@ -143,11 +151,35 @@ mod tests {
 
         match message {
             IncomingMessage::ServerRequest { id, method, params } => {
-                assert_eq!(id, "1");
+                assert!(matches!(id, RequestId::Number(_)));
                 assert_eq!(method, "tool/request");
                 assert_eq!(params, json!({ "ok": true }));
             }
             _ => panic!("expected server request"),
         }
+    }
+
+    #[test]
+    fn preserves_numeric_server_request_id_in_response() {
+        let line = build_server_response_line(&ServerRequestResolveInput {
+            request_id: RequestId::Number(1.into()),
+            result: Some(json!({ "ok": true })),
+            error: None,
+        })
+        .unwrap();
+
+        assert_eq!(line, r#"{"id":1,"result":{"ok":true}}"#);
+    }
+
+    #[test]
+    fn preserves_string_server_request_id_in_response() {
+        let line = build_server_response_line(&ServerRequestResolveInput {
+            request_id: RequestId::String("request-1".to_string()),
+            result: Some(json!({ "ok": true })),
+            error: None,
+        })
+        .unwrap();
+
+        assert_eq!(line, r#"{"id":"request-1","result":{"ok":true}}"#);
     }
 }

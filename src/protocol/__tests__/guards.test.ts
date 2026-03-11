@@ -27,4 +27,13 @@ describe("protocol guards", () => {
     });
     expect(result.id).toBe("1");
   });
+
+  it("parses numeric server request ids", () => {
+    const result = parseServerRequestEnvelope({
+      id: 1,
+      method: "item/tool/requestUserInput",
+      params: {}
+    });
+    expect(result.id).toBe(1);
+  });
 });

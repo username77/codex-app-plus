@@ -2,6 +2,7 @@ import type { BridgeEventName, BridgeEventPayloadMap, HostBridge } from "../brid
 import { parseConnectionStatus, parseNotificationEnvelope, parseServerRequestEnvelope } from "./guards";
 import type { ClientRequest } from "./generated/ClientRequest";
 import type { InitializeParams } from "./generated/InitializeParams";
+import type { RequestId } from "./generated/RequestId";
 import type { ThreadBackgroundTerminalsCleanResponse } from "./generated/v2/ThreadBackgroundTerminalsCleanResponse";
 import type { ThreadUnsubscribeResponse } from "./generated/v2/ThreadUnsubscribeResponse";
 
@@ -15,7 +16,7 @@ type ParamsByMethod<M extends ClientMethod> = Extract<ClientRequest, { method: M
 type ProtocolHandlers = {
   onConnectionChanged: (status: "disconnected" | "connecting" | "connected" | "error") => void;
   onNotification: (method: string, params: unknown) => void;
-  onServerRequest: (id: string, method: string, params: unknown) => void;
+  onServerRequest: (id: RequestId, method: string, params: unknown) => void;
   onFatalError: (message: string) => void;
 };
 
@@ -99,14 +100,14 @@ export class ProtocolClient {
     return this.request("thread/unsubscribe", { threadId }) as Promise<ThreadUnsubscribeResponse>;
   }
 
-  resolveServerRequest(requestId: string, result: unknown): Promise<void> {
+  resolveServerRequest(requestId: RequestId, result: unknown): Promise<void> {
     return this.#hostBridge.serverRequest.resolve({
       requestId,
       result
     });
   }
 
-  rejectServerRequest(requestId: string, code: number, message: string): Promise<void> {
+  rejectServerRequest(requestId: RequestId, code: number, message: string): Promise<void> {
     return this.#hostBridge.serverRequest.resolve({
       requestId,
       error: {

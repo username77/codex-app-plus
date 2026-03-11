@@ -305,6 +305,7 @@ describe("HomeView", () => {
         request: {
           kind: "userInput",
           id: "request-1",
+          rpcId: "request-1",
           method: "item/tool/requestUserInput",
           threadId: "thread-1",
           turnId: "turn-1",

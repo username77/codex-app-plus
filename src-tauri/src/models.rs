@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Number, Value};
 
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -42,10 +42,23 @@ pub struct JsonRpcErrorBody {
     pub data: Option<Value>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum RequestId {
+    String(String),
+    Number(Number),
+}
+
+impl RequestId {
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Self::String(value) if value.is_empty())
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ServerRequestResolveInput {
-    pub request_id: String,
+    pub request_id: RequestId,
     pub result: Option<Value>,
     pub error: Option<JsonRpcErrorBody>,
 }
@@ -271,7 +284,7 @@ pub struct NotificationPayload {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct ServerRequestPayload {
-    pub id: String,
+    pub id: RequestId,
     pub method: String,
     pub params: Value,
 }

@@ -1,6 +1,7 @@
 import type { ReviewDecision } from "../protocol/generated/ReviewDecision";
 import type { ApplyPatchApprovalParams } from "../protocol/generated/ApplyPatchApprovalParams";
 import type { ExecCommandApprovalParams } from "../protocol/generated/ExecCommandApprovalParams";
+import type { RequestId } from "../protocol/generated/RequestId";
 import type { CommandExecutionApprovalDecision } from "../protocol/generated/v2/CommandExecutionApprovalDecision";
 import type { ChatgptAuthTokensRefreshParams } from "../protocol/generated/v2/ChatgptAuthTokensRefreshParams";
 import type { ChatgptAuthTokensRefreshResponse } from "../protocol/generated/v2/ChatgptAuthTokensRefreshResponse";
@@ -12,6 +13,7 @@ import type { ToolRequestUserInputQuestion } from "../protocol/generated/v2/Tool
 
 interface RequestBase {
   readonly id: string;
+  readonly rpcId: RequestId;
   readonly threadId: string | null;
   readonly turnId: string | null;
   readonly itemId: string | null;

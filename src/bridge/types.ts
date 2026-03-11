@@ -1,3 +1,5 @@
+import type { RequestId } from "../protocol/generated/RequestId";
+
 export type BridgeEventName =
   | "connection-changed"
   | "notification-received"
@@ -16,7 +18,7 @@ export interface NotificationEventPayload {
 }
 
 export interface ServerRequestEventPayload {
-  readonly id: string;
+  readonly id: RequestId;
   readonly method: string;
   readonly params: unknown;
 }
@@ -87,7 +89,7 @@ export interface RpcCancelInput {
 }
 
 export interface ServerRequestResolveInput {
-  readonly requestId: string;
+  readonly requestId: RequestId;
   readonly result?: unknown;
   readonly error?: {
     readonly code: number;

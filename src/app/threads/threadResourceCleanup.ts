@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { HostBridge } from "../../bridge/types";
 import type { ConversationState } from "../../domain/conversation";
+import type { ReceivedServerRequest } from "../../domain/serverRequests";
 import type { AppAction } from "../../domain/types";
 import type { SessionSource } from "../../protocol/generated/v2/SessionSource";
 import type { CollabAgentStatus } from "../../protocol/generated/v2/CollabAgentStatus";
@@ -11,6 +12,7 @@ import { isConversationStreaming } from "../conversation/conversationSelectors";
 interface UseThreadResourceCleanupOptions {
   readonly hostBridge: Pick<HostBridge, "rpc">;
   readonly conversationsById: Readonly<Record<string, ConversationState | undefined>>;
+  readonly pendingRequestsByConversationId: Readonly<Record<string, ReadonlyArray<ReceivedServerRequest> | undefined>>;
   readonly selectedConversationId: string | null;
   readonly dispatch: (action: AppAction) => void;
 }
@@ -31,33 +33,50 @@ function hasTurnHistory(conversation: ConversationState): boolean {
   return conversation.turns.length > 0;
 }
 
+function hasBlockingPendingRequests(
+  pendingRequestsByConversationId: UseThreadResourceCleanupOptions["pendingRequestsByConversationId"],
+  conversationId: string,
+): boolean {
+  return (pendingRequestsByConversationId[conversationId]?.length ?? 0) > 0;
+}
+
+function hasProtectedActiveFlags(conversation: ConversationState): boolean {
+  return conversation.activeFlags.includes("waitingOnApproval")
+    || conversation.activeFlags.includes("waitingOnUserInput");
+}
+
 function isUnloadableConversation(
   conversation: ConversationState,
   selectedConversationId: string | null,
+  pendingRequestsByConversationId: UseThreadResourceCleanupOptions["pendingRequestsByConversationId"],
 ): boolean {
   return conversation.id !== selectedConversationId
     && hasTurnHistory(conversation)
     && conversation.resumeState === "resumed"
     && conversation.queuedFollowUps.length === 0
+    && hasBlockingPendingRequests(pendingRequestsByConversationId, conversation.id) === false
+    && hasProtectedActiveFlags(conversation) === false
     && isConversationStreaming(conversation) === false;
 }
 
 function shouldUnloadMainConversation(
   conversation: ConversationState,
   selectedConversationId: string | null,
+  pendingRequestsByConversationId: UseThreadResourceCleanupOptions["pendingRequestsByConversationId"],
 ): boolean {
   return conversation.hidden === false
     && isSubAgentSource(conversation.source) === false
-    && isUnloadableConversation(conversation, selectedConversationId);
+    && isUnloadableConversation(conversation, selectedConversationId, pendingRequestsByConversationId);
 }
 
 function shouldUnloadHiddenMainConversation(
   conversation: ConversationState,
   selectedConversationId: string | null,
+  pendingRequestsByConversationId: UseThreadResourceCleanupOptions["pendingRequestsByConversationId"],
 ): boolean {
   return conversation.hidden
     && isSubAgentSource(conversation.source) === false
-    && isUnloadableConversation(conversation, selectedConversationId);
+    && isUnloadableConversation(conversation, selectedConversationId, pendingRequestsByConversationId);
 }
 
 function collectFinalSubagentIds(
@@ -148,21 +167,23 @@ async function unsubscribeThread(
 }
 
 export function useThreadResourceCleanup(options: UseThreadResourceCleanupOptions): void {
-  const { conversationsById, dispatch, hostBridge, selectedConversationId } = options;
+  const { conversationsById, dispatch, hostBridge, pendingRequestsByConversationId, selectedConversationId } = options;
   const cleanupInFlightIds = useRef(new Set<string>());
   const cleanedThreadIds = useRef(new Set<string>());
   const conversationsByIdRef = useRef(conversationsById);
+  const pendingRequestsByConversationIdRef = useRef(pendingRequestsByConversationId);
   const selectedConversationIdRef = useRef(selectedConversationId);
 
   useEffect(() => {
     conversationsByIdRef.current = conversationsById;
+    pendingRequestsByConversationIdRef.current = pendingRequestsByConversationId;
     selectedConversationIdRef.current = selectedConversationId;
     for (const conversation of Object.values(conversationsById)) {
       if (conversation?.resumeState === "resumed") {
         cleanedThreadIds.current.delete(conversation.id);
       }
     }
-  }, [conversationsById, selectedConversationId]);
+  }, [conversationsById, pendingRequestsByConversationId, selectedConversationId]);
 
   const cleanupThread = useCallback(async (threadId: string) => {
     if (cleanupInFlightIds.current.has(threadId) || cleanedThreadIds.current.has(threadId)) {
@@ -173,6 +194,9 @@ export function useThreadResourceCleanup(options: UseThreadResourceCleanupOption
     }
 
     const conversation = conversationsByIdRef.current[threadId] ?? null;
+    if (hasBlockingPendingRequests(pendingRequestsByConversationIdRef.current, threadId)) {
+      return;
+    }
     if (conversation !== null && isConversationStreaming(conversation)) {
       return;
     }
@@ -201,19 +225,19 @@ export function useThreadResourceCleanup(options: UseThreadResourceCleanupOption
 
   useEffect(() => {
     for (const conversation of Object.values(conversationsById)) {
-      if (conversation !== undefined && shouldUnloadMainConversation(conversation, selectedConversationId)) {
+      if (conversation !== undefined && shouldUnloadMainConversation(conversation, selectedConversationId, pendingRequestsByConversationId)) {
         void cleanupThread(conversation.id);
       }
     }
-  }, [cleanupThread, conversationsById, selectedConversationId]);
+  }, [cleanupThread, conversationsById, pendingRequestsByConversationId, selectedConversationId]);
 
   useEffect(() => {
     for (const conversation of Object.values(conversationsById)) {
-      if (conversation !== undefined && shouldUnloadHiddenMainConversation(conversation, selectedConversationId)) {
+      if (conversation !== undefined && shouldUnloadHiddenMainConversation(conversation, selectedConversationId, pendingRequestsByConversationId)) {
         void cleanupThread(conversation.id);
       }
     }
-  }, [cleanupThread, conversationsById, selectedConversationId]);
+  }, [cleanupThread, conversationsById, pendingRequestsByConversationId, selectedConversationId]);
 
   useEffect(() => {
     const conversations = Object.values(conversationsById).filter(

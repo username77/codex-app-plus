@@ -133,6 +133,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
   useThreadResourceCleanup({
     hostBridge: options.hostBridge,
     conversationsById: state.conversationsById,
+    pendingRequestsByConversationId: state.pendingRequestsByConversationId,
     selectedConversationId: state.selectedConversationId,
     dispatch,
   });

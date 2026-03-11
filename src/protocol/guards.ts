@@ -1,3 +1,5 @@
+import type { RequestId } from "./generated/RequestId";
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -9,13 +11,20 @@ function mustString(value: unknown, field: string): string {
   return value;
 }
 
+function mustRequestId(value: unknown, field: string): RequestId {
+  if (typeof value === "number") {
+    return value;
+  }
+  return mustString(value, field);
+}
+
 export interface EnvelopeLike {
   readonly method: string;
   readonly params: unknown;
 }
 
 export interface RequestEnvelopeLike extends EnvelopeLike {
-  readonly id: string;
+  readonly id: RequestId;
 }
 
 export function parseNotificationEnvelope(value: unknown): EnvelopeLike {
@@ -33,7 +42,7 @@ export function parseServerRequestEnvelope(value: unknown): RequestEnvelopeLike 
     throw new Error("serverRequest payload 必须是对象");
   }
   return {
-    id: mustString(value.id, "serverRequest.id"),
+    id: mustRequestId(value.id, "serverRequest.id"),
     method: mustString(value.method, "serverRequest.method"),
     params: value.params
   };

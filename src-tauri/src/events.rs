@@ -2,7 +2,8 @@ use tauri::{AppHandle, Emitter};
 
 use crate::error::AppResult;
 use crate::models::{
-    ConnectionChangedPayload, FatalErrorPayload, NotificationPayload, ServerRequestPayload,
+    ConnectionChangedPayload, FatalErrorPayload, NotificationPayload, RequestId,
+    ServerRequestPayload,
     TerminalExitPayload, TerminalOutputPayload,
 };
 
@@ -35,7 +36,7 @@ pub fn emit_notification(
 
 pub fn emit_server_request(
     app: &AppHandle,
-    id: String,
+    id: RequestId,
     method: String,
     params: serde_json::Value,
 ) -> AppResult<()> {

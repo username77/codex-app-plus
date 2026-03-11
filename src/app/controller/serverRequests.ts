@@ -1,6 +1,7 @@
 import type { ApplyPatchApprovalParams } from "../../protocol/generated/ApplyPatchApprovalParams";
 import type { ExecCommandApprovalParams } from "../../protocol/generated/ExecCommandApprovalParams";
 import type { ReviewDecision } from "../../protocol/generated/ReviewDecision";
+import type { RequestId } from "../../protocol/generated/RequestId";
 import type { ChatgptAuthTokensRefreshParams } from "../../protocol/generated/v2/ChatgptAuthTokensRefreshParams";
 import type { CommandExecutionRequestApprovalParams } from "../../protocol/generated/v2/CommandExecutionRequestApprovalParams";
 import type { DynamicToolCallParams } from "../../protocol/generated/v2/DynamicToolCallParams";
@@ -32,51 +33,52 @@ function mapLegacyDecision(decision: ReviewDecision): ReviewDecision {
   return decision;
 }
 
-export function normalizeServerRequest(id: string, method: string, params: unknown): ReceivedServerRequest {
+export function normalizeServerRequest(rpcId: RequestId, method: string, params: unknown): ReceivedServerRequest {
+  const id = String(rpcId);
   if (method === "item/commandExecution/requestApproval") {
     const input = params as CommandExecutionRequestApprovalParams;
-    const request: CommandApprovalRequest = { kind: "commandApproval", id, method, threadId: input.threadId, turnId: input.turnId, itemId: input.itemId, params: input };
+    const request: CommandApprovalRequest = { kind: "commandApproval", id, rpcId, method, threadId: input.threadId, turnId: input.turnId, itemId: input.itemId, params: input };
     return request;
   }
 
   if (method === "item/fileChange/requestApproval") {
     const input = params as FileChangeRequestApprovalParams;
-    const request: FileChangeApprovalRequest = { kind: "fileApproval", id, method, threadId: input.threadId, turnId: input.turnId, itemId: input.itemId, params: input };
+    const request: FileChangeApprovalRequest = { kind: "fileApproval", id, rpcId, method, threadId: input.threadId, turnId: input.turnId, itemId: input.itemId, params: input };
     return request;
   }
 
   if (method === "applyPatchApproval") {
     const input = params as ApplyPatchApprovalParams;
-    const request: LegacyPatchApprovalRequest = { kind: "legacyPatchApproval", id, method, threadId: input.conversationId, turnId: null, itemId: input.callId, params: input };
+    const request: LegacyPatchApprovalRequest = { kind: "legacyPatchApproval", id, rpcId, method, threadId: input.conversationId, turnId: null, itemId: input.callId, params: input };
     return request;
   }
 
   if (method === "execCommandApproval") {
     const input = params as ExecCommandApprovalParams;
-    const request: LegacyExecCommandApprovalRequest = { kind: "legacyCommandApproval", id, method, threadId: input.conversationId, turnId: null, itemId: input.approvalId ?? input.callId, params: input };
+    const request: LegacyExecCommandApprovalRequest = { kind: "legacyCommandApproval", id, rpcId, method, threadId: input.conversationId, turnId: null, itemId: input.approvalId ?? input.callId, params: input };
     return request;
   }
 
   if (method === "item/tool/requestUserInput") {
     const input = params as ToolRequestUserInputParams;
-    const request: ToolRequestUserInputRequest = { kind: "userInput", id, method, threadId: input.threadId, turnId: input.turnId, itemId: input.itemId, params: input, questions: input.questions };
+    const request: ToolRequestUserInputRequest = { kind: "userInput", id, rpcId, method, threadId: input.threadId, turnId: input.turnId, itemId: input.itemId, params: input, questions: input.questions };
     return request;
   }
 
   if (method === "item/tool/call") {
     const input = params as DynamicToolCallParams;
-    const request: ToolCallRequest = { kind: "toolCall", id, method, threadId: input.threadId, turnId: input.turnId, itemId: input.callId, params: input, tool: input.tool, arguments: input.arguments };
+    const request: ToolCallRequest = { kind: "toolCall", id, rpcId, method, threadId: input.threadId, turnId: input.turnId, itemId: input.callId, params: input, tool: input.tool, arguments: input.arguments };
     return request;
   }
 
   if (method === "account/chatgptAuthTokens/refresh") {
     const input = params as ChatgptAuthTokensRefreshParams;
-    const request: TokenRefreshRequest = { kind: "tokenRefresh", id, method, threadId: null, turnId: null, itemId: null, params: input };
+    const request: TokenRefreshRequest = { kind: "tokenRefresh", id, rpcId, method, threadId: null, turnId: null, itemId: null, params: input };
     return request;
   }
 
   const record = asRecord(params);
-  const unknownRequest: UnknownServerRequest = { kind: "unknown", id, method, threadId: readString(record, "threadId"), turnId: readString(record, "turnId"), itemId: readString(record, "itemId"), params };
+  const unknownRequest: UnknownServerRequest = { kind: "unknown", id, rpcId, method, threadId: readString(record, "threadId"), turnId: readString(record, "turnId"), itemId: readString(record, "itemId"), params };
   return unknownRequest;
 }
 

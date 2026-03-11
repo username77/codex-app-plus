@@ -1,14 +1,15 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { HostBridge } from "../../bridge/types";
+import type { RequestId } from "../../protocol/generated/RequestId";
 import { AppStoreProvider } from "../../state/store";
 
 const protocolState = vi.hoisted(() => ({
   handlers: null as null | {
     onConnectionChanged: (status: "disconnected" | "connecting" | "connected" | "error") => void;
     onNotification: (method: string, params: unknown) => void;
-    onServerRequest: (id: string, method: string, params: unknown) => void;
+    onServerRequest: (id: RequestId, method: string, params: unknown) => void;
     onFatalError: (message: string) => void;
   },
   request: vi.fn(),
@@ -51,7 +52,7 @@ vi.mock("../../protocol/client", () => ({
       return protocolState.request(method, params);
     }
 
-    resolveServerRequest(requestId: string, result: unknown): Promise<void> {
+    resolveServerRequest(requestId: RequestId, result: unknown): Promise<void> {
       return protocolState.resolveServerRequest(requestId, result);
     }
   },
@@ -219,5 +220,91 @@ describe("useAppController auth helpers", () => {
       expect(protocolState.request).toHaveBeenCalledWith("account/read", { refreshToken: false });
       expect(protocolState.request).toHaveBeenCalledWith("account/rateLimits/read", undefined);
     });
+  });
+});
+
+describe("useAppController server request lifecycle", () => {
+  beforeEach(() => {
+    protocolState.handlers = null;
+    protocolState.request = createRequestStub();
+    protocolState.resolveServerRequest.mockReset();
+    protocolState.resolveServerRequest.mockResolvedValue(undefined);
+  });
+
+  it("keeps pending requests until server confirmation and preserves numeric rpc ids", async () => {
+    const hostBridge = createHostBridge();
+    const { result } = renderHook(() => useAppController(hostBridge), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.state.initialized).toBe(true);
+    });
+    protocolState.request.mockClear();
+
+    act(() => {
+      protocolState.handlers?.onServerRequest(1, "item/tool/requestUserInput", {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        itemId: "item-1",
+        questions: [{ id: "scope", header: "Scope", question: "Pick scope", isOther: false, isSecret: false, options: [] }],
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.state.pendingRequestsById["1"]).toBeDefined();
+      expect(protocolState.request).toHaveBeenCalledWith("thread/increment_elicitation", { threadId: "thread-1" });
+    });
+
+    await act(async () => {
+      await result.current.resolveServerRequest({ kind: "userInput", requestId: "1", answers: { scope: ["main"] } });
+    });
+
+    expect(protocolState.resolveServerRequest).toHaveBeenCalledWith(1, {
+      answers: {
+        scope: { answers: ["main"] },
+      },
+    });
+    expect(result.current.state.pendingRequestsById["1"]).toBeDefined();
+
+    act(() => {
+      protocolState.handlers?.onNotification("serverRequest/resolved", { threadId: "thread-1", requestId: 1 });
+    });
+
+    await waitFor(() => {
+      expect(result.current.state.pendingRequestsById["1"]).toBeUndefined();
+      expect(protocolState.request).toHaveBeenCalledWith("thread/decrement_elicitation", { threadId: "thread-1" });
+    });
+  });
+
+  it("keeps pending requests and reports an error when resolve fails", async () => {
+    protocolState.resolveServerRequest.mockRejectedValueOnce(new Error("boom"));
+    const hostBridge = createHostBridge();
+    const { result } = renderHook(() => useAppController(hostBridge), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.state.initialized).toBe(true);
+    });
+
+    act(() => {
+      protocolState.handlers?.onServerRequest(1, "item/tool/requestUserInput", {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        itemId: "item-1",
+        questions: [],
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.state.pendingRequestsById["1"]).toBeDefined();
+    });
+
+    await act(async () => {
+      await result.current.resolveServerRequest({ kind: "userInput", requestId: "1", answers: {} });
+    });
+
+    expect(result.current.state.pendingRequestsById["1"]).toBeDefined();
+    expect(result.current.state.banners[0]).toEqual(expect.objectContaining({
+      title: "Failed to submit request response",
+      detail: "boom",
+    }));
   });
 });
