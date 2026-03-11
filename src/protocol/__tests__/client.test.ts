@@ -157,6 +157,32 @@ describe("ProtocolClient", () => {
     });
   });
 
+  it("provides typed helpers for thread cleanup requests", async () => {
+    const hostBridge = createHostBridge();
+    const client = new ProtocolClient(hostBridge, {
+      onConnectionChanged: vi.fn(),
+      onNotification: vi.fn(),
+      onServerRequest: vi.fn(),
+      onFatalError: vi.fn()
+    });
+
+    await client.initializeConnection({
+      clientInfo: { name: "test", title: "Test", version: "1.0.0" },
+      capabilities: { experimentalApi: true, optOutNotificationMethods: null }
+    });
+    await client.cleanThreadBackgroundTerminals("thread-1");
+    await client.unsubscribeThread("thread-1");
+
+    expect(hostBridge.rpc.request).toHaveBeenNthCalledWith(2, {
+      method: "thread/backgroundTerminals/clean",
+      params: { threadId: "thread-1" }
+    });
+    expect(hostBridge.rpc.request).toHaveBeenNthCalledWith(3, {
+      method: "thread/unsubscribe",
+      params: { threadId: "thread-1" }
+    });
+  });
+
   it("cleans up late subscriptions when detach happens during attach", async () => {
     const hostBridge = createHostBridge();
     const connectionDeferred = createDeferred<() => void>();

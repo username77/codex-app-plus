@@ -41,6 +41,30 @@ function createTurn(status: "inProgress" | "completed" = "inProgress") {
   return { id: "turn-1", items: [], status, error: null };
 }
 
+function createSubAgentSource(parentThreadId = "thread-1") {
+  return { subAgent: { thread_spawn: { parent_thread_id: parentThreadId, depth: 1, agent_nickname: null, agent_role: "explorer" } } };
+}
+
+function createCollabTurn(childThreadId: string, status: "completed" | "errored" | "shutdown" | "notFound") {
+  return {
+    id: "turn-1",
+    status: "completed" as const,
+    error: null,
+    items: [{
+      type: "collabAgentToolCall" as const,
+      id: "collab-1",
+      tool: "spawnAgent" as const,
+      status: "completed" as const,
+      senderThreadId: "thread-1",
+      receiverThreadIds: [childThreadId],
+      prompt: "inspect ui",
+      agentsStates: {
+        [childThreadId]: { status, message: status === "notFound" ? null : "done" }
+      }
+    }]
+  };
+}
+
 function createSendOptions(text: string, attachments: ReadonlyArray<ComposerAttachment> = []) {
   return {
     text,
@@ -452,5 +476,123 @@ describe("useWorkspaceConversation", () => {
 
     expect(result.current.conversation.isResponding).toBe(false);
     expect(result.current.conversation.interruptPending).toBe(false);
+  });
+
+  it("unloads a non-selected idle main thread after switching selection", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "thread/backgroundTerminals/clean") {
+        return { requestId: "clean-1", result: {} };
+      }
+      if (input.method === "thread/unsubscribe") {
+        return { requestId: "unsubscribe-1", result: { status: "unsubscribed" } };
+      }
+      return { requestId: "noop", result: {} };
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread({ id: "thread-1" }), { resumeState: "resumed" }) });
+      result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread({ id: "thread-2", preview: "thread 2" }), { resumeState: "resumed" }) });
+      result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-2" });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/backgroundTerminals/clean", params: { threadId: "thread-1" } }));
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe", params: { threadId: "thread-1" } }));
+  });
+
+  it("unloads a hidden idle main thread", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "thread/backgroundTerminals/clean") {
+        return { requestId: "clean-1", result: {} };
+      }
+      if (input.method === "thread/unsubscribe") {
+        return { requestId: "unsubscribe-1", result: { status: "unsubscribed" } };
+      }
+      return { requestId: "noop", result: {} };
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({
+        type: "conversation/upserted",
+        conversation: createConversationFromThread(createThread({ id: "thread-1" }), { hidden: true, resumeState: "resumed" })
+      });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/backgroundTerminals/clean", params: { threadId: "thread-1" } }));
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe", params: { threadId: "thread-1" } }));
+  });
+
+  it("cleans up completed sub-agent threads", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "thread/backgroundTerminals/clean") {
+        return { requestId: "clean-1", result: {} };
+      }
+      if (input.method === "thread/unsubscribe") {
+        return { requestId: "unsubscribe-1", result: { status: "unsubscribed" } };
+      }
+      return { requestId: "noop", result: {} };
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({
+        type: "conversation/upserted",
+        conversation: createConversationFromThread(createThread({
+          id: "thread-1",
+          turns: [createCollabTurn("thread-2", "completed")],
+        }), { resumeState: "resumed" })
+      });
+      result.current.store.dispatch({
+        type: "conversation/upserted",
+        conversation: createConversationFromThread(createThread({
+          id: "thread-2",
+          preview: "child",
+          source: createSubAgentSource(),
+        }), { resumeState: "resumed" })
+      });
+      result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-1" });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/backgroundTerminals/clean", params: { threadId: "thread-2" } }));
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe", params: { threadId: "thread-2" } }));
+  });
+
+  it("does not retry cleanup for sub-agents already marked notFound", async () => {
+    const request = vi.fn(async () => ({ requestId: "noop", result: {} }));
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({
+        type: "conversation/upserted",
+        conversation: createConversationFromThread(createThread({
+          id: "thread-1",
+          turns: [createCollabTurn("thread-2", "notFound")],
+        }), { resumeState: "resumed" })
+      });
+      result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-1" });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(request).not.toHaveBeenCalled();
   });
 });

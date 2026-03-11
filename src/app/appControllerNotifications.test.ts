@@ -52,6 +52,45 @@ describe("applyAppServerNotification", () => {
     }));
   });
 
+  it("marks thread/closed conversations as notLoaded and resumable", () => {
+    const dispatch = vi.fn<(action: AppAction) => void>();
+
+    applyAppServerNotification(createContext(dispatch), "thread/closed", { threadId: "thread-1" });
+
+    expect(dispatch).toHaveBeenNthCalledWith(1, {
+      type: "conversation/statusChanged",
+      conversationId: "thread-1",
+      status: "notLoaded",
+      activeFlags: [],
+    });
+    expect(dispatch).toHaveBeenNthCalledWith(2, {
+      type: "conversation/resumeStateChanged",
+      conversationId: "thread-1",
+      resumeState: "needs_resume",
+    });
+  });
+
+  it("marks notLoaded status updates as needing resume", () => {
+    const dispatch = vi.fn<(action: AppAction) => void>();
+
+    applyAppServerNotification(createContext(dispatch), "thread/status/changed", {
+      threadId: "thread-1",
+      status: { type: "notLoaded" },
+    });
+
+    expect(dispatch).toHaveBeenNthCalledWith(1, {
+      type: "conversation/statusChanged",
+      conversationId: "thread-1",
+      status: "notLoaded",
+      activeFlags: [],
+    });
+    expect(dispatch).toHaveBeenNthCalledWith(2, {
+      type: "conversation/resumeStateChanged",
+      conversationId: "thread-1",
+      resumeState: "needs_resume",
+    });
+  });
+
   it("records windows sandbox setup completion", () => {
     const dispatch = vi.fn<(action: AppAction) => void>();
 

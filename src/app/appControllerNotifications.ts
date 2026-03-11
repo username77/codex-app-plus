@@ -158,6 +158,9 @@ export function applyAppServerNotification(context: NotificationContext, method:
     const payload = params as ThreadStatusChangedNotification;
     const activeFlags = payload.status.type === "active" ? payload.status.activeFlags : [];
     dispatch({ type: "conversation/statusChanged", conversationId: payload.threadId, status: payload.status.type, activeFlags });
+    if (payload.status.type === "notLoaded") {
+      dispatch({ type: "conversation/resumeStateChanged", conversationId: payload.threadId, resumeState: "needs_resume" });
+    }
     return;
   }
   if (method === "thread/archived") {
@@ -172,7 +175,8 @@ export function applyAppServerNotification(context: NotificationContext, method:
   }
   if (method === "thread/closed") {
     const payload = params as ThreadClosedNotification;
-    dispatch({ type: "conversation/statusChanged", conversationId: payload.threadId, status: "idle", activeFlags: [] });
+    dispatch({ type: "conversation/statusChanged", conversationId: payload.threadId, status: "notLoaded", activeFlags: [] });
+    dispatch({ type: "conversation/resumeStateChanged", conversationId: payload.threadId, resumeState: "needs_resume" });
     return;
   }
   if (method === "thread/name/updated") {

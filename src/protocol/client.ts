@@ -2,6 +2,8 @@ import type { BridgeEventName, BridgeEventPayloadMap, HostBridge } from "../brid
 import { parseConnectionStatus, parseNotificationEnvelope, parseServerRequestEnvelope } from "./guards";
 import type { ClientRequest } from "./generated/ClientRequest";
 import type { InitializeParams } from "./generated/InitializeParams";
+import type { ThreadBackgroundTerminalsCleanResponse } from "./generated/v2/ThreadBackgroundTerminalsCleanResponse";
+import type { ThreadUnsubscribeResponse } from "./generated/v2/ThreadUnsubscribeResponse";
 
 type ClientMethod = ClientRequest["method"];
 type ParamsByMethod<M extends ClientMethod> = Extract<ClientRequest, { method: M }> extends {
@@ -87,6 +89,14 @@ export class ProtocolClient {
       throw new Error(`Codex app-server 尚未完成 initialize/initialized 握手，无法调用 ${method}`);
     }
     return this.requestRaw(method, params);
+  }
+
+  cleanThreadBackgroundTerminals(threadId: string): Promise<ThreadBackgroundTerminalsCleanResponse> {
+    return this.request("thread/backgroundTerminals/clean", { threadId }) as Promise<ThreadBackgroundTerminalsCleanResponse>;
+  }
+
+  unsubscribeThread(threadId: string): Promise<ThreadUnsubscribeResponse> {
+    return this.request("thread/unsubscribe", { threadId }) as Promise<ThreadUnsubscribeResponse>;
   }
 
   resolveServerRequest(requestId: string, result: unknown): Promise<void> {

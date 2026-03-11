@@ -33,6 +33,7 @@ import {
 import { buildComposerUserInputs } from "./composerAttachments";
 import { listThreadsForWorkspace } from "./workspaceThread";
 import { isComposerFuzzySessionId } from "../components/replica/composerCommandBridge";
+import { useThreadResourceCleanup } from "./threadResourceCleanup";
 export interface SendTurnOptions {
   readonly text: string;
   readonly attachments: ReadonlyArray<ComposerAttachment>;
@@ -113,6 +114,12 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
   const queuedFollowUps = selectedConversation?.queuedFollowUps ?? [];
   const isResponding = activeTurnId !== null;
   const interruptPending = activeTurnId !== null && selectedConversation?.interruptRequestedTurnId === activeTurnId;
+  useThreadResourceCleanup({
+    hostBridge: options.hostBridge,
+    conversationsById: state.conversationsById,
+    selectedConversationId: state.selectedConversationId,
+    dispatch,
+  });
   useEffect(() => {
     const activeKey = selectedConversation === null || activeTurnId === null ? null : `${selectedConversation.id}:${activeTurnId}`;
     if (interruptPending) {
