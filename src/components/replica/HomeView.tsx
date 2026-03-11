@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComposerPermissionLevel } from "../../app/composerPermission";
 import type { ComposerModelOption, ComposerSelection } from "../../app/composerPreferences";
 import type { ThreadDetailLevel } from "../../app/useAppPreferences";
@@ -18,8 +18,11 @@ import type { ComposerEnterBehavior, FollowUpMode, QueuedFollowUp } from "../../
 import { TerminalPanel } from "../terminal/TerminalPanel";
 import { HomeConversationCanvas } from "./HomeConversationCanvas";
 import { HomeComposer } from "./HomeComposer";
+import { HomeTurnPlanDrawer } from "./HomeTurnPlanDrawer";
+import type { TurnPlanModel } from "./homeTurnPlanModel";
 import { HomeMainToolbar } from "./HomeMainToolbar";
 import { HomeSidebar } from "./HomeSidebar";
+import { removeTurnPlanEntries, selectLatestTurnPlan } from "./homeTurnPlanModel";
 import { WorkspaceDiffSidebar } from "./git/WorkspaceDiffSidebar";
 import type { WorkspaceGitController } from "./git/types";
 import { useWorkspaceGit } from "./git/useWorkspaceGit";
@@ -126,6 +129,10 @@ interface MainContentProps {
 }
 
 function MainContent(props: MainContentProps): JSX.Element {
+  const renderableActivities = useMemo(() => removeTurnPlanEntries(props.activities), [props.activities]);
+  const currentTurnPlan = useMemo(() => selectLatestTurnPlan(props.activities), [props.activities]);
+  const [planDrawerCollapsed, setPlanDrawerCollapsed] = useState(true);
+  const planSnapshotKeyRef = useRef<string | null>(null);
   const conversationActive = props.draftActive || props.selectedConversationLoading || props.selectedThread !== null || props.activities.length > 0;
   const placeholder = props.draftActive
     ? { title: "Ready to start a new thread", body: "Send the first message to switch into the full official timeline." }
@@ -134,6 +141,19 @@ function MainContent(props: MainContentProps): JSX.Element {
       : props.selectedThread !== null
         ? { title: "Thread opened", body: "New plans, tools, approvals, realtime updates, and file changes appear here." }
         : null;
+
+  useEffect(() => {
+    if (currentTurnPlan === null) {
+      setPlanDrawerCollapsed(true);
+      planSnapshotKeyRef.current = null;
+      return;
+    }
+    const nextKey = createTurnPlanChangeKey(currentTurnPlan);
+    if (nextKey !== planSnapshotKeyRef.current) {
+      setPlanDrawerCollapsed(false);
+      planSnapshotKeyRef.current = nextKey;
+    }
+  }, [currentTurnPlan]);
 
   return (
     <div className="replica-main">
@@ -153,7 +173,7 @@ function MainContent(props: MainContentProps): JSX.Element {
       />
       {conversationActive ? (
         <HomeConversationCanvas
-          activities={props.activities}
+          activities={renderableActivities}
           selectedThread={props.selectedThread}
           activeTurnId={props.activeTurnId}
           threadDetailLevel={props.threadDetailLevel}
@@ -163,6 +183,11 @@ function MainContent(props: MainContentProps): JSX.Element {
       ) : (
         <EmptyCanvas selectedRootName={props.selectedRootName} selectedRootPath={props.selectedRootPath} />
       )}
+      <HomeTurnPlanDrawer
+        plan={currentTurnPlan}
+        collapsed={planDrawerCollapsed}
+        onToggle={() => setPlanDrawerCollapsed((value) => !value)}
+      />
       <HomeComposer
         busy={props.busy}
         inputText={props.inputText}
@@ -190,6 +215,10 @@ function MainContent(props: MainContentProps): JSX.Element {
       />
     </div>
   );
+}
+
+function createTurnPlanChangeKey(plan: TurnPlanModel): string {
+  return `${plan.entry.id}:${plan.totalSteps}:${plan.completedSteps}`;
 }
 
 function EmptyCanvas(props: { readonly selectedRootName: string; readonly selectedRootPath: string | null }): JSX.Element {

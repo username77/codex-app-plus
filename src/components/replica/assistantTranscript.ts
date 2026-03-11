@@ -1,5 +1,6 @@
 import type { ConversationMessage } from "../../domain/timeline";
 import type { AuxiliaryBlock, ConversationRenderNode, TraceEntry } from "./localConversationGroups";
+import { createTurnPlanDetailLines, createTurnPlanModel } from "./homeTurnPlanModel";
 import {
   createDetailPanel,
   createShellBody,
@@ -184,14 +185,12 @@ function createAuxiliaryModel(key: string, entry: AuxiliaryBlock): AssistantTran
   }
 
   if (entry.kind === "turnPlanSnapshot") {
+    const planModel = createTurnPlanModel(entry);
     return createDetailsModel({
       key,
-      summary: "Turn plan",
+      summary: "任务清单",
       detailPanel: createDetailBlockPanel({
-        body: joinDetailLines([
-          entry.explanation,
-          ...entry.plan.map((step, index) => `${index + 1}. ${step.step} [${step.status}]`),
-        ]),
+        body: joinDetailLines(createTurnPlanDetailLines(planModel)),
         label: "Plan",
       }),
     });

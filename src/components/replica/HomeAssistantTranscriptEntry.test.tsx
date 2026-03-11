@@ -209,7 +209,8 @@ describe("HomeAssistantTranscriptEntry", () => {
     const summary = container.querySelector("summary");
     const label = container.querySelector(".home-assistant-transcript-detail-label");
 
-    expect(screen.getByText("Turn plan")).toBeInTheDocument();
+    expect(screen.getByText("任务清单")).toBeInTheDocument();
+    expect(screen.getByText((content) => content.includes("进度：完成 1 / 共 1"))).toBeInTheDocument();
     expect(summary?.hasAttribute("data-truncate-summary")).toBe(false);
     expect(label?.textContent).toBe("Plan");
   });

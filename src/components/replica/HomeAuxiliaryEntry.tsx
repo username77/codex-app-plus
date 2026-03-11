@@ -11,7 +11,7 @@ interface HomeAuxiliaryEntryProps {
 
 export function HomeAuxiliaryEntry(props: HomeAuxiliaryEntryProps): JSX.Element {
   if (props.entry.kind === "plan") return <PlanBlock entry={props.entry} />;
-  if (props.entry.kind === "turnPlanSnapshot") return <TurnPlanBlock entry={props.entry} />;
+  if (props.entry.kind === "turnPlanSnapshot") return <></>;
   if (props.entry.kind === "turnDiffSnapshot") return <DiffBlock entry={props.entry} />;
   if (props.entry.kind === "reviewMode") return <NoticeCard title={props.entry.state === "entered" ? "Entered review mode" : "Exited review mode"} detail={props.entry.review} />;
   if (props.entry.kind === "contextCompaction") return <NoticeCard title="Context compacted" detail="Older context was compacted by the app-server." />;
@@ -25,11 +25,6 @@ export function HomeAuxiliaryEntry(props: HomeAuxiliaryEntryProps): JSX.Element 
 
 function PlanBlock(props: { readonly entry: PlanEntry }): JSX.Element {
   return <HomeEntryCard className="home-auxiliary-card" title="Plan draft" status={props.entry.status === "streaming" ? "streaming" : "done"}><ConversationMessageContent className="home-chat-markdown home-chat-markdown-assistant" message={createPlanMessage(props.entry)} /></HomeEntryCard>;
-}
-
-function TurnPlanBlock(props: { readonly entry: Extract<AuxiliaryBlock, { kind: "turnPlanSnapshot" }> }): JSX.Element {
-  const text = [props.entry.explanation, ...props.entry.plan.map((step, index) => `${index + 1}. ${step.step} [${step.status}]`)].filter(Boolean).join("\n");
-  return <NoticeCard title="Turn plan" detail={text} />;
 }
 
 function DiffBlock(props: { readonly entry: Extract<AuxiliaryBlock, { kind: "turnDiffSnapshot" }> }): JSX.Element {
