@@ -1,12 +1,14 @@
 import { GitChangeBrowser } from "./GitChangeBrowser";
 import { GitDiffPreview } from "./GitDiffPreview";
 import { GitStateCard } from "./GitStateCard";
+import { canCommitChanges, canPullChanges, canPushChanges } from "./gitActionAvailability";
 import type { WorkspaceGitController } from "./types";
 import { getCurrentBranchTitle, getGitViewState, getSelectedDiffKey, isGitBusy } from "./gitViewState";
 
 interface WorkspaceGitViewProps {
   readonly selectedRootName: string;
   readonly controller: WorkspaceGitController;
+  readonly onRequestPush: () => void;
 }
 
 function GitWorkspaceState(props: { readonly title: string; readonly body: string; readonly actionLabel?: string; readonly onAction?: () => void }): JSX.Element {
@@ -44,6 +46,9 @@ function GitOverviewCard(props: {
   readonly controller: WorkspaceGitController;
   readonly busy: boolean;
   readonly branchTitle: string;
+  readonly canPull: boolean;
+  readonly canPush: boolean;
+  readonly onRequestPush: () => void;
 }): JSX.Element | null {
   const status = props.controller.status;
   if (status === null) {
@@ -60,8 +65,8 @@ function GitOverviewCard(props: {
         <div className="git-overview-actions">
           <button type="button" className="git-inline-btn" disabled={props.busy} onClick={() => void props.controller.refresh()}>刷新</button>
           <button type="button" className="git-inline-btn" disabled={props.busy} onClick={() => void props.controller.fetch()}>抓取</button>
-          <button type="button" className="git-inline-btn" disabled={props.busy} onClick={() => void props.controller.pull()}>拉取</button>
-          <button type="button" className="git-primary-btn" disabled={props.busy} onClick={() => void props.controller.push()}>推送</button>
+          <button type="button" className="git-inline-btn" disabled={!props.canPull} onClick={() => void props.controller.pull()}>拉取</button>
+          <button type="button" className="git-primary-btn" disabled={!props.canPush} onClick={props.onRequestPush}>推送</button>
         </div>
       </div>
       <GitOverviewBadges controller={props.controller} />
@@ -110,7 +115,7 @@ function GitCommitCard(props: { readonly controller: WorkspaceGitController; rea
     return null;
   }
 
-  const canCommit = status.staged.length > 0 && props.controller.commitMessage.trim().length > 0 && !props.busy;
+  const canCommit = canCommitChanges(props.controller);
   return (
     <section className="git-card">
       <h3 className="git-card-title">提交</h3>
@@ -127,13 +132,15 @@ export function WorkspaceGitView(props: WorkspaceGitViewProps): JSX.Element {
   }
 
   const busy = isGitBusy(props.controller);
+  const canPull = canPullChanges(props.controller);
+  const canPush = canPushChanges(props.controller);
   const selectedDiffKey = getSelectedDiffKey(props.controller);
   const branchTitle = getCurrentBranchTitle(props.controller);
 
   return (
     <main className="main-canvas main-canvas-workspace">
       <section className="git-workspace">
-        <GitOverviewCard selectedRootName={props.selectedRootName} controller={props.controller} busy={busy} branchTitle={branchTitle} />
+        <GitOverviewCard selectedRootName={props.selectedRootName} controller={props.controller} busy={busy} branchTitle={branchTitle} canPull={canPull} canPush={canPush} onRequestPush={props.onRequestPush} />
         <div className="git-columns">
           <div className="git-column git-column-left">
             <GitChangeBrowser controller={props.controller} busy={busy} selectedDiffKey={selectedDiffKey} scope="all" />

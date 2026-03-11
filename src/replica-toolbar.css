@@ -85,8 +85,24 @@
   cursor: not-allowed;
 }
 
+.toolbar-split-trigger:disabled,
+.toolbar-menu-item:disabled {
+  color: #a1a1a1;
+  cursor: not-allowed;
+}
+
 .toolbar-split-main:disabled .toolbar-app-icon {
   opacity: 0.45;
+}
+
+.toolbar-split-trigger:disabled .toolbar-caret-icon,
+.toolbar-menu-item:disabled .toolbar-menu-icon {
+  opacity: 0.45;
+}
+
+.toolbar-split-trigger:disabled:hover,
+.toolbar-menu-item:disabled:hover {
+  background: transparent;
 }
 
 .toolbar-split-menu {

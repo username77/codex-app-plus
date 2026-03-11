@@ -30,6 +30,15 @@ export function GitPullIcon(props: { readonly className?: string }): JSX.Element
   );
 }
 
+export function GitCommitIcon(props: { readonly className?: string }): JSX.Element {
+  return (
+    <svg className={props.className} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <circle cx="10" cy="10" r="6.1" stroke="currentColor" strokeWidth="1.35" />
+      <path d="m7.65 10.1 1.6 1.6 3.15-3.3" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function GitRefreshIcon(props: { readonly className?: string }): JSX.Element {
   return (
     <svg className={props.className} viewBox="0 0 20 20" fill="none" aria-hidden="true">
