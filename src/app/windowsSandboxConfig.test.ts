@@ -15,6 +15,21 @@ describe("readWindowsSandboxConfigView", () => {
     expect(readWindowsSandboxConfigView(null)).toMatchObject({ mode: "disabled", source: null, isLegacy: false });
   });
 
+  it("prefers effective config windows sandbox when available", () => {
+    const view = readWindowsSandboxConfigView({
+      config: { profile: null, windows: { sandbox: "unelevated" } },
+      origins: {
+        "windows.sandbox": {
+          name: { type: "user", file: "C:/Users/Administrator/.codex/config.toml" },
+          version: "1",
+        },
+      },
+      layers: [createLayer({})],
+    });
+
+    expect(view).toMatchObject({ mode: "unelevated", source: "windows.sandbox · 用户配置", isLegacy: false });
+  });
+
   it("reads top-level unelevated mode", () => {
     const view = readWindowsSandboxConfigView({ config: { profile: null }, origins: {}, layers: [createLayer({ windows: { sandbox: "unelevated" } })] });
     expect(view).toMatchObject({ mode: "unelevated", source: expect.stringContaining("windows.sandbox"), isLegacy: false });
@@ -31,12 +46,12 @@ describe("readWindowsSandboxConfigView", () => {
       origins: {},
       layers: [createLayer({ windows: { sandbox: "unelevated" }, profiles: { work: { windows: { sandbox: "elevated" } } } })],
     });
-    expect(view).toMatchObject({ mode: "elevated", source: expect.stringContaining("Profile work") });
+    expect(view).toMatchObject({ mode: "elevated", source: expect.stringContaining("配置档 work") });
   });
 
   it("falls back to legacy feature keys", () => {
     const view = readWindowsSandboxConfigView({ config: { profile: null }, origins: {}, layers: [createLayer({ features: { experimental_windows_sandbox: true } })] });
-    expect(view).toMatchObject({ mode: "unelevated", isLegacy: true, source: expect.stringContaining("Legacy feature") });
+    expect(view).toMatchObject({ mode: "unelevated", isLegacy: true, source: expect.stringContaining("旧版特性开关") });
   });
 
   it("uses the highest-precedence matching layer", () => {
@@ -48,6 +63,6 @@ describe("readWindowsSandboxConfigView", () => {
         createLayer({ windows: { sandbox: "elevated" } }, "user"),
       ],
     });
-    expect(view).toMatchObject({ mode: "elevated", source: expect.stringContaining("User config") });
+    expect(view).toMatchObject({ mode: "elevated", source: expect.stringContaining("用户配置") });
   });
 });

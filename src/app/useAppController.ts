@@ -37,6 +37,7 @@ import { useAppStore } from "../state/store";
 
 const APP_VERSION = "0.1.0";
 const RETRY_DELAY_MS = 3_000;
+const WINDOWS_SANDBOX_STATE_IDLE_RESET_MS = 120_000;
 interface AppController {
   readonly state: AppState;
   setInput: (text: string) => void;
@@ -168,6 +169,7 @@ export function useAppController(hostBridge: HostBridge): AppController {
   const bootStartedRef = useRef(false);
   const bootingRef = useRef(false);
   const retryTimerRef = useRef<number | null>(null);
+  const windowsSandboxResetTimerRef = useRef<number | null>(null);
   const retryHandlerRef = useRef<() => void>(() => undefined);
   const textDeltaQueueRef = useRef<FrameTextDeltaQueue | null>(null);
   const outputDeltaQueueRef = useRef<OutputDeltaQueue | null>(null);
@@ -276,8 +278,32 @@ export function useAppController(hostBridge: HostBridge): AppController {
     return () => {
       client.detach();
       clearRetry();
+      if (windowsSandboxResetTimerRef.current !== null) {
+        window.clearTimeout(windowsSandboxResetTimerRef.current);
+        windowsSandboxResetTimerRef.current = null;
+      }
     };
   }, [client, clearRetry]);
+
+  useEffect(() => {
+    if (windowsSandboxResetTimerRef.current !== null) {
+      window.clearTimeout(windowsSandboxResetTimerRef.current);
+      windowsSandboxResetTimerRef.current = null;
+    }
+    if (state.windowsSandboxSetup.pending || state.windowsSandboxSetup.mode === null || state.windowsSandboxSetup.success === null) {
+      return;
+    }
+    windowsSandboxResetTimerRef.current = window.setTimeout(() => {
+      windowsSandboxResetTimerRef.current = null;
+      dispatch({ type: "windowsSandbox/setupCleared" });
+    }, WINDOWS_SANDBOX_STATE_IDLE_RESET_MS);
+    return () => {
+      if (windowsSandboxResetTimerRef.current !== null) {
+        window.clearTimeout(windowsSandboxResetTimerRef.current);
+        windowsSandboxResetTimerRef.current = null;
+      }
+    };
+  }, [dispatch, state.windowsSandboxSetup]);
 
   useEffect(() => {
     if (bootStartedRef.current) {

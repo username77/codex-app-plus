@@ -15,7 +15,7 @@ describe("WindowsSandboxSettingsCard", () => {
       />,
     );
 
-    expect(screen.getByText("Unelevated")).toBeInTheDocument();
+    expect(screen.getAllByText("标准模式").length).toBeGreaterThan(0);
     expect(screen.getByText(/windows\.sandbox/i)).toBeInTheDocument();
   });
 
@@ -30,8 +30,8 @@ describe("WindowsSandboxSettingsCard", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Run Unelevated setup/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Run Elevated setup/i }));
+    fireEvent.click(screen.getByRole("button", { name: /标准模式（无需管理员）/i }));
+    fireEvent.click(screen.getByRole("button", { name: /增强模式（管理员）/i }));
 
     expect(onStartSetup).toHaveBeenNthCalledWith(1, "unelevated");
     expect(onStartSetup).toHaveBeenNthCalledWith(2, "elevated");
@@ -47,8 +47,8 @@ describe("WindowsSandboxSettingsCard", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: /Setting up/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /Run Elevated setup/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /配置进行中/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /增强模式（管理员）/i })).toBeDisabled();
   });
 
   it("shows the latest failure message", () => {

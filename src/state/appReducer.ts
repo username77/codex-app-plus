@@ -95,9 +95,14 @@ function updateRealtimeState(state: AppState, threadId: string, updater: (curren
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case "connection/changed":
-      return { ...state, connectionStatus: action.status, fatalError: action.status === "error" ? state.fatalError : null };
+      return {
+        ...state,
+        connectionStatus: action.status,
+        fatalError: action.status === "error" ? state.fatalError : null,
+        windowsSandboxSetup: action.status === "connected" ? state.windowsSandboxSetup : INITIAL_STATE.windowsSandboxSetup,
+      };
     case "fatal/error":
-      return { ...state, connectionStatus: "error", fatalError: action.message, initialized: false };
+      return { ...state, connectionStatus: "error", fatalError: action.message, initialized: false, windowsSandboxSetup: INITIAL_STATE.windowsSandboxSetup };
     case "view/changed":
       return { ...state, activeView: action.view };
     case "conversations/catalogLoaded": {
@@ -232,6 +237,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, windowsSandboxSetup: { pending: true, mode: action.mode, success: null, error: null } };
     case "windowsSandbox/setupCompleted":
       return { ...state, windowsSandboxSetup: { pending: false, mode: action.mode, success: action.success, error: action.error } };
+    case "windowsSandbox/setupCleared":
+      return { ...state, windowsSandboxSetup: INITIAL_STATE.windowsSandboxSetup };
     case "realtime/started":
       return updateRealtimeState(state, action.threadId, (current) => ({ ...current, sessionId: action.sessionId, closed: false, error: null }));
     case "realtime/itemAdded":

@@ -20,6 +20,22 @@ export interface WindowsSandboxConfigView {
   readonly canRunSetup: boolean;
 }
 
+function sourceLabelFromMetadata(value: unknown): string | null {
+  const metadata = toJsonObject(value);
+  const source = metadata === null ? null : metadata.name;
+  if (!isRecord(source) || typeof source.type !== "string") {
+    return null;
+  }
+  if (source.type === "user") return "windows.sandbox · 用户配置";
+  if (source.type === "project") return "windows.sandbox · 项目配置";
+  if (source.type === "system") return "windows.sandbox · 系统配置";
+  if (source.type === "mdm") return "windows.sandbox · MDM";
+  if (source.type === "sessionFlags") return "windows.sandbox · 会话参数";
+  if (source.type === "legacyManagedConfigTomlFromFile") return "windows.sandbox · 托管配置文件";
+  if (source.type === "legacyManagedConfigTomlFromMdm") return "windows.sandbox · 托管配置";
+  return null;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -37,13 +53,13 @@ function toMode(value: unknown): WindowsSandboxSetupMode | null {
 }
 
 function layerLabel(source: ConfigLayerSource): string {
-  if (source.type === "user") return "User config";
-  if (source.type === "project") return "Project config";
-  if (source.type === "system") return "System config";
+  if (source.type === "user") return "用户配置";
+  if (source.type === "project") return "项目配置";
+  if (source.type === "system") return "系统配置";
   if (source.type === "mdm") return "MDM";
-  if (source.type === "sessionFlags") return "Session flags";
-  if (source.type === "legacyManagedConfigTomlFromFile") return "Managed config file";
-  return "Managed config";
+  if (source.type === "sessionFlags") return "会话参数";
+  if (source.type === "legacyManagedConfigTomlFromFile") return "托管配置文件";
+  return "托管配置";
 }
 
 function readProfileMode(config: JsonObject, activeProfile: string | null): WindowsSandboxSetupMode | null {
@@ -83,14 +99,14 @@ function matchLayer(layer: ConfigLayer, activeProfile: string | null): LayerMatc
   const source = layerLabel(layer.name);
   const profileMode = readProfileMode(config, activeProfile);
   if (profileMode !== null && activeProfile !== null) {
-    return { mode: profileMode, source: `Profile ${activeProfile} · ${source}`, isLegacy: false };
+    return { mode: profileMode, source: `配置档 ${activeProfile} · ${source}`, isLegacy: false };
   }
   const topLevelMode = readTopLevelMode(config);
   if (topLevelMode !== null) {
     return { mode: topLevelMode, source: `windows.sandbox · ${source}`, isLegacy: false };
   }
   const legacyMode = readLegacyMode(config);
-  return legacyMode === null ? null : { mode: legacyMode, source: `Legacy feature · ${source}`, isLegacy: true };
+  return legacyMode === null ? null : { mode: legacyMode, source: `旧版特性开关 · ${source}`, isLegacy: true };
 }
 
 function canRunSetup(): boolean {
@@ -105,6 +121,17 @@ function canRunSetup(): boolean {
 export function readWindowsSandboxConfigView(snapshot: unknown): WindowsSandboxConfigView {
   if (!isTypedConfig(snapshot)) {
     return { mode: "disabled", source: null, isLegacy: false, canRunSetup: canRunSetup() };
+  }
+  const effectiveConfig = snapshot.config as Record<string, unknown>;
+  const effectiveWindows = toJsonObject(effectiveConfig.windows);
+  const effectiveMode = toMode(effectiveWindows?.sandbox);
+  if (effectiveMode !== null) {
+    return {
+      mode: effectiveMode,
+      source: sourceLabelFromMetadata(snapshot.origins?.["windows.sandbox"]) ?? "windows.sandbox · 当前生效配置",
+      isLegacy: false,
+      canRunSetup: canRunSetup(),
+    };
   }
   const activeProfile = typeof snapshot.config.profile === "string" ? snapshot.config.profile : null;
   const match = (snapshot.layers ?? []).reduce<LayerMatch | null>(

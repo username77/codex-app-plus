@@ -86,6 +86,134 @@
   color: #b91c1c;
 }
 
+.windows-sandbox-card {
+  padding: 18px 18px 20px;
+}
+
+.windows-sandbox-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.windows-sandbox-head-main {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.windows-sandbox-head-main strong {
+  font-size: 17px;
+  line-height: 1.35;
+  color: #0f172a;
+}
+
+.windows-sandbox-summary-copy {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.windows-sandbox-chip {
+  flex: 0 0 auto;
+}
+
+.windows-sandbox-meta {
+  margin-top: 16px;
+}
+
+.windows-sandbox-meta-block {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f8fafc 0%, #fdfefe 100%);
+}
+
+.windows-sandbox-meta-label {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.windows-sandbox-meta-block strong {
+  font-size: 16px;
+  color: #0f172a;
+  line-height: 1.4;
+}
+
+.windows-sandbox-meta-block p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.windows-sandbox-status {
+  padding: 12px 0 0;
+}
+
+.windows-sandbox-actions {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.windows-sandbox-action {
+  min-height: 96px;
+  width: 100%;
+  border: 1px solid #dbe3f0;
+  border-radius: 16px;
+  background: #f8fafc;
+  color: #0f172a;
+  padding: 14px 16px;
+  text-align: left;
+  display: grid;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.windows-sandbox-action:hover {
+  border-color: #bfdbfe;
+  background: #f0f7ff;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.08);
+}
+
+.windows-sandbox-action:focus-visible {
+  outline: 2px solid #7aa2ff;
+  outline-offset: 1px;
+}
+
+.windows-sandbox-action:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.windows-sandbox-action-primary {
+  border-color: #bfdbfe;
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+}
+
+.windows-sandbox-action-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.windows-sandbox-action-copy {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .settings-select-trigger {
   min-width: 190px;
   height: 34px;
@@ -897,6 +1025,15 @@
   .codex-provider-row {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .windows-sandbox-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .windows-sandbox-actions {
+    grid-template-columns: 1fr;
   }
 
   .codex-provider-form-grid {

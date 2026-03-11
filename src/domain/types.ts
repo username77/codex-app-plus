@@ -190,6 +190,7 @@ export type AppAction =
   | { type: "tokenRefresh/completed"; requestId: string; error: string | null }
   | { type: "windowsSandbox/setupStarted"; mode: "elevated" | "unelevated" }
   | { type: "windowsSandbox/setupCompleted"; mode: "elevated" | "unelevated"; success: boolean; error: string | null }
+  | { type: "windowsSandbox/setupCleared" }
   | { type: "realtime/started"; threadId: string; sessionId: string | null }
   | { type: "realtime/itemAdded"; threadId: string; item: unknown }
   | { type: "realtime/audioAdded"; threadId: string; audio: ThreadRealtimeAudioChunk }
