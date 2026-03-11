@@ -9,6 +9,7 @@ use crate::models::{
     TerminalCloseInput, TerminalCreateInput, TerminalCreateOutput, TerminalResizeInput,
     TerminalWriteInput,
 };
+use crate::process_supervisor::ProcessSupervisor;
 use portable_pty::{native_pty_system, Child, ChildKiller, MasterPty, PtySize};
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -26,17 +27,20 @@ struct TerminalSession {
     master: Mutex<Box<dyn MasterPty + Send>>,
     writer: Mutex<Box<dyn Write + Send>>,
     killer: Mutex<Box<dyn ChildKiller + Send + Sync>>,
+    supervisor: ProcessSupervisor,
 }
 impl TerminalSession {
     fn new(
         master: Box<dyn MasterPty + Send>,
         writer: Box<dyn Write + Send>,
         killer: Box<dyn ChildKiller + Send + Sync>,
+        supervisor: ProcessSupervisor,
     ) -> Self {
         Self {
             master: Mutex::new(master),
             writer: Mutex::new(writer),
             killer: Mutex::new(killer),
+            supervisor,
         }
     }
 }
@@ -59,14 +63,25 @@ impl TerminalManager {
         let session_id = self.allocate_session_id();
         let shell = resolve_shell_config(input.shell)?;
         let pty_pair = create_pty_pair(input.cols, input.rows)?;
+        let supervisor = ProcessSupervisor::new("terminal-session")?;
         let reader = pty_pair
             .master
             .try_clone_reader()
             .map_err(map_terminal_error)?;
         let writer = pty_pair.master.take_writer().map_err(map_terminal_error)?;
-        let child = spawn_shell_process(pty_pair.slave, &shell, input.cwd)?;
+        let mut child = spawn_shell_process(pty_pair.slave, &shell, input.cwd)?;
+        if let Err(error) = supervisor.assign_portable_child(child.as_ref()) {
+            let _ = child.clone_killer().kill();
+            let _ = child.wait();
+            return Err(error);
+        }
         let killer = child.clone_killer();
-        let session = Arc::new(TerminalSession::new(pty_pair.master, writer, killer));
+        let session = Arc::new(TerminalSession::new(
+            pty_pair.master,
+            writer,
+            killer,
+            supervisor,
+        ));
         insert_session(&self.sessions, session_id.clone(), session);
         spawn_output_thread(app.clone(), session_id.clone(), reader);
         spawn_wait_thread(app, self.sessions.clone(), session_id.clone(), child);
@@ -103,19 +118,17 @@ impl TerminalManager {
         format!("terminal-{value}")
     }
 
-    fn close_all(&self) {
+    pub fn shutdown_all(&self) {
         let sessions = drain_sessions(&self.sessions);
         for session in sessions {
-            if let Ok(mut killer) = session.killer.lock() {
-                let _ = killer.kill();
-            }
+            let _ = kill_session(session);
         }
     }
 }
 
 impl Drop for TerminalManager {
     fn drop(&mut self) {
-        self.close_all();
+        self.shutdown_all();
     }
 }
 
@@ -250,12 +263,15 @@ fn map_terminal_error(error: impl std::fmt::Display) -> AppError {
 }
 
 fn kill_session(session: Arc<TerminalSession>) -> AppResult<()> {
-    let mut killer = lock_mutex(&session.killer, "terminal killer")?;
-    match killer.kill() {
-        Ok(()) => Ok(()),
-        Err(error) if is_terminal_closed_error(&error) => Ok(()),
-        Err(error) => Err(map_terminal_error(error)),
+    {
+        let mut killer = lock_mutex(&session.killer, "terminal killer")?;
+        match killer.kill() {
+            Ok(()) => {}
+            Err(error) if is_terminal_closed_error(&error) => {}
+            Err(error) => return Err(map_terminal_error(error)),
+        }
     }
+    session.supervisor.terminate()
 }
 
 fn is_terminal_closed_error(error: &std::io::Error) -> bool {

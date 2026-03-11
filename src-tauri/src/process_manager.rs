@@ -17,6 +17,7 @@ use crate::models::{
     AppServerStartInput, JsonRpcErrorBody, RpcCancelInput, RpcNotifyInput, RpcRequestInput,
     RpcRequestOutput, ServerRequestResolveInput,
 };
+use crate::process_supervisor::ProcessSupervisor;
 use crate::rpc_transport::{
     build_cancel_line, build_notification_line, build_request_line, build_server_response_line,
 };
@@ -25,6 +26,7 @@ struct AppServerRuntime {
     writer: mpsc::UnboundedSender<String>,
     pending: PendingMap,
     child: Arc<Mutex<Child>>,
+    supervisor: ProcessSupervisor,
     writer_task: JoinHandle<()>,
     reader_task: JoinHandle<()>,
     stderr_task: JoinHandle<()>,
@@ -39,6 +41,7 @@ impl AppServerRuntime {
         self.reader_task.abort();
         self.stderr_task.abort();
         self.fail_all_pending().await;
+        let _ = self.supervisor.terminate();
 
         let mut child = self.child.lock().await;
         if child.id().is_some() {
@@ -97,6 +100,16 @@ impl ProcessManager {
             self.stop(app.clone()).await?;
         }
         self.start(app, input).await
+    }
+
+    pub async fn shutdown_all(&self, app: AppHandle) {
+        let runtime = {
+            let mut guard = self.runtime.lock().await;
+            guard.take()
+        };
+        if let Some(runtime) = runtime {
+            runtime.shutdown(&app).await;
+        }
     }
 
     pub async fn rpc_request(&self, input: RpcRequestInput) -> AppResult<RpcRequestOutput> {
@@ -193,7 +206,13 @@ async fn spawn_runtime(
 ) -> AppResult<Arc<AppServerRuntime>> {
     let cli = CodexCli::resolve(&input)?;
     let _version = cli.detect_version().await?;
-    let spawned = cli.spawn_app_server()?;
+    let supervisor = ProcessSupervisor::new("app-server")?;
+    let mut spawned = cli.spawn_app_server()?;
+    if let Err(error) = supervisor.assign_tokio_child(&spawned.child) {
+        let _ = spawned.child.kill().await;
+        let _ = spawned.child.wait().await;
+        return Err(error);
+    }
 
     let (writer, writer_rx) = mpsc::unbounded_channel();
     let pending = Arc::new(Mutex::new(std::collections::HashMap::<
@@ -210,6 +229,7 @@ async fn spawn_runtime(
         writer,
         pending,
         child,
+        supervisor,
         writer_task,
         reader_task,
         stderr_task,
@@ -225,7 +245,10 @@ fn spawn_wait_task(
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         let wait_result = child.lock().await.wait().await;
-        runtime_store.lock().await.take();
+        let runtime = runtime_store.lock().await.take();
+        if let Some(runtime) = runtime {
+            runtime.fail_all_pending().await;
+        }
         match wait_result {
             Ok(status) if status.success() => {
                 let _ = emit_connection_changed(&app, "disconnected");

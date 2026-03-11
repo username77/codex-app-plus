@@ -11,6 +11,7 @@ mod events;
 mod git;
 mod models;
 mod process_manager;
+mod process_supervisor;
 mod rpc_transport;
 mod terminal_manager;
 
@@ -30,10 +31,11 @@ use git::commands::{
     git_init_repository, git_pull, git_push, git_stage_paths, git_unstage_paths,
 };
 use process_manager::ProcessManager;
+use tauri::{Manager, RunEvent};
 use terminal_manager::TerminalManager;
 
 fn main() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(ProcessManager::new())
         .manage(TerminalManager::new())
@@ -78,6 +80,20 @@ fn main() {
             terminal_resize,
             terminal_close_session
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+    app.run(|app_handle, event| {
+        if matches!(event, RunEvent::ExitRequested { .. }) {
+            cleanup_managed_processes(app_handle);
+        }
+    });
+}
+
+fn cleanup_managed_processes(app: &tauri::AppHandle) {
+    tauri::async_runtime::block_on(async {
+        app.state::<ProcessManager>()
+            .shutdown_all(app.clone())
+            .await;
+    });
+    app.state::<TerminalManager>().shutdown_all();
 }
