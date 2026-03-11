@@ -24,6 +24,51 @@
   margin-bottom: 0;
 }
 
+.home-assistant-transcript-reasoning-details {
+  display: block;
+}
+
+.home-assistant-transcript-reasoning-summary {
+  cursor: pointer;
+}
+
+.home-assistant-transcript-reasoning-summary-markdown,
+.home-assistant-transcript-reasoning-title-markdown {
+  display: inline;
+  color: #4b5563;
+}
+
+.home-assistant-transcript-reasoning-summary-markdown > *,
+.home-assistant-transcript-reasoning-title-markdown > * {
+  display: inline;
+  margin: 0;
+}
+
+.home-assistant-transcript-reasoning-summary-markdown strong,
+.home-assistant-transcript-reasoning-title-markdown strong {
+  color: #111827;
+  font-weight: 600;
+}
+
+.home-assistant-transcript-reasoning-body {
+  margin: 8px 0 0 18px;
+}
+
+.home-assistant-transcript-reasoning-body-markdown {
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.home-assistant-transcript-reasoning-body-markdown > * {
+  margin: 0 0 8px;
+}
+
+.home-assistant-transcript-reasoning-body-markdown > *:last-child {
+  margin-bottom: 0;
+}
+
 .home-assistant-transcript-details details {
   display: block;
 }

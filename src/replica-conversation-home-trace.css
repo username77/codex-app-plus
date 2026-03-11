@@ -257,9 +257,9 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  padding: 10px 18px;
+  padding: 7px 16px;
   border: 1px solid #e3e8f4;
-  border-radius: 26px;
+  border-radius: 20px 20px 0 0;
   background: #ffffff;
   color: #111827;
   cursor: pointer;
@@ -283,23 +283,23 @@
   display: flex;
   flex-direction: row;
   align-items: baseline;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .home-turn-plan-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .home-turn-plan-progress {
   color: #5f6b7d;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .home-turn-plan-handle-icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   color: #5f6b7d;
   transition: transform 0.2s ease;
 }
@@ -311,13 +311,13 @@
 .home-turn-plan-card {
   border: 1px solid #e3e8f4;
   border-top: none;
-  border-bottom-left-radius: 26px;
-  border-bottom-right-radius: 26px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
   background: #ffffff;
-  padding: 14px 18px 18px;
+  padding: 12px 16px 14px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   box-shadow: 0 10px 30px rgba(17, 23, 34, 0.08);
   margin-top: -1px;
 }
@@ -325,7 +325,7 @@
 .home-turn-plan-explanation {
   margin: 0;
   color: #475467;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
@@ -333,8 +333,8 @@
   display: flex;
   justify-content: space-between;
   color: #5f6b7d;
-  font-size: 12px;
-  padding-bottom: 2px;
+  font-size: 11px;
+  padding-bottom: 1px;
 }
 
 .home-turn-plan-list {
@@ -349,8 +349,8 @@
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 12px;
-  padding: 8px 0;
+  gap: 10px;
+  padding: 7px 0;
   border-top: 1px solid #f1f4fb;
 }
 
@@ -359,29 +359,29 @@
 }
 
 .home-turn-plan-index {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 999px;
   background: #eef2ff;
   color: #1d4ed8;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
 }
 
 .home-turn-plan-text {
   color: #111827;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
 .home-turn-plan-status {
-  padding: 0 10px;
-  min-height: 22px;
+  padding: 0 8px;
+  min-height: 20px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   display: inline-flex;
   align-items: center;
   border: 1px solid #d7dce7;
@@ -412,10 +412,10 @@
 
 .home-turn-plan-empty {
   margin: 0;
-  padding: 12px;
+  padding: 10px;
   border-radius: 12px;
   background: #f8fafc;
   color: #475467;
-  font-size: 13px;
+  font-size: 12px;
   text-align: center;
 }

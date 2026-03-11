@@ -5,12 +5,6 @@ import type { WorkspaceRoot } from "../../app/useWorkspaceRoots";
 import type { ThreadSummary } from "../../domain/types";
 import { WorkspaceSidebarSection } from "./WorkspaceSidebarSection";
 
-const confirmMock = vi.fn();
-
-vi.mock("@tauri-apps/plugin-dialog", () => ({
-  confirm: (...args: Array<unknown>) => confirmMock(...args),
-}));
-
 const ROOTS: ReadonlyArray<WorkspaceRoot> = [
   { id: "root-1", name: "FPGA", path: "E:/code/FPGA" },
   { id: "root-2", name: "Codex", path: "E:/code/codex" }
@@ -138,18 +132,18 @@ describe("WorkspaceSidebarSection", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("加载会话失败：boom");
   });
 
-  it("shows a delete action on right click and forwards the delete request", async () => {
+  it("shows an in-app delete dialog on right click and forwards the delete request", async () => {
     const thread = createThread(ROOTS[0]!, 1);
     const onDeleteThread = vi.fn().mockResolvedValue(undefined);
-    confirmMock.mockResolvedValue(true);
 
     renderSection([thread], { onDeleteThread });
     fireEvent.click(screen.getByText("FPGA"));
     fireEvent.contextMenu(screen.getByRole("button", { name: /FPGA Thread 1/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "删除会话" }));
+    expect(screen.getByRole("dialog", { name: "删除会话" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "确认删除" }));
 
     await waitFor(() => expect(onDeleteThread).toHaveBeenCalledWith(thread));
-    expect(confirmMock).toHaveBeenCalledTimes(1);
   });
 
   it("shows empty state after expanding a workspace without sessions", () => {
