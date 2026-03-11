@@ -216,7 +216,7 @@ describe("HomeView", () => {
     expect(screen.getByRole("heading", { name: "计划书" })).toBeInTheDocument();
   });
 
-  it("shows the plan confirmation composer when a plan request is pending", () => {
+  it("shows the plan confirmation composer when a plan draft is completed", () => {
     const activities: ReadonlyArray<TimelineEntry> = [
       {
         id: "plan-draft-1",
@@ -227,53 +227,6 @@ describe("HomeView", () => {
         text: "## 计划书\n- 第一步\n- 第二步",
         status: "done",
       },
-      {
-        id: "request-plan-1",
-        kind: "pendingUserInput",
-        threadId: "thread-1",
-        turnId: "turn-1",
-        itemId: "item-plan-request",
-        requestId: "request-plan-1",
-        request: {
-          kind: "userInput",
-          id: "request-plan-1",
-          method: "item/tool/requestUserInput",
-          threadId: "thread-1",
-          turnId: "turn-1",
-          itemId: "item-plan-request",
-          questions: [
-            {
-              id: "confirm_plan",
-              header: "实施此计划？",
-              question: "实施此计划？",
-              isOther: false,
-              isSecret: false,
-              options: [
-                { label: "是，实施此计划", description: "切换到默认模式并开始编码。" },
-                { label: "否，请告知 Codex 如何调整", description: "继续在计划模式中完善方案。" },
-              ],
-            },
-          ],
-          params: {
-            threadId: "thread-1",
-            turnId: "turn-1",
-            itemId: "item-plan-request",
-            questions: [
-              {
-                id: "confirm_plan",
-                header: "实施此计划？",
-                question: "实施此计划？",
-                isOther: false,
-                isSecret: false,
-                options: [
-                  { label: "是，实施此计划", description: "切换到默认模式并开始编码。" },
-                  { label: "否，请告知 Codex 如何调整", description: "继续在计划模式中完善方案。" },
-                ],
-              },
-            ],
-          },
-        },
-      },
     ];
 
     renderHomeView({ activities });
@@ -282,6 +235,31 @@ describe("HomeView", () => {
     expect(screen.getByRole("button", { name: "提交" })).toBeInTheDocument();
     expect(screen.queryByText("Additional input required")).toBeNull();
     expect(screen.queryByRole("button", { name: "Send message" })).toBeNull();
+  });
+
+  it("submits implementation from the plan confirmation composer", async () => {
+    const onSendTurn = vi.fn().mockResolvedValue(undefined);
+    const activities: ReadonlyArray<TimelineEntry> = [
+      {
+        id: "plan-draft-1",
+        kind: "plan",
+        threadId: "thread-1",
+        turnId: "turn-1",
+        itemId: "item-plan-draft",
+        text: "## 计划书\n- 第一步\n- 第二步",
+        status: "done",
+      },
+    ];
+
+    renderHomeView({ activities, onSendTurn });
+    fireEvent.click(screen.getByRole("button", { name: "提交" }));
+
+    await waitFor(() => expect(onSendTurn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: "Implement the plan.",
+        collaborationPreset: "default",
+      }),
+    ));
   });
 
   it("keeps the task list collapsed by default", () => {

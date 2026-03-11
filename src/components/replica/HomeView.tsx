@@ -29,7 +29,7 @@ import type { WorkspaceGitController } from "./git/types";
 import { useWorkspaceGit } from "./git/useWorkspaceGit";
 import { OfficialChevronRightIcon, OfficialSidebarToggleIcon } from "./officialIcons";
 import { extractConnectionRetryInfo } from "./homeConnectionRetry";
-import { removeTimelineEntryById, selectActivePlanModeRequest } from "./planModePrompt";
+import { selectLatestPlanModePrompt } from "./planModePrompt";
 import { WorkspaceDiffSidebarHost } from "./WorkspaceDiffSidebarHost";
 
 interface HomeViewProps {
@@ -151,13 +151,11 @@ interface MainContentProps {
 
 function MainContent(props: MainContentProps): JSX.Element {
   const composerCommandBridge = useMemo(() => createComposerCommandBridge(props.hostBridge), [props.hostBridge]);
-  const activePlanRequest = useMemo(() => selectActivePlanModeRequest(props.activities), [props.activities]);
-  const renderableActivities = useMemo(
-    () => removeTimelineEntryById(removeTurnPlanEntries(props.activities), activePlanRequest?.id ?? null),
-    [activePlanRequest, props.activities],
-  );
+  const renderableActivities = useMemo(() => removeTurnPlanEntries(props.activities), [props.activities]);
   const currentTurnPlan = useMemo(() => selectLatestTurnPlan(props.activities), [props.activities]);
+  const latestPlanPrompt = useMemo(() => selectLatestPlanModePrompt(props.activities), [props.activities]);
   const [planDrawerCollapsed, setPlanDrawerCollapsed] = useState(true);
+  const [dismissedPlanPromptId, setDismissedPlanPromptId] = useState<string | null>(null);
   const planSnapshotKeyRef = useRef<string | null>(null);
   const conversationActive = props.draftActive || props.selectedConversationLoading || props.selectedThread !== null || props.activities.length > 0;
   const placeholder = props.draftActive
@@ -180,6 +178,29 @@ function MainContent(props: MainContentProps): JSX.Element {
       planSnapshotKeyRef.current = nextKey;
     }
   }, [currentTurnPlan]);
+
+  const showPlanPrompt = latestPlanPrompt !== null
+    && !props.isResponding
+    && dismissedPlanPromptId !== latestPlanPrompt.entryId;
+
+  const sendPlanPromptTurn = useCallback(async (text: string, collaborationPreset: "default" | "plan") => {
+    setDismissedPlanPromptId(latestPlanPrompt?.entryId ?? null);
+    await props.onSendTurn({
+      text,
+      attachments: [],
+      selection: {
+        model: props.defaultModel,
+        effort: props.defaultEffort,
+        serviceTier: props.defaultServiceTier ?? null,
+      },
+      permissionLevel: props.composerPermissionLevel,
+      collaborationPreset,
+    });
+  }, [latestPlanPrompt, props]);
+
+  const dismissPlanPrompt = useCallback(() => {
+    setDismissedPlanPromptId(latestPlanPrompt?.entryId ?? null);
+  }, [latestPlanPrompt]);
 
 
   return (
@@ -220,7 +241,14 @@ function MainContent(props: MainContentProps): JSX.Element {
         collapsed={planDrawerCollapsed}
         onToggle={() => setPlanDrawerCollapsed((value) => !value)}
       />
-      {activePlanRequest === null ? (
+      {showPlanPrompt ? (
+        <HomePlanRequestComposer
+          busy={props.busy}
+          onDismiss={dismissPlanPrompt}
+          onImplement={() => sendPlanPromptTurn("Implement the plan.", "default")}
+          onRefine={(notes) => sendPlanPromptTurn(notes, "plan")}
+        />
+      ) : (
         <HomeComposer
           busy={props.busy}
           inputText={props.inputText}
@@ -252,12 +280,6 @@ function MainContent(props: MainContentProps): JSX.Element {
           onInterruptTurn={props.onInterruptTurn}
           onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
           onClearQueuedFollowUps={props.onClearQueuedFollowUps}
-        />
-      ) : (
-        <HomePlanRequestComposer
-          entry={activePlanRequest}
-          busy={props.busy}
-          onResolveServerRequest={props.onResolveServerRequest}
         />
       )}
     </div>

@@ -99,11 +99,17 @@ pnpm run dev
 执行方式：
 
 ```powershell
-$env:CODEX_BINARY_PATH = "codex"
 pnpm run generate:protocol
 ```
 
-其中 `CODEX_BINARY_PATH` 必须指向当前可用的官方 `codex` 可执行文件，例如：`codex`、`codex.cmd` 或绝对路径。
+脚本会优先读取 `CODEX_BINARY_PATH`；如果未设置，则自动从 `PATH` 中查找官方 `codex` CLI，例如：`codex`、`codex.cmd`、`codex.exe`、`codex.ps1`。
+
+如果本机 `codex` 没有加入 `PATH`，再显式指定可执行文件路径：
+
+```powershell
+$env:CODEX_BINARY_PATH = "C:\path\to\codex.cmd"
+pnpm run generate:protocol
+```
 
 ## 宿主层约定
 
