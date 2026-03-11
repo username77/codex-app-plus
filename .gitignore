@@ -10,3 +10,4 @@ src-tauri/.cargo
 .omc/
 .claude/
 output/
+.playwright-cli/

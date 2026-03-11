@@ -64,6 +64,7 @@
   cursor: pointer;
 }
 .composer-card {
+  position: relative;
   width: min(760px, calc(100% - 80px));
   border: 1px solid #dbdbdb;
   border-radius: 17px;
