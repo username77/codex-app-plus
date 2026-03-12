@@ -99,7 +99,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
     <AppStoreProvider><HomeView
       hostBridge={{} as HostBridge}
       busy={false}
-      inputText="濡偓閺屻儱浼愭担婊冨隘"
+      inputText="请分析当前工作区"
       roots={[root]}
       selectedRootId={root.id}
       selectedRootName={root.name}
@@ -313,11 +313,11 @@ describe("HomeView", () => {
           questions: [
             {
               id: "answer",
-              header: "濡€崇础",
+              header: "处理方式",
               question: "请选择下一步",
               isOther: false,
               isSecret: false,
-              options: [{ label: "Queue", description: "閸旂姴鍙嗛梼鐔峰灙" }]
+              options: [{ label: "Queue", description: "加入待处理队列" }]
             }
           ],
           params: {
@@ -327,11 +327,11 @@ describe("HomeView", () => {
             questions: [
               {
                 id: "answer",
-                header: "濡€崇础",
+                header: "处理方式",
                 question: "请选择下一步",
                 isOther: false,
                 isSecret: false,
-                options: [{ label: "Queue", description: "閸旂姴鍙嗛梼鐔峰灙" }]
+                options: [{ label: "Queue", description: "加入待处理队列" }]
               }
             ]
           }
@@ -374,7 +374,7 @@ describe("HomeView", () => {
       <AppStoreProvider><HomeView
         hostBridge={{} as HostBridge}
         busy={false}
-        inputText="濡偓閺屻儱浼愭担婊冨隘"
+        inputText="请分析当前工作区"
         roots={[{ id: "root-1", name: "FPGA", path: "E:/code/FPGA" }]}
         selectedRootId="root-1"
         selectedRootName="FPGA"
@@ -449,7 +449,7 @@ describe("HomeView", () => {
   });
 
   it("truncates long toolbar titles while preserving the full title in tooltip", () => {
-    const longTitle = "閻滄澘婀懗鎴掔瑝閼宠姤鏁奸柅鐘宠閺屾悥i閿涘苯瀵橀幏顒傛暏閹村嘲褰傞柅浣圭Х閹垯绠ｉ崥搴ｆ畱ai濮濓絽婀幀婵娾偓鍐т簰閸欏﹥顒滅敮绋夸紣閸忕柉鐨熼悽銊╂懠鐠侯垰娼＄粵澶嬭閺屾挻鏌熷蹇撴嫲鐎规ɑ鏌熼幓鎺嶆娑撯偓閼疯揪绱?E:/code/openai.chatgpt-26.304.20706-win32-x64";
+    const longTitle = "这是一个用于验证工具栏标题截断效果的超长测试标题，末尾保留工作区路径以确保 tooltip 能完整展示 E:/code/openai.chatgpt-26.304.20706-win32-x64";
 
     renderHomeView({
       selectedThread: createThread({ title: longTitle }),

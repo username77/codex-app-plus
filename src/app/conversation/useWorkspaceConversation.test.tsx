@@ -439,7 +439,7 @@ describe("useWorkspaceConversation", () => {
     });
 
     act(() => {
-      result.current.store.dispatch({ type: "input/changed", value: "璇峰垎鏋愬綋鍓嶅伐浣滃尯" });
+      result.current.store.dispatch({ type: "input/changed", value: "请分析当前工作区" });
     });
 
     await act(async () => {
