@@ -160,6 +160,46 @@ describe("useWorkspaceConversation", () => {
     expect(result.current.conversation.activities.find((entry) => entry.kind === "fuzzySearch")?.itemId).toBe("plain-session");
   });
 
+  it("reuses workspace thread summaries when only selected thread content changes", () => {
+    const request = vi.fn(async () => ({ requestId: "noop", result: {} }));
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({
+        type: "conversation/upserted",
+        conversation: createConversationFromThread(createThread({
+          turns: [{
+            id: "turn-1",
+            status: "inProgress" as const,
+            error: null,
+            items: [{ type: "agentMessage" as const, id: "assistant-1", text: "", phase: null }],
+          }],
+        }), { resumeState: "resumed" }),
+      });
+      result.current.conversation.selectThread("thread-1");
+    });
+
+    const previousThreads = result.current.conversation.workspaceThreads;
+    const previousSelectedThread = result.current.conversation.selectedThread;
+
+    act(() => {
+      result.current.store.dispatch({
+        type: "conversation/textDeltasFlushed",
+        entries: [{
+          conversationId: "thread-1",
+          turnId: "turn-1",
+          itemId: "assistant-1",
+          target: { type: "agentMessage" },
+          delta: "delta",
+        }],
+      });
+    });
+
+    expect(result.current.conversation.workspaceThreads).toBe(previousThreads);
+    expect(result.current.conversation.selectedThread).toBe(previousSelectedThread);
+  });
+
   it("clears draft mode after selecting an existing thread", async () => {
     const request = vi.fn(async () => ({ requestId: "noop", result: {} }));
     const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;

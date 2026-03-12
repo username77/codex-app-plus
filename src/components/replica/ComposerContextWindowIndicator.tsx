@@ -1,6 +1,6 @@
 import { useId, useMemo, useRef, useState, type FocusEvent } from "react";
 import { selectConversationContextWindowUsage, formatContextWindowTokenCount } from "../../app/conversation/conversationContextWindow";
-import { useAppStore } from "../../state/store";
+import { useAppSelector } from "../../state/store";
 
 const TEXT = {
   title: "背景信息窗口：",
@@ -17,16 +17,16 @@ function formatUsageDetails(usedTokens: number, totalTokens: number): string {
 }
 
 export function ComposerContextWindowIndicator(): JSX.Element | null {
-  const { state } = useAppStore();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const tooltipId = useId();
-  const selectedConversation = state.selectedConversationId === null
+  const selectedConversation = useAppSelector((state) => state.selectedConversationId === null
     ? null
-    : state.conversationsById[state.selectedConversationId] ?? null;
+    : state.conversationsById[state.selectedConversationId] ?? null);
+  const configSnapshot = useAppSelector((state) => state.configSnapshot);
   const usage = useMemo(
-    () => selectConversationContextWindowUsage(selectedConversation, state.configSnapshot),
-    [selectedConversation, state.configSnapshot],
+    () => selectConversationContextWindowUsage(selectedConversation, configSnapshot),
+    [configSnapshot, selectedConversation],
   );
 
   if (usage === null) {

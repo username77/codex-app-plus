@@ -265,6 +265,10 @@ export interface GitCheckoutInput extends GitRepoInput {
   readonly create: boolean;
 }
 
+export interface GitRemoteInput extends GitRepoInput {
+  readonly remoteName: string;
+}
+
 export interface GitBranchSummary {
   readonly head: string | null;
   readonly upstream: string | null;
@@ -284,6 +288,18 @@ export interface GitStatusEntry {
   readonly originalPath: string | null;
   readonly indexStatus: string;
   readonly worktreeStatus: string;
+}
+
+export interface GitStatusSnapshotOutput {
+  readonly isRepository: boolean;
+  readonly repoRoot: string | null;
+  readonly branch: GitBranchSummary | null;
+  readonly remoteName: string | null;
+  readonly staged: ReadonlyArray<GitStatusEntry>;
+  readonly unstaged: ReadonlyArray<GitStatusEntry>;
+  readonly untracked: ReadonlyArray<GitStatusEntry>;
+  readonly conflicted: ReadonlyArray<GitStatusEntry>;
+  readonly isClean: boolean;
 }
 
 export interface GitStatusOutput {
@@ -354,7 +370,9 @@ export interface HostBridge {
     deleteCodexSession(input: DeleteCodexSessionInput): Promise<void>;
   };
   readonly git: {
-    getStatus(input: GitRepoInput): Promise<GitStatusOutput>;
+    getStatusSnapshot(input: GitRepoInput): Promise<GitStatusSnapshotOutput>;
+    getBranchRefs(input: GitRepoInput): Promise<ReadonlyArray<GitBranchRef>>;
+    getRemoteUrl(input: GitRemoteInput): Promise<string | null>;
     getDiff(input: GitDiffInput): Promise<GitDiffOutput>;
     initRepository(input: GitRepoInput): Promise<void>;
     stagePaths(input: GitPathsInput): Promise<void>;

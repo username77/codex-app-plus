@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { HostBridge } from "../../bridge/types";
 import type { ConversationState } from "../../domain/conversation";
-import type { ReceivedServerRequest } from "../../domain/serverRequests";
-import type { AppAction } from "../../domain/types";
+import type { AppAction, AppState } from "../../domain/types";
+import type { AppStoreApi } from "../../state/store";
 import type { SessionSource } from "../../protocol/generated/v2/SessionSource";
 import type { CollabAgentStatus } from "../../protocol/generated/v2/CollabAgentStatus";
 import type { ThreadBackgroundTerminalsCleanResponse } from "../../protocol/generated/v2/ThreadBackgroundTerminalsCleanResponse";
@@ -11,11 +11,11 @@ import { isConversationStreaming } from "../conversation/conversationSelectors";
 
 interface UseThreadResourceCleanupOptions {
   readonly hostBridge: Pick<HostBridge, "rpc">;
-  readonly conversationsById: Readonly<Record<string, ConversationState | undefined>>;
-  readonly pendingRequestsByConversationId: Readonly<Record<string, ReadonlyArray<ReceivedServerRequest> | undefined>>;
-  readonly selectedConversationId: string | null;
+  readonly store: Pick<AppStoreApi, "getState" | "subscribe">;
   readonly dispatch: (action: AppAction) => void;
 }
+
+type PendingRequestsByConversationId = AppState["pendingRequestsByConversationId"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -34,7 +34,7 @@ function hasTurnHistory(conversation: ConversationState): boolean {
 }
 
 function hasBlockingPendingRequests(
-  pendingRequestsByConversationId: UseThreadResourceCleanupOptions["pendingRequestsByConversationId"],
+  pendingRequestsByConversationId: PendingRequestsByConversationId,
   conversationId: string,
 ): boolean {
   return (pendingRequestsByConversationId[conversationId]?.length ?? 0) > 0;
@@ -48,7 +48,7 @@ function hasProtectedActiveFlags(conversation: ConversationState): boolean {
 function isUnloadableConversation(
   conversation: ConversationState,
   selectedConversationId: string | null,
-  pendingRequestsByConversationId: UseThreadResourceCleanupOptions["pendingRequestsByConversationId"],
+  pendingRequestsByConversationId: PendingRequestsByConversationId,
 ): boolean {
   return conversation.id !== selectedConversationId
     && hasTurnHistory(conversation)
@@ -62,7 +62,7 @@ function isUnloadableConversation(
 function shouldUnloadMainConversation(
   conversation: ConversationState,
   selectedConversationId: string | null,
-  pendingRequestsByConversationId: UseThreadResourceCleanupOptions["pendingRequestsByConversationId"],
+  pendingRequestsByConversationId: PendingRequestsByConversationId,
 ): boolean {
   return conversation.hidden === false
     && isSubAgentSource(conversation.source) === false
@@ -72,7 +72,7 @@ function shouldUnloadMainConversation(
 function shouldUnloadHiddenMainConversation(
   conversation: ConversationState,
   selectedConversationId: string | null,
-  pendingRequestsByConversationId: UseThreadResourceCleanupOptions["pendingRequestsByConversationId"],
+  pendingRequestsByConversationId: PendingRequestsByConversationId,
 ): boolean {
   return conversation.hidden
     && isSubAgentSource(conversation.source) === false
@@ -167,23 +167,13 @@ async function unsubscribeThread(
 }
 
 export function useThreadResourceCleanup(options: UseThreadResourceCleanupOptions): void {
-  const { conversationsById, dispatch, hostBridge, pendingRequestsByConversationId, selectedConversationId } = options;
+  const { dispatch, hostBridge, store } = options;
   const cleanupInFlightIds = useRef(new Set<string>());
   const cleanedThreadIds = useRef(new Set<string>());
-  const conversationsByIdRef = useRef(conversationsById);
-  const pendingRequestsByConversationIdRef = useRef(pendingRequestsByConversationId);
-  const selectedConversationIdRef = useRef(selectedConversationId);
-
-  useEffect(() => {
-    conversationsByIdRef.current = conversationsById;
-    pendingRequestsByConversationIdRef.current = pendingRequestsByConversationId;
-    selectedConversationIdRef.current = selectedConversationId;
-    for (const conversation of Object.values(conversationsById)) {
-      if (conversation?.resumeState === "resumed") {
-        cleanedThreadIds.current.delete(conversation.id);
-      }
-    }
-  }, [conversationsById, pendingRequestsByConversationId, selectedConversationId]);
+  const cleanupScheduledRef = useRef(false);
+  const conversationsByIdRef = useRef(store.getState().conversationsById);
+  const pendingRequestsByConversationIdRef = useRef(store.getState().pendingRequestsByConversationId);
+  const selectedConversationIdRef = useRef(store.getState().selectedConversationId);
 
   const cleanupThread = useCallback(async (threadId: string) => {
     if (cleanupInFlightIds.current.has(threadId) || cleanedThreadIds.current.has(threadId)) {
@@ -224,31 +214,64 @@ export function useThreadResourceCleanup(options: UseThreadResourceCleanupOption
   }, [dispatch, hostBridge]);
 
   useEffect(() => {
-    for (const conversation of Object.values(conversationsById)) {
-      if (conversation !== undefined && shouldUnloadMainConversation(conversation, selectedConversationId, pendingRequestsByConversationId)) {
-        void cleanupThread(conversation.id);
-      }
-    }
-  }, [cleanupThread, conversationsById, pendingRequestsByConversationId, selectedConversationId]);
+    let disposed = false;
 
-  useEffect(() => {
-    for (const conversation of Object.values(conversationsById)) {
-      if (conversation !== undefined && shouldUnloadHiddenMainConversation(conversation, selectedConversationId, pendingRequestsByConversationId)) {
-        void cleanupThread(conversation.id);
+    const syncCleanupState = () => {
+      cleanupScheduledRef.current = false;
+      if (disposed) {
+        return;
       }
-    }
-  }, [cleanupThread, conversationsById, pendingRequestsByConversationId, selectedConversationId]);
 
-  useEffect(() => {
-    const conversations = Object.values(conversationsById).filter(
-      (conversation): conversation is ConversationState => conversation !== undefined,
-    );
-    const { cleanupIds, notFoundIds } = collectFinalSubagentIds(conversations);
-    for (const threadId of notFoundIds) {
-      cleanedThreadIds.current.add(threadId);
-    }
-    for (const threadId of cleanupIds) {
-      void cleanupThread(threadId);
-    }
-  }, [cleanupThread, conversationsById]);
+      const state = store.getState();
+      const { conversationsById, pendingRequestsByConversationId, selectedConversationId } = state;
+      conversationsByIdRef.current = conversationsById;
+      pendingRequestsByConversationIdRef.current = pendingRequestsByConversationId;
+      selectedConversationIdRef.current = selectedConversationId;
+
+      for (const conversation of Object.values(conversationsById)) {
+        if (conversation?.resumeState === "resumed") {
+          cleanedThreadIds.current.delete(conversation.id);
+        }
+      }
+
+      for (const conversation of Object.values(conversationsById)) {
+        if (conversation !== undefined && shouldUnloadMainConversation(conversation, selectedConversationId, pendingRequestsByConversationId)) {
+          void cleanupThread(conversation.id);
+        }
+      }
+
+      for (const conversation of Object.values(conversationsById)) {
+        if (conversation !== undefined && shouldUnloadHiddenMainConversation(conversation, selectedConversationId, pendingRequestsByConversationId)) {
+          void cleanupThread(conversation.id);
+        }
+      }
+
+      const conversations = Object.values(conversationsById).filter(
+        (conversation): conversation is ConversationState => conversation !== undefined,
+      );
+      const { cleanupIds, notFoundIds } = collectFinalSubagentIds(conversations);
+      for (const threadId of notFoundIds) {
+        cleanedThreadIds.current.add(threadId);
+      }
+      for (const threadId of cleanupIds) {
+        void cleanupThread(threadId);
+      }
+    };
+
+    const scheduleCleanupStateSync = () => {
+      if (cleanupScheduledRef.current) {
+        return;
+      }
+      cleanupScheduledRef.current = true;
+      queueMicrotask(syncCleanupState);
+    };
+
+    scheduleCleanupStateSync();
+    const unsubscribe = store.subscribe(scheduleCleanupStateSync);
+    return () => {
+      disposed = true;
+      cleanupScheduledRef.current = false;
+      unsubscribe();
+    };
+  }, [cleanupThread, store]);
 }

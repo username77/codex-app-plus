@@ -208,7 +208,7 @@ function appendTurnArtifacts(
   }
 }
 
-function mapTurnItems(conversation: ConversationState, turn: ConversationTurnState): Array<TimelineEntry> {
+export function mapConversationTurnToTimelineEntries(conversation: ConversationState, turn: ConversationTurnState): Array<TimelineEntry> {
   const entries: Array<TimelineEntry> = [];
   appendInitialUserEntry(entries, conversation.id, turn);
 
@@ -223,7 +223,7 @@ function mapTurnItems(conversation: ConversationState, turn: ConversationTurnSta
   return entries;
 }
 
-function mapRequestEntry(
+export function mapRequestEntry(
   request: ReceivedServerRequest,
 ): PendingApprovalEntry | PendingUserInputEntry | PendingToolCallEntry | PendingTokenRefreshEntry | TimelineEntry | null {
   if (request.kind === "commandApproval" || request.kind === "fileApproval" || request.kind === "legacyPatchApproval" || request.kind === "legacyCommandApproval") {
@@ -245,7 +245,7 @@ function mapRequestEntry(
   return { id: createEntryId(request.threadId, request.turnId, request.itemId, `request:${request.id}`), kind: "debug", threadId: request.threadId, turnId: request.turnId, itemId: request.itemId, title: `request:${request.method}`, payload: request.params };
 }
 
-function mapRealtimeEntries(
+export function mapRealtimeEntries(
   conversationId: string,
   realtime: RealtimeState | null,
 ): ReadonlyArray<TimelineEntry> {
@@ -260,7 +260,7 @@ function mapRealtimeEntries(
   return entries;
 }
 
-function mapFuzzyEntries(
+export function mapFuzzyEntries(
   fuzzySessions: ReadonlyArray<FuzzySearchSessionState>,
 ): ReadonlyArray<TimelineEntry> {
   return fuzzySessions.map((session) => ({ id: `fuzzy:${session.sessionId}`, kind: "fuzzySearch", threadId: "search", turnId: null, itemId: session.sessionId, sessionId: session.sessionId, query: session.query, status: session.completed ? "completed" : "updating", files: session.files }));
@@ -276,7 +276,7 @@ export function mapConversationToTimelineEntries(
     return [...requests.map(mapRequestEntry).filter((entry): entry is TimelineEntry => entry !== null), ...fuzzyEntries];
   }
 
-  const entries = conversation.turns.flatMap((turn) => mapTurnItems(conversation, turn));
+  const entries = conversation.turns.flatMap((turn) => mapConversationTurnToTimelineEntries(conversation, turn));
   const requestEntries = requests.map(mapRequestEntry).filter((entry): entry is TimelineEntry => entry !== null);
   const realtimeEntries = mapRealtimeEntries(conversation.id, extras?.realtime ?? null);
   return [...entries, ...requestEntries, ...realtimeEntries, ...fuzzyEntries];

@@ -11,7 +11,9 @@ import {
 } from "react";
 import type { ComposerPermissionLevel } from "../../app/conversation/composerPermission";
 import type { ComposerModelOption } from "../../app/conversation/composerPreferences";
-import { useAppStore } from "../../state/store";
+import type { AppState } from "../../domain/types";
+import type { AppStoreApi } from "../../state/store";
+import { useAppDispatch, useAppSelector } from "../../state/store";
 import type { ComposerCommandPaletteItem } from "./ComposerCommandPalette";
 import {
   executeSlashCommand,
@@ -60,10 +62,15 @@ const NO_WORKSPACE_MESSAGE = "请先选择工作区后再使用 @ 文件提及�
 export function useComposerCommandPalette(
   options: UseComposerCommandPaletteOptions,
 ): UseComposerCommandPaletteState {
-  const { dispatch, state } = useAppStore();
+  const dispatch = useAppDispatch();
   const trigger = usePaletteTrigger(options.inputText);
   const mention = useMentionPalette(options, dispatch, trigger.mode, trigger.activeTrigger);
-  const mentionSession = mention.sessionId === null ? null : state.fuzzySearchSessionsById[mention.sessionId] ?? null;
+  const mentionSession = useAppSelector(
+    useMemo(
+      () => (state: AppState) => mention.sessionId === null ? null : state.fuzzySearchSessionsById[mention.sessionId] ?? null,
+      [mention.sessionId],
+    ),
+  );
   const items = useMemo(
     () => createPaletteItems(trigger.mode, trigger.activeTrigger, options.models, options.selectedModel, options.permissionLevel, mentionSession, mention.error),
     [mention.error, mentionSession, options.models, options.permissionLevel, options.selectedModel, trigger.activeTrigger, trigger.mode],
@@ -130,7 +137,7 @@ function usePaletteTrigger(inputText: string) {
 
 function useMentionPalette(
   options: UseComposerCommandPaletteOptions,
-  dispatch: ReturnType<typeof useAppStore>["dispatch"],
+  dispatch: AppStoreApi["dispatch"],
   mode: PaletteMode,
   activeTrigger: ComposerActiveTrigger | null,
 ) {

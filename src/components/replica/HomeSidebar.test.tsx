@@ -1,9 +1,10 @@
-import { useState } from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Profiler, useEffect, useState } from "react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { HostBridge } from "../../bridge/types";
 import type { ThreadSummary } from "../../domain/types";
-import { AppStoreProvider } from "../../state/store";
+import type { AppStoreApi } from "../../state/store";
+import { AppStoreProvider, useAppDispatch } from "../../state/store";
 import { HomeSidebar } from "./HomeSidebar";
 
 const ROOT = { id: "root-1", name: "FPGA", path: "E:/code/FPGA" };
@@ -69,6 +70,16 @@ function renderSidebar(thread: ThreadSummary, options?: { readonly onArchiveThre
   return { onArchiveThread, deleteCodexSession };
 }
 
+function DispatchRecorder(props: { readonly onReady: (dispatch: AppStoreApi["dispatch"]) => void }): null {
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    props.onReady(dispatch);
+  }, [dispatch, props]);
+
+  return null;
+}
+
 describe("HomeSidebar", () => {
   it("clears the current selection after archiving the selected thread", async () => {
     const thread = createThread("rpc");
@@ -92,5 +103,55 @@ describe("HomeSidebar", () => {
 
     await waitFor(() => expect(deleteCodexSession).toHaveBeenCalledWith({ threadId: thread.id, agentEnvironment: "windowsNative" }));
     await waitFor(() => expect(screen.getByTestId("selected-thread")).toHaveTextContent("none"));
+  });
+
+  it("ignores unrelated store updates when only dispatch is needed", () => {
+    const thread = createThread("rpc");
+    const onRender = vi.fn();
+    let dispatch: AppStoreApi["dispatch"] | null = null;
+
+    render(
+      <AppStoreProvider>
+        <DispatchRecorder onReady={(nextDispatch) => {
+          dispatch = nextDispatch;
+        }} />
+        <Profiler id="home-sidebar" onRender={onRender}>
+          <HomeSidebar
+            hostBridge={{ app: { deleteCodexSession: vi.fn().mockResolvedValue(undefined) } } as unknown as HostBridge}
+            roots={[ROOT]}
+            codexSessions={[thread]}
+            codexSessionsLoading={false}
+            codexSessionsError={null}
+            selectedRootId={ROOT.id}
+            selectedThreadId={thread.id}
+            authStatus="authenticated"
+            authMode="apikey"
+            authBusy={false}
+            authLoginPending={false}
+            settingsMenuOpen={false}
+            collapsed={false}
+            onToggleSettingsMenu={vi.fn()}
+            onDismissSettingsMenu={vi.fn()}
+            onOpenSettings={vi.fn()}
+            onLogin={vi.fn().mockResolvedValue(undefined)}
+            onLogout={vi.fn().mockResolvedValue(undefined)}
+            onSelectRoot={vi.fn()}
+            onSelectThread={vi.fn()}
+            onCreateThread={vi.fn().mockResolvedValue(undefined)}
+            onArchiveThread={vi.fn().mockResolvedValue(undefined)}
+            onAddRoot={vi.fn()}
+            onRemoveRoot={vi.fn()}
+          />
+        </Profiler>
+      </AppStoreProvider>,
+    );
+
+    expect(onRender).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      dispatch?.({ type: "input/changed", value: "streaming" });
+    });
+
+    expect(onRender).toHaveBeenCalledTimes(1);
   });
 });

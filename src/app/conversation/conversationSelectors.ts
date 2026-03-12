@@ -25,8 +25,13 @@ export function getActiveTurnId(conversation: ConversationState | null): string 
   if (conversation === null) {
     return null;
   }
-  const activeTurn = [...conversation.turns].reverse().find((turn) => turn.status === "inProgress") ?? null;
-  return activeTurn?.turnId ?? null;
+  for (let index = conversation.turns.length - 1; index >= 0; index -= 1) {
+    const turn = conversation.turns[index];
+    if (turn.status === "inProgress") {
+      return turn.turnId;
+    }
+  }
+  return null;
 }
 
 export function hasInProgressTurn(conversation: ConversationState | null): boolean {

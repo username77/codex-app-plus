@@ -150,7 +150,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       console.error("创建工作区会话失败", error);
       window.alert(`创建工作区会话失败: ${String(error)}`);
     }
-  }, [conversation]);
+  }, [conversation.createThread]);
 
   const sendWorkspaceTurn = useCallback(
     async (sendOptions: Parameters<typeof conversation.sendTurn>[0]) => {
@@ -161,7 +161,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
         window.alert(`发送工作区消息失败: ${String(error)}`);
       }
     },
-    [conversation]
+    [conversation.sendTurn]
   );
 
   const persistComposerSelection = useCallback(

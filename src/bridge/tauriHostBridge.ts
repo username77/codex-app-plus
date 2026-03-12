@@ -19,10 +19,12 @@ import type {
   GitDiffOutput,
   GitDiscardInput,
   GitPathsInput,
+  GitRemoteInput,
   GitRepoInput,
   ChatgptAuthTokensOutput,
   GlobalAgentInstructionsOutput,
-  GitStatusOutput,
+  GitStatusSnapshotOutput,
+  GitBranchRef,
   HostBridge,
   OpenWorkspaceInput,
   ImportOfficialDataInput,
@@ -155,8 +157,16 @@ export function createTauriHostBridge(): HostBridge {
         })
     },
     git: {
-      getStatus: (input: GitRepoInput) =>
-        invoke<GitStatusOutput>("git_get_status", {
+      getStatusSnapshot: (input: GitRepoInput) =>
+        invoke<GitStatusSnapshotOutput>("git_get_status_snapshot", {
+          input
+        }),
+      getBranchRefs: (input: GitRepoInput) =>
+        invoke<ReadonlyArray<GitBranchRef>>("git_get_branch_refs", {
+          input
+        }),
+      getRemoteUrl: (input: GitRemoteInput) =>
+        invoke<string | null>("git_get_remote_url", {
           input
         }),
       getDiff: (input: GitDiffInput) =>

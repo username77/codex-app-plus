@@ -2,7 +2,7 @@ import { memo, useCallback } from "react";
 import type { WorkspaceRoot } from "../../app/workspace/useWorkspaceRoots";
 import type { HostBridge } from "../../bridge/types";
 import type { AuthStatus, ThreadSummary } from "../../domain/types";
-import { useAppStore } from "../../state/store";
+import { useAppDispatch } from "../../state/store";
 import { SidebarIcon } from "./icons";
 import { OfficialSettingsGearIcon } from "./officialIcons";
 import { SettingsPopover } from "./SettingsPopover";
@@ -55,7 +55,7 @@ function SidebarNav(props: { readonly onCreateThread: () => Promise<void> }): JS
 }
 
 function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
-  const { dispatch } = useAppStore();
+  const dispatch = useAppDispatch();
   const sidebarClassName = props.collapsed ? "replica-sidebar sidebar-collapsed" : "replica-sidebar";
 
   const clearSelectedThread = useCallback((threadId: string) => {
