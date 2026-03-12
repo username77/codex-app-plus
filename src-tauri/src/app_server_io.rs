@@ -8,8 +8,9 @@ use tokio::process::{ChildStderr, ChildStdout};
 use tokio::sync::{mpsc, oneshot, Mutex};
 use tokio::task::JoinHandle;
 
+use crate::app_server_stderr::{emit_app_server_fatal, AppServerStderrLog};
 use crate::error::{AppError, AppResult};
-use crate::events::{emit_fatal, emit_notification, emit_server_request};
+use crate::events::{emit_notification, emit_server_request};
 use crate::models::JsonRpcErrorBody;
 use crate::rpc_transport::{parse_incoming_line, IncomingMessage};
 
@@ -24,11 +25,12 @@ pub fn spawn_writer_task(
     app: AppHandle,
     mut rx: mpsc::UnboundedReceiver<String>,
     mut stdin: tokio::process::ChildStdin,
+    stderr_log: AppServerStderrLog,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         while let Some(line) = rx.recv().await {
             if write_line(&mut stdin, &line).await.is_err() {
-                let _ = emit_fatal(&app, "写入 app-server stdin 失败");
+                let _ = emit_app_server_fatal(&app, &stderr_log, "写入 app-server stdin 失败");
                 break;
             }
         }
@@ -39,6 +41,7 @@ pub fn spawn_reader_task(
     app: AppHandle,
     stdout: ChildStdout,
     pending: PendingMap,
+    stderr_log: AppServerStderrLog,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         let mut lines = BufReader::new(stdout).lines();
@@ -46,12 +49,13 @@ pub fn spawn_reader_task(
             match lines.next_line().await {
                 Ok(Some(line)) => {
                     if let Err(error) = handle_incoming_line(&app, &pending, line).await {
-                        let _ = emit_fatal(&app, error.to_string());
+                        let _ = emit_app_server_fatal(&app, &stderr_log, error.to_string());
                     }
                 }
                 Ok(None) => break,
                 Err(error) => {
-                    let _ = emit_fatal(&app, format!("读取 stdout 失败: {error}"));
+                    let message = format!("读取 stdout 失败: {error}");
+                    let _ = emit_app_server_fatal(&app, &stderr_log, message);
                     break;
                 }
             }
@@ -59,17 +63,15 @@ pub fn spawn_reader_task(
     })
 }
 
-pub fn spawn_stderr_task(app: AppHandle, stderr: ChildStderr) -> JoinHandle<()> {
+pub fn spawn_stderr_task(stderr: ChildStderr, stderr_log: AppServerStderrLog) -> JoinHandle<()> {
     tokio::spawn(async move {
         let mut lines = BufReader::new(stderr).lines();
         loop {
             match lines.next_line().await {
-                Ok(Some(line)) => {
-                    let _ = emit_fatal(&app, format!("app-server stderr: {line}"));
-                }
+                Ok(Some(line)) => stderr_log.record_line(line),
                 Ok(None) => break,
                 Err(error) => {
-                    let _ = emit_fatal(&app, format!("读取 stderr 失败: {error}"));
+                    stderr_log.record_line(format!("[stderr read failed] {error}"));
                     break;
                 }
             }

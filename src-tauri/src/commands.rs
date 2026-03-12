@@ -345,9 +345,7 @@ fn write_chatgpt_auth_tokens_to_root(
     input: UpdateChatgptAuthTokensInput,
 ) -> AppResult<ChatgptAuthTokensOutput> {
     if input.access_token.trim().is_empty() {
-        return Err(AppError::InvalidInput(
-            "accessToken 不能为空".to_string(),
-        ));
+        return Err(AppError::InvalidInput("accessToken 不能为空".to_string()));
     }
     if input.chatgpt_account_id.trim().is_empty() {
         return Err(AppError::InvalidInput(
@@ -463,8 +461,8 @@ fn find_tokens(
 }
 
 fn global_agents_path() -> AppResult<PathBuf> {
-    let home = dirs::home_dir()
-        .ok_or_else(|| AppError::InvalidInput("无法解析用户目录".to_string()))?;
+    let home =
+        dirs::home_dir().ok_or_else(|| AppError::InvalidInput("无法解析用户目录".to_string()))?;
     Ok(home.join(".codex").join("AGENTS.md"))
 }
 

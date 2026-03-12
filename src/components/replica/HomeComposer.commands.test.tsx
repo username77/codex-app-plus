@@ -72,6 +72,18 @@ function renderHarness(props?: Parameters<typeof ComposerHarness>[0]) {
 }
 
 describe("HomeComposer commands", () => {
+  it("executes /new immediately", async () => {
+    const onCreateThread = vi.fn().mockResolvedValue(undefined);
+    renderHarness({ onCreateThread });
+    const textarea = screen.getByRole("textbox");
+
+    fireEvent.change(textarea, { target: { value: "/new", selectionStart: 4 } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+
+    await waitFor(() => expect(onCreateThread).toHaveBeenCalled());
+    expect((textarea as HTMLTextAreaElement).value).toBe("");
+  });
+
   it("executes /clear immediately", async () => {
     const onCreateThread = vi.fn().mockResolvedValue(undefined);
     renderHarness({ onCreateThread });
@@ -93,6 +105,16 @@ describe("HomeComposer commands", () => {
     fireEvent.keyDown(textarea, { key: "Enter" });
 
     await waitFor(() => expect(onToggleDiff).toHaveBeenCalled());
+  });
+
+  it("opens the permissions picker from /approvals", async () => {
+    renderHarness();
+    const textarea = screen.getByRole("textbox");
+
+    fireEvent.change(textarea, { target: { value: "/approvals", selectionStart: 10 } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+
+    await waitFor(() => expect(screen.getByRole("menu", { name: "Choose permissions" })).toBeInTheDocument());
   });
 
   it("opens mention results from @ and adds a chip", async () => {

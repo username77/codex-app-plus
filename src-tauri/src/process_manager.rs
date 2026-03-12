@@ -10,9 +10,10 @@ use tokio::time::{timeout, Duration};
 use crate::app_server_io::{
     spawn_reader_task, spawn_stderr_task, spawn_writer_task, PendingMap, PendingOutcome,
 };
+use crate::app_server_stderr::{emit_app_server_fatal, AppServerStderrLog};
 use crate::codex_cli::CodexCli;
 use crate::error::{AppError, AppResult};
-use crate::events::{emit_connection_changed, emit_fatal};
+use crate::events::emit_connection_changed;
 use crate::models::{
     AppServerStartInput, JsonRpcErrorBody, RpcCancelInput, RpcNotifyInput, RpcRequestInput,
     RpcRequestOutput, ServerRequestResolveInput,
@@ -90,7 +91,6 @@ impl ProcessManager {
             let mut guard = self.runtime.lock().await;
             guard.take().ok_or(AppError::NotRunning)?
         };
-
         runtime.shutdown(&app).await;
         Ok(())
     }
@@ -185,6 +185,7 @@ async fn await_request_response(
         receiver,
     )
     .await;
+
     match outcome {
         Ok(Ok(PendingOutcome::Result(result))) => Ok(RpcRequestOutput { request_id, result }),
         Ok(Ok(PendingOutcome::Error(error))) => Err(AppError::Protocol(format!(
@@ -207,6 +208,7 @@ async fn spawn_runtime(
     let cli = CodexCli::resolve(&input)?;
     let _version = cli.detect_version().await?;
     let supervisor = ProcessSupervisor::new("app-server")?;
+    let stderr_log = AppServerStderrLog::new();
     let mut spawned = cli.spawn_app_server()?;
     if let Err(error) = supervisor.assign_tokio_child(&spawned.child) {
         let _ = spawned.child.kill().await;
@@ -220,10 +222,15 @@ async fn spawn_runtime(
         oneshot::Sender<PendingOutcome>,
     >::new()));
     let child = Arc::new(Mutex::new(spawned.child));
-    let writer_task = spawn_writer_task(app.clone(), writer_rx, spawned.stdin);
-    let reader_task = spawn_reader_task(app.clone(), spawned.stdout, pending.clone());
-    let stderr_task = spawn_stderr_task(app.clone(), spawned.stderr);
-    let wait_task = spawn_wait_task(app, child.clone(), runtime_store);
+    let writer_task = spawn_writer_task(app.clone(), writer_rx, spawned.stdin, stderr_log.clone());
+    let reader_task = spawn_reader_task(
+        app.clone(),
+        spawned.stdout,
+        pending.clone(),
+        stderr_log.clone(),
+    );
+    let stderr_task = spawn_stderr_task(spawned.stderr, stderr_log.clone());
+    let wait_task = spawn_wait_task(app, child.clone(), runtime_store, stderr_log);
 
     Ok(Arc::new(AppServerRuntime {
         writer,
@@ -242,6 +249,7 @@ fn spawn_wait_task(
     app: AppHandle,
     child: Arc<Mutex<Child>>,
     runtime_store: Arc<Mutex<Option<Arc<AppServerRuntime>>>>,
+    stderr_log: AppServerStderrLog,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         let wait_result = child.lock().await.wait().await;
@@ -249,17 +257,20 @@ fn spawn_wait_task(
         if let Some(runtime) = runtime {
             runtime.fail_all_pending().await;
         }
+
         match wait_result {
             Ok(status) if status.success() => {
                 let _ = emit_connection_changed(&app, "disconnected");
             }
             Ok(status) => {
                 let _ = emit_connection_changed(&app, "error");
-                let _ = emit_fatal(&app, format!("app-server 非零退出: {status}"));
+                let message = format!("app-server 非零退出: {status}");
+                let _ = emit_app_server_fatal(&app, &stderr_log, message);
             }
             Err(error) => {
                 let _ = emit_connection_changed(&app, "error");
-                let _ = emit_fatal(&app, format!("等待 app-server 退出失败: {error}"));
+                let message = format!("等待 app-server 退出失败: {error}");
+                let _ = emit_app_server_fatal(&app, &stderr_log, message);
             }
         }
     })

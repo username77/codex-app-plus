@@ -37,7 +37,7 @@ export async function executeSlashCommand(
   const next = replaceComposerTrigger(options.inputText, options.activeTrigger.range, replacement);
   options.onInputChange(next.text);
   setSuppressedTriggerKey(null);
-  if (itemKey === "clear") {
+  if (itemKey === "clear" || itemKey === "new") {
     await options.onCreateThread();
   }
   if (itemKey === "diff") {
@@ -46,7 +46,7 @@ export async function executeSlashCommand(
   if (itemKey === "model") {
     setManualMode("slash-model");
   }
-  if (itemKey === "permissions") {
+  if (itemKey === "approvals" || itemKey === "permissions") {
     setManualMode("slash-permissions");
   }
   focusTextarea(textareaRef, next.caret);
