@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { HostBridge } from "../../bridge/types";
 import type { ReceivedServerRequest } from "../../domain/serverRequests";
-import type { AppAction, AppState, AuthStatus, ServerRequestResolution } from "../../domain/types";
+import type { AppAction, AppState, AuthStatus, ServerRequestResolution, ThreadSummary } from "../../domain/types";
 import type { GetAuthStatusResponse } from "../../protocol/generated/GetAuthStatusResponse";
 import type { InitializeParams } from "../../protocol/generated/InitializeParams";
 import type { GetAccountRateLimitsResponse } from "../../protocol/generated/v2/GetAccountRateLimitsResponse";
@@ -15,6 +15,7 @@ import type { McpServerStatus } from "../../protocol/generated/v2/McpServerStatu
 import type { WindowsSandboxSetupCompletedNotification } from "../../protocol/generated/v2/WindowsSandboxSetupCompletedNotification";
 import type { WindowsSandboxSetupMode } from "../../protocol/generated/v2/WindowsSandboxSetupMode";
 import type { WindowsSandboxSetupStartResponse } from "../../protocol/generated/v2/WindowsSandboxSetupStartResponse";
+import type { ThreadUnarchiveResponse } from "../../protocol/generated/v2/ThreadUnarchiveResponse";
 import {
   batchWriteConfigAndReadSnapshot,
   batchWriteConfigAndRefresh,
@@ -29,11 +30,11 @@ import {
 } from "../config/configOperations";
 import { readUserConfigWriteTarget } from "../config/configWriteTarget";
 import { applyAppServerNotification } from "./appControllerNotifications";
-import { createConversationFromThreadSummary } from "../conversation/conversationState";
+import { createConversationFromThread, createConversationFromThreadSummary } from "../conversation/conversationState";
 import { FrameTextDeltaQueue } from "../conversation/frameTextDeltaQueue";
 import { OutputDeltaQueue } from "../conversation/outputDeltaQueue";
 import { createServerRequestPayload, normalizeServerRequest } from "./serverRequests";
-import { loadThreadCatalog } from "../threads/threadCatalog";
+import { listAllThreads, loadThreadCatalog } from "../threads/threadCatalog";
 import { refreshConfigAfterWindowsSandboxSetup, startWindowsSandboxSetupRequest } from "../sandbox/windowsSandboxSetup";
 import { ProtocolClient } from "../../protocol/client";
 import { useAppStore } from "../../state/store";
@@ -53,6 +54,9 @@ interface AppController {
   refreshAuthState: () => Promise<void>;
   refreshMcpData: () => Promise<McpRefreshResult>;
   listMcpServerStatuses: () => Promise<ReadonlyArray<McpServerStatus>>;
+  listArchivedThreads: () => Promise<ReadonlyArray<ThreadSummary>>;
+  archiveThread: (threadId: string) => Promise<void>;
+  unarchiveThread: (threadId: string) => Promise<void>;
   writeConfigValue: (params: ConfigValueWriteParams) => Promise<ConfigMutationResult>;
   batchWriteConfig: (params: ConfigBatchWriteParams) => Promise<ConfigMutationResult>;
   batchWriteConfigSnapshot: (params: ConfigBatchWriteParams) => Promise<ConfigSnapshotMutationResult>;
@@ -468,6 +472,22 @@ export function useAppController(hostBridge: HostBridge): AppController {
     dispatch({ type: "mcp/statusesLoaded", statuses });
     return statuses;
   }, [client, dispatch]);
+  const listArchivedThreads = useCallback(
+    () => listAllThreads({ request: (method, params) => client.request(method, params) }, true),
+    [client]
+  );
+  const archiveThread = useCallback(async (threadId: string) => {
+    await client.request("thread/archive", { threadId });
+    dispatch({ type: "conversation/hiddenChanged", conversationId: threadId, hidden: true });
+    if (state.selectedConversationId === threadId) {
+      dispatch({ type: "conversation/selected", conversationId: null });
+    }
+  }, [client, dispatch, state.selectedConversationId]);
+  const unarchiveThread = useCallback(async (threadId: string) => {
+    const response = (await client.request("thread/unarchive", { threadId })) as ThreadUnarchiveResponse;
+    dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(response.thread) });
+    dispatch({ type: "conversation/hiddenChanged", conversationId: threadId, hidden: false });
+  }, [client, dispatch]);
   const writeConfigValue = useCallback((params: ConfigValueWriteParams) => runBusy(() => writeConfigValueAndRefresh(client, dispatch, params)), [client, dispatch, runBusy]);
   const batchWriteConfig = useCallback((params: ConfigBatchWriteParams) => runBusy(() => batchWriteConfigAndRefresh(client, dispatch, params)), [client, dispatch, runBusy]);
   const batchWriteConfigSnapshot = useCallback((params: ConfigBatchWriteParams) => runBusy(() => batchWriteConfigAndReadSnapshot(client, dispatch, params)), [client, dispatch, runBusy]);
@@ -501,5 +521,5 @@ export function useAppController(hostBridge: HostBridge): AppController {
     }
   }, [client, dispatch, hostBridge.app]);
 
-  return { state, setInput: (text) => dispatch({ type: "input/changed", value: text }), retryConnection: () => bootstrap(true), refreshConfigSnapshot: refreshConfig, refreshAuthState: refreshAuth, refreshMcpData: refreshMcp, listMcpServerStatuses: listStatuses, writeConfigValue, batchWriteConfig, batchWriteConfigSnapshot, setMultiAgentEnabled, startWindowsSandboxSetup, login, logout, resolveServerRequest };
+  return { state, setInput: (text) => dispatch({ type: "input/changed", value: text }), retryConnection: () => bootstrap(true), refreshConfigSnapshot: refreshConfig, refreshAuthState: refreshAuth, refreshMcpData: refreshMcp, listMcpServerStatuses: listStatuses, listArchivedThreads, archiveThread, unarchiveThread, writeConfigValue, batchWriteConfig, batchWriteConfigSnapshot, setMultiAgentEnabled, startWindowsSandboxSetup, login, logout, resolveServerRequest };
 }

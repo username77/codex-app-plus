@@ -32,22 +32,25 @@ export interface ThreadCatalogRequester {
   request: (method: "thread/list", params: ThreadListParams) => Promise<unknown>;
 }
 
-function createThreadListParams(cursor: string | null): ThreadListParams {
+function createThreadListParams(cursor: string | null, archived: boolean): ThreadListParams {
   return {
-    archived: false,
+    archived,
     cursor,
     limit: THREAD_PAGE_SIZE,
     sortKey: "updated_at"
   };
 }
 
-export async function listAllThreads(requester: ThreadCatalogRequester): Promise<ReadonlyArray<ThreadSummary>> {
+export async function listAllThreads(
+  requester: ThreadCatalogRequester,
+  archived = false
+): Promise<ReadonlyArray<ThreadSummary>> {
   const threads: Array<ThreadSummary> = [];
   let cursor: string | null = null;
 
   do {
-    const response = (await requester.request("thread/list", createThreadListParams(cursor))) as ThreadListResponse;
-    threads.push(...mapThreadListResponse(response));
+    const response = (await requester.request("thread/list", createThreadListParams(cursor, archived))) as ThreadListResponse;
+    threads.push(...mapThreadListResponse(response, { archived }));
     cursor = response.nextCursor;
   } while (cursor !== null);
 

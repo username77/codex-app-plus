@@ -30,6 +30,7 @@ export interface HomeSidebarProps {
   readonly onSelectRoot: (rootId: string) => void;
   readonly onSelectThread: (threadId: string | null) => void;
   readonly onCreateThread: () => Promise<void>;
+  readonly onArchiveThread: (threadId: string) => Promise<void>;
   readonly onAddRoot: () => void;
   readonly onRemoveRoot: (rootId: string) => void;
 }
@@ -56,11 +57,23 @@ function SidebarNav(props: { readonly onCreateThread: () => Promise<void> }): JS
 function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
   const { dispatch } = useAppStore();
   const sidebarClassName = props.collapsed ? "replica-sidebar sidebar-collapsed" : "replica-sidebar";
+
+  const clearSelectedThread = useCallback((threadId: string) => {
+    if (threadId === props.selectedThreadId) {
+      props.onSelectThread(null);
+    }
+  }, [props]);
+
+  const handleArchiveThread = useCallback(async (thread: ThreadSummary) => {
+    await props.onArchiveThread(thread.id);
+    clearSelectedThread(thread.id);
+  }, [clearSelectedThread, props]);
+
   const handleDeleteThread = useCallback(async (thread: ThreadSummary) => {
     await props.hostBridge.app.deleteCodexSession({ threadId: thread.id });
     dispatch({ type: "conversation/hiddenChanged", conversationId: thread.id, hidden: true });
-    if (thread.id === props.selectedThreadId) props.onSelectThread(null);
-  }, [dispatch, props]);
+    clearSelectedThread(thread.id);
+  }, [clearSelectedThread, dispatch, props]);
 
   return (
     <aside className={sidebarClassName}>
@@ -76,6 +89,7 @@ function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
         selectedThreadId={props.selectedThreadId}
         onSelectRoot={props.onSelectRoot}
         onSelectThread={props.onSelectThread}
+        onArchiveThread={handleArchiveThread}
         onDeleteThread={handleDeleteThread}
         onAddRoot={props.onAddRoot}
         onRemoveRoot={props.onRemoveRoot}

@@ -85,6 +85,7 @@ interface HomeViewProps {
   readonly onSelectThread: (threadId: string | null) => void;
   readonly onInputChange: (text: string) => void;
   readonly onCreateThread: () => Promise<void>;
+  readonly onArchiveThread?: (threadId: string) => Promise<void>;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
   readonly onPersistComposerSelection: (selection: ComposerSelection) => Promise<void>;
   readonly multiAgentAvailable?: boolean;
@@ -303,7 +304,7 @@ function EmptyCanvas(props: { readonly selectedRootName: string; readonly select
 
   return (
     <main className="main-canvas">
-      <div className="empty-state" aria-label="娆㈣繋鐣岄潰">
+      <div className="empty-state" aria-label="濞嗐垼绻嬮悾宀勬桨">
         
         <h2 className="empty-title">{title}</h2>
         <button type="button" className={selectorClassName}>
@@ -367,6 +368,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         onSelectRoot={props.onSelectRoot}
         onSelectThread={props.onSelectThread}
         onCreateThread={props.onCreateThread}
+        onArchiveThread={props.onArchiveThread ?? (async () => undefined)}
         onAddRoot={props.onAddRoot}
         onRemoveRoot={props.onRemoveRoot}
       />

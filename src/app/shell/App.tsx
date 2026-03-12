@@ -211,6 +211,8 @@ export function App({ hostBridge }: AppProps): JSX.Element {
           deleteCodexProvider={deleteCodexProvider}
           applyCodexProvider={applyCodexProvider}
           refreshMcpData={controller.refreshMcpData}
+          listArchivedThreads={controller.listArchivedThreads}
+          unarchiveThread={controller.unarchiveThread}
           writeConfigValue={controller.writeConfigValue}
           batchWriteConfig={controller.batchWriteConfig}
           startWindowsSandboxSetup={controller.startWindowsSandboxSetup}
@@ -279,6 +281,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       onSelectThread={conversation.selectThread}
       onInputChange={controller.setInput}
       onCreateThread={createWorkspaceThread}
+      onArchiveThread={controller.archiveThread}
       onSendTurn={sendWorkspaceTurn}
       onPersistComposerSelection={persistComposerSelection}
       multiAgentAvailable={multiAgentState.available}

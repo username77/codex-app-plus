@@ -10,7 +10,11 @@ const ROOTS: ReadonlyArray<WorkspaceRoot> = [
   { id: "root-2", name: "Codex", path: "E:/code/codex" }
 ];
 
-function createThread(root: WorkspaceRoot, index: number): ThreadSummary {
+function createThread(
+  root: WorkspaceRoot,
+  index: number,
+  overrides?: Partial<Pick<ThreadSummary, "source" | "status" | "queuedCount">>
+): ThreadSummary {
   return {
     id: `thread-${root.id}-${index}`,
     title: `${root.name} Thread ${index}`,
@@ -18,16 +22,21 @@ function createThread(root: WorkspaceRoot, index: number): ThreadSummary {
     cwd: root.path,
     archived: false,
     updatedAt: `2026-03-${String(index).padStart(2, "0")}T10:00:00.000Z`,
-    source: "codexData",
-    status: "notLoaded",
+    source: overrides?.source ?? "codexData",
+    status: overrides?.status ?? "notLoaded",
     activeFlags: [],
-    queuedCount: 0
+    queuedCount: overrides?.queuedCount ?? 0
   };
 }
 
 function renderSection(
   codexSessions: ReadonlyArray<ThreadSummary>,
-  options?: { readonly loading?: boolean; readonly error?: string | null; readonly onDeleteThread?: (thread: ThreadSummary) => Promise<void> }
+  options?: {
+    readonly loading?: boolean;
+    readonly error?: string | null;
+    readonly onDeleteThread?: (thread: ThreadSummary) => Promise<void>;
+    readonly onArchiveThread?: (thread: ThreadSummary) => Promise<void>;
+  }
 ): void {
   function Harness(): JSX.Element {
     const [selectedRootId, setSelectedRootId] = useState<string | null>(ROOTS[0]!.id);
@@ -45,6 +54,7 @@ function renderSection(
           selectedThreadId={selectedThreadId}
           onSelectRoot={setSelectedRootId}
           onSelectThread={setSelectedThreadId}
+          onArchiveThread={options?.onArchiveThread ?? vi.fn().mockResolvedValue(undefined)}
           onDeleteThread={options?.onDeleteThread ?? vi.fn().mockResolvedValue(undefined)}
           onAddRoot={vi.fn()}
           onRemoveRoot={vi.fn()}
@@ -77,9 +87,7 @@ describe("WorkspaceSidebarSection", () => {
   });
 
   it("toggles collapse when clicking the workspace row again", () => {
-    const threads = [createThread(ROOTS[0]!, 1)];
-
-    renderSection(threads);
+    renderSection([createThread(ROOTS[0]!, 1)]);
 
     fireEvent.click(screen.getByText("FPGA"));
     expect(screen.getByText("FPGA Thread 1")).toBeInTheDocument();
@@ -109,9 +117,7 @@ describe("WorkspaceSidebarSection", () => {
   });
 
   it("renders title and time inside the same session button", () => {
-    const thread = createThread(ROOTS[0]!, 1);
-
-    renderSection([thread]);
+    renderSection([createThread(ROOTS[0]!, 1)]);
     fireEvent.click(screen.getByText("FPGA"));
 
     const title = screen.getByText("FPGA Thread 1");
@@ -142,6 +148,27 @@ describe("WorkspaceSidebarSection", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "删除会话" }));
 
     await waitFor(() => expect(onDeleteThread).toHaveBeenCalledWith(thread));
+  });
+
+  it("shows archive for rpc threads and calls the archive handler", async () => {
+    const thread = createThread(ROOTS[0]!, 1, { source: "rpc", status: "idle" });
+    const onArchiveThread = vi.fn().mockResolvedValue(undefined);
+
+    renderSection([thread], { onArchiveThread });
+    fireEvent.click(screen.getByText("FPGA"));
+    fireEvent.contextMenu(screen.getByRole("button", { name: /FPGA Thread 1/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "归档会话" }));
+
+    await waitFor(() => expect(onArchiveThread).toHaveBeenCalledWith(thread));
+  });
+
+  it("does not show archive for codexData threads", () => {
+    renderSection([createThread(ROOTS[0]!, 1)]);
+    fireEvent.click(screen.getByText("FPGA"));
+    fireEvent.contextMenu(screen.getByRole("button", { name: /FPGA Thread 1/ }));
+
+    expect(screen.queryByRole("menuitem", { name: "归档会话" })).toBeNull();
+    expect(screen.getByRole("menuitem", { name: "删除会话" })).toBeInTheDocument();
   });
 
   it("shows empty state after expanding a workspace without sessions", () => {

@@ -1,54 +1,38 @@
 import { describe, expect, it, vi } from "vitest";
+import { mapThreadToSummary } from "../../protocol/mappers";
 import { listAllThreads, mapCodexSessionsToThreads, mergeThreadCatalogs } from "./threadCatalog";
 
+function createRpcThread(overrides?: Partial<{ readonly id: string; readonly updatedAt: number; readonly name: string | null; readonly cwd: string | null }>) {
+  return {
+    id: overrides?.id ?? "thread-1",
+    preview: "preview",
+    ephemeral: false,
+    modelProvider: "openai",
+    createdAt: 1,
+    updatedAt: overrides?.updatedAt ?? 2,
+    status: { type: "idle" as const },
+    path: null,
+    cwd: overrides?.cwd ?? "E:/code/project-a",
+    cliVersion: "0.0.1",
+    source: "appServer" as const,
+    agentNickname: null,
+    agentRole: null,
+    gitInfo: { branch: "feature/rpc-branch", sha: null, originUrl: null },
+    name: overrides?.name ?? "First thread",
+    turns: []
+  };
+}
+
 describe("listAllThreads", () => {
-  it("loads all pages from thread list", async () => {
+  it("loads all pages from the active thread list", async () => {
     const request = vi
       .fn()
       .mockResolvedValueOnce({
-        data: [
-          {
-            id: "thread-1",
-            preview: "first preview",
-            ephemeral: false,
-            modelProvider: "openai",
-            createdAt: 1,
-            updatedAt: 2,
-            status: { type: "idle" },
-            path: null,
-            cwd: "E:/code/project-a",
-            cliVersion: "0.0.1",
-            source: "appServer",
-            agentNickname: null,
-            agentRole: null,
-            gitInfo: { branch: "feature/rpc-branch" },
-            name: "First thread",
-            turns: []
-          }
-        ],
+        data: [createRpcThread()],
         nextCursor: "page-2"
       })
       .mockResolvedValueOnce({
-        data: [
-          {
-            id: "thread-2",
-            preview: "second preview",
-            ephemeral: false,
-            modelProvider: "openai",
-            createdAt: 3,
-            updatedAt: 4,
-            status: { type: "idle" },
-            path: null,
-            cwd: "E:/code/project-b",
-            cliVersion: "0.0.1",
-            source: "appServer",
-            agentNickname: null,
-            agentRole: null,
-            gitInfo: null,
-            name: "Second thread",
-            turns: []
-          }
-        ],
+        data: [createRpcThread({ id: "thread-2", updatedAt: 4, name: "Second thread", cwd: "E:/code/project-b" })],
         nextCursor: null
       });
 
@@ -83,7 +67,7 @@ describe("listAllThreads", () => {
       {
         id: "thread-2",
         title: "Second thread",
-        branch: null,
+        branch: "feature/rpc-branch",
         cwd: "E:/code/project-b",
         archived: false,
         updatedAt: new Date(4_000).toISOString(),
@@ -93,6 +77,30 @@ describe("listAllThreads", () => {
         queuedCount: 0
       }
     ]);
+  });
+
+  it("loads archived threads when requested", async () => {
+    const request = vi.fn().mockResolvedValue({
+      data: [createRpcThread({ id: "archived-thread" })],
+      nextCursor: null
+    });
+
+    const result = await listAllThreads({ request }, true);
+
+    expect(request).toHaveBeenCalledWith("thread/list", {
+      archived: true,
+      cursor: null,
+      limit: 100,
+      sortKey: "updated_at"
+    });
+    expect(result[0]?.archived).toBe(true);
+  });
+
+  it("maps rpc threads using the requested archived flag", () => {
+    const thread = createRpcThread();
+
+    expect(mapThreadToSummary(thread, { archived: false }).archived).toBe(false);
+    expect(mapThreadToSummary(thread, { archived: true }).archived).toBe(true);
   });
 
   it("maps codex session summaries to local thread summaries", () => {

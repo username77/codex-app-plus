@@ -3,22 +3,29 @@ import type { Thread } from "./generated/v2/Thread";
 import type { ModelListResponse } from "./generated/v2/ModelListResponse";
 import type { ThreadListResponse } from "./generated/v2/ThreadListResponse";
 
+interface ThreadSummaryMappingOptions {
+  readonly archived: boolean;
+}
+
 function toIsoFromUnixSeconds(unixSeconds: number): string {
   return new Date(unixSeconds * 1000).toISOString();
 }
 
-export function mapThreadListResponse(response: ThreadListResponse): ReadonlyArray<ThreadSummary> {
-  return response.data.map(mapThreadToSummary);
+export function mapThreadListResponse(
+  response: ThreadListResponse,
+  options: ThreadSummaryMappingOptions
+): ReadonlyArray<ThreadSummary> {
+  return response.data.map((thread) => mapThreadToSummary(thread, options));
 }
 
-export function mapThreadToSummary(thread: Thread): ThreadSummary {
+export function mapThreadToSummary(thread: Thread, options: ThreadSummaryMappingOptions): ThreadSummary {
   const activeFlags = thread.status.type === "active" ? thread.status.activeFlags : [];
   return {
     id: thread.id,
     title: thread.name ?? thread.preview,
     branch: thread.gitInfo?.branch ?? null,
     cwd: thread.cwd,
-    archived: false,
+    archived: options.archived,
     updatedAt: toIsoFromUnixSeconds(thread.updatedAt),
     source: "rpc",
     status: thread.status.type,

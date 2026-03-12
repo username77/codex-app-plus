@@ -19,6 +19,7 @@ import { McpSettingsPanel } from "./mcp/McpSettingsPanel";
 import { ConfigSettingsSection } from "./settings/ConfigSettingsSection";
 import { GeneralSettingsSection } from "./settings/GeneralSettingsSection";
 import { PersonalizationSettingsSection } from "./settings/PersonalizationSettingsSection";
+import { ArchivedThreadsSettingsSection } from "./settings/ArchivedThreadsSettingsSection";
 
 export type SettingsSection =
   | "general"
@@ -52,6 +53,8 @@ interface SettingsViewProps {
   deleteCodexProvider: (input: DeleteCodexProviderInput) => Promise<CodexProviderStore>;
   applyCodexProvider: (input: { readonly id: string }) => Promise<CodexProviderApplyResult>;
   refreshMcpData: () => Promise<McpRefreshResult>;
+  listArchivedThreads: () => Promise<ReadonlyArray<import("../../domain/types").ThreadSummary>>;
+  unarchiveThread: (threadId: string) => Promise<void>;
   writeConfigValue: (params: ConfigValueWriteParams) => Promise<ConfigMutationResult>;
   batchWriteConfig: (params: ConfigBatchWriteParams) => Promise<ConfigMutationResult>;
   readonly startWindowsSandboxSetup: (mode: WindowsSandboxSetupMode) => Promise<unknown>;
@@ -249,6 +252,9 @@ function SettingsContent(props: SettingsViewProps): JSX.Element {
         batchWriteConfig={props.batchWriteConfig}
       />
     );
+  }
+  if (props.section === "archived") {
+    return <ArchivedThreadsSettingsSection listArchivedThreads={props.listArchivedThreads} unarchiveThread={props.unarchiveThread} />;
   }
   if (props.section === "git") {
     return <GitContent />;

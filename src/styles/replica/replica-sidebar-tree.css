@@ -163,3 +163,19 @@
 .thread-context-menu-item:hover {
   background: #fef3f2;
 }
+
+.thread-context-menu-item {
+  color: #334155;
+}
+
+.thread-context-menu-item:hover {
+  background: #eef2ff;
+}
+
+.thread-context-menu-item-danger {
+  color: #b42318;
+}
+
+.thread-context-menu-item-danger:hover {
+  background: #fef3f2;
+}
