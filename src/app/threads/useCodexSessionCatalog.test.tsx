@@ -11,16 +11,18 @@ describe("useCodexSessionCatalog", () => {
         title: "修复登录问题",
         branch: null,
         cwd: "E:/code/project-a",
-        updatedAt: "2026-03-06T10:00:00.000Z"
+        updatedAt: "2026-03-06T10:00:00.000Z",
+        agentEnvironment: "windowsNative"
       }
     ]);
     const hostBridge = { app: { listCodexSessions } } as unknown as HostBridge;
 
-    const { result } = renderHook(() => useCodexSessionCatalog(hostBridge));
+    const { result } = renderHook(() => useCodexSessionCatalog(hostBridge, "windowsNative"));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
+    expect(listCodexSessions).toHaveBeenCalledWith({ agentEnvironment: "windowsNative" });
     expect(result.current.error).toBeNull();
     expect(result.current.sessions).toEqual([
       {
@@ -31,6 +33,7 @@ describe("useCodexSessionCatalog", () => {
         archived: false,
         updatedAt: "2026-03-06T10:00:00.000Z",
         source: "codexData",
+        agentEnvironment: "windowsNative",
         status: "notLoaded",
         activeFlags: [],
         queuedCount: 0
@@ -48,12 +51,13 @@ describe("useCodexSessionCatalog", () => {
           title: "新增侧栏目录",
           branch: null,
           cwd: "E:/code/project-b",
-          updatedAt: "2026-03-06T11:00:00.000Z"
+          updatedAt: "2026-03-06T11:00:00.000Z",
+          agentEnvironment: "windowsNative"
         }
       ]);
     const hostBridge = { app: { listCodexSessions } } as unknown as HostBridge;
 
-    const { result } = renderHook(() => useCodexSessionCatalog(hostBridge));
+    const { result } = renderHook(() => useCodexSessionCatalog(hostBridge, "windowsNative"));
 
     await waitFor(() => {
       expect(result.current.error).toBe("boom");
@@ -63,6 +67,7 @@ describe("useCodexSessionCatalog", () => {
       await result.current.reload();
     });
 
+    expect(listCodexSessions).toHaveBeenLastCalledWith({ agentEnvironment: "windowsNative" });
     expect(result.current.error).toBeNull();
     expect(result.current.sessions).toHaveLength(1);
     expect(result.current.sessions[0]).toMatchObject({ id: "local-2", source: "codexData" });

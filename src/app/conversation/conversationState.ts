@@ -1,3 +1,4 @@
+import type { AgentEnvironment } from "../../bridge/types";
 import type {
   ConversationContextCompaction,
   ConversationOutputDelta,
@@ -167,9 +168,16 @@ function updateTurn(conversation: ConversationState, turnId: string | null, upda
   return { ...conversation, turns };
 }
 
-export function createConversationFromThread(thread: Thread, options?: { hidden?: boolean; resumeState?: ConversationState["resumeState"] }): ConversationState {
+export function createConversationFromThread(
+  thread: Thread,
+  options?: {
+    hidden?: boolean;
+    resumeState?: ConversationState["resumeState"];
+    agentEnvironment?: AgentEnvironment;
+  }
+): ConversationState {
   const activeFlags = thread.status.type === "active" ? thread.status.activeFlags : [];
-  return { id: thread.id, title: thread.name ?? thread.preview, branch: thread.gitInfo?.branch ?? null, cwd: thread.cwd, updatedAt: toIsoFromUnixSeconds(thread.updatedAt), source: thread.source, status: thread.status.type, activeFlags, resumeState: options?.resumeState ?? "needs_resume", turns: thread.turns.map((turn) => createTurnState(turn, null)), queuedFollowUps: [], interruptRequestedTurnId: null, hidden: options?.hidden ?? false };
+  return { id: thread.id, title: thread.name ?? thread.preview, branch: thread.gitInfo?.branch ?? null, cwd: thread.cwd, updatedAt: toIsoFromUnixSeconds(thread.updatedAt), source: thread.source, agentEnvironment: options?.agentEnvironment ?? "windowsNative", status: thread.status.type, activeFlags, resumeState: options?.resumeState ?? "needs_resume", turns: thread.turns.map((turn) => createTurnState(turn, null)), queuedFollowUps: [], interruptRequestedTurnId: null, hidden: options?.hidden ?? false };
 }
 
 export function createConversationFromThreadSummary(thread: ThreadSummary): ConversationState {
@@ -180,6 +188,7 @@ export function createConversationFromThreadSummary(thread: ThreadSummary): Conv
     cwd: thread.cwd,
     updatedAt: thread.updatedAt,
     source: thread.source ?? "rpc",
+    agentEnvironment: thread.agentEnvironment,
     status: thread.status,
     activeFlags: [...thread.activeFlags],
     resumeState: "needs_resume",

@@ -14,6 +14,7 @@ export function mapConversationToThreadSummary(conversation: ConversationState):
     archived: conversation.hidden,
     updatedAt: conversation.updatedAt,
     source: mapConversationSource(conversation.source),
+    agentEnvironment: conversation.agentEnvironment,
     status: conversation.status,
     activeFlags: [...conversation.activeFlags],
     queuedCount: conversation.queuedFollowUps.length,

@@ -98,11 +98,13 @@ async function loadAuthStatus(client: AccountRequestClient, dispatch: (action: A
 async function loadConversationCatalog(
   client: ProtocolClient,
   hostBridge: HostBridge,
-  dispatch: (action: AppAction) => void
+  dispatch: (action: AppAction) => void,
+  agentEnvironment: AgentEnvironment,
 ): Promise<void> {
   const threads = await loadThreadCatalog(
     { request: (method, params) => client.request(method, params) },
-    () => hostBridge.app.listCodexSessions()
+    () => hostBridge.app.listCodexSessions({ agentEnvironment }),
+    agentEnvironment,
   );
   const conversations = threads.map(createConversationFromThreadSummary);
   dispatch({ type: "conversations/catalogLoaded", conversations });
@@ -138,10 +140,10 @@ export async function refreshAccountState(client: AccountRequestClient, dispatch
   ]);
 }
 
-async function loadBootstrapSnapshot(client: ProtocolClient, hostBridge: HostBridge, dispatch: (action: AppAction) => void): Promise<void> {
+async function loadBootstrapSnapshot(client: ProtocolClient, hostBridge: HostBridge, dispatch: (action: AppAction) => void, agentEnvironment: AgentEnvironment): Promise<void> {
   const [, , config, collaborationModes, experimentalFeatures, statuses] = await Promise.all([
     refreshAccountState(client, dispatch),
-    loadConversationCatalog(client, hostBridge, dispatch),
+    loadConversationCatalog(client, hostBridge, dispatch, agentEnvironment),
     client.request("config/read", { includeLayers: true }),
     client.request("collaborationMode/list", {}),
     listAllExperimentalFeatures(client),
@@ -239,6 +241,7 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
   const requestThreadMetaRef = useRef(new Map<string, { threadId: string; turnId: string | null }>());
   const settledRequestIdsRef = useRef(new Set<string>());
   const previousAgentEnvironmentRef = useRef(agentEnvironment);
+  const agentEnvironmentRef = useRef(agentEnvironment);
 
   if (textDeltaQueueRef.current === null) {
     textDeltaQueueRef.current = new FrameTextDeltaQueue({ onFlush: (entries) => dispatch({ type: "conversation/textDeltasFlushed", entries }) });
@@ -271,6 +274,10 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
   useEffect(() => {
     pendingRequestsRef.current = state.pendingRequestsById;
   }, [state.pendingRequestsById]);
+
+  useEffect(() => {
+    agentEnvironmentRef.current = agentEnvironment;
+  }, [agentEnvironment]);
 
   useEffect(() => {
     if (state.connectionStatus === "connected") {
@@ -333,7 +340,7 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
       onConnectionChanged: (status) => dispatch({ type: "connection/changed", status }),
       onNotification: (method, params) => {
         dispatch({ type: "notification/received", notification: { method, params } });
-        applyAppServerNotification({ dispatch, textDeltaQueue: textDeltaQueueRef.current!, outputDeltaQueue: outputDeltaQueueRef.current! }, method, params);
+        applyAppServerNotification({ dispatch, textDeltaQueue: textDeltaQueueRef.current!, outputDeltaQueue: outputDeltaQueueRef.current!, agentEnvironment: agentEnvironmentRef.current }, method, params);
         if (method === "serverRequest/resolved") {
           settleThreadRequest(String((params as { requestId: string | number }).requestId));
         }
@@ -390,7 +397,7 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
       }
       await client.initializeConnection(createInitializeParams());
       dispatch({ type: "initialized/changed", ready: true });
-      await loadBootstrapSnapshot(client, hostBridge, dispatch);
+      await loadBootstrapSnapshot(client, hostBridge, dispatch, agentEnvironment);
     } catch (error) {
       dispatch({ type: "fatal/error", message: toErrorMessage(error) });
       scheduleRetry();
@@ -493,8 +500,8 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
     return statuses;
   }, [client, dispatch]);
   const listArchivedThreads = useCallback(
-    () => listAllThreads({ request: (method, params) => client.request(method, params) }, true),
-    [client]
+    () => listAllThreads({ request: (method, params) => client.request(method, params) }, agentEnvironment, true),
+    [agentEnvironment, client]
   );
   const archiveThread = useCallback(async (threadId: string) => {
     await client.request("thread/archive", { threadId });
@@ -505,9 +512,9 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
   }, [client, dispatch, state.selectedConversationId]);
   const unarchiveThread = useCallback(async (threadId: string) => {
     const response = (await client.request("thread/unarchive", { threadId })) as ThreadUnarchiveResponse;
-    dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(response.thread) });
+    dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(response.thread, { agentEnvironment }) });
     dispatch({ type: "conversation/hiddenChanged", conversationId: threadId, hidden: false });
-  }, [client, dispatch]);
+  }, [agentEnvironment, client, dispatch]);
   const writeConfigValue = useCallback((params: ConfigValueWriteParams) => runBusy(() => writeConfigValueAndRefresh(client, dispatch, params)), [client, dispatch, runBusy]);
   const batchWriteConfig = useCallback((params: ConfigBatchWriteParams) => runBusy(() => batchWriteConfigAndRefresh(client, dispatch, params)), [client, dispatch, runBusy]);
   const batchWriteConfigSnapshot = useCallback((params: ConfigBatchWriteParams) => runBusy(() => batchWriteConfigAndReadSnapshot(client, dispatch, params)), [client, dispatch, runBusy]);

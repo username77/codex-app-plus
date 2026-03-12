@@ -10,6 +10,7 @@ function createConversation(turns: ConversationState["turns"]): ConversationStat
     cwd: "E:/code/FPGA",
     updatedAt: new Date().toISOString(),
     source: "appServer",
+    agentEnvironment: "windowsNative",
     status: "idle",
     activeFlags: [],
     resumeState: "resumed",

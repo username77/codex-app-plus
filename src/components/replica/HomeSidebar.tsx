@@ -70,7 +70,7 @@ function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
   }, [clearSelectedThread, props]);
 
   const handleDeleteThread = useCallback(async (thread: ThreadSummary) => {
-    await props.hostBridge.app.deleteCodexSession({ threadId: thread.id });
+    await props.hostBridge.app.deleteCodexSession({ threadId: thread.id, agentEnvironment: thread.agentEnvironment });
     dispatch({ type: "conversation/hiddenChanged", conversationId: thread.id, hidden: true });
     clearSelectedThread(thread.id);
   }, [clearSelectedThread, dispatch, props]);

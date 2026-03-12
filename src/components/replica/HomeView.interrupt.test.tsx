@@ -70,6 +70,7 @@ function createThread(overrides?: Partial<ThreadSummary>): ThreadSummary {
     archived: false,
     updatedAt: "2026-03-06T09:00:00.000Z",
     source: "rpc",
+    agentEnvironment: "windowsNative",
     status: "active",
     activeFlags: [],
     queuedCount: 0,

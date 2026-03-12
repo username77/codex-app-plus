@@ -17,6 +17,7 @@ function createThread(source: ThreadSummary["source"]): ThreadSummary {
     archived: false,
     updatedAt: "2026-03-12T10:00:00.000Z",
     source,
+    agentEnvironment: "windowsNative",
     status: source === "rpc" ? "idle" : "notLoaded",
     activeFlags: [],
     queuedCount: 0
@@ -89,7 +90,7 @@ describe("HomeSidebar", () => {
     fireEvent.contextMenu(screen.getByRole("button", { name: /线程 codexData/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "删除会话" }));
 
-    await waitFor(() => expect(deleteCodexSession).toHaveBeenCalledWith({ threadId: thread.id }));
+    await waitFor(() => expect(deleteCodexSession).toHaveBeenCalledWith({ threadId: thread.id, agentEnvironment: "windowsNative" }));
     await waitFor(() => expect(screen.getByTestId("selected-thread")).toHaveTextContent("none"));
   });
 });

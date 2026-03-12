@@ -26,6 +26,7 @@ import type {
   HostBridge,
   OpenWorkspaceInput,
   ImportOfficialDataInput,
+  ListCodexSessionsInput,
   UpdateChatgptAuthTokensInput,
   UpdateGlobalAgentInstructionsInput,
   CodexSessionReadInput,
@@ -140,8 +141,10 @@ export function createTauriHostBridge(): HostBridge {
         invoke("app_import_official_data", {
           input
         }),
-      listCodexSessions: () =>
-        invoke<ReadonlyArray<CodexSessionSummaryOutput>>("app_list_codex_sessions"),
+      listCodexSessions: (input: ListCodexSessionsInput) =>
+        invoke<ReadonlyArray<CodexSessionSummaryOutput>>("app_list_codex_sessions", {
+          input
+        }),
       readCodexSession: (input: CodexSessionReadInput) =>
         invoke<CodexSessionReadOutput>("app_read_codex_session", {
           input

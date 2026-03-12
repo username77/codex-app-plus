@@ -23,6 +23,7 @@ function createThread(
     archived: false,
     updatedAt: `2026-03-${String(index).padStart(2, "0")}T10:00:00.000Z`,
     source: overrides?.source ?? "codexData",
+    agentEnvironment: "windowsNative",
     status: overrides?.status ?? "notLoaded",
     activeFlags: [],
     queuedCount: overrides?.queuedCount ?? 0

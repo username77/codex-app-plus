@@ -16,12 +16,13 @@ use crate::models::{
     AppServerStartInput, ApplyCodexProviderInput, ChatgptAuthTokensOutput,
     CodexProviderApplyResult, CodexProviderRecord, CodexProviderStore, CodexSessionReadInput,
     CodexSessionReadOutput, CodexSessionSummary, DeleteCodexProviderInput, DeleteCodexSessionInput,
-    GlobalAgentInstructionsOutput, ImportOfficialDataInput, OpenCodexConfigTomlInput,
-    OpenWorkspaceInput, ReadGlobalAgentInstructionsInput, RpcCancelInput, RpcNotifyInput,
-    RpcRequestInput, RpcRequestOutput, ServerRequestResolveInput, ShowContextMenuInput,
-    ShowNotificationInput, TerminalCloseInput, TerminalCreateInput, TerminalCreateOutput,
-    TerminalResizeInput, TerminalWriteInput, UpdateChatgptAuthTokensInput,
-    UpdateGlobalAgentInstructionsInput, UpsertCodexProviderInput, WorkspaceOpener,
+    GlobalAgentInstructionsOutput, ImportOfficialDataInput, ListCodexSessionsInput,
+    OpenCodexConfigTomlInput, OpenWorkspaceInput, ReadGlobalAgentInstructionsInput,
+    RpcCancelInput, RpcNotifyInput, RpcRequestInput, RpcRequestOutput,
+    ServerRequestResolveInput, ShowContextMenuInput, ShowNotificationInput,
+    TerminalCloseInput, TerminalCreateInput, TerminalCreateOutput, TerminalResizeInput,
+    TerminalWriteInput, UpdateChatgptAuthTokensInput, UpdateGlobalAgentInstructionsInput,
+    UpsertCodexProviderInput, WorkspaceOpener,
 };
 use crate::process_manager::ProcessManager;
 use crate::terminal_manager::TerminalManager;
@@ -191,8 +192,8 @@ pub fn app_import_official_data(input: ImportOfficialDataInput) -> Result<(), St
 }
 
 #[tauri::command]
-pub fn app_list_codex_sessions() -> Result<Vec<CodexSessionSummary>, String> {
-    to_result(list_codex_sessions())
+pub fn app_list_codex_sessions(input: ListCodexSessionsInput) -> Result<Vec<CodexSessionSummary>, String> {
+    to_result(list_codex_sessions(input.agent_environment))
 }
 
 #[tauri::command]

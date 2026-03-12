@@ -193,14 +193,21 @@ export interface CodexSessionSummaryOutput {
   readonly title: string;
   readonly cwd: string;
   readonly updatedAt: string;
+  readonly agentEnvironment: AgentEnvironment;
+}
+
+export interface ListCodexSessionsInput {
+  readonly agentEnvironment: AgentEnvironment;
 }
 
 export interface CodexSessionReadInput {
   readonly threadId: string;
+  readonly agentEnvironment: AgentEnvironment;
 }
 
 export interface DeleteCodexSessionInput {
   readonly threadId: string;
+  readonly agentEnvironment: AgentEnvironment;
 }
 
 export interface CodexSessionMessageOutput {
@@ -342,7 +349,7 @@ export interface HostBridge {
     showNotification(input: ShowNotificationInput): Promise<void>;
     showContextMenu(input: ShowContextMenuInput): Promise<void>;
     importOfficialData(input: ImportOfficialDataInput): Promise<void>;
-    listCodexSessions(): Promise<ReadonlyArray<CodexSessionSummaryOutput>>;
+    listCodexSessions(input: ListCodexSessionsInput): Promise<ReadonlyArray<CodexSessionSummaryOutput>>;
     readCodexSession(input: CodexSessionReadInput): Promise<CodexSessionReadOutput>;
     deleteCodexSession(input: DeleteCodexSessionInput): Promise<void>;
   };

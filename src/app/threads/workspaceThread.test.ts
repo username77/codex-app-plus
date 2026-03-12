@@ -10,6 +10,7 @@ const THREADS: Array<ThreadSummary> = [
     cwd: "E:/code/codex-app-plus",
     archived: false,
     updatedAt: "2026-03-06T08:00:00.000Z",
+    agentEnvironment: "windowsNative",
     status: "idle",
     activeFlags: [],
     queuedCount: 0
@@ -21,6 +22,7 @@ const THREADS: Array<ThreadSummary> = [
     cwd: "E:\\code\\codex-app-plus\\",
     archived: false,
     updatedAt: "2026-03-06T09:00:00.000Z",
+    agentEnvironment: "windowsNative",
     status: "idle",
     activeFlags: [],
     queuedCount: 0
@@ -32,6 +34,7 @@ const THREADS: Array<ThreadSummary> = [
     cwd: "E:/code/another-workspace",
     archived: false,
     updatedAt: "2026-03-06T10:00:00.000Z",
+    agentEnvironment: "windowsNative",
     status: "idle",
     activeFlags: [],
     queuedCount: 0
@@ -67,6 +70,7 @@ describe("workspaceThread", () => {
             archived: false,
             updatedAt: "2026-03-06T11:00:00.000Z",
             source: "codexData",
+            agentEnvironment: "windowsNative",
             status: "notLoaded",
             activeFlags: [],
             queuedCount: 0
@@ -88,6 +92,7 @@ describe("workspaceThread", () => {
             cwd: "\\\\?\\E:\\code\\codex-app-plus",
             archived: false,
             updatedAt: "2026-03-06T12:00:00.000Z",
+            agentEnvironment: "windowsNative",
             status: "idle",
             activeFlags: [],
             queuedCount: 0,
@@ -109,6 +114,7 @@ describe("workspaceThread", () => {
             cwd: "/mnt/e/code/codex-app-plus",
             archived: false,
             updatedAt: "2026-03-06T13:00:00.000Z",
+            agentEnvironment: "windowsNative",
             status: "idle",
             activeFlags: [],
             queuedCount: 0,
@@ -130,6 +136,7 @@ describe("workspaceThread", () => {
             cwd: "/home/me/codex-app-plus",
             archived: false,
             updatedAt: "2026-03-06T14:00:00.000Z",
+            agentEnvironment: "windowsNative",
             status: "idle",
             activeFlags: [],
             queuedCount: 0,

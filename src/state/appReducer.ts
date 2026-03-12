@@ -39,6 +39,9 @@ function mergeConversation(existing: ConversationState | undefined, nextConversa
   if (existing === undefined) {
     return nextConversation;
   }
+  if (existing.agentEnvironment !== nextConversation.agentEnvironment) {
+    return nextConversation;
+  }
   return {
     ...nextConversation,
     title: pickConversationTitle(nextConversation.title, existing.title),
@@ -106,11 +109,16 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "view/changed":
       return { ...state, activeView: action.view };
     case "conversations/catalogLoaded": {
-      const conversationsById = { ...state.conversationsById };
+      const conversationsById: AppState["conversationsById"] = {};
       for (const conversation of action.conversations) {
         conversationsById[conversation.id] = mergeConversation(conversationsById[conversation.id], conversation);
+        conversationsById[conversation.id] = mergeConversation(state.conversationsById[conversation.id], conversationsById[conversation.id]);
       }
-      return { ...state, conversationsById, orderedConversationIds: [...new Set([...action.conversations.map((conversation) => conversation.id), ...state.orderedConversationIds])] };
+      const orderedConversationIds = action.conversations.map((conversation) => conversation.id);
+      const selectedConversationId = state.selectedConversationId !== null && conversationsById[state.selectedConversationId] !== undefined
+        ? state.selectedConversationId
+        : null;
+      return { ...state, conversationsById, orderedConversationIds, selectedConversationId };
     }
     case "conversation/upserted":
       return upsertConversationState(state, action.conversation);

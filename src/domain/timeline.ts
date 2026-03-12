@@ -1,3 +1,4 @@
+import type { AgentEnvironment } from "../bridge/types";
 import type { ComposerPermissionLevel } from "../app/conversation/composerPermission";
 import type { ReasoningEffort } from "../protocol/generated/ReasoningEffort";
 import type { ServiceTier } from "../protocol/generated/ServiceTier";
@@ -44,6 +45,7 @@ export interface ThreadSummary {
   readonly archived: boolean;
   readonly updatedAt: string;
   readonly source?: "rpc" | "codexData";
+  readonly agentEnvironment: AgentEnvironment;
   readonly status: ThreadRuntimeStatus;
   readonly activeFlags: Array<ThreadActiveFlag>;
   readonly queuedCount: number;

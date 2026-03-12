@@ -1,4 +1,5 @@
 import type { Dispatch } from "react";
+import type { AgentEnvironment } from "../../bridge/types";
 import type { AppAction } from "../../domain/types";
 import { isPrewarmedThread } from "../threads/prewarmedThreadManager";
 import type { FrameTextDeltaQueue } from "../conversation/frameTextDeltaQueue";
@@ -48,6 +49,7 @@ interface NotificationContext {
   readonly dispatch: Dispatch<AppAction>;
   readonly textDeltaQueue: FrameTextDeltaQueue;
   readonly outputDeltaQueue: OutputDeltaQueue;
+  readonly agentEnvironment?: AgentEnvironment;
 }
 
 function pushBanner(dispatch: Dispatch<AppAction>, level: "info" | "warning" | "error", title: string, detail: string | null, source: string): void {
@@ -151,7 +153,7 @@ export function applyAppServerNotification(context: NotificationContext, method:
     if (isPrewarmedThread(payload.thread.id)) {
       return;
     }
-    dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(payload.thread, { resumeState: "resumed" }) });
+    dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(payload.thread, { resumeState: "resumed", agentEnvironment: context.agentEnvironment ?? "windowsNative" }) });
     return;
   }
   if (method === "thread/status/changed") {

@@ -1,3 +1,4 @@
+import type { AgentEnvironment } from "../bridge/types";
 import type { ReasoningEffort } from "../protocol/generated/ReasoningEffort";
 import type { ResponseItem } from "../protocol/generated/ResponseItem";
 import type { CollaborationMode } from "../protocol/generated/CollaborationMode";
@@ -77,6 +78,7 @@ export interface ConversationState {
   cwd: string | null;
   updatedAt: string;
   source: unknown;
+  agentEnvironment: AgentEnvironment;
   status: ThreadRuntimeStatus;
   activeFlags: Array<ThreadActiveFlag>;
   resumeState: ConversationResumeState;

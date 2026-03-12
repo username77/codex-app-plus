@@ -1,3 +1,4 @@
+import type { AgentEnvironment } from "../../bridge/types";
 import type { ThreadSummary } from "../../domain/types";
 import type { CodexSessionSummaryOutput } from "../../bridge/types";
 import { mapThreadListResponse } from "../../protocol/mappers";
@@ -43,6 +44,7 @@ function createThreadListParams(cursor: string | null, archived: boolean): Threa
 
 export async function listAllThreads(
   requester: ThreadCatalogRequester,
+  agentEnvironment: AgentEnvironment,
   archived = false
 ): Promise<ReadonlyArray<ThreadSummary>> {
   const threads: Array<ThreadSummary> = [];
@@ -50,7 +52,7 @@ export async function listAllThreads(
 
   do {
     const response = (await requester.request("thread/list", createThreadListParams(cursor, archived))) as ThreadListResponse;
-    threads.push(...mapThreadListResponse(response, { archived }));
+    threads.push(...mapThreadListResponse(response, { archived, agentEnvironment }));
     cursor = response.nextCursor;
   } while (cursor !== null);
 
@@ -59,10 +61,11 @@ export async function listAllThreads(
 
 export async function loadThreadCatalog(
   requester: ThreadCatalogRequester,
-  listCodexSessions: () => Promise<ReadonlyArray<CodexSessionSummaryOutput>>
+  listCodexSessions: () => Promise<ReadonlyArray<CodexSessionSummaryOutput>>,
+  agentEnvironment: AgentEnvironment,
 ): Promise<ReadonlyArray<ThreadSummary>> {
   const [rpcThreads, localSessions] = await Promise.all([
-    listAllThreads(requester),
+    listAllThreads(requester, agentEnvironment),
     listCodexSessions(),
   ]);
 
@@ -78,6 +81,7 @@ export function mapCodexSessionsToThreads(sessions: ReadonlyArray<CodexSessionSu
     archived: false,
     updatedAt: session.updatedAt,
     source: "codexData",
+    agentEnvironment: session.agentEnvironment,
     status: "notLoaded",
     activeFlags: [],
     queuedCount: 0

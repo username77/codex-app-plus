@@ -126,10 +126,13 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
   const resumingConversationIds = useRef(new Set<string>());
   const drainingConversationIds = useRef(new Set<string>());
   const interruptRequestKeys = useRef(new Set<string>());
-  const visibleConversations = useMemo(() => state.orderedConversationIds.map((conversationId) => state.conversationsById[conversationId]).filter((conversation): conversation is NonNullable<typeof conversation> => conversation !== undefined && conversation.hidden === false), [state.conversationsById, state.orderedConversationIds]);
+  const visibleConversations = useMemo(() => state.orderedConversationIds.map((conversationId) => state.conversationsById[conversationId]).filter((conversation): conversation is NonNullable<typeof conversation> => conversation !== undefined && conversation.hidden === false && conversation.agentEnvironment === options.agentEnvironment), [options.agentEnvironment, state.conversationsById, state.orderedConversationIds]);
   const allThreadSummaries = useMemo(() => visibleConversations.map(mapConversationToThreadSummary), [visibleConversations]);
   const workspaceThreads = useMemo(() => listThreadsForWorkspace(allThreadSummaries, options.selectedRootPath), [allThreadSummaries, options.selectedRootPath]);
-  const selectedConversation = state.selectedConversationId === null ? null : state.conversationsById[state.selectedConversationId] ?? null;
+  const selectedConversation = state.selectedConversationId === null ? null : (() => {
+    const conversation = state.conversationsById[state.selectedConversationId] ?? null;
+    return conversation?.agentEnvironment === options.agentEnvironment ? conversation : null;
+  })();
   const selectedThread = useMemo(() => selectedConversation === null ? null : mapConversationToThreadSummary(selectedConversation), [selectedConversation]);
   const activeTurnId = useMemo(() => getActiveTurnId(selectedConversation), [selectedConversation]);
   const selectedRequests = selectedConversation === null ? [] : state.pendingRequestsByConversationId[selectedConversation.id] ?? [];
@@ -230,7 +233,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     const agentWorkspacePath = resolveAgentWorkspacePath(workspacePath, options.agentEnvironment);
     const prewarmedResponse = await consumePrewarmedThread(workspacePath);
     const response = prewarmedResponse ?? (await options.hostBridge.rpc.request({ method: "thread/start", params: { model: sendOptions.selection.model ?? undefined, serviceTier: sendOptions.selection.serviceTier ?? null, cwd: agentWorkspacePath, experimentalRawEvents: false, persistExtendedHistory: true, ...createThreadPermissionOverrides(sendOptions.permissionLevel) } })).result as ThreadStartResponse;
-    const conversation = createConversationFromThread(response.thread, { hidden: false, resumeState: "resumed" });
+    const conversation = createConversationFromThread(response.thread, { hidden: false, resumeState: "resumed", agentEnvironment: options.agentEnvironment });
     const localPreviewTitle = pickConversationTitle(conversation.title, deriveConversationPreviewTitle(createInput(sendOptions.text, sendOptions.attachments)));
     dispatch({ type: "conversation/upserted", conversation });
     if (localPreviewTitle !== null && localPreviewTitle !== conversation.title) {
@@ -331,7 +334,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
       return;
     }
     const response = (await options.hostBridge.rpc.request({ method: "thread/metadata/update", params: { threadId: selectedConversation.id, gitInfo: { branch } } })).result as ThreadMetadataUpdateResponse;
-    dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(response.thread, { hidden: selectedConversation.hidden, resumeState: selectedConversation.resumeState }) });
+    dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(response.thread, { hidden: selectedConversation.hidden, resumeState: selectedConversation.resumeState, agentEnvironment: options.agentEnvironment }) });
   }, [dispatch, options.hostBridge.rpc, selectedConversation]);
   const removeQueuedFollowUp = useCallback((followUpId: string) => {
     if (selectedConversation !== null) {

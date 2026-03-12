@@ -4,11 +4,12 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
+use crate::agent_environment::resolve_codex_home_relative_path;
 use crate::codex_session_text::summarize_user_message;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     CodexSessionMessage, CodexSessionReadInput, CodexSessionReadOutput, CodexSessionSummary,
-    DeleteCodexSessionInput,
+    DeleteCodexSessionInput, AgentEnvironment,
 };
 
 const SUMMARY_TAIL_BYTES: u64 = 64 * 1024;
@@ -19,13 +20,13 @@ struct SessionHeader {
     title: Option<String>,
 }
 
-pub fn list_codex_sessions() -> AppResult<Vec<CodexSessionSummary>> {
+pub fn list_codex_sessions(agent_environment: AgentEnvironment) -> AppResult<Vec<CodexSessionSummary>> {
     let mut files = Vec::new();
-    collect_session_files(&codex_sessions_root()?, &mut files)?;
+    collect_session_files(&codex_sessions_root(agent_environment)?, &mut files)?;
 
     let mut sessions = Vec::new();
     for file in files {
-        if let Some(summary) = read_session_summary(&file)? {
+        if let Some(summary) = read_session_summary(&file, agent_environment)? {
             sessions.push(summary);
         }
     }
@@ -37,7 +38,7 @@ pub fn list_codex_sessions() -> AppResult<Vec<CodexSessionSummary>> {
 pub fn read_codex_session(input: CodexSessionReadInput) -> AppResult<CodexSessionReadOutput> {
     validate_thread_id(&input.thread_id)?;
 
-    let path = find_session_file(&input.thread_id)?;
+    let path = find_session_file(input.agent_environment, &input.thread_id)?;
     let messages = read_session_messages(&path, &input.thread_id)?;
     Ok(CodexSessionReadOutput {
         thread_id: input.thread_id,
@@ -48,7 +49,7 @@ pub fn read_codex_session(input: CodexSessionReadInput) -> AppResult<CodexSessio
 pub fn delete_codex_session(input: DeleteCodexSessionInput) -> AppResult<()> {
     validate_thread_id(&input.thread_id)?;
 
-    let root = codex_sessions_root()?;
+    let root = codex_sessions_root(input.agent_environment)?;
     delete_session_by_id(&root, &input.thread_id)
 }
 
@@ -61,10 +62,8 @@ fn validate_thread_id(thread_id: &str) -> AppResult<()> {
     Ok(())
 }
 
-fn codex_sessions_root() -> AppResult<PathBuf> {
-    let home = dirs::home_dir()
-        .ok_or_else(|| AppError::InvalidInput("failed to resolve home directory".to_string()))?;
-    Ok(home.join(".codex").join("sessions"))
+fn codex_sessions_root(agent_environment: AgentEnvironment) -> AppResult<PathBuf> {
+    Ok(resolve_codex_home_relative_path(agent_environment, ".codex/sessions")?.host_path)
 }
 
 fn collect_session_files(root: &Path, files: &mut Vec<PathBuf>) -> AppResult<()> {
@@ -86,7 +85,7 @@ fn collect_session_files(root: &Path, files: &mut Vec<PathBuf>) -> AppResult<()>
     Ok(())
 }
 
-fn read_session_summary(path: &Path) -> AppResult<Option<CodexSessionSummary>> {
+fn read_session_summary(path: &Path, agent_environment: AgentEnvironment) -> AppResult<Option<CodexSessionSummary>> {
     let Some(header) = read_session_header(path)? else {
         return Ok(None);
     };
@@ -99,6 +98,7 @@ fn read_session_summary(path: &Path) -> AppResult<Option<CodexSessionSummary>> {
             .unwrap_or_else(|| infer_name_from_path(&header.cwd)),
         cwd: header.cwd,
         updated_at: updated_at.unwrap_or_default(),
+        agent_environment,
     }))
 }
 
@@ -182,8 +182,8 @@ fn read_last_timestamp(path: &Path) -> AppResult<Option<String>> {
     Ok(updated_at)
 }
 
-fn find_session_file(thread_id: &str) -> AppResult<PathBuf> {
-    find_session_file_in_root(&codex_sessions_root()?, thread_id)
+fn find_session_file(agent_environment: AgentEnvironment, thread_id: &str) -> AppResult<PathBuf> {
+    find_session_file_in_root(&codex_sessions_root(agent_environment)?, thread_id)
 }
 
 fn find_session_file_in_root(root: &Path, thread_id: &str) -> AppResult<PathBuf> {
@@ -338,6 +338,8 @@ mod tests {
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    use crate::models::AgentEnvironment;
+
     use super::{delete_session_by_id, infer_name_from_path, read_session_summary};
 
     fn create_temp_session_file(contents: &str) -> PathBuf {
@@ -390,7 +392,7 @@ mod tests {
         .join("");
         let path = create_temp_session_file(&contents);
 
-        let summary = read_session_summary(&path)
+        let summary = read_session_summary(&path, AgentEnvironment::WindowsNative)
             .expect("read summary")
             .expect("session summary present");
 
@@ -398,6 +400,7 @@ mod tests {
         assert_eq!(summary.title, "Fix slow startup");
         assert_eq!(summary.cwd, "E:/code/project");
         assert_eq!(summary.updated_at, "2026-03-01T10:09:59Z");
+        assert_eq!(summary.agent_environment, AgentEnvironment::WindowsNative);
 
         fs::remove_file(path).expect("remove temp session file");
     }
@@ -412,11 +415,12 @@ mod tests {
         .join("");
         let path = create_temp_session_file(&contents);
 
-        let summary = read_session_summary(&path)
+        let summary = read_session_summary(&path, AgentEnvironment::Wsl)
             .expect("read summary")
             .expect("session summary present");
 
         assert_eq!(summary.title, "真正的首条用户消息");
+        assert_eq!(summary.agent_environment, AgentEnvironment::Wsl);
 
         fs::remove_file(path).expect("remove temp session file");
     }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { HostBridge } from "../../bridge/types";
+import type { AgentEnvironment, HostBridge } from "../../bridge/types";
 import type { ThreadSummary } from "../../domain/types";
 import { mapCodexSessionsToThreads } from "./threadCatalog";
 
@@ -14,7 +14,7 @@ export interface CodexSessionCatalogController {
   reload: () => Promise<void>;
 }
 
-export function useCodexSessionCatalog(hostBridge: HostBridge): CodexSessionCatalogController {
+export function useCodexSessionCatalog(hostBridge: HostBridge, agentEnvironment: AgentEnvironment): CodexSessionCatalogController {
   const [sessions, setSessions] = useState<ReadonlyArray<ThreadSummary>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +22,7 @@ export function useCodexSessionCatalog(hostBridge: HostBridge): CodexSessionCata
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const nextSessions = mapCodexSessionsToThreads(await hostBridge.app.listCodexSessions());
+      const nextSessions = mapCodexSessionsToThreads(await hostBridge.app.listCodexSessions({ agentEnvironment }));
       setSessions(nextSessions);
       setError(null);
     } catch (error) {
@@ -30,7 +30,7 @@ export function useCodexSessionCatalog(hostBridge: HostBridge): CodexSessionCata
     } finally {
       setLoading(false);
     }
-  }, [hostBridge.app]);
+  }, [agentEnvironment, hostBridge.app]);
 
   useEffect(() => {
     void reload();

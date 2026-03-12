@@ -208,18 +208,27 @@ pub struct CodexSessionSummary {
     pub title: String,
     pub cwd: String,
     pub updated_at: String,
+    pub agent_environment: AgentEnvironment,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListCodexSessionsInput {
+    pub agent_environment: AgentEnvironment,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CodexSessionReadInput {
     pub thread_id: String,
+    pub agent_environment: AgentEnvironment,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteCodexSessionInput {
     pub thread_id: String,
+    pub agent_environment: AgentEnvironment,
 }
 
 #[derive(Debug, Serialize)]

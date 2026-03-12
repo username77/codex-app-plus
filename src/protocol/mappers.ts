@@ -1,3 +1,4 @@
+import type { AgentEnvironment } from "../bridge/types";
 import type { ThreadSummary } from "../domain/types";
 import type { Thread } from "./generated/v2/Thread";
 import type { ModelListResponse } from "./generated/v2/ModelListResponse";
@@ -5,6 +6,7 @@ import type { ThreadListResponse } from "./generated/v2/ThreadListResponse";
 
 interface ThreadSummaryMappingOptions {
   readonly archived: boolean;
+  readonly agentEnvironment: AgentEnvironment;
 }
 
 function toIsoFromUnixSeconds(unixSeconds: number): string {
@@ -28,6 +30,7 @@ export function mapThreadToSummary(thread: Thread, options: ThreadSummaryMapping
     archived: options.archived,
     updatedAt: toIsoFromUnixSeconds(thread.updatedAt),
     source: "rpc",
+    agentEnvironment: options.agentEnvironment,
     status: thread.status.type,
     activeFlags,
     queuedCount: 0

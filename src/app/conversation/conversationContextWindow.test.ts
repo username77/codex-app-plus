@@ -45,6 +45,7 @@ function createConversation(turns: ReadonlyArray<ConversationTurnState>): Conver
     cwd: "E:/code/codex-app-plus",
     updatedAt: "2026-03-11T00:00:00.000Z",
     source: "rpc",
+    agentEnvironment: "windowsNative",
     status: "idle",
     activeFlags: [],
     resumeState: "resumed",

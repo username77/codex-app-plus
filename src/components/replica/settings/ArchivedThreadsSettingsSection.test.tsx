@@ -12,6 +12,7 @@ function createThread(id = "thread-1"): ThreadSummary {
     archived: true,
     updatedAt: "2026-03-12T10:00:00.000Z",
     source: "rpc",
+    agentEnvironment: "windowsNative",
     status: "idle",
     activeFlags: [],
     queuedCount: 0
