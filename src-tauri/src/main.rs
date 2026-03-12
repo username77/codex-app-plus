@@ -16,6 +16,7 @@ mod process_manager;
 mod process_supervisor;
 mod rpc_transport;
 mod terminal_manager;
+mod windows_child_process;
 
 use commands::{
     app_apply_codex_provider, app_clear_chatgpt_auth_state, app_delete_codex_provider,

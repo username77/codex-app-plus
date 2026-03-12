@@ -1,10 +1,10 @@
 use std::ffi::OsString;
 use std::path::Path;
-use std::process::Command;
 
 use crate::error::{AppError, AppResult};
 
-const GIT_PROGRAM: &str = "git";
+use super::process::run_git_with_exit_codes;
+
 const DEV_NULL_PATH: &str = "/dev/null";
 const DIFF_EXIT_CODES: [i32; 2] = [0, 1];
 const EMPTY_DIFF_MESSAGE: &str = "当前没有可显示的差异。";
@@ -97,39 +97,12 @@ fn is_utf8_text_file(path: &Path) -> bool {
 }
 
 fn is_untracked_path(repo_root: &Path, path: &str) -> AppResult<bool> {
-    let output = run_git(repo_root, &create_untracked_probe_args(path), &[0])?;
+    let output = run_git_with_exit_codes(repo_root, &create_untracked_probe_args(path), &[0])?;
     Ok(!output.is_empty())
 }
 
 fn run_git(repo_root: &Path, args: &[OsString], allowed_exit_codes: &[i32]) -> AppResult<String> {
-    let output = Command::new(GIT_PROGRAM)
-        .arg("-C")
-        .arg(repo_root)
-        .args(args)
-        .output()
-        .map_err(AppError::from)?;
-    let exit_code = output.status.code();
-    let succeeded = output.status.success()
-        || exit_code
-            .map(|code| allowed_exit_codes.contains(&code))
-            .unwrap_or(false);
-    if succeeded {
-        return Ok(String::from_utf8_lossy(&output.stdout)
-            .trim_end()
-            .to_string());
-    }
-
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let detail = if stderr.is_empty() { stdout } else { stderr };
-    let command = args
-        .iter()
-        .map(|item| item.to_string_lossy().to_string())
-        .collect::<Vec<_>>()
-        .join(" ");
-    Err(AppError::Protocol(format!(
-        "git {command} 执行失败: {detail}"
-    )))
+    run_git_with_exit_codes(repo_root, args, allowed_exit_codes)
 }
 
 #[cfg(test)]
@@ -137,7 +110,10 @@ mod tests {
     use super::*;
     use std::fs;
     use std::path::PathBuf;
+    use std::process::Command;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    const GIT_PROGRAM: &str = "git";
 
     struct TestRepo {
         path: PathBuf,

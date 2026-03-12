@@ -2,6 +2,7 @@ use std::process::Command;
 
 use crate::error::{AppError, AppResult};
 use crate::models::AppServerStartInput;
+use crate::windows_child_process::configure_background_std_command;
 
 use super::{CodexCli, WSL_PROGRAM};
 
@@ -106,7 +107,9 @@ fn resolve_wsl_candidate(input: &AppServerStartInput) -> AppResult<String> {
 }
 
 fn discover_launch_spec(candidate: &str) -> AppResult<WslLaunchSpec> {
-    let output = Command::new(WSL_PROGRAM)
+    let mut command = Command::new(WSL_PROGRAM);
+    configure_background_std_command(&mut command);
+    let output = command
         .args([
             "-e",
             DISCOVERY_BASH,

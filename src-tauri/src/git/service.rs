@@ -1,6 +1,5 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use crate::error::{AppError, AppResult};
 
@@ -10,8 +9,8 @@ use super::models::{
     GitPathsInput, GitRepoInput, GitStatusOutput,
 };
 use super::parse::{parse_branch_refs, parse_status_output};
+use super::process::{has_head, run_git};
 
-const GIT_PROGRAM: &str = "git";
 const GIT_DIR_NAME: &str = ".git";
 const STATUS_ARGS: [&str; 4] = [
     "status",
@@ -297,40 +296,4 @@ fn resolve_remote_name(
 
 fn extract_remote_name(upstream: &str) -> Option<&str> {
     upstream.split_once('/').map(|(name, _)| name)
-}
-
-fn has_head(repo_root: &Path) -> bool {
-    Command::new(GIT_PROGRAM)
-        .arg("-C")
-        .arg(repo_root)
-        .args(["rev-parse", "--verify", "HEAD"])
-        .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false)
-}
-
-fn run_git(repo_root: &Path, args: &[OsString]) -> AppResult<String> {
-    let output = Command::new(GIT_PROGRAM)
-        .arg("-C")
-        .arg(repo_root)
-        .args(args)
-        .output()
-        .map_err(AppError::from)?;
-    if output.status.success() {
-        return Ok(String::from_utf8_lossy(&output.stdout)
-            .trim_end()
-            .to_string());
-    }
-
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let detail = if stderr.is_empty() { stdout } else { stderr };
-    let command = args
-        .iter()
-        .map(|item| item.to_string_lossy().to_string())
-        .collect::<Vec<_>>()
-        .join(" ");
-    Err(AppError::Protocol(format!(
-        "git {command} 执行失败: {detail}"
-    )))
 }

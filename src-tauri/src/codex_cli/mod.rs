@@ -5,6 +5,7 @@ use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 use crate::agent_environment::resolve_agent_environment;
 use crate::error::{AppError, AppResult};
 use crate::models::{AgentEnvironment, AppServerStartInput};
+use crate::windows_child_process::configure_background_tokio_command;
 
 mod windows;
 mod wsl;
@@ -92,7 +93,7 @@ impl CodexCli {
         let mut command = Command::new(&self.program);
         command.args(&self.prefix_args);
         command.args(args);
-        configure_windows_command(&mut command);
+        configure_background_tokio_command(&mut command);
         command
     }
 
@@ -115,16 +116,6 @@ impl CodexCli {
         }
     }
 }
-
-#[cfg(windows)]
-fn configure_windows_command(command: &mut Command) {
-    use windows_sys::Win32::System::Threading::CREATE_NO_WINDOW;
-
-    command.creation_flags(CREATE_NO_WINDOW);
-}
-
-#[cfg(not(windows))]
-fn configure_windows_command(_command: &mut Command) {}
 
 fn parse_version_output(stdout: &[u8]) -> AppResult<String> {
     let version = String::from_utf8_lossy(stdout).trim().to_string();

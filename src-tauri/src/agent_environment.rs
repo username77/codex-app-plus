@@ -3,6 +3,7 @@ use std::process::Command;
 
 use crate::error::{AppError, AppResult};
 use crate::models::AgentEnvironment;
+use crate::windows_child_process::configure_background_std_command;
 
 const WSL_COMMAND: &str = "wsl.exe";
 const WSL_INFO_SCRIPT: &str = "printf '%s\n%s' \"$WSL_DISTRO_NAME\" \"$HOME\"";
@@ -72,9 +73,9 @@ fn resolve_wsl_home_relative_path(relative_path: &str) -> AppResult<AgentFsPath>
 }
 
 fn resolve_wsl_context() -> AppResult<WslContext> {
-    let output = Command::new(WSL_COMMAND)
-        .args(["sh", "-lc", WSL_INFO_SCRIPT])
-        .output()?;
+    let mut command = Command::new(WSL_COMMAND);
+    configure_background_std_command(&mut command);
+    let output = command.args(["sh", "-lc", WSL_INFO_SCRIPT]).output()?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
         let detail = if stderr.is_empty() {
