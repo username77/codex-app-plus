@@ -14,6 +14,17 @@ export interface McpServerFormState {
 }
 
 export type McpServerFormErrors = Partial<Record<keyof McpServerFormState, string>>;
+export interface McpServerFormMessages {
+  readonly idRequired: string;
+  readonly idNoDot: string;
+  readonly commandRequired: string;
+  readonly urlRequired: (type: Exclude<McpTransportType, "stdio">) => string;
+  readonly urlInvalid: string;
+  readonly envLabel: string;
+  readonly headersLabel: string;
+  readonly keyValueFormat: (label: string) => string;
+  readonly keyValueEmptyKey: (label: string) => string;
+}
 
 const MANAGED_KEYS = new Set(["name", "type", "enabled", "command", "args", "cwd", "env", "url", "headers"]);
 
@@ -38,16 +49,20 @@ function parseKeyValueRecord(value: unknown): string {
     .join("\n");
 }
 
-function parseKeyValueLines(value: string, label: string): { readonly data: Record<string, string>; readonly error: string | null } {
+function parseKeyValueLines(
+  value: string,
+  label: string,
+  messages: Pick<McpServerFormMessages, "keyValueFormat" | "keyValueEmptyKey">
+): { readonly data: Record<string, string>; readonly error: string | null } {
   const data: Record<string, string> = {};
   for (const line of splitNonEmptyLines(value)) {
     const separatorIndex = line.indexOf("=");
     if (separatorIndex <= 0) {
-      return { data: {}, error: `${label} 需要使用 KEY=VALUE 格式` };
+      return { data: {}, error: messages.keyValueFormat(label) };
     }
     const key = line.slice(0, separatorIndex).trim();
     if (key.length === 0) {
-      return { data: {}, error: `${label} 的键不能为空` };
+      return { data: {}, error: messages.keyValueEmptyKey(label) };
     }
     data[key] = line.slice(separatorIndex + 1).trim();
   }
@@ -84,29 +99,32 @@ export function createMcpServerFormState(server: McpConfigServerView | null): Mc
   };
 }
 
-export function validateMcpServerForm(state: McpServerFormState): McpServerFormErrors {
+export function validateMcpServerForm(
+  state: McpServerFormState,
+  messages: McpServerFormMessages
+): McpServerFormErrors {
   const errors: McpServerFormErrors = {};
   if (state.id.trim().length === 0) {
-    errors.id = "请输入服务器 ID";
+    errors.id = messages.idRequired;
   } else if (state.id.includes(".")) {
-    errors.id = "服务器 ID 不能包含 .";
+    errors.id = messages.idNoDot;
   }
   if (state.type === "stdio" && state.command.trim().length === 0) {
-    errors.command = "stdio 类型必须填写 command";
+    errors.command = messages.commandRequired;
   }
   if (state.type !== "stdio") {
     if (state.url.trim().length === 0) {
-      errors.url = `${state.type} 类型必须填写 URL`;
+      errors.url = messages.urlRequired(state.type);
     } else {
       try {
         new URL(state.url.trim());
       } catch {
-        errors.url = "请输入有效的 URL";
+        errors.url = messages.urlInvalid;
       }
     }
   }
-  const envError = parseKeyValueLines(state.envText, "环境变量").error;
-  const headersError = parseKeyValueLines(state.headersText, "请求头").error;
+  const envError = parseKeyValueLines(state.envText, messages.envLabel, messages).error;
+  const headersError = parseKeyValueLines(state.headersText, messages.headersLabel, messages).error;
   if (envError !== null) errors.envText = envError;
   if (headersError !== null) errors.headersText = headersError;
   return errors;
@@ -116,7 +134,11 @@ function omitManagedFields(value: JsonObject | undefined): JsonObject {
   return Object.fromEntries(Object.entries(value ?? {}).filter(([key]) => !MANAGED_KEYS.has(key)));
 }
 
-export function buildMcpServerConfigValue(state: McpServerFormState, previous?: JsonObject): JsonObject {
+export function buildMcpServerConfigValue(
+  state: McpServerFormState,
+  messages: Pick<McpServerFormMessages, "envLabel" | "headersLabel" | "keyValueFormat" | "keyValueEmptyKey">,
+  previous?: JsonObject
+): JsonObject {
   const next = omitManagedFields(previous);
   const name = state.name.trim();
   if (name.length > 0) next.name = name;
@@ -128,13 +150,13 @@ export function buildMcpServerConfigValue(state: McpServerFormState, previous?: 
     if (args.length > 0) next.args = args;
     const cwd = state.cwd.trim();
     if (cwd.length > 0) next.cwd = cwd;
-    const env = parseKeyValueLines(state.envText, "环境变量").data;
+    const env = parseKeyValueLines(state.envText, messages.envLabel, messages).data;
     if (Object.keys(env).length > 0) next.env = env;
     return next;
   }
   next.type = state.type;
   next.url = state.url.trim();
-  const headers = parseKeyValueLines(state.headersText, "请求头").data;
+  const headers = parseKeyValueLines(state.headersText, messages.headersLabel, messages).data;
   if (Object.keys(headers).length > 0) next.headers = headers;
   return next;
 }

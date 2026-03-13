@@ -1,5 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { type Locale } from "../../../i18n";
+import { createI18nWrapper } from "../../../test/createI18nWrapper";
 import type { ConfigMutationResult, McpRefreshResult } from "../../settings/config/configOperations";
 import { McpSettingsPanel } from "./McpSettingsPanel";
 
@@ -40,19 +43,26 @@ function createMutationResult(snapshot = createSnapshot()): ConfigMutationResult
   };
 }
 
+function renderPanel(
+  props: ComponentProps<typeof McpSettingsPanel>,
+  locale: Locale = "zh-CN"
+) {
+  return render(<McpSettingsPanel {...props} />, {
+    wrapper: createI18nWrapper(locale)
+  });
+}
+
 describe("McpSettingsPanel", () => {
   it("renders writable and read-only servers from config snapshot", async () => {
     const refreshMcpData = vi.fn().mockResolvedValue(createRefreshResult());
 
-    render(
-      <McpSettingsPanel
-        busy={false}
-        configSnapshot={createSnapshot()}
-        refreshMcpData={refreshMcpData}
-        writeConfigValue={vi.fn().mockResolvedValue(createMutationResult())}
-        batchWriteConfig={vi.fn().mockResolvedValue(createMutationResult())}
-      />
-    );
+    renderPanel({
+      busy: false,
+      configSnapshot: createSnapshot(),
+      refreshMcpData,
+      writeConfigValue: vi.fn().mockResolvedValue(createMutationResult()),
+      batchWriteConfig: vi.fn().mockResolvedValue(createMutationResult())
+    });
 
     await waitFor(() => expect(refreshMcpData).toHaveBeenCalled());
 
@@ -64,15 +74,13 @@ describe("McpSettingsPanel", () => {
   it("blocks dotted server ids before submit", async () => {
     const writeConfigValue = vi.fn().mockResolvedValue(createMutationResult());
 
-    render(
-      <McpSettingsPanel
-        busy={false}
-        configSnapshot={createSnapshot()}
-        refreshMcpData={vi.fn().mockResolvedValue(createRefreshResult())}
-        writeConfigValue={writeConfigValue}
-        batchWriteConfig={vi.fn().mockResolvedValue(createMutationResult())}
-      />
-    );
+    renderPanel({
+      busy: false,
+      configSnapshot: createSnapshot(),
+      refreshMcpData: vi.fn().mockResolvedValue(createRefreshResult()),
+      writeConfigValue,
+      batchWriteConfig: vi.fn().mockResolvedValue(createMutationResult())
+    });
 
     fireEvent.click(await screen.findByRole("button", { name: "添加服务器" }));
     fireEvent.change(screen.getByLabelText("服务器 ID"), { target: { value: "bad.id" } });
@@ -89,15 +97,13 @@ describe("McpSettingsPanel", () => {
       config: { mcp_servers: { projectOnly: { url: "https://project.example/mcp" } } }
     } as unknown as ReturnType<typeof createSnapshot>));
 
-    render(
-      <McpSettingsPanel
-        busy={false}
-        configSnapshot={createSnapshot()}
-        refreshMcpData={vi.fn().mockResolvedValue(createRefreshResult())}
-        writeConfigValue={vi.fn().mockResolvedValue(createMutationResult())}
-        batchWriteConfig={batchWriteConfig}
-      />
-    );
+    renderPanel({
+      busy: false,
+      configSnapshot: createSnapshot(),
+      refreshMcpData: vi.fn().mockResolvedValue(createRefreshResult()),
+      writeConfigValue: vi.fn().mockResolvedValue(createMutationResult()),
+      batchWriteConfig
+    });
 
     fireEvent.click(await screen.findByRole("button", { name: "删除" }));
     fireEvent.click(screen.getByRole("button", { name: "确认删除" }));
@@ -108,5 +114,20 @@ describe("McpSettingsPanel", () => {
       filePath: USER_FILE,
       expectedVersion: "u1"
     });
+  });
+
+  it("renders English copy when locale is en-US", async () => {
+    renderPanel({
+      busy: false,
+      configSnapshot: createSnapshot(),
+      refreshMcpData: vi.fn().mockResolvedValue(createRefreshResult()),
+      writeConfigValue: vi.fn().mockResolvedValue(createMutationResult()),
+      batchWriteConfig: vi.fn().mockResolvedValue(createMutationResult())
+    }, "en-US");
+
+    expect(await screen.findByText("MCP Servers")).toBeInTheDocument();
+    expect(screen.getByText("Custom servers")).toBeInTheDocument();
+    expect(screen.getByText("Read-only")).toBeInTheDocument();
+    expect(screen.getByText("Recommended servers")).toBeInTheDocument();
   });
 });

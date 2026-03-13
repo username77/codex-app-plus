@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  getPersonalityCopy,
-  readPersonalizationConfigView
-} from "../config/personalizationConfig";
+import type { Personality } from "../../../protocol/generated/Personality";
+import { useI18n, type MessageKey } from "../../../i18n";
+import { readPersonalizationConfigView } from "../config/personalizationConfig";
 import type {
   GlobalAgentInstructionsOutput,
   UpdateGlobalAgentInstructionsInput
@@ -38,6 +37,23 @@ const INITIAL_INSTRUCTIONS_STATE: GlobalInstructionsState = {
   savedContent: "",
   draftContent: ""
 };
+const PERSONALITY_MESSAGE_KEYS: Record<Personality, {
+  readonly label: MessageKey;
+  readonly description: MessageKey;
+}> = {
+  none: {
+    label: "settings.personalization.none.label",
+    description: "settings.personalization.none.description"
+  },
+  friendly: {
+    label: "settings.personalization.friendly.label",
+    description: "settings.personalization.friendly.description"
+  },
+  pragmatic: {
+    label: "settings.personalization.pragmatic.label",
+    description: "settings.personalization.pragmatic.description"
+  }
+};
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -53,12 +69,16 @@ function InstructionsStatus(props: { readonly feedback: SaveFeedback }): JSX.Ele
   return null;
 }
 
-function PersonalizationStyleCard(props: { readonly description: string; readonly label: string }): JSX.Element {
+function PersonalizationStyleCard(props: {
+  readonly title: string;
+  readonly description: string;
+  readonly label: string;
+}): JSX.Element {
   return (
     <section className="settings-card">
       <div className="settings-row">
         <div className="settings-row-copy">
-          <strong>回答风格</strong>
+          <strong>{props.title}</strong>
           <p>{props.description}</p>
         </div>
         <span className="settings-chip">{props.label}</span>
@@ -70,7 +90,11 @@ function PersonalizationStyleCard(props: { readonly description: string; readonl
 function InstructionsCard(props: {
   readonly busy: boolean;
   readonly dirty: boolean;
-  readonly path: string;
+  readonly title: string;
+  readonly description: string;
+  readonly ariaLabel: string;
+  readonly saveLabel: string;
+  readonly savingLabel: string;
   readonly value: string;
   readonly feedback: SaveFeedback;
   onChange: (value: string) => void;
@@ -79,22 +103,20 @@ function InstructionsCard(props: {
   return (
     <section className="settings-card">
       <div className="settings-section-head">
-        <strong>自定义指令</strong>
+        <strong>{props.title}</strong>
         <button
           type="button"
           className="settings-head-action"
           onClick={() => void props.onSave()}
           disabled={props.busy || !props.dirty}
         >
-          {props.busy ? "保存中…" : "保存"}
+          {props.busy ? props.savingLabel : props.saveLabel}
         </button>
       </div>
-      <p className="settings-note settings-note-pad">
-        与 Codex 全局 <code>AGENTS.md</code> 保持同步，保存到 <code>{props.path}</code>。
-      </p>
+      <p className="settings-note settings-note-pad">{props.description}</p>
       <textarea
         className="settings-textarea"
-        aria-label="自定义指令"
+        aria-label={props.ariaLabel}
         value={props.value}
         disabled={props.busy}
         onChange={(event) => props.onChange(event.target.value)}
@@ -114,6 +136,7 @@ function toLoadedState(output: GlobalAgentInstructionsOutput): GlobalInstruction
 }
 
 function useGlobalInstructionsEditor(props: {
+  readonly t: (key: MessageKey, params?: Record<string, string>) => string;
   readonly readGlobalAgentInstructions: () => Promise<GlobalAgentInstructionsOutput>;
   readonly writeGlobalAgentInstructions: (
     input: UpdateGlobalAgentInstructionsInput
@@ -126,11 +149,14 @@ function useGlobalInstructionsEditor(props: {
     let active = true;
     void props.readGlobalAgentInstructions()
       .then((output) => active && (setInstructionsState(toLoadedState(output)), setFeedback(EMPTY_FEEDBACK)))
-      .catch((error) => active && setFeedback({ kind: "error", message: `读取全局指令失败：${toErrorMessage(error)}` }));
+      .catch((error) => active && setFeedback({
+        kind: "error",
+        message: props.t("settings.personalization.loadFailed", { error: toErrorMessage(error) })
+      }));
     return () => {
       active = false;
     };
-  }, [props.readGlobalAgentInstructions]);
+  }, [props.readGlobalAgentInstructions, props.t]);
 
   const dirty = instructionsState.draftContent !== instructionsState.savedContent;
   const handleChange = (value: string) => {
@@ -143,7 +169,7 @@ function useGlobalInstructionsEditor(props: {
     try {
       const output = await props.writeGlobalAgentInstructions({ content: instructionsState.draftContent });
       setInstructionsState(toLoadedState(output));
-      setFeedback({ kind: "success", message: "已同步到 Codex 全局 AGENTS.md。" });
+      setFeedback({ kind: "success", message: props.t("settings.personalization.syncedMessage") });
     } catch (error) {
       setFeedback({ kind: "error", message: toErrorMessage(error) });
     }
@@ -155,16 +181,15 @@ function useGlobalInstructionsEditor(props: {
 export function PersonalizationSettingsSection(
   props: PersonalizationSettingsSectionProps
 ): JSX.Element {
+  const { t } = useI18n();
   const view = useMemo(
     () => readPersonalizationConfigView(props.configSnapshot),
     [props.configSnapshot]
   );
-  const personalityCopy = useMemo(
-    () => getPersonalityCopy(view.personality),
-    [view.personality]
-  );
+  const personalityCopy = useMemo(() => PERSONALITY_MESSAGE_KEYS[view.personality], [view.personality]);
   const { instructionsState, feedback, dirty, handleChange, handleSave } =
     useGlobalInstructionsEditor({
+      t,
       readGlobalAgentInstructions: props.readGlobalAgentInstructions,
       writeGlobalAgentInstructions: props.writeGlobalAgentInstructions
     });
@@ -172,16 +197,23 @@ export function PersonalizationSettingsSection(
   return (
     <div className="settings-panel-group">
       <header className="settings-title-wrap">
-        <h1 className="settings-page-title">个性化</h1>
+        <h1 className="settings-page-title">{t("settings.personalization.title")}</h1>
       </header>
       <PersonalizationStyleCard
-        description={personalityCopy.description}
-        label={personalityCopy.label}
+        title={t("settings.personalization.styleLabel")}
+        description={t(personalityCopy.description)}
+        label={t(personalityCopy.label)}
       />
       <InstructionsCard
         busy={props.busy || !instructionsState.loaded}
         dirty={dirty}
-        path={instructionsState.path}
+        title={t("settings.personalization.instructionsTitle")}
+        description={t("settings.personalization.instructionsDescription", {
+          path: instructionsState.path
+        })}
+        ariaLabel={t("settings.personalization.instructionsAriaLabel")}
+        saveLabel={t("settings.personalization.instructionsSaveAction")}
+        savingLabel={t("settings.personalization.instructionsSaving")}
         value={instructionsState.draftContent}
         feedback={feedback}
         onChange={handleChange}

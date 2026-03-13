@@ -23,7 +23,7 @@ export interface McpConfigServerView {
   readonly enabled: boolean;
   readonly config: JsonObject;
   readonly origin: ConfigLayerMetadata | null;
-  readonly originLabel: string;
+  readonly originType: ConfigLayerSource["type"] | null;
   readonly writable: boolean;
   readonly runtime: McpRuntimeSummary | null;
 }
@@ -92,19 +92,6 @@ function getOriginMetadata(snapshot: ConfigReadResponse, id: string): ConfigLaye
   return ["enabled", "command", "url", "type"].map((field) => snapshot.origins[`${path}.${field}`]).find(Boolean) ?? null;
 }
 
-function getOriginLabel(source: ConfigLayerSource | null): string {
-  if (source === null) {
-    return "未知来源";
-  }
-  if (source.type === "user") return "用户配置";
-  if (source.type === "project") return "项目配置";
-  if (source.type === "system") return "系统配置";
-  if (source.type === "mdm") return "MDM";
-  if (source.type === "sessionFlags") return "会话参数";
-  if (source.type === "legacyManagedConfigTomlFromFile") return "托管文件";
-  return "托管配置";
-}
-
 function toServerView(
   id: string,
   config: JsonObject,
@@ -119,7 +106,7 @@ function toServerView(
     enabled: isEnabled(config),
     config,
     origin,
-    originLabel: getOriginLabel(origin?.name ?? null),
+    originType: origin?.name.type ?? null,
     writable: origin?.name.type === "user",
     runtime: runtimes.get(id) ?? null
   };

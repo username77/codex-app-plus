@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { ThreadSummary } from "../../../domain/types";
+import { type Locale } from "../../../i18n";
+import { createI18nWrapper } from "../../../test/createI18nWrapper";
 import { ArchivedThreadsSettingsSection } from "./ArchivedThreadsSettingsSection";
 
 function createThread(id = "thread-1"): ThreadSummary {
@@ -19,26 +22,31 @@ function createThread(id = "thread-1"): ThreadSummary {
   };
 }
 
+function renderSection(
+  props: ComponentProps<typeof ArchivedThreadsSettingsSection>,
+  locale: Locale = "zh-CN"
+) {
+  return render(<ArchivedThreadsSettingsSection {...props} />, {
+    wrapper: createI18nWrapper(locale)
+  });
+}
+
 describe("ArchivedThreadsSettingsSection", () => {
   it("loads and renders archived threads", async () => {
-    render(
-      <ArchivedThreadsSettingsSection
-        listArchivedThreads={vi.fn().mockResolvedValue([createThread()])}
-        unarchiveThread={vi.fn().mockResolvedValue(undefined)}
-      />
-    );
+    renderSection({
+      listArchivedThreads: vi.fn().mockResolvedValue([createThread()]),
+      unarchiveThread: vi.fn().mockResolvedValue(undefined)
+    });
 
     expect(screen.getByText("正在加载已归档线程...")).toBeInTheDocument();
     expect(await screen.findByText("归档线程 thread-1")).toBeInTheDocument();
   });
 
   it("shows the empty state when there are no archived threads", async () => {
-    render(
-      <ArchivedThreadsSettingsSection
-        listArchivedThreads={vi.fn().mockResolvedValue([])}
-        unarchiveThread={vi.fn().mockResolvedValue(undefined)}
-      />
-    );
+    renderSection({
+      listArchivedThreads: vi.fn().mockResolvedValue([]),
+      unarchiveThread: vi.fn().mockResolvedValue(undefined)
+    });
 
     expect(await screen.findByText("暂无已归档线程。")) .toBeInTheDocument();
   });
@@ -49,12 +57,10 @@ describe("ArchivedThreadsSettingsSection", () => {
       .mockRejectedValueOnce(new Error("load failed"))
       .mockResolvedValueOnce([createThread("thread-2")]);
 
-    render(
-      <ArchivedThreadsSettingsSection
-        listArchivedThreads={listArchivedThreads}
-        unarchiveThread={vi.fn().mockResolvedValue(undefined)}
-      />
-    );
+    renderSection({
+      listArchivedThreads,
+      unarchiveThread: vi.fn().mockResolvedValue(undefined)
+    });
 
     expect(await screen.findByText("load failed")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "刷新" }));
@@ -66,12 +72,10 @@ describe("ArchivedThreadsSettingsSection", () => {
   it("removes the thread after unarchiving successfully", async () => {
     const unarchiveThread = vi.fn().mockResolvedValue(undefined);
 
-    render(
-      <ArchivedThreadsSettingsSection
-        listArchivedThreads={vi.fn().mockResolvedValue([createThread()])}
-        unarchiveThread={unarchiveThread}
-      />
-    );
+    renderSection({
+      listArchivedThreads: vi.fn().mockResolvedValue([createThread()]),
+      unarchiveThread
+    });
 
     expect(await screen.findByText("归档线程 thread-1")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "取消归档" }));
@@ -81,17 +85,26 @@ describe("ArchivedThreadsSettingsSection", () => {
   });
 
   it("keeps the thread and shows the row error when unarchive fails", async () => {
-    render(
-      <ArchivedThreadsSettingsSection
-        listArchivedThreads={vi.fn().mockResolvedValue([createThread()])}
-        unarchiveThread={vi.fn().mockRejectedValue(new Error("restore failed"))}
-      />
-    );
+    renderSection({
+      listArchivedThreads: vi.fn().mockResolvedValue([createThread()]),
+      unarchiveThread: vi.fn().mockRejectedValue(new Error("restore failed"))
+    });
 
     expect(await screen.findByText("归档线程 thread-1")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "取消归档" }));
 
     expect(await screen.findByText("restore failed")).toBeInTheDocument();
     expect(screen.getByText("归档线程 thread-1")).toBeInTheDocument();
+  });
+
+  it("renders English copy when locale is en-US", async () => {
+    renderSection({
+      listArchivedThreads: vi.fn().mockResolvedValue([]),
+      unarchiveThread: vi.fn().mockResolvedValue(undefined)
+    }, "en-US");
+
+    expect(await screen.findByText("Archived Threads")).toBeInTheDocument();
+    expect(screen.getByText("Archive list")).toBeInTheDocument();
+    expect(screen.getByText("No archived threads.")).toBeInTheDocument();
   });
 });

@@ -5,49 +5,66 @@ import type {
 } from "../hooks/useAppPreferences";
 import type { AgentEnvironment, EmbeddedTerminalShell, WorkspaceOpener } from "../../../bridge/types";
 import type { ComposerEnterBehavior, FollowUpMode } from "../../../domain/timeline";
+import { useI18n, type MessageKey } from "../../../i18n";
 import { SettingsSelectRow, type SettingsSelectOption } from "./SettingsSelectRow";
 
-const AGENT_ENVIRONMENT_OPTIONS: ReadonlyArray<SettingsSelectOption<AgentEnvironment>> = [
-  { value: "windowsNative", label: "Windows native" },
-  { value: "wsl", label: "WSL" }
-];
+type Translator = (key: MessageKey) => string;
 
-const WORKSPACE_OPENER_OPTIONS: ReadonlyArray<SettingsSelectOption<WorkspaceOpener>> = [
-  { value: "vscode", label: "VS Code" },
-  { value: "visualStudio", label: "Visual Studio" },
-  { value: "githubDesktop", label: "GitHub Desktop" },
-  { value: "explorer", label: "File Explorer" },
-  { value: "terminal", label: "Terminal" },
-  { value: "gitBash", label: "Git Bash" }
-];
+function createAgentEnvironmentOptions(t: Translator): ReadonlyArray<SettingsSelectOption<AgentEnvironment>> {
+  return [
+    { value: "windowsNative", label: t("settings.general.agentEnvironment.options.windowsNative") },
+    { value: "wsl", label: t("settings.general.agentEnvironment.options.wsl") }
+  ];
+}
 
-const TERMINAL_SHELL_OPTIONS: ReadonlyArray<SettingsSelectOption<EmbeddedTerminalShell>> = [
-  { value: "powerShell", label: "PowerShell" },
-  { value: "commandPrompt", label: "Command Prompt" },
-  { value: "gitBash", label: "Git Bash" }
-];
+function createWorkspaceOpenerOptions(t: Translator): ReadonlyArray<SettingsSelectOption<WorkspaceOpener>> {
+  return [
+    { value: "vscode", label: t("settings.general.workspaceOpener.options.vscode") },
+    { value: "visualStudio", label: t("settings.general.workspaceOpener.options.visualStudio") },
+    { value: "githubDesktop", label: t("settings.general.workspaceOpener.options.githubDesktop") },
+    { value: "explorer", label: t("settings.general.workspaceOpener.options.explorer") },
+    { value: "terminal", label: t("settings.general.workspaceOpener.options.terminal") },
+    { value: "gitBash", label: t("settings.general.workspaceOpener.options.gitBash") }
+  ];
+}
 
-const UI_LANGUAGE_OPTIONS: ReadonlyArray<SettingsSelectOption<UiLanguage>> = [
-  { value: "zh-CN", label: "中文（中国）" },
-  { value: "en-US", label: "English (US)" }
-];
+function createTerminalShellOptions(t: Translator): ReadonlyArray<SettingsSelectOption<EmbeddedTerminalShell>> {
+  return [
+    { value: "powerShell", label: t("settings.general.embeddedTerminalShell.options.powerShell") },
+    { value: "commandPrompt", label: t("settings.general.embeddedTerminalShell.options.commandPrompt") },
+    { value: "gitBash", label: t("settings.general.embeddedTerminalShell.options.gitBash") }
+  ];
+}
 
-const THREAD_DETAIL_LEVEL_OPTIONS: ReadonlyArray<SettingsSelectOption<ThreadDetailLevel>> = [
-  { value: "compact", label: "精简步骤" },
-  { value: "commands", label: "包含命令输出" },
-  { value: "full", label: "完整输出" }
-];
+function createLanguageOptions(t: Translator): ReadonlyArray<SettingsSelectOption<UiLanguage>> {
+  return [
+    { value: "zh-CN", label: t("settings.general.language.options.zhCN") },
+    { value: "en-US", label: t("settings.general.language.options.enUS") }
+  ];
+}
 
-const FOLLOW_UP_MODE_OPTIONS: ReadonlyArray<SettingsSelectOption<FollowUpMode>> = [
-  { value: "queue", label: "Queue" },
-  { value: "steer", label: "Steer" },
-  { value: "interrupt", label: "Interrupt" }
-];
+function createThreadDetailOptions(t: Translator): ReadonlyArray<SettingsSelectOption<ThreadDetailLevel>> {
+  return [
+    { value: "compact", label: t("settings.general.threadDetailLevel.options.compact") },
+    { value: "commands", label: t("settings.general.threadDetailLevel.options.commands") },
+    { value: "full", label: t("settings.general.threadDetailLevel.options.full") }
+  ];
+}
 
-const COMPOSER_ENTER_OPTIONS: ReadonlyArray<SettingsSelectOption<ComposerEnterBehavior>> = [
-  { value: "enter", label: "Enter 发送" },
-  { value: "cmdIfMultiline", label: "多行时 Ctrl/Cmd+Enter 发送" }
-];
+function createFollowUpModeOptions(t: Translator): ReadonlyArray<SettingsSelectOption<FollowUpMode>> {
+  return [
+    { value: "queue", label: t("settings.general.followUpQueueMode.options.queue") },
+    { value: "steer", label: t("settings.general.followUpQueueMode.options.steer") },
+    { value: "interrupt", label: t("settings.general.followUpQueueMode.options.interrupt") }
+  ];
+}
+
+function createComposerEnterOptions(t: Translator): ReadonlyArray<SettingsSelectOption<ComposerEnterBehavior>> {
+  return [
+    { value: "enter", label: t("settings.general.composerEnterBehavior.options.enter") },
+    { value: "cmdIfMultiline", label: t("settings.general.composerEnterBehavior.options.cmdIfMultiline") }
+  ];
+}
 
 interface GeneralSettingsSectionProps {
   readonly preferences: AppPreferencesController;
@@ -55,65 +72,73 @@ interface GeneralSettingsSectionProps {
 
 export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.Element {
   const { preferences } = props;
+  const { t } = useI18n();
+  const agentEnvironmentOptions = createAgentEnvironmentOptions(t);
+  const workspaceOpenerOptions = createWorkspaceOpenerOptions(t);
+  const terminalShellOptions = createTerminalShellOptions(t);
+  const languageOptions = createLanguageOptions(t);
+  const threadDetailOptions = createThreadDetailOptions(t);
+  const followUpModeOptions = createFollowUpModeOptions(t);
+  const composerEnterOptions = createComposerEnterOptions(t);
 
   return (
     <div className="settings-panel-group">
       <header className="settings-title-wrap">
-        <h1 className="settings-page-title">常规</h1>
+        <h1 className="settings-page-title">{t("settings.general.title")}</h1>
       </header>
       <section className="settings-card">
         <SettingsSelectRow
-          label="Agent environment"
-          description="Choose where the agent runs on Windows."
+          label={t("settings.general.agentEnvironment.label")}
+          description={t("settings.general.agentEnvironment.description")}
           value={preferences.agentEnvironment}
-          options={AGENT_ENVIRONMENT_OPTIONS}
+          options={agentEnvironmentOptions}
           onChange={preferences.setAgentEnvironment}
         />
         <SettingsSelectRow
-          label="默认打开目标"
-          description="打开文件夹或工作区时优先使用的应用。"
+          label={t("settings.general.workspaceOpener.label")}
+          description={t("settings.general.workspaceOpener.description")}
           value={preferences.workspaceOpener}
-          options={WORKSPACE_OPENER_OPTIONS}
+          options={workspaceOpenerOptions}
           onChange={preferences.setWorkspaceOpener}
         />
         <SettingsSelectRow
-          label="集成终端 Shell"
-          description="内置终端默认启动的 Shell。"
+          label={t("settings.general.embeddedTerminalShell.label")}
+          description={t("settings.general.embeddedTerminalShell.description")}
           value={preferences.embeddedTerminalShell}
-          options={TERMINAL_SHELL_OPTIONS}
+          options={terminalShellOptions}
           onChange={preferences.setEmbeddedTerminalShell}
         />
         <SettingsSelectRow
-          label="界面语言"
-          description="应用界面显示语言。"
+          label={t("settings.general.language.label")}
+          description={t("settings.general.language.description")}
           value={preferences.uiLanguage}
-          options={UI_LANGUAGE_OPTIONS}
+          options={languageOptions}
           onChange={preferences.setUiLanguage}
-          statusNote="当前先保存偏好，未做完整 UI 国际化切换。"
+          statusNote={t("settings.general.language.note")}
         />
         <SettingsSelectRow
-          label="线程详情级别"
-          description="控制会话内命令、工具与辅助信息的显示粒度。"
+          label={t("settings.general.threadDetailLevel.label")}
+          description={t("settings.general.threadDetailLevel.description")}
           value={preferences.threadDetailLevel}
-          options={THREAD_DETAIL_LEVEL_OPTIONS}
+          options={threadDetailOptions}
           onChange={preferences.setThreadDetailLevel}
-          statusNote="已作用于时间线；完整输出会额外显示 raw response 与调试项。"
+          statusNote={t("settings.general.threadDetailLevel.note")}
         />
         <SettingsSelectRow
-          label="Follow-up 模式"
-          description="会话进行中再次发送消息时的默认处理方式。"
+          label={t("settings.general.followUpQueueMode.label")}
+          description={t("settings.general.followUpQueueMode.description")}
           value={preferences.followUpQueueMode}
-          options={FOLLOW_UP_MODE_OPTIONS}
+          options={followUpModeOptions}
           onChange={preferences.setFollowUpQueueMode}
-          statusNote="支持 queue、steer、interrupt 三种模式。"
+          statusNote={t("settings.general.followUpQueueMode.note")}
         />
         <SettingsSelectRow
-          label="回车行为"
-          description="Composer 中 Enter 的发送规则。"
+          label={t("settings.general.composerEnterBehavior.label")}
+          description={t("settings.general.composerEnterBehavior.description")}
           value={preferences.composerEnterBehavior}
-          options={COMPOSER_ENTER_OPTIONS}
+          options={composerEnterOptions}
           onChange={preferences.setComposerEnterBehavior}
-          statusNote="支持 Cmd/Ctrl+Shift+Enter 单次反向 follow-up。"
+          statusNote={t("settings.general.composerEnterBehavior.note")}
         />
       </section>
     </div>

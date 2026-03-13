@@ -1,5 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { type Locale } from "../../../i18n";
+import { createI18nWrapper } from "../../../test/createI18nWrapper";
 import { PersonalizationSettingsSection } from "./PersonalizationSettingsSection";
 
 const USER_FILE = "C:/Users/Administrator/.codex/AGENTS.md";
@@ -22,16 +25,23 @@ function createInstructionsResult(content = "默认先给结论。") {
   };
 }
 
+function renderSection(
+  props: ComponentProps<typeof PersonalizationSettingsSection>,
+  locale: Locale = "zh-CN"
+) {
+  return render(<PersonalizationSettingsSection {...props} />, {
+    wrapper: createI18nWrapper(locale)
+  });
+}
+
 describe("PersonalizationSettingsSection", () => {
   it("renders Codex global AGENTS instructions and personality", async () => {
-    render(
-      <PersonalizationSettingsSection
-        configSnapshot={createSnapshot()}
-        busy={false}
-        readGlobalAgentInstructions={vi.fn().mockResolvedValue(createInstructionsResult())}
-        writeGlobalAgentInstructions={vi.fn().mockResolvedValue(createInstructionsResult())}
-      />
-    );
+    renderSection({
+      configSnapshot: createSnapshot(),
+      busy: false,
+      readGlobalAgentInstructions: vi.fn().mockResolvedValue(createInstructionsResult()),
+      writeGlobalAgentInstructions: vi.fn().mockResolvedValue(createInstructionsResult())
+    });
 
     expect(await screen.findByDisplayValue("默认先给结论。")).toBeInTheDocument();
     expect(screen.getByText("友好")).toBeInTheDocument();
@@ -43,14 +53,12 @@ describe("PersonalizationSettingsSection", () => {
   it("writes instructions back to the user AGENTS file", async () => {
     const writeGlobalAgentInstructions = vi.fn().mockResolvedValue(createInstructionsResult("回答前先总结风险。"));
 
-    render(
-      <PersonalizationSettingsSection
-        configSnapshot={createSnapshot()}
-        busy={false}
-        readGlobalAgentInstructions={vi.fn().mockResolvedValue(createInstructionsResult())}
-        writeGlobalAgentInstructions={writeGlobalAgentInstructions}
-      />
-    );
+    renderSection({
+      configSnapshot: createSnapshot(),
+      busy: false,
+      readGlobalAgentInstructions: vi.fn().mockResolvedValue(createInstructionsResult()),
+      writeGlobalAgentInstructions
+    });
 
     await screen.findByDisplayValue("默认先给结论。");
     fireEvent.change(screen.getByLabelText("自定义指令"), { target: { value: "回答前先总结风险。" } });
@@ -64,14 +72,12 @@ describe("PersonalizationSettingsSection", () => {
   });
 
   it("keeps an empty AGENTS file editable after load", async () => {
-    render(
-      <PersonalizationSettingsSection
-        configSnapshot={createSnapshot()}
-        busy={false}
-        readGlobalAgentInstructions={vi.fn().mockResolvedValue(createInstructionsResult(""))}
-        writeGlobalAgentInstructions={vi.fn().mockResolvedValue(createInstructionsResult("补充规则"))}
-      />
-    );
+    renderSection({
+      configSnapshot: createSnapshot(),
+      busy: false,
+      readGlobalAgentInstructions: vi.fn().mockResolvedValue(createInstructionsResult("")),
+      writeGlobalAgentInstructions: vi.fn().mockResolvedValue(createInstructionsResult("补充规则"))
+    });
 
     const textarea = await screen.findByLabelText("自定义指令");
     const saveButton = screen.getByRole("button", { name: "保存" });
@@ -88,19 +94,30 @@ describe("PersonalizationSettingsSection", () => {
   it("surfaces load and save errors instead of swallowing them", async () => {
     const writeGlobalAgentInstructions = vi.fn().mockRejectedValue(new Error("写入失败"));
 
-    render(
-      <PersonalizationSettingsSection
-        configSnapshot={createSnapshot()}
-        busy={false}
-        readGlobalAgentInstructions={vi.fn().mockResolvedValue(createInstructionsResult("旧值"))}
-        writeGlobalAgentInstructions={writeGlobalAgentInstructions}
-      />
-    );
+    renderSection({
+      configSnapshot: createSnapshot(),
+      busy: false,
+      readGlobalAgentInstructions: vi.fn().mockResolvedValue(createInstructionsResult("旧值")),
+      writeGlobalAgentInstructions
+    });
 
     await screen.findByDisplayValue("旧值");
     fireEvent.change(screen.getByLabelText("自定义指令"), { target: { value: "新值" } });
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
     expect(await screen.findByText("写入失败")).toBeInTheDocument();
+  });
+
+  it("renders English copy when locale is en-US", async () => {
+    renderSection({
+      configSnapshot: createSnapshot(),
+      busy: false,
+      readGlobalAgentInstructions: vi.fn().mockResolvedValue(createInstructionsResult()),
+      writeGlobalAgentInstructions: vi.fn().mockResolvedValue(createInstructionsResult())
+    }, "en-US");
+
+    expect(await screen.findByText("Personalization")).toBeInTheDocument();
+    expect(screen.getByText("Response style")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 });

@@ -1,3 +1,5 @@
+import { useI18n } from "../../../i18n";
+
 interface AuthChoiceViewProps {
   readonly busy: boolean;
   readonly loginPending: boolean;
@@ -6,20 +8,22 @@ interface AuthChoiceViewProps {
 }
 
 export function AuthChoiceView(props: AuthChoiceViewProps): JSX.Element {
+  const { t } = useI18n();
+
   return (
-    <main className="auth-choice-layout" aria-label="鉴权选择">
+    <main className="auth-choice-layout" aria-label={t("auth.choice.ariaLabel")}>
       <section className="auth-choice-card">
         <div className="auth-choice-copy">
           <span className="auth-choice-badge">Codex App Plus</span>
-          <h1 className="auth-choice-title">选择登录方式</h1>
-          <p className="auth-choice-subtitle">你可以使用官方 ChatGPT 账户登录，或进入配置页使用 API Key。</p>
+          <h1 className="auth-choice-title">{t("auth.choice.title")}</h1>
+          <p className="auth-choice-subtitle">{t("auth.choice.subtitle")}</p>
         </div>
         <div className="auth-choice-actions">
           <button type="button" className="auth-choice-button auth-choice-button-primary" onClick={() => void props.onLogin()} disabled={props.busy}>
-            {props.loginPending ? "正在跳转登录…" : "使用账户登录"}
+            {props.loginPending ? t("auth.choice.login.pending") : t("auth.choice.login.action")}
           </button>
           <button type="button" className="auth-choice-button" onClick={props.onUseApiKey} disabled={props.busy}>
-            使用 API Key
+            {t("auth.choice.apiKey.action")}
           </button>
         </div>
       </section>

@@ -1,0 +1,286 @@
+import type { MessagesSchema } from "./schema";
+import { enUSSettingsMcp } from "./settingsMcp";
+
+export const enUS = {
+  app: {
+    document: {
+      title: "Codex App Plus Desktop",
+    },
+    settings: {
+      loading: "Loading settings...",
+    },
+    workspacePicker: {
+      title: "Choose workspace folder",
+      singleOnlyError: "Only one workspace folder can be selected right now.",
+    },
+    alerts: {
+      openConfigFailed: "Failed to open config.toml: {error}",
+      selectWorkspaceFailed: "Failed to choose workspace folder: {error}",
+      createThreadFailed: "Failed to create workspace thread: {error}",
+      sendTurnFailed: "Failed to send workspace message: {error}",
+      setMultiAgentFailed: "Failed to switch multi-agent mode: {error}",
+    },
+    composer: {
+      invalidSelection: "Composer model and reasoning effort are required.",
+    },
+  },
+  settings: {
+    sidebar: {
+      backToApp: "Back to app",
+    },
+    nav: {
+      general: "General",
+      config: "Config",
+      personalization: "Personalization",
+      mcp: "MCP Services",
+      git: "Git",
+      environment: "Environment",
+      worktree: "Worktree",
+      archived: "Archived Threads",
+    },
+    placeholder: {
+      message: "This page still uses the official placeholder layout and can be wired to real settings data later.",
+    },
+    general: {
+      title: "General",
+      agentEnvironment: {
+        label: "Agent environment",
+        description: "Choose where the agent runs on Windows.",
+        options: {
+          windowsNative: "Windows native",
+          wsl: "WSL",
+        },
+      },
+      workspaceOpener: {
+        label: "Default opener",
+        description: "Preferred app when opening a folder or workspace.",
+        options: {
+          vscode: "VS Code",
+          visualStudio: "Visual Studio",
+          githubDesktop: "GitHub Desktop",
+          explorer: "File Explorer",
+          terminal: "Terminal",
+          gitBash: "Git Bash",
+        },
+      },
+      embeddedTerminalShell: {
+        label: "Embedded terminal shell",
+        description: "Default shell for the built-in terminal.",
+        options: {
+          powerShell: "PowerShell",
+          commandPrompt: "Command Prompt",
+          gitBash: "Git Bash",
+        },
+      },
+      language: {
+        label: "Interface language",
+        description: "Display language for the app UI.",
+        note: "Takes effect immediately on screens already migrated to i18n.",
+        options: {
+          zhCN: "Chinese (China)",
+          enUS: "English (US)",
+        },
+      },
+      threadDetailLevel: {
+        label: "Thread detail level",
+        description: "Controls how much command, tool, and auxiliary information is shown in a session.",
+        note: "Already affects the timeline; full output also shows raw response and debug items.",
+        options: {
+          compact: "Compact steps",
+          commands: "Include command output",
+          full: "Full output",
+        },
+      },
+      followUpQueueMode: {
+        label: "Follow-up mode",
+        description: "Default behavior when sending another message during an active session.",
+        note: "Supports queue, steer, and interrupt.",
+        options: {
+          queue: "Queue",
+          steer: "Steer",
+          interrupt: "Interrupt",
+        },
+      },
+      composerEnterBehavior: {
+        label: "Enter behavior",
+        description: "How Enter sends from the Composer.",
+        note: "Cmd/Ctrl+Shift+Enter still sends one reversed follow-up.",
+        options: {
+          enter: "Send with Enter",
+          cmdIfMultiline: "Use Ctrl/Cmd+Enter for multiline",
+        },
+      },
+    },
+    git: {
+      title: "Git",
+      branchPrefixLabel: "Branch prefix",
+      branchPrefixDescription: "Prefix used when creating a new branch from Codex.",
+      forceLeaseLabel: "Force lease on push",
+      forceLeaseDescription: "Include `--force-with-lease` when pushing.",
+    },
+    environment: {
+      title: "Environment",
+      workspacesTitle: "Workspaces",
+      addProjectAction: "Add project",
+      note: "Choose the local project directories available in Codex.",
+      empty: "No projects yet. Click “Add project” to switch workspaces from the sidebar.",
+    },
+    worktree: {
+      title: "Worktree",
+      autoCleanLabel: "Auto-clean old worktrees",
+      autoCleanDescription: "Automatically remove older Codex worktrees after the retention limit is exceeded.",
+      retentionLabel: "Retention limit",
+      retentionDescription: "Maximum number of worktrees kept before auto-clean runs.",
+    },
+    config: {
+      title: "Config",
+      subtitle: "Manage the current live Codex config and save reusable provider templates.",
+      userConfig: {
+        label: "User config",
+        description: "Open ~/.codex/config.toml.",
+        action: "Open config file",
+      },
+      licenses: {
+        label: "Open-source licenses",
+        description: "View the bundled third-party license list for the desktop app.",
+        action: "View licenses",
+      },
+      providers: {
+        title: "Provider presets",
+        description: "Saved locally in the app. “Apply now” only overwrites the current provider-related live config.",
+        addAction: "Add provider",
+        loading: "Loading providers…",
+        empty: "No providers yet. Click “Add provider” to start.",
+        current: "Currently applied",
+        editAction: "Edit",
+        deleteAction: "Delete",
+        applyAction: "Apply now",
+        applying: "Applying…",
+        savedMessage: "Saved provider: {name}",
+        appliedMessage: "Applied provider: {name}",
+        deletedMessage: "Deleted provider: {name}",
+        deleteTitle: "Delete provider",
+        deleteDescription:
+          "This removes {name} from the app-local config and does not clean historical entries from ~/.codex/config.toml.",
+        cancelAction: "Cancel",
+        confirmDeleteAction: "Delete",
+        deleting: "Deleting…",
+        closeAction: "Close",
+      },
+      providerDialog: {
+        addTitle: "Add Provider",
+        editTitle: "Edit Provider",
+        closeAction: "Close",
+        nameLabel: "Name",
+        providerKeyLabel: "providerKey",
+        apiKeyLabel: "API Key",
+        baseUrlLabel: "Base URL",
+        authLabel: "auth.json",
+        configLabel: "config.toml",
+        cancelAction: "Cancel",
+        saveAction: "Save",
+        saving: "Saving…",
+        saveAndApplyAction: "Save & Apply",
+        applying: "Applying…",
+      },
+    },
+    personalization: {
+      title: "Personalization",
+      styleLabel: "Response style",
+      instructionsTitle: "Custom instructions",
+      instructionsSaveAction: "Save",
+      instructionsSaving: "Saving…",
+      instructionsDescription: "Keep this in sync with the global Codex AGENTS.md and save it to {path}.",
+      instructionsAriaLabel: "Custom instructions",
+      syncedMessage: "Synced to the global Codex AGENTS.md.",
+      loadFailed: "Failed to read global instructions: {error}",
+      none: {
+        label: "Default",
+        description: "The current response style follows the global Codex `personality` config: default, with no extra style applied.",
+      },
+      friendly: {
+        label: "Friendly",
+        description: "The current response style follows the global Codex `personality` config: friendly and natural.",
+      },
+      pragmatic: {
+        label: "Pragmatic",
+        description: "The current response style follows the global Codex `personality` config: pragmatic and direct.",
+      },
+    },
+    archived: {
+      title: "Archived Threads",
+      subtitle: "Review archived sessions and restore them to the main thread list when needed.",
+      listTitle: "Archive list",
+      refreshAction: "Refresh",
+      note: "This only shows archived threads from the official app-server. Local codexData sessions are excluded.",
+      loading: "Loading archived threads...",
+      empty: "No archived threads.",
+      cwdMissing: "Working directory not recorded",
+      updatedAt: "Updated: {time}",
+      unarchiveAction: "Unarchive",
+      unarchiving: "Unarchiving...",
+    },
+    windowsSandbox: {
+      title: "Windows Sandbox",
+      summary: "Use the official setup flow to strengthen tool isolation without changing the current conversation write permissions or approval policy.",
+      currentStatusLabel: "Current status",
+      noSource: "Windows Sandbox mode is not configured yet.",
+      legacyNote: "The current mode comes from a legacy feature flag. Migrate to the `windows.sandbox` config when possible.",
+      unavailableNote: "The current environment is not Windows, so Windows Sandbox setup cannot run.",
+      runningAction: "Setup running…",
+      pendingMessage: "Running {mode} setup…",
+      successMessage: "{mode} setup completed.",
+      failureMessage: "{mode} setup failed.",
+      disabledMode: "Disabled",
+      unelevatedMode: "Standard mode",
+      elevatedMode: "Enhanced mode",
+      unelevatedTitle: "Standard mode (no admin)",
+      unelevatedDescription: "Recommended first. Good for baseline setup with fewer interruptions.",
+      elevatedTitle: "Enhanced mode (admin)",
+      elevatedDescription: "Requires administrator approval and is better when fuller system preparation is needed.",
+    },
+    mcp: enUSSettingsMcp,
+  },
+  home: {
+    workspaceSelector: {
+      placeholder: "Select workspace",
+    },
+    settingsPopover: {
+      menuLabel: "Settings menu",
+      settings: {
+        action: "Settings",
+      },
+      language: {
+        action: "Language",
+      },
+      authStatus: {
+        authenticated: "Signed in",
+        chatgpt: "Signed in with ChatGPT",
+        apiKey: "Signed in with API Key",
+        needsLogin: "Signed out",
+        unknown: "Authentication status unknown",
+      },
+      login: {
+        action: "Sign in with ChatGPT",
+        pending: "Signing in...",
+      },
+      logout: {
+        action: "Sign out",
+      },
+    },
+  },
+  auth: {
+    choice: {
+      ariaLabel: "Authentication options",
+      title: "Choose sign-in method",
+      subtitle: "Use your official ChatGPT account or open the config page to use an API key.",
+      login: {
+        action: "Sign in with account",
+        pending: "Redirecting to sign-in...",
+      },
+      apiKey: {
+        action: "Use API Key",
+      },
+    },
+  },
+} satisfies MessagesSchema;

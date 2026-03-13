@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { createI18nWrapper } from "../../../test/createI18nWrapper";
 import { AuthChoiceView } from "./AuthChoiceView";
 
 describe("AuthChoiceView", () => {
@@ -11,6 +12,7 @@ describe("AuthChoiceView", () => {
         onLogin={vi.fn().mockResolvedValue(undefined)}
         onUseApiKey={vi.fn()}
       />,
+      { wrapper: createI18nWrapper() }
     );
 
     expect(screen.getByRole("heading", { name: "选择登录方式" })).toBeInTheDocument();
@@ -29,6 +31,7 @@ describe("AuthChoiceView", () => {
         onLogin={onLogin}
         onUseApiKey={onUseApiKey}
       />,
+      { wrapper: createI18nWrapper() }
     );
 
     fireEvent.click(screen.getByRole("button", { name: "使用账户登录" }));
@@ -46,9 +49,25 @@ describe("AuthChoiceView", () => {
         onLogin={vi.fn().mockResolvedValue(undefined)}
         onUseApiKey={vi.fn()}
       />,
+      { wrapper: createI18nWrapper() }
     );
 
-    expect(screen.getByRole("button", { name: "正在跳转登录…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "正在跳转登录..." })).toBeDisabled();
     expect(screen.getByRole("button", { name: "使用 API Key" })).toBeDisabled();
+  });
+
+  it("renders English copy when locale is en-US", () => {
+    render(
+      <AuthChoiceView
+        busy={false}
+        loginPending={false}
+        onLogin={vi.fn().mockResolvedValue(undefined)}
+        onUseApiKey={vi.fn()}
+      />,
+      { wrapper: createI18nWrapper("en-US") }
+    );
+
+    expect(screen.getByRole("heading", { name: "Choose sign-in method" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Use API Key" })).toBeInTheDocument();
   });
 });

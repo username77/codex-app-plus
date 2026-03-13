@@ -1,0 +1,285 @@
+import { zhCNSettingsMcp } from "./settingsMcp";
+
+export const zhCN = {
+  app: {
+    document: {
+      title: "Codex App Plus 桌面端",
+    },
+    settings: {
+      loading: "正在加载设置...",
+    },
+    workspacePicker: {
+      title: "选择工作区文件夹",
+      singleOnlyError: "当前只支持选择一个工作区文件夹。",
+    },
+    alerts: {
+      openConfigFailed: "打开 config.toml 失败: {error}",
+      selectWorkspaceFailed: "选择工作区文件夹失败: {error}",
+      createThreadFailed: "创建工作区会话失败: {error}",
+      sendTurnFailed: "发送工作区消息失败: {error}",
+      setMultiAgentFailed: "切换多代理失败: {error}",
+    },
+    composer: {
+      invalidSelection: "Composer 模型和思考强度不能为空。",
+    },
+  },
+  settings: {
+    sidebar: {
+      backToApp: "返回应用",
+    },
+    nav: {
+      general: "常规",
+      config: "配置",
+      personalization: "个性化",
+      mcp: "MCP 服务",
+      git: "Git",
+      environment: "环境",
+      worktree: "工作树",
+      archived: "已归档线程",
+    },
+    placeholder: {
+      message: "该页面仍保留官方布局占位，后续可接入真实设置数据。",
+    },
+    general: {
+      title: "常规",
+      agentEnvironment: {
+        label: "Agent 运行环境",
+        description: "选择 Agent 在 Windows 上的运行环境。",
+        options: {
+          windowsNative: "Windows 原生",
+          wsl: "WSL",
+        },
+      },
+      workspaceOpener: {
+        label: "默认打开目标",
+        description: "打开文件夹或工作区时优先使用的应用。",
+        options: {
+          vscode: "VS Code",
+          visualStudio: "Visual Studio",
+          githubDesktop: "GitHub Desktop",
+          explorer: "文件资源管理器",
+          terminal: "终端",
+          gitBash: "Git Bash",
+        },
+      },
+      embeddedTerminalShell: {
+        label: "集成终端 Shell",
+        description: "内置终端默认启动的 Shell。",
+        options: {
+          powerShell: "PowerShell",
+          commandPrompt: "命令提示符",
+          gitBash: "Git Bash",
+        },
+      },
+      language: {
+        label: "界面语言",
+        description: "应用界面显示语言。",
+        note: "切换后会立即作用于已接入 i18n 的界面。",
+        options: {
+          zhCN: "中文（中国）",
+          enUS: "English (US)",
+        },
+      },
+      threadDetailLevel: {
+        label: "线程详情级别",
+        description: "控制会话内命令、工具与辅助信息的显示粒度。",
+        note: "已作用于时间线；完整输出会额外显示 raw response 与调试项。",
+        options: {
+          compact: "精简步骤",
+          commands: "包含命令输出",
+          full: "完整输出",
+        },
+      },
+      followUpQueueMode: {
+        label: "Follow-up 模式",
+        description: "会话进行中再次发送消息时的默认处理方式。",
+        note: "支持 queue、steer、interrupt 三种模式。",
+        options: {
+          queue: "Queue",
+          steer: "Steer",
+          interrupt: "Interrupt",
+        },
+      },
+      composerEnterBehavior: {
+        label: "回车行为",
+        description: "Composer 中 Enter 的发送规则。",
+        note: "支持 Cmd/Ctrl+Shift+Enter 单次反向 follow-up。",
+        options: {
+          enter: "Enter 发送",
+          cmdIfMultiline: "多行时 Ctrl/Cmd+Enter 发送",
+        },
+      },
+    },
+    git: {
+      title: "Git",
+      branchPrefixLabel: "分支前缀",
+      branchPrefixDescription: "在 Codex 中创建新分支时使用的前缀。",
+      forceLeaseLabel: "推送时强制 lease",
+      forceLeaseDescription: "推送时附带 `--force-with-lease`。",
+    },
+    environment: {
+      title: "环境",
+      workspacesTitle: "工作区",
+      addProjectAction: "添加项目",
+      note: "选择要在 Codex 中使用的本地项目目录。",
+      empty: "暂无项目，点击“添加项目”后即可在侧边栏中切换工作区。",
+    },
+    worktree: {
+      title: "工作树",
+      autoCleanLabel: "自动清理旧工作树",
+      autoCleanDescription: "超过保留数量时自动移除较旧的 Codex 工作树。",
+      retentionLabel: "保留上限",
+      retentionDescription: "自动清理前最多保留的工作树数量。",
+    },
+    config: {
+      title: "配置",
+      subtitle: "管理当前 Codex live 配置，并保存可复用的提供商模板。",
+      userConfig: {
+        label: "用户配置",
+        description: "打开 ~/.codex/config.toml。",
+        action: "打开配置文件",
+      },
+      licenses: {
+        label: "开源许可",
+        description: "查看当前桌面端打包的第三方许可清单。",
+        action: "查看许可",
+      },
+      providers: {
+        title: "提供商配置",
+        description: "保存到应用本地文件；“一键应用”只覆盖当前提供商相关 live 配置。",
+        addAction: "新增提供商",
+        loading: "正在加载提供商列表…",
+        empty: "暂无提供商，点击“新增提供商”开始配置。",
+        current: "当前已应用",
+        editAction: "编辑",
+        deleteAction: "删除",
+        applyAction: "一键应用",
+        applying: "应用中…",
+        savedMessage: "已保存提供商：{name}",
+        appliedMessage: "已应用提供商：{name}",
+        deletedMessage: "已删除提供商：{name}",
+        deleteTitle: "删除提供商",
+        deleteDescription:
+          "将从应用本地配置中删除 {name}，不会清理现有 ~/.codex/config.toml 里的历史条目。",
+        cancelAction: "取消",
+        confirmDeleteAction: "确认删除",
+        deleting: "删除中…",
+        closeAction: "关闭",
+      },
+      providerDialog: {
+        addTitle: "新增提供商",
+        editTitle: "编辑提供商",
+        closeAction: "关闭",
+        nameLabel: "名称",
+        providerKeyLabel: "providerKey",
+        apiKeyLabel: "API Key",
+        baseUrlLabel: "Base URL",
+        authLabel: "auth.json",
+        configLabel: "config.toml",
+        cancelAction: "取消",
+        saveAction: "保存",
+        saving: "保存中…",
+        saveAndApplyAction: "保存并应用",
+        applying: "应用中…",
+      },
+    },
+    personalization: {
+      title: "个性化",
+      styleLabel: "回答风格",
+      instructionsTitle: "自定义指令",
+      instructionsSaveAction: "保存",
+      instructionsSaving: "保存中…",
+      instructionsDescription: "与 Codex 全局 AGENTS.md 保持同步，保存到 {path}。",
+      instructionsAriaLabel: "自定义指令",
+      syncedMessage: "已同步到 Codex 全局 AGENTS.md。",
+      loadFailed: "读取全局指令失败：{error}",
+      none: {
+        label: "默认",
+        description: "当前回答风格与 Codex 全局 `personality` 配置一致：默认、不额外施加风格。",
+      },
+      friendly: {
+        label: "友好",
+        description: "当前回答风格与 Codex 全局 `personality` 配置一致：友好、自然。",
+      },
+      pragmatic: {
+        label: "务实",
+        description: "当前回答风格与 Codex 全局 `personality` 配置一致：务实、直接。",
+      },
+    },
+    archived: {
+      title: "已归档线程",
+      subtitle: "查看已归档会话，并在需要时恢复到主线程列表。",
+      listTitle: "归档列表",
+      refreshAction: "刷新",
+      note: "这里只展示 app-server 官方归档线程；本地 codexData 会话不在此列表中。",
+      loading: "正在加载已归档线程...",
+      empty: "暂无已归档线程。",
+      cwdMissing: "未记录工作目录",
+      updatedAt: "最近更新：{time}",
+      unarchiveAction: "取消归档",
+      unarchiving: "取消归档中...",
+    },
+    windowsSandbox: {
+      title: "Windows 沙盒",
+      summary: "使用官方预配置流程增强工具执行隔离；不会改动当前对话的写权限与审批策略。",
+      currentStatusLabel: "当前状态",
+      noSource: "当前还没有配置 Windows 沙盒模式。",
+      legacyNote: "当前模式来自旧版特性开关，建议后续迁移到 `windows.sandbox` 配置。",
+      unavailableNote: "当前环境不是 Windows，无法执行 Windows 沙盒预配置。",
+      runningAction: "配置进行中…",
+      pendingMessage: "正在执行{mode}预配置…",
+      successMessage: "{mode}预配置已完成。",
+      failureMessage: "{mode}预配置失败。",
+      disabledMode: "未启用",
+      unelevatedMode: "标准模式",
+      elevatedMode: "增强模式",
+      unelevatedTitle: "标准模式（无需管理员）",
+      unelevatedDescription: "优先推荐。适合先完成常规预配置，减少额外打扰。",
+      elevatedTitle: "增强模式（管理员）",
+      elevatedDescription: "需要管理员授权，适合需要更完整系统级准备时执行。",
+    },
+    mcp: zhCNSettingsMcp,
+  },
+  home: {
+    workspaceSelector: {
+      placeholder: "选择工作区",
+    },
+    settingsPopover: {
+      menuLabel: "设置菜单",
+      settings: {
+        action: "设置",
+      },
+      language: {
+        action: "语言",
+      },
+      authStatus: {
+        authenticated: "已登录",
+        chatgpt: "已通过 ChatGPT 登录",
+        apiKey: "已通过 API Key 登录",
+        needsLogin: "未登录",
+        unknown: "鉴权状态未知",
+      },
+      login: {
+        action: "登录 ChatGPT",
+        pending: "正在登录...",
+      },
+      logout: {
+        action: "退出登录",
+      },
+    },
+  },
+  auth: {
+    choice: {
+      ariaLabel: "鉴权选择",
+      title: "选择登录方式",
+      subtitle: "你可以使用官方 ChatGPT 账户登录，或进入配置页使用 API Key。",
+      login: {
+        action: "使用账户登录",
+        pending: "正在跳转登录...",
+      },
+      apiKey: {
+        action: "使用 API Key",
+      },
+    },
+  },
+} as const;

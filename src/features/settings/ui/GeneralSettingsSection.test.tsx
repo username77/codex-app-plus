@@ -1,10 +1,12 @@
-﻿import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
+import { type Locale } from "../../../i18n";
+import { createI18nWrapper } from "../../../test/createI18nWrapper";
 import { DEFAULT_APP_PREFERENCES } from "../hooks/useAppPreferences";
 import { GeneralSettingsSection } from "./GeneralSettingsSection";
 
-function renderSection(): void {
+function renderSection(locale: Locale = "zh-CN"): void {
   function Wrapper(): JSX.Element {
     const [preferences, setPreferences] = useState(DEFAULT_APP_PREFERENCES);
 
@@ -30,26 +32,26 @@ function renderSection(): void {
     );
   }
 
-  render(<Wrapper />);
+  render(<Wrapper />, { wrapper: createI18nWrapper(locale) });
 }
 
 describe("GeneralSettingsSection", () => {
   it("updates the displayed agent environment after selecting WSL", () => {
     renderSection();
 
-    fireEvent.click(screen.getByRole("button", { name: /Agent environment.*Windows native/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Agent 运行环境.*Windows 原生/ }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "WSL" }));
 
-    expect(screen.getByRole("button", { name: /Agent environment.*WSL/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Agent 运行环境.*WSL/ })).toBeInTheDocument();
   });
 
   it("updates the displayed opener after selecting a new option", () => {
     renderSection();
 
     fireEvent.click(screen.getByRole("button", { name: "默认打开目标：VS Code" }));
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Terminal" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "终端" }));
 
-    expect(screen.getByRole("button", { name: "默认打开目标：Terminal" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "默认打开目标：终端" })).toBeInTheDocument();
   });
 
   it("closes the menu when clicking outside", () => {
@@ -63,10 +65,17 @@ describe("GeneralSettingsSection", () => {
     expect(screen.queryByRole("menuitemradio", { name: "Git Bash" })).toBeNull();
   });
 
-  it("shows the language pending note and the active thread-detail note", () => {
+  it("shows the language note and the active thread-detail note", () => {
     renderSection();
 
-    expect(screen.getByText("当前先保存偏好，未做完整 UI 国际化切换。")).toBeInTheDocument();
+    expect(screen.getByText("切换后会立即作用于已接入 i18n 的界面。")).toBeInTheDocument();
     expect(screen.getByText("已作用于时间线；完整输出会额外显示 raw response 与调试项。")).toBeInTheDocument();
+  });
+
+  it("renders English copy when locale is en-US", () => {
+    renderSection("en-US");
+
+    expect(screen.getByText("Interface language")).toBeInTheDocument();
+    expect(screen.getByText("Takes effect immediately on screens already migrated to i18n.")).toBeInTheDocument();
   });
 });

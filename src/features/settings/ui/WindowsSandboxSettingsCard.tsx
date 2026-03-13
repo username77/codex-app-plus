@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { readWindowsSandboxConfigView } from "../sandbox/windowsSandboxConfig";
 import type { WindowsSandboxSetupState } from "../../../domain/types";
 import type { WindowsSandboxSetupMode } from "../../../protocol/generated/v2/WindowsSandboxSetupMode";
+import { useI18n, type MessageKey } from "../../../i18n";
 
 interface WindowsSandboxSettingsCardProps {
   readonly busy: boolean;
@@ -10,21 +11,31 @@ interface WindowsSandboxSettingsCardProps {
   readonly onStartSetup: (mode: WindowsSandboxSetupMode) => Promise<unknown>;
 }
 
-function modeLabel(mode: "disabled" | WindowsSandboxSetupMode): string {
-  if (mode === "elevated") return "增强模式";
-  if (mode === "unelevated") return "标准模式";
-  return "未启用";
+const MODE_LABEL_KEYS: Record<"disabled" | WindowsSandboxSetupMode, MessageKey> = {
+  disabled: "settings.windowsSandbox.disabledMode",
+  unelevated: "settings.windowsSandbox.unelevatedMode",
+  elevated: "settings.windowsSandbox.elevatedMode"
+};
+
+function modeLabel(
+  mode: "disabled" | WindowsSandboxSetupMode,
+  t: (key: MessageKey) => string
+): string {
+  return t(MODE_LABEL_KEYS[mode]);
 }
 
-function resultMessage(state: WindowsSandboxSetupState): string | null {
+function resultMessage(
+  state: WindowsSandboxSetupState,
+  t: (key: MessageKey, params?: Record<string, string>) => string
+): string | null {
   if (state.pending && state.mode !== null) {
-    return `正在执行${modeLabel(state.mode)}预配置…`;
+    return t("settings.windowsSandbox.pendingMessage", { mode: modeLabel(state.mode, t) });
   }
   if (state.success === true && state.mode !== null) {
-    return `${modeLabel(state.mode)}预配置已完成。`;
+    return t("settings.windowsSandbox.successMessage", { mode: modeLabel(state.mode, t) });
   }
   if (state.success === false && state.mode !== null) {
-    return state.error ?? `${modeLabel(state.mode)}预配置失败。`;
+    return state.error ?? t("settings.windowsSandbox.failureMessage", { mode: modeLabel(state.mode, t) });
   }
   return null;
 }
@@ -35,6 +46,7 @@ function SetupAction(props: {
   readonly mode: WindowsSandboxSetupMode;
   readonly title: string;
   readonly description: string;
+  readonly runningLabel: string;
   readonly primary?: boolean;
   readonly onStartSetup: (mode: WindowsSandboxSetupMode) => Promise<unknown>;
 }): JSX.Element {
@@ -45,15 +57,16 @@ function SetupAction(props: {
 
   return (
     <button type="button" className={className} disabled={props.busy} onClick={() => void props.onStartSetup(props.mode)}>
-      <span className="windows-sandbox-action-title">{running ? "配置进行中…" : props.title}</span>
+      <span className="windows-sandbox-action-title">{running ? props.runningLabel : props.title}</span>
       <span className="windows-sandbox-action-copy">{props.description}</span>
     </button>
   );
 }
 
 export function WindowsSandboxSettingsCard(props: WindowsSandboxSettingsCardProps): JSX.Element {
+  const { t } = useI18n();
   const view = useMemo(() => readWindowsSandboxConfigView(props.configSnapshot), [props.configSnapshot]);
-  const result = resultMessage(props.setupState);
+  const result = resultMessage(props.setupState, t);
   const actionsDisabled = props.busy || props.setupState.pending || !view.canRunSetup;
   const resultClass = props.setupState.success === false
     ? "settings-status-note settings-status-note-error windows-sandbox-status"
@@ -65,24 +78,24 @@ export function WindowsSandboxSettingsCard(props: WindowsSandboxSettingsCardProp
     <section className="settings-card windows-sandbox-card">
       <div className="windows-sandbox-head">
         <div className="windows-sandbox-head-main">
-          <strong>Windows 沙盒</strong>
+          <strong>{t("settings.windowsSandbox.title")}</strong>
           <p className="windows-sandbox-summary-copy">
-            使用官方预配置流程增强工具执行隔离；不会改动当前对话的写权限与审批策略。
+            {t("settings.windowsSandbox.summary")}
           </p>
         </div>
-        <span className="settings-chip settings-chip-sm windows-sandbox-chip">{modeLabel(view.mode)}</span>
+        <span className="settings-chip settings-chip-sm windows-sandbox-chip">{modeLabel(view.mode, t)}</span>
       </div>
 
       <div className="windows-sandbox-meta">
         <div className="windows-sandbox-meta-block">
-          <span className="windows-sandbox-meta-label">当前状态</span>
-          <strong>{modeLabel(view.mode)}</strong>
-          <p>{view.source ?? "当前还没有配置 Windows 沙盒模式。"}</p>
+          <span className="windows-sandbox-meta-label">{t("settings.windowsSandbox.currentStatusLabel")}</span>
+          <strong>{modeLabel(view.mode, t)}</strong>
+          <p>{view.source ?? t("settings.windowsSandbox.noSource")}</p>
         </div>
       </div>
 
-      {view.isLegacy ? <p className="settings-status-note windows-sandbox-status">当前模式来自旧版特性开关，建议后续迁移到 `windows.sandbox` 配置。</p> : null}
-      {!view.canRunSetup ? <p className="settings-status-note settings-status-note-error windows-sandbox-status">当前环境不是 Windows，无法执行 Windows 沙盒预配置。</p> : null}
+      {view.isLegacy ? <p className="settings-status-note windows-sandbox-status">{t("settings.windowsSandbox.legacyNote")}</p> : null}
+      {!view.canRunSetup ? <p className="settings-status-note settings-status-note-error windows-sandbox-status">{t("settings.windowsSandbox.unavailableNote")}</p> : null}
       {result ? <p className={resultClass}>{result}</p> : null}
 
       <div className="windows-sandbox-actions">
@@ -90,8 +103,9 @@ export function WindowsSandboxSettingsCard(props: WindowsSandboxSettingsCardProp
           busy={actionsDisabled}
           currentMode={props.setupState.mode}
           mode="unelevated"
-          title="标准模式（无需管理员）"
-          description="优先推荐。适合先完成常规预配置，减少额外打扰。"
+          title={t("settings.windowsSandbox.unelevatedTitle")}
+          description={t("settings.windowsSandbox.unelevatedDescription")}
+          runningLabel={t("settings.windowsSandbox.runningAction")}
           primary
           onStartSetup={props.onStartSetup}
         />
@@ -99,8 +113,9 @@ export function WindowsSandboxSettingsCard(props: WindowsSandboxSettingsCardProp
           busy={actionsDisabled}
           currentMode={props.setupState.mode}
           mode="elevated"
-          title="增强模式（管理员）"
-          description="需要管理员授权，适合需要更完整系统级准备时执行。"
+          title={t("settings.windowsSandbox.elevatedTitle")}
+          description={t("settings.windowsSandbox.elevatedDescription")}
+          runningLabel={t("settings.windowsSandbox.runningAction")}
           onStartSetup={props.onStartSetup}
         />
       </div>

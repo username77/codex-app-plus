@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  getPersonalityCopy,
-  readPersonalizationConfigView
-} from "./personalizationConfig";
+import { readPersonalizationConfigView } from "./personalizationConfig";
 
 const USER_FILE = "C:/Users/Administrator/.codex/config.toml";
 
@@ -26,6 +23,5 @@ describe("personalizationConfig", () => {
     const view = readPersonalizationConfigView(null);
 
     expect(view.personality).toBe("pragmatic");
-    expect(getPersonalityCopy(view.personality).label).toBe("务实");
   });
 });

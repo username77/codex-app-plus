@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ThreadSummary } from "../../../domain/types";
+import { useI18n, type Locale } from "../../../i18n";
 
 interface ArchivedThreadsSettingsSectionProps {
   listArchivedThreads: () => Promise<ReadonlyArray<ThreadSummary>>;
@@ -17,9 +18,15 @@ function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function formatUpdatedAt(updatedAt: string): string {
+function formatUpdatedAt(updatedAt: string, locale: Locale): string {
   const timestamp = Date.parse(updatedAt);
-  return Number.isNaN(timestamp) ? updatedAt : new Date(timestamp).toLocaleString();
+  if (Number.isNaN(timestamp)) {
+    return updatedAt;
+  }
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(new Date(timestamp));
 }
 
 function clearThreadError(current: Readonly<Record<string, string>>, threadId: string): Record<string, string> {
@@ -29,17 +36,23 @@ function clearThreadError(current: Readonly<Record<string, string>>, threadId: s
 }
 
 function ArchivedThreadRow(props: ArchivedThreadRowProps): JSX.Element {
+  const { locale, t } = useI18n();
+
   return (
     <div className="archived-thread-row">
       <div className="archived-thread-main">
         <div className="archived-thread-title">{props.thread.title}</div>
-        <div className="archived-thread-meta">{props.thread.cwd ?? "未记录工作目录"}</div>
-        <div className="archived-thread-meta">最近更新：{formatUpdatedAt(props.thread.updatedAt)}</div>
+        <div className="archived-thread-meta">{props.thread.cwd ?? t("settings.archived.cwdMissing")}</div>
+        <div className="archived-thread-meta">
+          {t("settings.archived.updatedAt", {
+            time: formatUpdatedAt(props.thread.updatedAt, locale)
+          })}
+        </div>
         {props.errorMessage ? <div className="archived-thread-error">{props.errorMessage}</div> : null}
       </div>
       <div className="archived-thread-actions">
         <button type="button" className="settings-action-btn settings-action-btn-sm" onClick={() => void props.onUnarchive(props.thread.id)} disabled={props.pending}>
-          {props.pending ? "取消归档中..." : "取消归档"}
+          {props.pending ? t("settings.archived.unarchiving") : t("settings.archived.unarchiveAction")}
         </button>
       </div>
     </div>
@@ -88,23 +101,28 @@ function useArchivedThreadsState(props: ArchivedThreadsSettingsSectionProps) {
 }
 
 export function ArchivedThreadsSettingsSection(props: ArchivedThreadsSettingsSectionProps): JSX.Element {
+  const { t } = useI18n();
   const state = useArchivedThreadsState(props);
 
   return (
     <div className="settings-panel-group">
       <header className="settings-title-wrap">
-        <h1 className="settings-page-title">已归档线程</h1>
-        <p className="settings-subtitle">查看已归档会话，并在需要时恢复到主线程列表。</p>
+        <h1 className="settings-page-title">{t("settings.archived.title")}</h1>
+        <p className="settings-subtitle">{t("settings.archived.subtitle")}</p>
       </header>
       <section className="settings-card">
         <div className="settings-section-head">
-          <strong>归档列表</strong>
-          <button type="button" className="settings-head-action" onClick={() => void state.loadThreads()} disabled={state.loading}>刷新</button>
+          <strong>{t("settings.archived.listTitle")}</strong>
+          <button type="button" className="settings-head-action" onClick={() => void state.loadThreads()} disabled={state.loading}>
+            {t("settings.archived.refreshAction")}
+          </button>
         </div>
-        <p className="settings-note settings-note-pad">这里只展示 app-server 官方归档线程；本地 `codexData` 会话不在此列表中。</p>
+        <p className="settings-note settings-note-pad">{t("settings.archived.note")}</p>
         {state.errorMessage ? <p className="settings-status-note settings-status-note-error">{state.errorMessage}</p> : null}
-        {state.loading ? <div className="settings-empty">正在加载已归档线程...</div> : null}
-        {!state.loading && state.errorMessage === null && state.threads.length === 0 ? <div className="settings-empty">暂无已归档线程。</div> : null}
+        {state.loading ? <div className="settings-empty">{t("settings.archived.loading")}</div> : null}
+        {!state.loading && state.errorMessage === null && state.threads.length === 0 ? (
+          <div className="settings-empty">{t("settings.archived.empty")}</div>
+        ) : null}
         {!state.loading && state.errorMessage === null
           ? state.threads.map((thread) => (
               <ArchivedThreadRow key={thread.id} thread={thread} pending={state.pendingThreadIdsSet.has(thread.id)} errorMessage={state.rowErrors[thread.id] ?? null} onUnarchive={state.handleUnarchive} />

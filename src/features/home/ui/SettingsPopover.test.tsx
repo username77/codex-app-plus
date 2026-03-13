@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { createI18nWrapper } from "../../../test/createI18nWrapper";
 import { SettingsPopover } from "./SettingsPopover";
 
 describe("SettingsPopover", () => {
@@ -16,6 +17,7 @@ describe("SettingsPopover", () => {
         onLogin={vi.fn().mockResolvedValue(undefined)}
         onLogout={onLogout}
       />,
+      { wrapper: createI18nWrapper() }
     );
 
     expect(screen.getByText("● 已通过 ChatGPT 登录")).toBeInTheDocument();
@@ -37,6 +39,7 @@ describe("SettingsPopover", () => {
         onLogin={onLogin}
         onLogout={vi.fn().mockResolvedValue(undefined)}
       />,
+      { wrapper: createI18nWrapper() }
     );
 
     expect(screen.getByText("● 未登录")).toBeInTheDocument();
@@ -56,8 +59,27 @@ describe("SettingsPopover", () => {
         onLogin={vi.fn().mockResolvedValue(undefined)}
         onLogout={vi.fn().mockResolvedValue(undefined)}
       />,
+      { wrapper: createI18nWrapper() }
     );
 
-    expect(screen.getByRole("button", { name: "→ 正在登录…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "→ 正在登录..." })).toBeDisabled();
+  });
+
+  it("renders translated English labels", () => {
+    render(
+      <SettingsPopover
+        authStatus="needs_login"
+        authMode={null}
+        authBusy={false}
+        authLoginPending={false}
+        onOpenSettings={vi.fn()}
+        onLogin={vi.fn().mockResolvedValue(undefined)}
+        onLogout={vi.fn().mockResolvedValue(undefined)}
+      />,
+      { wrapper: createI18nWrapper("en-US") }
+    );
+
+    expect(screen.getByText("● Signed out")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "→ Sign in with ChatGPT" })).toBeInTheDocument();
   });
 });
