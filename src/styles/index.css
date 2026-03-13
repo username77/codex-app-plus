@@ -10,9 +10,6 @@
 @import "./replica/replica-composer-context-window.css";
 @import "./replica/replica-composer-extras.css";
 @import "./replica/replica-terminal.css";
-@import "./replica/replica-settings.css";
-@import "./replica/replica-settings-extra.css";
-@import "./replica/replica-settings-layout.css";
 @import "./replica/replica-conversation.css";
 @import "./replica/replica-conversation-home.css";
 @import "./replica/replica-conversation-home-transcript.css";
@@ -35,6 +32,37 @@ body {
 
 #root {
   height: 100vh;
+}
+
+.settings-loading-layout {
+  min-height: 100vh;
+  display: flex;
+  background: #f6f6f6;
+}
+
+.settings-loading-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.settings-loading-panel-group {
+  width: min(720px, 100%);
+}
+
+.settings-loading-card {
+  border: 1px solid #d8d8d8;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+}
+
+.settings-loading-empty {
+  padding: 40px 24px;
+  text-align: center;
+  color: #5f5f5f;
 }
 
 button,

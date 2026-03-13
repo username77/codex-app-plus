@@ -1,44 +1,30 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ComposerPermissionLevel } from "../../app/conversation/composerPermission";
 import type { ComposerModelOption, ComposerSelection } from "../../app/conversation/composerPreferences";
-import type { ThreadDetailLevel } from "../../app/preferences/useAppPreferences";
 import type { SendTurnOptions } from "../../app/conversation/useWorkspaceConversation";
+import type { ThreadDetailLevel } from "../../app/preferences/useAppPreferences";
 import type { WorkspaceRoot } from "../../app/workspace/useWorkspaceRoots";
 import type { EmbeddedTerminalShell, HostBridge, WorkspaceOpener } from "../../bridge/types";
 import type {
   AccountSummary,
   AuthStatus,
   ConnectionStatus,
-  UiBanner,
   ServerRequestResolution,
   ThreadSummary,
-  TimelineEntry
+  TimelineEntry,
+  UiBanner,
 } from "../../domain/types";
 import type { ComposerEnterBehavior, FollowUpMode, QueuedFollowUp } from "../../domain/timeline";
 import { TerminalPanel } from "../terminal/TerminalPanel";
-import { HomeConversationCanvas } from "./HomeConversationCanvas";
-import { HomeComposer } from "./HomeComposer";
-import { HomePlanRequestComposer } from "./HomePlanRequestComposer";
-import { HomeTurnPlanDrawer } from "./HomeTurnPlanDrawer";
-import type { TurnPlanModel } from "./homeTurnPlanModel";
-import { HomeMainToolbar } from "./HomeMainToolbar";
-import { HomeSidebar } from "./HomeSidebar";
-import { removeTurnPlanEntries, selectLatestTurnPlan } from "./homeTurnPlanModel";
-import { createComposerCommandBridge } from "./composerCommandBridge";
+import { WorkspaceDiffSidebarHost } from "./WorkspaceDiffSidebarHost";
 import type { WorkspaceGitController } from "./git/types";
 import { useWorkspaceGit } from "./git/useWorkspaceGit";
-import { OfficialChevronRightIcon, OfficialSidebarToggleIcon } from "./officialIcons";
 import { extractConnectionRetryInfo } from "./homeConnectionRetry";
-import { selectLatestPlanModePrompt } from "./planModePrompt";
-import { WorkspaceDiffSidebarHost } from "./WorkspaceDiffSidebarHost";
+import { HomeSidebar } from "./HomeSidebar";
+import { OfficialSidebarToggleIcon } from "./officialIcons";
+import { HomeViewMainContent } from "./HomeViewMainContent";
 
-interface PlanPromptTurnOptions {
-  readonly text: string;
-  readonly collaborationPreset: "default" | "plan";
-  readonly collaborationModeOverridePreset?: "default" | "plan" | null;
-}
-
-interface HomeViewProps {
+export interface HomeViewProps {
   readonly hostBridge: HostBridge;
   readonly busy: boolean;
   readonly inputText: string;
@@ -104,219 +90,6 @@ interface HomeViewProps {
   readonly onClearQueuedFollowUps: () => void;
 }
 
-interface MainContentProps {
-  readonly busy: boolean;
-  readonly hostBridge: HostBridge;
-  readonly gitController: WorkspaceGitController;
-  readonly inputText: string;
-  readonly activities: ReadonlyArray<TimelineEntry>;
-  readonly banners: ReadonlyArray<UiBanner>;
-  readonly account: AccountSummary | null;
-  readonly rateLimitSummary: string | null;
-  readonly queuedFollowUps: ReadonlyArray<QueuedFollowUp>;
-  readonly models: ReadonlyArray<ComposerModelOption>;
-  readonly defaultModel: string | null;
-  readonly defaultEffort: ComposerSelection["effort"];
-  readonly defaultServiceTier?: ComposerSelection["serviceTier"];
-  readonly workspaceOpener: WorkspaceOpener;
-  readonly selectedRootName: string;
-  readonly selectedRootPath: string | null;
-  readonly selectedThread: ThreadSummary | null;
-  readonly activeTurnId: string | null;
-  readonly threadDetailLevel: ThreadDetailLevel;
-  readonly isResponding: boolean;
-  readonly interruptPending: boolean;
-  readonly draftActive: boolean;
-  readonly selectedConversationLoading: boolean;
-  readonly terminalOpen: boolean;
-  readonly diffOpen: boolean;
-  readonly followUpQueueMode: FollowUpMode;
-  readonly composerEnterBehavior: ComposerEnterBehavior;
-  readonly composerPermissionLevel: ComposerPermissionLevel;
-  readonly connectionStatus: ConnectionStatus;
-  readonly connectionRetryInfo: ReturnType<typeof extractConnectionRetryInfo>["retryInfo"];
-  readonly fatalError: string | null;
-  readonly retryScheduledAt: number | null;
-  readonly onSelectWorkspaceOpener: (opener: WorkspaceOpener) => void;
-  readonly onInputChange: (text: string) => void;
-  readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
-  readonly onPersistComposerSelection: (selection: ComposerSelection) => Promise<void>;
-  readonly multiAgentAvailable?: boolean;
-  readonly multiAgentEnabled?: boolean;
-  readonly onSetMultiAgentEnabled?: (enabled: boolean) => Promise<void>;
-  readonly onSelectComposerPermissionLevel: (level: ComposerPermissionLevel) => void;
-  readonly onUpdateThreadBranch: (branch: string) => Promise<void>;
-  readonly onInterruptTurn: () => Promise<void>;
-  readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
-  readonly onRemoveQueuedFollowUp: (followUpId: string) => void;
-  readonly onClearQueuedFollowUps: () => void;
-  readonly onCreateThread: () => Promise<void>;
-  readonly onToggleDiff: () => void;
-  readonly onToggleTerminal: () => void;
-  readonly onRetryConnection: () => Promise<void>;
-}
-
-function MainContent(props: MainContentProps): JSX.Element {
-  const composerCommandBridge = useMemo(() => createComposerCommandBridge(props.hostBridge), [props.hostBridge]);
-  const renderableActivities = useMemo(() => removeTurnPlanEntries(props.activities), [props.activities]);
-  const currentTurnPlan = useMemo(() => selectLatestTurnPlan(props.activities), [props.activities]);
-  const latestPlanPrompt = useMemo(() => selectLatestPlanModePrompt(props.activities), [props.activities]);
-  const [planDrawerCollapsed, setPlanDrawerCollapsed] = useState(true);
-  const [dismissedPlanPromptId, setDismissedPlanPromptId] = useState<string | null>(null);
-  const planSnapshotKeyRef = useRef<string | null>(null);
-  const conversationActive = props.draftActive || props.selectedConversationLoading || props.selectedThread !== null || props.activities.length > 0;
-  const placeholder = props.draftActive
-    ? { title: "Ready to start a new thread", body: "Send the first message to switch into the full official timeline." }
-    : props.selectedConversationLoading
-      ? { title: "Loading thread", body: "Historical turns and items are being restored." }
-      : props.selectedThread !== null
-        ? { title: "Thread opened", body: "New plans, tools, approvals, realtime updates, and file changes appear here." }
-        : null;
-
-  useEffect(() => {
-    if (currentTurnPlan === null) {
-      setPlanDrawerCollapsed(true);
-      planSnapshotKeyRef.current = null;
-      return;
-    }
-    const nextKey = createTurnPlanChangeKey(currentTurnPlan);
-    if (nextKey !== planSnapshotKeyRef.current) {
-      setPlanDrawerCollapsed(true);
-      planSnapshotKeyRef.current = nextKey;
-    }
-  }, [currentTurnPlan]);
-
-  const showPlanPrompt = latestPlanPrompt !== null
-    && !props.isResponding
-    && dismissedPlanPromptId !== latestPlanPrompt.entryId;
-
-  const sendPlanPromptTurn = useCallback(async (options: PlanPromptTurnOptions) => {
-    setDismissedPlanPromptId(latestPlanPrompt?.entryId ?? null);
-    await props.onSendTurn({
-      text: options.text,
-      attachments: [],
-      selection: {
-        model: props.defaultModel,
-        effort: props.defaultEffort,
-        serviceTier: props.defaultServiceTier ?? null,
-      },
-      permissionLevel: props.composerPermissionLevel,
-      collaborationPreset: options.collaborationPreset,
-      collaborationModeOverridePreset: options.collaborationModeOverridePreset,
-    });
-  }, [latestPlanPrompt, props]);
-
-  const dismissPlanPrompt = useCallback(() => {
-    setDismissedPlanPromptId(latestPlanPrompt?.entryId ?? null);
-  }, [latestPlanPrompt]);
-
-
-  return (
-    <div className="replica-main">
-      <HomeMainToolbar
-        hostBridge={props.hostBridge}
-        conversationActive={conversationActive}
-        gitController={props.gitController}
-        workspaceOpener={props.workspaceOpener}
-        selectedRootName={props.selectedRootName}
-        selectedRootPath={props.selectedRootPath}
-        selectedThreadTitle={props.selectedThread?.title ?? null}
-        terminalOpen={props.terminalOpen}
-        diffOpen={props.diffOpen}
-        onSelectWorkspaceOpener={props.onSelectWorkspaceOpener}
-        onToggleDiff={props.onToggleDiff}
-        onToggleTerminal={props.onToggleTerminal}
-      />
-      {conversationActive ? (
-        <HomeConversationCanvas
-          activities={renderableActivities}
-          selectedThread={props.selectedThread}
-          activeTurnId={props.activeTurnId}
-          threadDetailLevel={props.threadDetailLevel}
-          placeholder={placeholder}
-          onResolveServerRequest={props.onResolveServerRequest}
-          connectionStatus={props.connectionStatus}
-          connectionRetryInfo={props.connectionRetryInfo}
-          fatalError={props.fatalError}
-          retryScheduledAt={props.retryScheduledAt}
-          busy={props.busy}
-          onRetryConnection={props.onRetryConnection}
-        />
-      ) : (
-        <EmptyCanvas selectedRootName={props.selectedRootName} selectedRootPath={props.selectedRootPath} />
-      )}
-      <HomeTurnPlanDrawer
-        plan={currentTurnPlan}
-        collapsed={planDrawerCollapsed}
-        onToggle={() => setPlanDrawerCollapsed((value) => !value)}
-      />
-      {showPlanPrompt ? (
-        <HomePlanRequestComposer
-          busy={props.busy}
-          onDismiss={dismissPlanPrompt}
-          onImplement={() => sendPlanPromptTurn({ text: "Implement the plan.", collaborationPreset: "default", collaborationModeOverridePreset: "default" })}
-          onRefine={(notes) => sendPlanPromptTurn({ text: notes, collaborationPreset: "plan" })}
-        />
-      ) : (
-        <HomeComposer
-          busy={props.busy}
-          inputText={props.inputText}
-          models={props.models}
-          defaultModel={props.defaultModel}
-          defaultEffort={props.defaultEffort}
-          defaultServiceTier={props.defaultServiceTier ?? null}
-          selectedRootPath={props.selectedRootPath}
-          queuedFollowUps={props.queuedFollowUps}
-          followUpQueueMode={props.followUpQueueMode}
-          composerEnterBehavior={props.composerEnterBehavior}
-          permissionLevel={props.composerPermissionLevel}
-          gitController={props.gitController}
-          selectedThreadId={props.selectedThread?.id ?? null}
-          selectedThreadBranch={props.selectedThread?.branch ?? null}
-          isResponding={props.isResponding}
-          interruptPending={props.interruptPending}
-          composerCommandBridge={composerCommandBridge}
-          onInputChange={props.onInputChange}
-          onCreateThread={props.onCreateThread}
-          onSendTurn={props.onSendTurn}
-          onPersistComposerSelection={props.onPersistComposerSelection}
-          multiAgentAvailable={props.multiAgentAvailable ?? false}
-          multiAgentEnabled={props.multiAgentEnabled ?? false}
-          onSetMultiAgentEnabled={props.onSetMultiAgentEnabled}
-          onSelectPermissionLevel={props.onSelectComposerPermissionLevel}
-          onToggleDiff={props.onToggleDiff}
-          onUpdateThreadBranch={props.onUpdateThreadBranch}
-          onInterruptTurn={props.onInterruptTurn}
-          onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
-          onClearQueuedFollowUps={props.onClearQueuedFollowUps}
-        />
-      )}
-    </div>
-  );
-}
-
-function createTurnPlanChangeKey(plan: TurnPlanModel): string {
-  return `${plan.entry.id}:${plan.totalSteps}:${plan.completedSteps}`;
-}
-
-function EmptyCanvas(props: { readonly selectedRootName: string; readonly selectedRootPath: string | null }): JSX.Element {
-  const selectorClassName = props.selectedRootPath === null ? "workspace-selector workspace-selector-placeholder" : "workspace-selector";
-  const title = props.selectedRootPath === null ? "Get started" : "Current workspace";
-
-  return (
-    <main className="main-canvas">
-      <div className="empty-state" aria-label="濞嗐垼绻嬮悾宀勬桨">
-        
-        <h2 className="empty-title">{title}</h2>
-        <button type="button" className={selectorClassName}>
-          <span className="workspace-selector-label">{props.selectedRootName}</span>
-          <OfficialChevronRightIcon className="workspace-selector-caret" />
-        </button>
-      </div>
-    </main>
-  );
-}
-
 function createReplicaAppClassName(diffSidebarOpen: boolean): string {
   return diffSidebarOpen ? "replica-app replica-app-with-diff-sidebar" : "replica-app";
 }
@@ -333,7 +106,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
   });
   const { activities: filteredActivities, retryInfo } = useMemo(
     () => extractConnectionRetryInfo(props.activities),
-    [props.activities]
+    [props.activities],
   );
 
   useEffect(() => {
@@ -347,81 +120,16 @@ export function HomeView(props: HomeViewProps): JSX.Element {
 
   return (
     <div className={createReplicaAppClassName(canShowDiffSidebar)}>
-      <HomeSidebar hostBridge={props.hostBridge}
-        roots={props.roots}
-        codexSessions={props.threads}
-        codexSessionsLoading={props.busy && props.threads.length === 0}
-        codexSessionsError={null}
-        selectedRootId={props.selectedRootId}
-        selectedThreadId={props.selectedThreadId}
-        authStatus={props.authStatus}
-        authMode={props.authMode}
-        authBusy={props.authBusy}
-        authLoginPending={props.authLoginPending}
-        settingsMenuOpen={props.settingsMenuOpen}
+      <HomeSidebarPanel
         collapsed={sidebarCollapsed}
-        onToggleSettingsMenu={props.onToggleSettingsMenu}
-        onDismissSettingsMenu={props.onDismissSettingsMenu}
-        onOpenSettings={props.onOpenSettings}
-        onLogin={props.onLogin}
-        onLogout={props.onLogout}
-        onSelectRoot={props.onSelectRoot}
-        onSelectThread={props.onSelectThread}
-        onCreateThread={props.onCreateThread}
-        onArchiveThread={props.onArchiveThread ?? (async () => undefined)}
-        onAddRoot={props.onAddRoot}
-        onRemoveRoot={props.onRemoveRoot}
-      />
-      <MainContent
-        busy={props.busy}
-        hostBridge={props.hostBridge}
         gitController={gitController}
-        inputText={props.inputText}
-        activities={filteredActivities}
-        banners={props.banners}
-        account={props.account}
-        rateLimitSummary={props.rateLimitSummary}
-        queuedFollowUps={props.queuedFollowUps}
-        models={props.models}
-        defaultModel={props.defaultModel}
-        defaultEffort={props.defaultEffort}
-        defaultServiceTier={props.defaultServiceTier ?? null}
-        workspaceOpener={props.workspaceOpener}
-        selectedRootName={props.selectedRootName}
-        selectedRootPath={props.selectedRootPath}
-        selectedThread={props.selectedThread}
-        activeTurnId={props.activeTurnId}
-        threadDetailLevel={props.threadDetailLevel}
-        isResponding={props.isResponding}
-        interruptPending={props.interruptPending}
-        draftActive={props.draftActive}
-        selectedConversationLoading={props.selectedConversationLoading}
         terminalOpen={terminalOpen}
         diffOpen={canShowDiffSidebar}
-        followUpQueueMode={props.followUpQueueMode}
-        composerEnterBehavior={props.composerEnterBehavior}
-        composerPermissionLevel={props.composerPermissionLevel}
-        connectionStatus={props.connectionStatus}
-        connectionRetryInfo={retryInfo}
-        fatalError={props.fatalError}
-        retryScheduledAt={props.retryScheduledAt}
-        onSelectWorkspaceOpener={props.onSelectWorkspaceOpener}
-        onInputChange={props.onInputChange}
-        onSendTurn={props.onSendTurn}
-        onPersistComposerSelection={props.onPersistComposerSelection}
-        multiAgentAvailable={props.multiAgentAvailable ?? false}
-        multiAgentEnabled={props.multiAgentEnabled ?? false}
-        onSetMultiAgentEnabled={props.onSetMultiAgentEnabled}
-        onSelectComposerPermissionLevel={props.onSelectComposerPermissionLevel}
-        onUpdateThreadBranch={props.onUpdateThreadBranch}
-        onInterruptTurn={props.onInterruptTurn}
-        onResolveServerRequest={props.onResolveServerRequest}
-        onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
-        onClearQueuedFollowUps={props.onClearQueuedFollowUps}
-        onCreateThread={props.onCreateThread}
+        retryInfo={retryInfo}
+        filteredActivities={filteredActivities}
         onToggleDiff={toggleDiffSidebar}
         onToggleTerminal={toggleTerminal}
-        onRetryConnection={props.onRetryConnection}
+        {...props}
       />
       {canShowDiffSidebar ? (
         <WorkspaceDiffSidebarHost
@@ -441,14 +149,120 @@ export function HomeView(props: HomeViewProps): JSX.Element {
           onClose={() => setTerminalOpen(false)}
         />
       ) : null}
-      <SidebarCollapseButton collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((value) => !value)} />
+      <SidebarCollapseButton
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((value) => !value)}
+      />
     </div>
   );
 }
 
-function SidebarCollapseButton(props: { readonly collapsed: boolean; readonly onToggle: () => void }): JSX.Element {
+function HomeSidebarPanel(props: HomeViewProps & {
+  readonly collapsed: boolean;
+  readonly gitController: WorkspaceGitController;
+  readonly terminalOpen: boolean;
+  readonly diffOpen: boolean;
+  readonly retryInfo: ReturnType<typeof extractConnectionRetryInfo>["retryInfo"];
+  readonly filteredActivities: ReadonlyArray<TimelineEntry>;
+  readonly onToggleDiff: () => void;
+  readonly onToggleTerminal: () => void;
+}): JSX.Element {
+  const archiveThread = props.onArchiveThread ?? (async () => undefined);
+
   return (
-    <button type="button" className="sidebar-collapse-toggle" onClick={props.onToggle} aria-label={props.collapsed ? "展开侧边栏" : "折叠侧边栏"}>
+    <>
+      <HomeSidebar
+        hostBridge={props.hostBridge}
+        roots={props.roots}
+        codexSessions={props.threads}
+        codexSessionsLoading={props.busy && props.threads.length === 0}
+        codexSessionsError={null}
+        selectedRootId={props.selectedRootId}
+        selectedThreadId={props.selectedThreadId}
+        authStatus={props.authStatus}
+        authMode={props.authMode}
+        authBusy={props.authBusy}
+        authLoginPending={props.authLoginPending}
+        settingsMenuOpen={props.settingsMenuOpen}
+        collapsed={props.collapsed}
+        onToggleSettingsMenu={props.onToggleSettingsMenu}
+        onDismissSettingsMenu={props.onDismissSettingsMenu}
+        onOpenSettings={props.onOpenSettings}
+        onLogin={props.onLogin}
+        onLogout={props.onLogout}
+        onSelectRoot={props.onSelectRoot}
+        onSelectThread={props.onSelectThread}
+        onCreateThread={props.onCreateThread}
+        onArchiveThread={archiveThread}
+        onAddRoot={props.onAddRoot}
+        onRemoveRoot={props.onRemoveRoot}
+      />
+      <HomeViewMainContent
+        busy={props.busy}
+        hostBridge={props.hostBridge}
+        gitController={props.gitController}
+        inputText={props.inputText}
+        activities={props.filteredActivities}
+        banners={props.banners}
+        account={props.account}
+        rateLimitSummary={props.rateLimitSummary}
+        queuedFollowUps={props.queuedFollowUps}
+        models={props.models}
+        defaultModel={props.defaultModel}
+        defaultEffort={props.defaultEffort}
+        defaultServiceTier={props.defaultServiceTier ?? null}
+        workspaceOpener={props.workspaceOpener}
+        selectedRootName={props.selectedRootName}
+        selectedRootPath={props.selectedRootPath}
+        selectedThread={props.selectedThread}
+        activeTurnId={props.activeTurnId}
+        threadDetailLevel={props.threadDetailLevel}
+        isResponding={props.isResponding}
+        interruptPending={props.interruptPending}
+        draftActive={props.draftActive}
+        selectedConversationLoading={props.selectedConversationLoading}
+        terminalOpen={props.terminalOpen}
+        diffOpen={props.diffOpen}
+        followUpQueueMode={props.followUpQueueMode}
+        composerEnterBehavior={props.composerEnterBehavior}
+        composerPermissionLevel={props.composerPermissionLevel}
+        connectionStatus={props.connectionStatus}
+        connectionRetryInfo={props.retryInfo}
+        fatalError={props.fatalError}
+        retryScheduledAt={props.retryScheduledAt}
+        onSelectWorkspaceOpener={props.onSelectWorkspaceOpener}
+        onInputChange={props.onInputChange}
+        onSendTurn={props.onSendTurn}
+        onPersistComposerSelection={props.onPersistComposerSelection}
+        multiAgentAvailable={props.multiAgentAvailable ?? false}
+        multiAgentEnabled={props.multiAgentEnabled ?? false}
+        onSetMultiAgentEnabled={props.onSetMultiAgentEnabled}
+        onSelectComposerPermissionLevel={props.onSelectComposerPermissionLevel}
+        onUpdateThreadBranch={props.onUpdateThreadBranch}
+        onInterruptTurn={props.onInterruptTurn}
+        onResolveServerRequest={props.onResolveServerRequest}
+        onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
+        onClearQueuedFollowUps={props.onClearQueuedFollowUps}
+        onCreateThread={props.onCreateThread}
+        onToggleDiff={props.onToggleDiff}
+        onToggleTerminal={props.onToggleTerminal}
+        onRetryConnection={props.onRetryConnection}
+      />
+    </>
+  );
+}
+
+function SidebarCollapseButton(props: {
+  readonly collapsed: boolean;
+  readonly onToggle: () => void;
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      className="sidebar-collapse-toggle"
+      onClick={props.onToggle}
+      aria-label={props.collapsed ? "展开侧边栏" : "折叠侧边栏"}
+    >
       <OfficialSidebarToggleIcon className="sidebar-collapse-icon" />
     </button>
   );

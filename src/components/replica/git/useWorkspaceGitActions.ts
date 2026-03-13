@@ -1,4 +1,4 @@
-import { useCallback, type Dispatch, type SetStateAction } from "react";
+import { useCallback } from "react";
 import type { HostBridge } from "../../../bridge/types";
 import type { GitNotice } from "./types";
 import { formatActionError, normalizePaths } from "./workspaceGitHelpers";
@@ -9,12 +9,12 @@ interface UseWorkspaceGitActionsOptions {
   readonly commitMessage: string;
   readonly selectedBranch: string;
   readonly newBranchName: string;
-  readonly setCommitMessage: Dispatch<SetStateAction<string>>;
-  readonly setSelectedBranch: Dispatch<SetStateAction<string>>;
-  readonly setNewBranchName: Dispatch<SetStateAction<string>>;
-  readonly setPendingAction: Dispatch<SetStateAction<string | null>>;
-  readonly setError: Dispatch<SetStateAction<string | null>>;
-  readonly setNotice: Dispatch<SetStateAction<GitNotice | null>>;
+  readonly setCommitMessage: (value: string) => void;
+  readonly setSelectedBranch: (value: string) => void;
+  readonly setNewBranchName: (value: string) => void;
+  readonly setPendingAction: (value: string | null) => void;
+  readonly setError: (value: string | null) => void;
+  readonly setNotice: (value: GitNotice | null) => void;
   readonly refresh: () => Promise<void>;
   readonly invalidateBranchRefs: () => void;
   readonly invalidateRemoteUrl: () => void;

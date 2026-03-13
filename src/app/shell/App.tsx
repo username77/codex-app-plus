@@ -37,11 +37,11 @@ async function requestWorkspaceFolder(): Promise<{ readonly name: string; readon
 
 function SettingsLoadingFallback(): JSX.Element {
   return (
-    <div className="settings-layout">
-      <main className="settings-main">
-        <div className="settings-panel-group">
-          <section className="settings-card">
-            <div className="settings-empty">Loading settings…</div>
+    <div className="settings-loading-layout">
+      <main className="settings-loading-main">
+        <div className="settings-loading-panel-group">
+          <section className="settings-loading-card">
+            <div className="settings-loading-empty">Loading settings…</div>
           </section>
         </div>
       </main>

@@ -15,6 +15,9 @@ import type { ConfigBatchWriteParams } from "../../protocol/generated/v2/ConfigB
 import type { ConfigReadResponse } from "../../protocol/generated/v2/ConfigReadResponse";
 import type { ConfigValueWriteParams } from "../../protocol/generated/v2/ConfigValueWriteParams";
 import type { WindowsSandboxSetupMode } from "../../protocol/generated/v2/WindowsSandboxSetupMode";
+import "../../styles/replica/replica-settings.css";
+import "../../styles/replica/replica-settings-extra.css";
+import "../../styles/replica/replica-settings-layout.css";
 import { McpSettingsPanel } from "./mcp/McpSettingsPanel";
 import { ConfigSettingsSection } from "./settings/ConfigSettingsSection";
 import { GeneralSettingsSection } from "./settings/GeneralSettingsSection";
