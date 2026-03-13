@@ -1,0 +1,166 @@
+name: Release Installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_mode:
+        description: 'tag 生成方式：auto 使用当前版本生成 v<version>，manual 使用 tag_name'
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - manual
+      tag_name:
+        description: '手动指定的 tag 名称，仅在 tag_mode=manual 时生效'
+        required: false
+        type: string
+      release_notes:
+        description: '可选更新内容，将写入 GitHub Release 描述'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Resolve release metadata
+        id: meta
+        shell: pwsh
+        env:
+          INPUT_TAG_MODE: ${{ github.event.inputs.tag_mode }}
+          INPUT_TAG_NAME: ${{ github.event.inputs.tag_name }}
+          INPUT_RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
+        run: |
+          $package = Get-Content package.json -Raw | ConvertFrom-Json
+          $tauriConfig = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
+          $cargoToml = Get-Content src-tauri/Cargo.toml -Raw
+          $cargoVersionMatch = [regex]::Match($cargoToml, '(?m)^version\s*=\s*"([^"]+)"')
+
+          if (-not $cargoVersionMatch.Success) {
+            throw "未能从 src-tauri/Cargo.toml 解析版本号。"
+          }
+
+          $versions = @(
+            @{ Name = "package.json"; Value = [string]$package.version },
+            @{ Name = "src-tauri/tauri.conf.json"; Value = [string]$tauriConfig.version },
+            @{ Name = "src-tauri/Cargo.toml"; Value = [string]$cargoVersionMatch.Groups[1].Value }
+          )
+          $distinctVersions = $versions.Value | Sort-Object -Unique
+
+          if ($distinctVersions.Count -ne 1) {
+            $details = $versions | ForEach-Object { "$($_.Name)=$($_.Value)" }
+            throw "版本号不一致：$($details -join ', ')"
+          }
+
+          $version = $distinctVersions[0]
+          $tagMode = if ([string]::IsNullOrWhiteSpace($env:INPUT_TAG_MODE)) { "auto" } else { $env:INPUT_TAG_MODE.Trim() }
+          $manualTag = if ($null -eq $env:INPUT_TAG_NAME) { "" } else { $env:INPUT_TAG_NAME.Trim() }
+
+          switch ($tagMode) {
+            "auto" {
+              $tag = "v$version"
+            }
+            "manual" {
+              if ([string]::IsNullOrWhiteSpace($manualTag)) {
+                throw "tag_mode=manual 时必须提供 tag_name。"
+              }
+
+              $tag = $manualTag
+            }
+            default {
+              throw "不支持的 tag_mode：$tagMode"
+            }
+          }
+
+          git check-ref-format "refs/tags/$tag"
+          if ($LASTEXITCODE -ne 0) {
+            throw "非法 tag 名称：$tag"
+          }
+
+          git fetch --force --tags origin
+          if ($LASTEXITCODE -ne 0) {
+            throw "拉取远端 tag 失败。"
+          }
+
+          git show-ref --verify --quiet "refs/tags/$tag"
+          if ($LASTEXITCODE -eq 0) {
+            $tagCommit = (git rev-list -n 1 $tag).Trim()
+            if ([string]::IsNullOrWhiteSpace($tagCommit)) {
+              throw "无法解析现有 tag 指向的 commit：$tag"
+            }
+
+            if ($tagCommit -ne $env:GITHUB_SHA) {
+              throw "tag 已存在且指向其他 commit：$tag -> $tagCommit"
+            }
+          }
+
+          $notesFile = Join-Path $env:RUNNER_TEMP "release-notes.md"
+          $notes = $env:INPUT_RELEASE_NOTES
+
+          if ([string]::IsNullOrWhiteSpace($notes)) {
+            @(
+              "## Codex App Plus $tag",
+              "",
+              "- Version: $version",
+              "- Commit: $env:GITHUB_SHA"
+            ) | Set-Content $notesFile -Encoding utf8
+          }
+          else {
+            $notes | Set-Content $notesFile -Encoding utf8
+          }
+
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "notes_file=$notesFile" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build installer
+        env:
+          CI: true
+        run: pnpm run build:tauri
+
+      - name: Verify installer output
+        shell: pwsh
+        run: |
+          $assets = Get-ChildItem src-tauri/target/release/bundle/nsis -File -Filter "*.exe"
+          if ($assets.Count -eq 0) {
+            throw "未找到 NSIS 安装包输出：src-tauri/target/release/bundle/nsis/*.exe"
+          }
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Codex App Plus ${{ steps.meta.outputs.tag }}
+          body_path: ${{ steps.meta.outputs.notes_file }}
+          files: |
+            src-tauri/target/release/bundle/nsis/*.exe
+          fail_on_unmatched_files: true
