@@ -26,7 +26,11 @@ function renderSection(locale: Locale = "zh-CN"): void {
           setComposerEnterBehavior: (composerEnterBehavior) =>
             setPreferences((current) => ({ ...current, composerEnterBehavior })),
           setComposerPermissionLevel: (composerPermissionLevel) =>
-            setPreferences((current) => ({ ...current, composerPermissionLevel }))
+            setPreferences((current) => ({ ...current, composerPermissionLevel })),
+          setGitBranchPrefix: (gitBranchPrefix) =>
+            setPreferences((current) => ({ ...current, gitBranchPrefix })),
+          setGitPushForceWithLease: (gitPushForceWithLease) =>
+            setPreferences((current) => ({ ...current, gitPushForceWithLease }))
         }}
       />
     );

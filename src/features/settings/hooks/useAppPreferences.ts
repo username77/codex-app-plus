@@ -19,6 +19,8 @@ export interface AppPreferences {
   readonly followUpQueueMode: FollowUpMode;
   readonly composerEnterBehavior: ComposerEnterBehavior;
   readonly composerPermissionLevel: ComposerPermissionLevel;
+  readonly gitBranchPrefix: string;
+  readonly gitPushForceWithLease: boolean;
 }
 
 export interface AppPreferencesController extends AppPreferences {
@@ -30,9 +32,12 @@ export interface AppPreferencesController extends AppPreferences {
   setFollowUpQueueMode: (mode: FollowUpMode) => void;
   setComposerEnterBehavior: (behavior: ComposerEnterBehavior) => void;
   setComposerPermissionLevel: (level: ComposerPermissionLevel) => void;
+  setGitBranchPrefix: (prefix: string) => void;
+  setGitPushForceWithLease: (enabled: boolean) => void;
 }
 
 export const APP_PREFERENCES_STORAGE_KEY = "codex-app-plus.app-preferences";
+export const DEFAULT_GIT_BRANCH_PREFIX = "codex/";
 
 const AGENT_ENVIRONMENTS: ReadonlyArray<AgentEnvironment> = ["windowsNative", "wsl"];
 
@@ -64,11 +69,20 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   threadDetailLevel: "commands",
   followUpQueueMode: "queue",
   composerEnterBehavior: "enter",
-  composerPermissionLevel: DEFAULT_COMPOSER_PERMISSION_LEVEL
+  composerPermissionLevel: DEFAULT_COMPOSER_PERMISSION_LEVEL,
+  gitBranchPrefix: DEFAULT_GIT_BRANCH_PREFIX,
+  gitPushForceWithLease: false
 };
 
 function isPreferenceValue<T extends string>(allowedValues: ReadonlyArray<T>, value: unknown): value is T {
   return typeof value === "string" && allowedValues.includes(value as T);
+}
+
+function sanitizeGitBranchPrefix(value: unknown): string {
+  if (typeof value !== "string") {
+    return DEFAULT_APP_PREFERENCES.gitBranchPrefix;
+  }
+  return value.trim();
 }
 
 function sanitizeStoredPreferences(value: unknown): AppPreferences {
@@ -100,11 +114,15 @@ function sanitizeStoredPreferences(value: unknown): AppPreferences {
       : DEFAULT_APP_PREFERENCES.composerEnterBehavior,
     composerPermissionLevel: isComposerPermissionLevel(record.composerPermissionLevel)
       ? record.composerPermissionLevel
-      : DEFAULT_APP_PREFERENCES.composerPermissionLevel
+      : DEFAULT_APP_PREFERENCES.composerPermissionLevel,
+    gitBranchPrefix: sanitizeGitBranchPrefix(record.gitBranchPrefix),
+    gitPushForceWithLease: typeof record.gitPushForceWithLease === "boolean"
+      ? record.gitPushForceWithLease
+      : DEFAULT_APP_PREFERENCES.gitPushForceWithLease
   };
 }
 
-function readStoredPreferences(rawValue: string | null): AppPreferences {
+function parseStoredPreferences(rawValue: string | null): AppPreferences {
   if (rawValue === null) {
     return DEFAULT_APP_PREFERENCES;
   }
@@ -113,6 +131,10 @@ function readStoredPreferences(rawValue: string | null): AppPreferences {
   } catch {
     return DEFAULT_APP_PREFERENCES;
   }
+}
+
+export function readStoredAppPreferences(): AppPreferences {
+  return parseStoredPreferences(window.localStorage.getItem(APP_PREFERENCES_STORAGE_KEY));
 }
 
 function updatePreferences(
@@ -124,7 +146,7 @@ function updatePreferences(
 
 export function useAppPreferences(): AppPreferencesController {
   const [preferences, setPreferences] = useState<AppPreferences>(() =>
-    readStoredPreferences(window.localStorage.getItem(APP_PREFERENCES_STORAGE_KEY))
+    readStoredAppPreferences()
   );
 
   useEffect(() => {
@@ -163,6 +185,16 @@ export function useAppPreferences(): AppPreferencesController {
     setPreferences((current) => updatePreferences(current, { composerPermissionLevel }));
   }, []);
 
+  const setGitBranchPrefix = useCallback((gitBranchPrefix: string) => {
+    setPreferences((current) => updatePreferences(current, {
+      gitBranchPrefix: sanitizeGitBranchPrefix(gitBranchPrefix)
+    }));
+  }, []);
+
+  const setGitPushForceWithLease = useCallback((gitPushForceWithLease: boolean) => {
+    setPreferences((current) => updatePreferences(current, { gitPushForceWithLease }));
+  }, []);
+
   return useMemo(
     () => ({
       ...preferences,
@@ -173,7 +205,9 @@ export function useAppPreferences(): AppPreferencesController {
       setThreadDetailLevel,
       setFollowUpQueueMode,
       setComposerEnterBehavior,
-      setComposerPermissionLevel
+      setComposerPermissionLevel,
+      setGitBranchPrefix,
+      setGitPushForceWithLease
     }),
     [
       preferences,
@@ -182,6 +216,8 @@ export function useAppPreferences(): AppPreferencesController {
       setComposerPermissionLevel,
       setEmbeddedTerminalShell,
       setFollowUpQueueMode,
+      setGitBranchPrefix,
+      setGitPushForceWithLease,
       setThreadDetailLevel,
       setUiLanguage,
       setWorkspaceOpener

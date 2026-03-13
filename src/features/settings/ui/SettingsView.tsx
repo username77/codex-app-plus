@@ -22,11 +22,11 @@ import { useI18n, type MessageKey } from "../../../i18n";
 import { McpSettingsPanel } from "../../mcp/ui/McpSettingsPanel";
 import { ConfigSettingsSection } from "./ConfigSettingsSection";
 import { GeneralSettingsSection } from "./GeneralSettingsSection";
+import { GitSettingsSection } from "./GitSettingsSection";
 import { PersonalizationSettingsSection } from "./PersonalizationSettingsSection";
 import { ArchivedThreadsSettingsSection } from "./ArchivedThreadsSettingsSection";
 import {
   EnvironmentContent,
-  GitContent,
   PlaceholderContent,
   WorktreeContent,
 } from "./SettingsStaticSections";
@@ -174,7 +174,7 @@ function SettingsContent(props: SettingsViewProps): JSX.Element {
     return <ArchivedThreadsSettingsSection listArchivedThreads={props.listArchivedThreads} unarchiveThread={props.unarchiveThread} />;
   }
   if (props.section === "git") {
-    return <GitContent />;
+    return <GitSettingsSection preferences={props.preferences} />;
   }
   if (props.section === "environment") {
     return <EnvironmentContent roots={props.roots} onAddRoot={props.onAddRoot} />;

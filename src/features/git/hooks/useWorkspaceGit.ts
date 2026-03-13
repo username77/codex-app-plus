@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import type { HostBridge } from "../../../bridge/types";
+import { readStoredAppPreferences } from "../../settings/hooks/useAppPreferences";
 import type { WorkspaceGitController } from "../model/types";
 import { useWorkspaceGitActions } from "./useWorkspaceGitActions";
 import { useWorkspaceGitAutoRefresh } from "./useWorkspaceGitAutoRefresh";
@@ -15,6 +16,7 @@ interface UseWorkspaceGitOptions {
 
 export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitController {
   const diffStateEnabled = options.diffStateEnabled ?? true;
+  const appPreferences = readStoredAppPreferences();
   const state = useWorkspaceGitState(options.selectedRootPath);
   const data = useWorkspaceGitData({
     diffStateEnabled,
@@ -37,6 +39,8 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
     commitMessage: state.commitMessage,
     selectedBranch: state.selectedBranch,
     newBranchName: state.newBranchName,
+    branchPrefix: appPreferences.gitBranchPrefix,
+    pushForceWithLease: appPreferences.gitPushForceWithLease,
     setCommitMessage: state.setCommitMessage,
     setSelectedBranch: state.setSelectedBranch,
     setNewBranchName: state.setNewBranchName,

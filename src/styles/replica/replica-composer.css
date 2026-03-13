@@ -200,6 +200,9 @@
   cursor: pointer;
 }
 .composer-card {
+  --composer-input-line-height: 20px;
+  --composer-input-min-height: 52px;
+  --composer-input-max-height: calc(var(--composer-input-min-height) + (3 * var(--composer-input-line-height)));
   position: relative;
   width: var(--conversation-column-inline-size);
   border: 1px solid #dbdbdb;
@@ -250,15 +253,18 @@
 }
 .composer-input {
   width: 100%;
-  height: 52px;
+  min-height: var(--composer-input-min-height);
+  max-height: var(--composer-input-max-height);
+  box-sizing: border-box;
   border: 0;
   resize: none;
   outline: none;
+  overflow-y: hidden;
   background: transparent;
   color: #474747;
   padding: 14px 15px 8px;
   font-size: 14px;
-  line-height: 1.45;
+  line-height: var(--composer-input-line-height);
 }
 .composer-input::placeholder {
   color: #a0a0a0;

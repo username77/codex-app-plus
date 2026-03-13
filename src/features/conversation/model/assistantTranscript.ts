@@ -13,7 +13,7 @@ import {
   safeJson,
   type AssistantTranscriptDetailPanel,
 } from "./assistantTranscriptDetailModel";
-import { formatFileChangeSummary } from "./fileChangeSummary";
+import { formatFileChangeSummary, getFileChangeDisplayName } from "./fileChangeSummary";
 interface MessageEntryModel {
   readonly key: string;
   readonly kind: "message";
@@ -113,7 +113,7 @@ function createFileChangeTraceModel(key: string, entry: Extract<TraceEntry, { ki
     detailPanel: createDetailBlockPanel({
       body: joinDetailLines([
         entry.changes.length > 0 ? "变更文件：" : null,
-        ...entry.changes.map((change) => change.path),
+        ...entry.changes.map((change) => getFileChangeDisplayName(change.path)),
         entry.output.trim().length > 0 ? entry.output : null,
       ]),
       label: "Patch",

@@ -20,6 +20,8 @@ describe("useAppPreferences", () => {
     expect(result.current.uiLanguage).toBe(DEFAULT_APP_PREFERENCES.uiLanguage);
     expect(result.current.threadDetailLevel).toBe(DEFAULT_APP_PREFERENCES.threadDetailLevel);
     expect(result.current.composerPermissionLevel).toBe(DEFAULT_APP_PREFERENCES.composerPermissionLevel);
+    expect(result.current.gitBranchPrefix).toBe(DEFAULT_APP_PREFERENCES.gitBranchPrefix);
+    expect(result.current.gitPushForceWithLease).toBe(DEFAULT_APP_PREFERENCES.gitPushForceWithLease);
   });
 
   it("persists updated preferences after remount", async () => {
@@ -32,6 +34,8 @@ describe("useAppPreferences", () => {
       first.result.current.setUiLanguage("en-US");
       first.result.current.setThreadDetailLevel("full");
       first.result.current.setComposerPermissionLevel("full");
+      first.result.current.setGitBranchPrefix("feature/");
+      first.result.current.setGitPushForceWithLease(true);
     });
 
     await waitFor(() => {
@@ -48,6 +52,8 @@ describe("useAppPreferences", () => {
     expect(second.result.current.uiLanguage).toBe("en-US");
     expect(second.result.current.threadDetailLevel).toBe("full");
     expect(second.result.current.composerPermissionLevel).toBe("full");
+    expect(second.result.current.gitBranchPrefix).toBe("feature/");
+    expect(second.result.current.gitPushForceWithLease).toBe(true);
   });
 
   it("falls back invalid stored values to defaults", () => {
@@ -59,7 +65,9 @@ describe("useAppPreferences", () => {
         embeddedTerminalShell: "bad-shell",
         uiLanguage: "fr-FR",
         threadDetailLevel: "verbose",
-        composerPermissionLevel: "admin"
+        composerPermissionLevel: "admin",
+        gitBranchPrefix: 123,
+        gitPushForceWithLease: "yes"
       })
     );
 
@@ -71,5 +79,7 @@ describe("useAppPreferences", () => {
     expect(result.current.uiLanguage).toBe(DEFAULT_APP_PREFERENCES.uiLanguage);
     expect(result.current.threadDetailLevel).toBe(DEFAULT_APP_PREFERENCES.threadDetailLevel);
     expect(result.current.composerPermissionLevel).toBe(DEFAULT_APP_PREFERENCES.composerPermissionLevel);
+    expect(result.current.gitBranchPrefix).toBe(DEFAULT_APP_PREFERENCES.gitBranchPrefix);
+    expect(result.current.gitPushForceWithLease).toBe(DEFAULT_APP_PREFERENCES.gitPushForceWithLease);
   });
 });

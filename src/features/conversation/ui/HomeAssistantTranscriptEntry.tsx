@@ -2,6 +2,7 @@ import { ConversationMessageContent } from "./ConversationMessageContent";
 import type { ConversationRenderNode } from "../model/localConversationGroups";
 import { createAssistantTranscriptEntryModel } from "../model/assistantTranscript";
 import { createDetailPanel } from "../model/assistantTranscriptDetailModel";
+import { createFileChangeSummaryParts } from "../model/fileChangeSummary";
 import { HomeAssistantTranscriptDetailBlock } from "./HomeAssistantTranscriptDetailBlock";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { HomePlanDraftCard } from "../../composer/ui/HomePlanDraftCard";
@@ -40,6 +41,7 @@ export function HomeAssistantTranscriptEntry(props: HomeAssistantTranscriptEntry
   const model = createAssistantTranscriptEntryModel(props.node);
   const truncateSummaryWhenCollapsed = model.kind === "details" && model.truncateSummaryWhenCollapsed === true;
   const traceEntry = props.node.kind === "traceItem";
+  const summaryContent = model.kind === "message" ? null : createSummaryContent(props.node, model.summary);
 
   if (model.kind === "message" && model.message) {
     if (model.message.text.trim().length === 0) {
@@ -65,7 +67,7 @@ export function HomeAssistantTranscriptEntry(props: HomeAssistantTranscriptEntry
             className="home-assistant-transcript-line home-assistant-transcript-summary"
             data-truncate-summary={truncateSummaryWhenCollapsed ? "true" : undefined}
           >
-            <span className="home-assistant-transcript-summary-text">{model.summary}</span>
+            <span className="home-assistant-transcript-summary-text">{summaryContent}</span>
           </summary>
           <HomeAssistantTranscriptDetailBlock panel={model.detailPanel} />
         </details>
@@ -73,7 +75,7 @@ export function HomeAssistantTranscriptEntry(props: HomeAssistantTranscriptEntry
     );
   }
 
-  return <p className={`home-assistant-transcript-entry home-assistant-transcript-line${traceEntry ? " home-assistant-transcript-line-trace" : ""}`}>{model.summary}</p>;
+  return <p className={`home-assistant-transcript-entry home-assistant-transcript-line${traceEntry ? " home-assistant-transcript-line-trace" : ""}`}>{summaryContent}</p>;
 }
 
 function ReasoningTranscriptEntry(props: { readonly block: Extract<AssistantNode, { kind: "reasoningBlock" }>["block"] }): JSX.Element {
@@ -103,4 +105,21 @@ function ReasoningTranscriptEntry(props: { readonly block: Extract<AssistantNode
 
 function TranscriptMarkdown(props: { readonly className: string; readonly text: string; readonly variant?: "body" | "title" }): JSX.Element {
   return <MarkdownRenderer className={props.className} markdown={props.text} variant={props.variant} />;
+}
+
+function createSummaryContent(node: AssistantNode, summary: string): JSX.Element | string {
+  if (node.kind !== "traceItem" || node.item.kind !== "fileChange") {
+    return summary;
+  }
+  const parts = createFileChangeSummaryParts(node.item.status, node.item.changes);
+  if (parts.fileName === null) {
+    return parts.text;
+  }
+  return (
+    <>
+      {parts.prefix}
+      <span className="home-assistant-transcript-file-name">{parts.fileName}</span>
+      {parts.suffix}
+    </>
+  );
 }

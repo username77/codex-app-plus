@@ -578,7 +578,7 @@ describe("HomeView", () => {
     expect(onClearQueuedFollowUps).toHaveBeenCalledTimes(1);
   });
 
-  it("hides reconnecting timeline entries and surfaces toast controls", async () => {
+  it("hides reconnecting timeline entries and clears the reconnect toast after output resumes", async () => {
     const onRetryConnection = vi.fn().mockResolvedValue(undefined);
     const activities: ReadonlyArray<TimelineEntry> = [
       {
@@ -599,6 +599,35 @@ describe("HomeView", () => {
         turnId: "turn-1",
         itemId: "agent-2",
         text: "继续任务",
+        status: "done",
+      },
+    ];
+
+    renderHomeView({
+      connectionStatus: "error",
+      retryScheduledAt: Date.now() + 5_000,
+      activities,
+      onRetryConnection,
+    });
+
+    expect(screen.queryByText(/Reconnecting/i)).toBeNull();
+    expect(screen.queryByText("正在重连… 2/5")).toBeNull();
+    expect(screen.getByText("连接异常，正在等待自动重试")).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole("button", { name: "立即重试" }));
+    expect(onRetryConnection).toHaveBeenCalled();
+  });
+
+  it("shows the reconnect toast while reconnecting is still the latest visible status", async () => {
+    const onRetryConnection = vi.fn().mockResolvedValue(undefined);
+    const activities: ReadonlyArray<TimelineEntry> = [
+      {
+        id: "retry-1",
+        kind: "agentMessage",
+        role: "assistant",
+        threadId: "thread-1",
+        turnId: "turn-1",
+        itemId: "retry-1",
+        text: "Reconnecting... 2/5",
         status: "done",
       },
     ];

@@ -113,10 +113,16 @@ export const enUS = {
     },
     git: {
       title: "Git",
+      subtitle: "Adjust default behavior for the desktop app's built-in Git actions without modifying repository config.",
       branchPrefixLabel: "Branch prefix",
       branchPrefixDescription: "Prefix used when creating a new branch from Codex.",
+      branchPrefixPlaceholder: "For example: codex/",
+      branchPrefixPreview: "New branches will become: {preview}",
       forceLeaseLabel: "Force lease on push",
       forceLeaseDescription: "Include `--force-with-lease` when pushing.",
+      forceLeaseEnabledNote: "Enabled. The push confirmation dialog will also show this flag.",
+      forceLeaseDisabledNote: "Disabled. Built-in push stays on a normal `git push`.",
+      appScopeNote: "These settings only affect built-in branch creation and push actions in the app.",
     },
     environment: {
       title: "Environment",

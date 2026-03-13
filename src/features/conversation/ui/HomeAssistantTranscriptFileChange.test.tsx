@@ -18,24 +18,42 @@ function createFileChangeEntry(changes: FileChangeEntry["changes"]): FileChangeE
 }
 
 describe("HomeAssistantTranscriptEntry file change summary", () => {
-  it("shows the edited file path for a single-file patch", () => {
+  it("shows only the edited file name for a single-file patch", () => {
     const entry = createFileChangeEntry([
-      { path: "src/App.tsx", kind: { type: "update", move_path: null }, diff: "@@ -1 +1 @@" },
+      { path: "/mnt/e/code/codex-app-plus/src/App.tsx", kind: { type: "update", move_path: null }, diff: "@@ -1 +1 @@" },
     ]);
 
     render(<HomeAssistantTranscriptEntry node={{ key: entry.id, kind: "traceItem", item: entry }} />);
 
-    expect(screen.getByText("已编辑 src/App.tsx")).toBeInTheDocument();
+    const fileName = screen.getByText("App.tsx", { selector: ".home-assistant-transcript-file-name" });
+
+    expect(fileName).toHaveClass("home-assistant-transcript-file-name");
+    expect(
+      screen.getByText(
+        (_, element) => element?.classList.contains("home-assistant-transcript-summary-text") === true && element.textContent === "已编辑 App.tsx",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("/mnt/e/code/codex-app-plus/src/App.tsx")).not.toBeInTheDocument();
   });
 
-  it("shows the first edited file and total count for multi-file patches", () => {
+  it("shows the first edited file name and total count for multi-file patches", () => {
     const entry = createFileChangeEntry([
-      { path: "src/App.tsx", kind: { type: "update", move_path: null }, diff: "@@ -1 +1 @@" },
-      { path: "src/styles.css", kind: { type: "update", move_path: null }, diff: "@@ -1 +1 @@" },
+      { path: "C:\\workspace\\codex-app-plus\\src\\App.tsx", kind: { type: "update", move_path: null }, diff: "@@ -1 +1 @@" },
+      { path: "C:\\workspace\\codex-app-plus\\src\\styles.css", kind: { type: "update", move_path: null }, diff: "@@ -1 +1 @@" },
     ]);
 
     render(<HomeAssistantTranscriptEntry node={{ key: entry.id, kind: "traceItem", item: entry }} />);
 
-    expect(screen.getByText("已编辑 src/App.tsx 等 2 个文件")).toBeInTheDocument();
+    const fileName = screen.getByText("App.tsx", { selector: ".home-assistant-transcript-file-name" });
+
+    expect(fileName).toHaveClass("home-assistant-transcript-file-name");
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.classList.contains("home-assistant-transcript-summary-text") === true &&
+          element.textContent === "已编辑 App.tsx 等 2 个文件",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("C:\\workspace\\codex-app-plus\\src\\App.tsx")).not.toBeInTheDocument();
   });
 });

@@ -21,32 +21,6 @@ function ToggleControl(props: { readonly checked?: boolean }): JSX.Element {
   );
 }
 
-export function GitContent(): JSX.Element {
-  const { t } = useI18n();
-
-  return (
-    <div className="settings-panel-group">
-      <SectionHeader title={t("settings.git.title")} />
-      <section className="settings-card">
-        <div className="settings-row">
-          <div>
-            <strong>{t("settings.git.branchPrefixLabel")}</strong>
-            <p>{t("settings.git.branchPrefixDescription")}</p>
-          </div>
-          <span className="settings-chip">codex/</span>
-        </div>
-        <div className="settings-row">
-          <div>
-            <strong>{t("settings.git.forceLeaseLabel")}</strong>
-            <p>{t("settings.git.forceLeaseDescription")}</p>
-          </div>
-          <ToggleControl />
-        </div>
-      </section>
-    </div>
-  );
-}
-
 export function EnvironmentContent(props: {
   readonly roots: ReadonlyArray<WorkspaceRoot>;
   readonly onAddRoot: () => void;

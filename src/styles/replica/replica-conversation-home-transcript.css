@@ -103,6 +103,17 @@
   min-width: 0;
 }
 
+.home-assistant-transcript-file-name {
+  display: inline-block;
+  margin: 0 2px;
+  padding: 1px 8px;
+  border: 1px solid #d9ddfb;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
 .home-assistant-transcript-details details:not([open]) .home-assistant-transcript-summary[data-truncate-summary="true"] {
   overflow: hidden;
 }

@@ -13,6 +13,12 @@ interface RetryLineInfo {
   readonly text: string;
 }
 
+interface ExtractRetryTextResult {
+  readonly text: string;
+  readonly info: RetryLineInfo | null;
+  readonly hasVisibleContentAfterRetry: boolean;
+}
+
 interface ExtractConnectionRetryResult {
   readonly activities: ReadonlyArray<TimelineEntry>;
   readonly retryInfo: ConnectionRetryInfo | null;
@@ -25,20 +31,32 @@ export function extractConnectionRetryInfo(activities: ReadonlyArray<TimelineEnt
   let latestInfo: ConnectionRetryInfo | null = null;
 
   for (const entry of activities) {
-    if (entry.kind === "agentMessage") {
-      const retryText = extractRetryText(entry.text);
-      if (retryText.info !== null) {
-        latestInfo = { ...retryText.info, sourceEntryId: entry.id };
-      }
-      if (retryText.text.length === 0 && retryText.info !== null) {
-        continue;
-      }
-      if (retryText.text !== entry.text) {
-        filtered.push({ ...entry, text: retryText.text });
-        continue;
-      }
+    if (entry.kind !== "agentMessage") {
+      filtered.push(entry);
+      latestInfo = null;
+      continue;
     }
-    filtered.push(entry);
+
+    const retryText = extractRetryText(entry.text);
+    if (retryText.info !== null && !retryText.hasVisibleContentAfterRetry) {
+      latestInfo = { ...retryText.info, sourceEntryId: entry.id };
+    } else if (retryText.info !== null) {
+      latestInfo = null;
+    }
+
+    if (retryText.text.length === 0 && retryText.info !== null) {
+      continue;
+    }
+
+    if (retryText.text !== entry.text) {
+      filtered.push({ ...entry, text: retryText.text });
+    } else {
+      filtered.push(entry);
+    }
+
+    if (retryText.info === null || retryText.hasVisibleContentAfterRetry) {
+      latestInfo = null;
+    }
   }
 
   return { activities: filtered, retryInfo: latestInfo };
@@ -48,22 +66,29 @@ export function stripConnectionRetryLines(text: string): string {
   return extractRetryText(text).text;
 }
 
-function extractRetryText(text: string): { readonly text: string; readonly info: RetryLineInfo | null } {
+function extractRetryText(text: string): ExtractRetryTextResult {
   const keptLines: string[] = [];
   let latestInfo: RetryLineInfo | null = null;
+  let hasVisibleContentAfterRetry = false;
 
   for (const line of text.split(/\r?\n/)) {
     const info = parseRetryLine(line);
     if (info === null) {
       keptLines.push(line);
+      if (latestInfo !== null && line.trim().length > 0) {
+        hasVisibleContentAfterRetry = true;
+      }
       continue;
     }
+
     latestInfo = info;
+    hasVisibleContentAfterRetry = false;
   }
 
   return {
     text: normalizeRetainedText(keptLines),
     info: latestInfo,
+    hasVisibleContentAfterRetry,
   };
 }
 

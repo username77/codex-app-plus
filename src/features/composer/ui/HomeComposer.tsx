@@ -17,10 +17,12 @@ import { OfficialPlusIcon } from "../../shared/ui/officialIcons";
 import { useComposerCommandPalette } from "../hooks/useComposerCommandPalette";
 import { useComposerSelectionPersistence } from "../hooks/useComposerSelectionPersistence";
 import { useComposerAttachments } from "../hooks/useComposerAttachments";
+import { useComposerTextareaAutosize } from "../hooks/useComposerTextareaAutosize";
 import { useToolbarMenuDismissal } from "../../shared/hooks/useToolbarMenuDismissal";
 import { useUiBannerNotifications } from "../../shared/hooks/useUiBannerNotifications";
 
 const MIN_TRIMMED_MESSAGE_LENGTH = 1;
+const MAX_COMPOSER_INPUT_EXTRA_ROWS = 3;
 
 export interface HomeComposerProps {
   readonly busy: boolean;
@@ -75,6 +77,7 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
   const buttonDisabled = interactionDisabled || (props.isResponding ? props.interruptPending : !canSend);
   const buttonLabel = props.isResponding ? "Pause response" : "Send message";
 
+  useComposerTextareaAutosize({ textareaRef: commandPalette.textareaRef, value: props.inputText, maxExtraRows: MAX_COMPOSER_INPUT_EXTRA_ROWS });
   useToolbarMenuDismissal(commandPalette.open, containerRef, () => void commandPalette.dismiss());
 
   const submit = useCallback((followUpOverride?: FollowUpMode) => {
@@ -117,7 +120,7 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
         {menuOpen ? <button type="button" className="composer-popover-backdrop" aria-label="Close attachment menu" onClick={() => setMenuOpen(false)} /> : null}
         {commandPalette.open ? <ComposerCommandPalette open={true} title={commandPalette.title} items={commandPalette.items} selectedIndex={commandPalette.selectedIndex} onSelectItem={commandPalette.onSelectItem} /> : null}
         {attachments.length === 0 ? null : <AttachmentDraft attachments={attachments} onRemove={removeAttachment} />}
-        <textarea ref={commandPalette.textareaRef} className="composer-input" placeholder={getComposerPlaceholder(props.selectedRootPath)} value={props.inputText} disabled={interactionDisabled} onPaste={(event) => void handlePaste(event)} onSelect={commandPalette.syncFromTextareaSelection} onKeyDown={(event) => handleInputKeyDown(event, props, commandPalette.handleKeyDown, submit)} onChange={(event) => handleInputChange(event.currentTarget.value, event.currentTarget.selectionStart, props.onInputChange, commandPalette.syncFromTextInput)} />
+        <textarea ref={commandPalette.textareaRef} rows={1} className="composer-input" placeholder={getComposerPlaceholder(props.selectedRootPath)} value={props.inputText} disabled={interactionDisabled} onPaste={(event) => void handlePaste(event)} onSelect={commandPalette.syncFromTextareaSelection} onKeyDown={(event) => handleInputKeyDown(event, props, commandPalette.handleKeyDown, submit)} onChange={(event) => handleInputChange(event.currentTarget.value, event.currentTarget.selectionStart, props.onInputChange, commandPalette.syncFromTextInput)} />
         <div className="composer-bar">
           <div className="composer-left">
             <div className="composer-plus-anchor">

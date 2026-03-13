@@ -112,10 +112,16 @@ export const zhCN = {
     },
     git: {
       title: "Git",
+      subtitle: "调整桌面端内置 Git 操作的默认行为，不会改写仓库自身配置。",
       branchPrefixLabel: "分支前缀",
       branchPrefixDescription: "在 Codex 中创建新分支时使用的前缀。",
+      branchPrefixPlaceholder: "例如：codex/",
+      branchPrefixPreview: "创建时会得到：{preview}",
       forceLeaseLabel: "推送时强制 lease",
       forceLeaseDescription: "推送时附带 `--force-with-lease`。",
+      forceLeaseEnabledNote: "当前已启用，推送确认框也会明确展示该参数。",
+      forceLeaseDisabledNote: "当前未启用，内置推送会保持普通 `git push`。",
+      appScopeNote: "这些设置仅作用于应用内的“新建分支”和“推送”操作。",
     },
     environment: {
       title: "环境",
