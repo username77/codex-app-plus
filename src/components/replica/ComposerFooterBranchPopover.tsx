@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { GitBranchRef, GitStatusOutput } from "../../bridge/types";
 import type { WorkspaceGitController } from "./git/types";
 import { OfficialCloseIcon, OfficialPlusIcon, OfficialWorktreeIcon } from "./officialIcons";
@@ -83,6 +83,8 @@ function filterBranches(branches: ReadonlyArray<GitBranchRef>, query: string): R
 }
 
 function getViewState(controller: WorkspaceGitController): BranchViewState {
+  const branchRefsLoading = controller.branchRefsLoading ?? false;
+  const branchRefsLoaded = controller.branchRefsLoaded ?? true;
   if (controller.loading && controller.status === null) {
     return "loading";
   }
@@ -91,6 +93,9 @@ function getViewState(controller: WorkspaceGitController): BranchViewState {
   }
   if (controller.error !== null || controller.status === null) {
     return "error";
+  }
+  if (branchRefsLoading || !branchRefsLoaded) {
+    return controller.notice?.kind === "error" ? "error" : "loading";
   }
   return "list";
 }
@@ -210,6 +215,18 @@ export function ComposerFooterBranchPopover(props: ComposerFooterBranchPopoverPr
   const errorText = getErrorText(props.controller, metadataError);
   const rememberedBranchMissing = props.selectedThreadBranch !== null && hasBranch(branches, props.selectedThreadBranch) === false;
   const branchMismatch = props.selectedThreadBranch !== null && currentBranch !== null && props.selectedThreadBranch !== currentBranch;
+  const branchRefsLoaded = props.controller.branchRefsLoaded ?? true;
+
+  useEffect(() => {
+    if (props.controller.status?.isRepository !== true || branchRefsLoaded) {
+      return;
+    }
+    void props.controller.ensureBranchRefs?.();
+  }, [
+    branchRefsLoaded,
+    props.controller.ensureBranchRefs,
+    props.controller.status?.isRepository,
+  ]);
 
   const closeCreateMode = () => {
     props.controller.setNewBranchName("");
@@ -265,7 +282,7 @@ export function ComposerFooterBranchPopover(props: ComposerFooterBranchPopoverPr
     case "nonRepo":
       return <div className="composer-footer-popover composer-branch-popover composer-footer-popover-right" role="menu" aria-label={TEXT.branch}><BranchEmptyState title={TEXT.nonRepoTitle} body={TEXT.nonRepoBody} /></div>;
     case "error":
-      return <div className="composer-footer-popover composer-branch-popover composer-footer-popover-right" role="menu" aria-label={TEXT.branch}><BranchEmptyState title={TEXT.errorTitle} body={props.controller.error ?? TEXT.unavailableBody} actionLabel={TEXT.reload} onAction={() => void props.controller.refresh()} /></div>;
+      return <div className="composer-footer-popover composer-branch-popover composer-footer-popover-right" role="menu" aria-label={TEXT.branch}><BranchEmptyState title={TEXT.errorTitle} body={errorText ?? TEXT.unavailableBody} actionLabel={TEXT.reload} onAction={() => void (props.controller.status?.isRepository ? props.controller.ensureBranchRefs?.() : props.controller.refresh())} /></div>;
     case "list":
       return (
         <div className="composer-footer-popover composer-branch-popover composer-footer-popover-right" role="menu" aria-label={TEXT.branch}>

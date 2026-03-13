@@ -218,3 +218,46 @@ fn classify_entry(
         unstaged.push(entry);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{parse_branch_refs, parse_status_output};
+
+    #[test]
+    fn parses_status_snapshot_with_branch_and_changes() {
+        let output = [
+            "# branch.head main",
+            "# branch.upstream origin/main",
+            "# branch.ab +2 -1",
+            "1 M. N... 100644 100644 100644 abcdef1 abcdef2 src/main.rs",
+            "1 .M N... 100644 100644 100644 abcdef1 abcdef2 src/lib.rs",
+            "? src/new.rs",
+            "u UU N... 100644 100644 100644 100644 abcdef1 abcdef2 abcdef3 src/conflict.rs",
+        ]
+        .join("\n");
+
+        let parsed = parse_status_output(&output).expect("parse status output");
+
+        assert_eq!(parsed.branch.head.as_deref(), Some("main"));
+        assert_eq!(parsed.branch.upstream.as_deref(), Some("origin/main"));
+        assert_eq!(parsed.branch.ahead, 2);
+        assert_eq!(parsed.branch.behind, 1);
+        assert_eq!(parsed.staged.len(), 1);
+        assert_eq!(parsed.unstaged.len(), 1);
+        assert_eq!(parsed.untracked.len(), 1);
+        assert_eq!(parsed.conflicted.len(), 1);
+    }
+
+    #[test]
+    fn parses_branch_refs_and_current_marker() {
+        let output = ["main\torigin/main\t*", "feature/ui\t\t"].join("\n");
+
+        let branches = parse_branch_refs(&output).expect("parse branch refs");
+
+        assert_eq!(branches.len(), 2);
+        assert_eq!(branches[0].name, "main");
+        assert!(branches[0].is_current);
+        assert_eq!(branches[1].name, "feature/ui");
+        assert!(!branches[1].is_current);
+    }
+}

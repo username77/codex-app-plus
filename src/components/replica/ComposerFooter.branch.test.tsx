@@ -29,6 +29,8 @@ function createStatus(overrides?: Partial<GitStatusOutput>): GitStatusOutput {
 interface RenderOptions {
   readonly status?: GitStatusOutput | null;
   readonly loading?: boolean;
+  readonly branchRefsLoaded?: boolean;
+  readonly branchRefsLoading?: boolean;
   readonly error?: string | null;
   readonly selectedThreadId?: string | null;
   readonly selectedThreadBranch?: string | null;
@@ -59,6 +61,8 @@ function renderPopover(options: RenderOptions = {}) {
       hasRepository: status?.isRepository ?? false,
       error: options.error ?? null,
       notice,
+      branchRefsLoading: options.branchRefsLoading ?? false,
+      branchRefsLoaded: options.branchRefsLoaded ?? true,
       commitMessage: "",
       selectedBranch,
       newBranchName,
@@ -96,6 +100,8 @@ function renderPopover(options: RenderOptions = {}) {
         setNewBranchName("");
         return true
       }),
+      ensureBranchRefs: vi.fn().mockResolvedValue(undefined),
+      ensureRemoteUrl: vi.fn().mockResolvedValue(undefined),
       ensureDiff: vi.fn().mockResolvedValue(undefined),
       selectDiff: vi.fn().mockResolvedValue(undefined),
       clearDiff: vi.fn(),
@@ -178,6 +184,12 @@ describe("ComposerFooterBranchPopover", () => {
 
     renderPopover({ status: createStatus({ isRepository: false, repoRoot: null }) });
     expect(screen.getByText("\u5f53\u524d\u5de5\u4f5c\u533a\u4e0d\u662f Git \u4ed3\u5e93")).toBeInTheDocument();
+  });
+
+  it("shows loading while branch refs are still lazy-loading", () => {
+    renderPopover({ branchRefsLoaded: false, branchRefsLoading: true });
+
+    expect(screen.getByText("\u6b63\u5728\u8bfb\u53d6 Git \u5206\u652f")).toBeInTheDocument();
   });
 
   it("falls back to HEAD when remembered branch is missing and skips metadata for drafts", async () => {

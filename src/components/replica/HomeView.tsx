@@ -216,6 +216,7 @@ function MainContent(props: MainContentProps): JSX.Element {
       <HomeMainToolbar
         hostBridge={props.hostBridge}
         conversationActive={conversationActive}
+        gitController={props.gitController}
         workspaceOpener={props.workspaceOpener}
         selectedRootName={props.selectedRootName}
         selectedRootPath={props.selectedRootPath}
@@ -326,10 +327,9 @@ export function HomeView(props: HomeViewProps): JSX.Element {
   const [diffSidebarOpen, setDiffSidebarOpen] = useState(false);
   const canShowDiffSidebar = diffSidebarOpen && props.selectedRootPath !== null;
   const gitController = useWorkspaceGit({
-    diffStateEnabled: false,
     hostBridge: props.hostBridge,
     selectedRootPath: props.selectedRootPath,
-    autoRefreshEnabled: false,
+    autoRefreshEnabled: canShowDiffSidebar,
   });
   const { activities: filteredActivities, retryInfo } = useMemo(
     () => extractConnectionRetryInfo(props.activities),
@@ -425,7 +425,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
       />
       {canShowDiffSidebar ? (
         <WorkspaceDiffSidebarHost
-          hostBridge={props.hostBridge}
+          controller={gitController}
           selectedRootName={props.selectedRootName}
           selectedRootPath={props.selectedRootPath}
           onClose={() => setDiffSidebarOpen(false)}

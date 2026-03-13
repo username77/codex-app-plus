@@ -1,6 +1,11 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { GitDiffOutput, GitStatusOutput, HostBridge } from "../../../bridge/types";
+import type {
+  GitBranchRef,
+  GitDiffOutput,
+  GitStatusSnapshotOutput,
+  HostBridge,
+} from "../../../bridge/types";
 import { useWorkspaceGit } from "./useWorkspaceGit";
 
 interface Deferred<T> {
@@ -16,20 +21,20 @@ function createDeferred<T>(): Deferred<T> {
   return { promise, resolve };
 }
 
-function createStatus(overrides?: Partial<GitStatusOutput>): GitStatusOutput {
+function createSnapshot(
+  overrides?: Partial<GitStatusSnapshotOutput>,
+): GitStatusSnapshotOutput {
   return {
     isRepository: true,
     repoRoot: "E:/code/project",
     branch: { head: "main", upstream: "origin/main", ahead: 0, behind: 0, detached: false },
     remoteName: "origin",
-    remoteUrl: "https://example.com/repo.git",
-    branches: [{ name: "main", upstream: "origin/main", isCurrent: true }],
     staged: [],
     unstaged: [],
     untracked: [],
     conflicted: [],
     isClean: false,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -41,10 +46,17 @@ function createDiff(path: string, staged = false): GitDiffOutput {
   };
 }
 
-function createHostBridge(getStatus: ReturnType<typeof vi.fn>, getDiff: ReturnType<typeof vi.fn>): HostBridge {
+function createHostBridge(
+  getStatusSnapshot: ReturnType<typeof vi.fn>,
+  getDiff: ReturnType<typeof vi.fn>,
+  getBranchRefs?: ReturnType<typeof vi.fn>,
+  getRemoteUrl?: ReturnType<typeof vi.fn>,
+): HostBridge {
   return {
     git: {
-      getStatus,
+      getStatusSnapshot,
+      getBranchRefs: getBranchRefs ?? vi.fn().mockResolvedValue([{ name: "main", upstream: "origin/main", isCurrent: true }] satisfies ReadonlyArray<GitBranchRef>),
+      getRemoteUrl: getRemoteUrl ?? vi.fn().mockResolvedValue("https://example.com/repo.git"),
       getDiff,
       initRepository: vi.fn().mockResolvedValue(undefined),
       stagePaths: vi.fn().mockResolvedValue(undefined),
@@ -69,11 +81,11 @@ describe("useWorkspaceGit", () => {
   }
 
   it("preserves status and diff cache while refresh is pending", async () => {
-    const status = createStatus({ unstaged: [{ path: "src/App.tsx", originalPath: null, indexStatus: " ", worktreeStatus: "M" }] });
-    const deferred = createDeferred<GitStatusOutput>();
-    const getStatus = vi.fn().mockResolvedValueOnce(status).mockImplementationOnce(() => deferred.promise);
+    const snapshot = createSnapshot({ unstaged: [{ path: "src/App.tsx", originalPath: null, indexStatus: " ", worktreeStatus: "M" }] });
+    const deferred = createDeferred<GitStatusSnapshotOutput>();
+    const getStatusSnapshot = vi.fn().mockResolvedValueOnce(snapshot).mockImplementationOnce(() => deferred.promise);
     const getDiff = vi.fn().mockResolvedValue(createDiff("src/App.tsx"));
-    const hostBridge = createHostBridge(getStatus, getDiff);
+    const hostBridge = createHostBridge(getStatusSnapshot, getDiff);
 
     const { result } = renderHook(() => useWorkspaceGit({ hostBridge, selectedRootPath: "E:/code/project", autoRefreshEnabled: false }));
 
@@ -93,15 +105,15 @@ describe("useWorkspaceGit", () => {
     expect(result.current.status).toBe(previousStatus);
     expect(result.current.diffCache).toBe(previousDiffCache);
 
-    deferred.resolve(status);
+    deferred.resolve(snapshot);
     await waitFor(() => expect(result.current.loading).toBe(false));
   });
 
   it("coalesces focus and visibility refreshes when auto refresh is enabled", async () => {
-    const status = createStatus({ unstaged: [{ path: "src/App.tsx", originalPath: null, indexStatus: " ", worktreeStatus: "M" }] });
-    const getStatus = vi.fn().mockResolvedValue(status);
+    const snapshot = createSnapshot({ unstaged: [{ path: "src/App.tsx", originalPath: null, indexStatus: " ", worktreeStatus: "M" }] });
+    const getStatusSnapshot = vi.fn().mockResolvedValue(snapshot);
     const getDiff = vi.fn().mockResolvedValue(createDiff("src/App.tsx"));
-    const hostBridge = createHostBridge(getStatus, getDiff);
+    const hostBridge = createHostBridge(getStatusSnapshot, getDiff);
 
     const { rerender } = renderHook(
       (props: { readonly autoRefreshEnabled: boolean }) =>
@@ -109,13 +121,13 @@ describe("useWorkspaceGit", () => {
       { initialProps: { autoRefreshEnabled: false } }
     );
 
-    await waitFor(() => expect(getStatus).toHaveBeenCalledTimes(1));
-    getStatus.mockClear();
+    await waitFor(() => expect(getStatusSnapshot).toHaveBeenCalledTimes(1));
+    getStatusSnapshot.mockClear();
 
     rerender({ autoRefreshEnabled: true });
     await waitForAutoRefresh();
-    await waitFor(() => expect(getStatus).toHaveBeenCalledTimes(1));
-    getStatus.mockClear();
+    await waitFor(() => expect(getStatusSnapshot).toHaveBeenCalledTimes(1));
+    getStatusSnapshot.mockClear();
 
     const originalVisibility = Object.getOwnPropertyDescriptor(document, "visibilityState");
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
@@ -123,7 +135,7 @@ describe("useWorkspaceGit", () => {
     window.dispatchEvent(new Event("focus"));
     document.dispatchEvent(new Event("visibilitychange"));
     await waitForAutoRefresh();
-    await waitFor(() => expect(getStatus).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(getStatusSnapshot).toHaveBeenCalledTimes(1));
 
     if (originalVisibility !== undefined) {
       Object.defineProperty(document, "visibilityState", originalVisibility);
@@ -131,14 +143,14 @@ describe("useWorkspaceGit", () => {
   });
 
   it("prunes obsolete diff cache entries after refresh", async () => {
-    const firstStatus = createStatus({
+    const firstStatus = createSnapshot({
       unstaged: [{ path: "src/App.tsx", originalPath: null, indexStatus: " ", worktreeStatus: "M" }],
       untracked: [{ path: "src/Old.ts", originalPath: null, indexStatus: "?", worktreeStatus: "?" }]
     });
-    const secondStatus = createStatus({ unstaged: [{ path: "src/Next.ts", originalPath: null, indexStatus: " ", worktreeStatus: "M" }] });
-    const getStatus = vi.fn().mockResolvedValueOnce(firstStatus).mockResolvedValueOnce(secondStatus);
+    const secondStatus = createSnapshot({ unstaged: [{ path: "src/Next.ts", originalPath: null, indexStatus: " ", worktreeStatus: "M" }] });
+    const getStatusSnapshot = vi.fn().mockResolvedValueOnce(firstStatus).mockResolvedValueOnce(secondStatus);
     const getDiff = vi.fn().mockImplementation(async ({ path }: { readonly path: string }) => createDiff(path));
-    const hostBridge = createHostBridge(getStatus, getDiff);
+    const hostBridge = createHostBridge(getStatusSnapshot, getDiff);
 
     const { result } = renderHook(() => useWorkspaceGit({ hostBridge, selectedRootPath: "E:/code/project", autoRefreshEnabled: false }));
 
@@ -155,5 +167,29 @@ describe("useWorkspaceGit", () => {
 
     await waitFor(() => expect(result.current.diffTarget).toEqual({ path: "src/Next.ts", staged: false }));
     expect(Object.keys(result.current.diffCache)).toEqual(["unstaged:src/Next.ts"]);
+  });
+
+  it("loads branch refs lazily and only once", async () => {
+    const getStatusSnapshot = vi.fn().mockResolvedValue(createSnapshot());
+    const getBranchRefs = vi.fn().mockResolvedValue([
+      { name: "main", upstream: "origin/main", isCurrent: true },
+      { name: "feature/ui", upstream: null, isCurrent: false },
+    ] satisfies ReadonlyArray<GitBranchRef>);
+    const hostBridge = createHostBridge(getStatusSnapshot, vi.fn().mockResolvedValue(createDiff("src/App.tsx")), getBranchRefs);
+
+    const { result } = renderHook(() => useWorkspaceGit({ hostBridge, selectedRootPath: "E:/code/project", autoRefreshEnabled: false }));
+
+    await waitFor(() => expect(result.current.statusLoaded).toBe(true));
+    expect(result.current.branchRefsLoaded).toBe(false);
+    expect(result.current.status?.branches).toEqual([]);
+
+    await act(async () => {
+      await result.current.ensureBranchRefs!();
+      await result.current.ensureBranchRefs!();
+    });
+
+    expect(getBranchRefs).toHaveBeenCalledTimes(1);
+    expect(result.current.branchRefsLoaded).toBe(true);
+    expect(result.current.status?.branches).toHaveLength(2);
   });
 });

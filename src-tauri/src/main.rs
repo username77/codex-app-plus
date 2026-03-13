@@ -31,9 +31,11 @@ use commands::{
     terminal_write,
 };
 use git::commands::{
-    git_checkout, git_commit, git_discard_paths, git_fetch, git_get_diff, git_get_status,
-    git_init_repository, git_pull, git_push, git_stage_paths, git_unstage_paths,
+    git_checkout, git_commit, git_discard_paths, git_fetch, git_get_branch_refs, git_get_diff,
+    git_get_remote_url, git_get_status_snapshot, git_init_repository, git_pull, git_push,
+    git_stage_paths, git_unstage_paths,
 };
+use git::runtime::GitRuntimeState;
 use process_manager::ProcessManager;
 use tauri::{Manager, RunEvent};
 use terminal_manager::TerminalManager;
@@ -43,6 +45,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .manage(ProcessManager::new())
         .manage(TerminalManager::new())
+        .manage(GitRuntimeState::new())
         .invoke_handler(tauri::generate_handler![
             app_server_start,
             app_server_stop,
@@ -69,7 +72,9 @@ fn main() {
             app_list_codex_sessions,
             app_read_codex_session,
             app_delete_codex_session,
-            git_get_status,
+            git_get_status_snapshot,
+            git_get_branch_refs,
+            git_get_remote_url,
             git_get_diff,
             git_init_repository,
             git_stage_paths,

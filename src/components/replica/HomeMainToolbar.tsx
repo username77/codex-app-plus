@@ -1,5 +1,6 @@
 import type { HostBridge, WorkspaceOpener } from "../../bridge/types";
 import { WorkspaceGitButtonLauncher } from "./WorkspaceGitButtonLauncher";
+import type { WorkspaceGitController } from "./git/types";
 import { WorkspaceOpenButton } from "./WorkspaceOpenButton";
 import { GitDiffIcon } from "./git/gitIcons";
 
@@ -21,6 +22,7 @@ interface HomeMainToolbarProps {
   readonly selectedThreadTitle: string | null;
   readonly terminalOpen: boolean;
   readonly diffOpen: boolean;
+  readonly gitController: WorkspaceGitController;
   readonly workspaceOpener: WorkspaceOpener;
   readonly onSelectWorkspaceOpener: (opener: WorkspaceOpener) => void;
   readonly onToggleTerminal: () => void;
@@ -95,7 +97,7 @@ export function HomeMainToolbar(props: HomeMainToolbarProps): JSX.Element {
           selectedOpener={props.workspaceOpener}
           onSelectOpener={props.onSelectWorkspaceOpener}
         />
-        <WorkspaceGitButtonLauncher hostBridge={props.hostBridge} selectedRootPath={props.selectedRootPath} />
+        <WorkspaceGitButtonLauncher controller={props.gitController} selectedRootPath={props.selectedRootPath} />
         <div className="toolbar-icon-row" aria-label={TOOLBAR_ACTIONS_LABEL}>
           <ToolbarIconButton
             active={props.diffOpen}

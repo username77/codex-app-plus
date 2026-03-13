@@ -1,9 +1,13 @@
+use tauri::State;
+
 use crate::error::AppResult;
 
 use super::models::{
-    GitCheckoutInput, GitCommitInput, GitDiffInput, GitDiffOutput, GitDiscardInput, GitPathsInput,
-    GitRepoInput, GitStatusOutput,
+    GitBranchRef, GitCheckoutInput, GitCommitInput, GitDiffInput, GitDiffOutput,
+    GitDiscardInput, GitPathsInput, GitRemoteInput, GitRepoInput, GitStatusSnapshotOutput,
 };
+use super::repository::resolve_workspace;
+use super::runtime::GitRuntimeState;
 use super::service;
 
 async fn run_blocking<T, F>(task: F) -> Result<T, String>
@@ -18,56 +22,130 @@ where
 }
 
 #[tauri::command]
-pub async fn git_get_status(input: GitRepoInput) -> Result<GitStatusOutput, String> {
-    run_blocking(move || service::get_status(input)).await
+pub async fn git_get_status_snapshot(
+    state: State<'_, GitRuntimeState>,
+    input: GitRepoInput,
+) -> Result<GitStatusSnapshotOutput, String> {
+    let runtime = state.inner().clone();
+    let repo_path = input.repo_path;
+    let cache = runtime.repository_cache();
+    let resolved = run_blocking(move || resolve_workspace(&repo_path, &cache)).await?;
+    let Some(repo_root) = resolved.repo_root else {
+        return Ok(GitStatusSnapshotOutput::not_repository());
+    };
+
+    let repo_key = repo_root.to_string_lossy().to_string();
+    runtime
+        .run_status_snapshot(repo_key, async move {
+            run_blocking(move || service::get_status_snapshot_for_repo_root(&repo_root)).await
+        })
+        .await
 }
 
 #[tauri::command]
-pub async fn git_get_diff(input: GitDiffInput) -> Result<GitDiffOutput, String> {
-    run_blocking(move || service::get_diff(input)).await
+pub async fn git_get_branch_refs(
+    state: State<'_, GitRuntimeState>,
+    input: GitRepoInput,
+) -> Result<Vec<GitBranchRef>, String> {
+    let cache = state.repository_cache();
+    run_blocking(move || service::get_branch_refs(input, &cache)).await
 }
 
 #[tauri::command]
-pub async fn git_init_repository(input: GitRepoInput) -> Result<(), String> {
-    run_blocking(move || service::init_repository(input)).await
+pub async fn git_get_remote_url(
+    state: State<'_, GitRuntimeState>,
+    input: GitRemoteInput,
+) -> Result<Option<String>, String> {
+    let cache = state.repository_cache();
+    run_blocking(move || service::get_remote_url(input, &cache)).await
 }
 
 #[tauri::command]
-pub async fn git_stage_paths(input: GitPathsInput) -> Result<(), String> {
-    run_blocking(move || service::stage_paths(input)).await
+pub async fn git_get_diff(
+    state: State<'_, GitRuntimeState>,
+    input: GitDiffInput,
+) -> Result<GitDiffOutput, String> {
+    let cache = state.repository_cache();
+    run_blocking(move || service::get_diff(input, &cache)).await
 }
 
 #[tauri::command]
-pub async fn git_unstage_paths(input: GitPathsInput) -> Result<(), String> {
-    run_blocking(move || service::unstage_paths(input)).await
+pub async fn git_init_repository(
+    state: State<'_, GitRuntimeState>,
+    input: GitRepoInput,
+) -> Result<(), String> {
+    let cache = state.repository_cache();
+    run_blocking(move || service::init_repository(input, &cache)).await
 }
 
 #[tauri::command]
-pub async fn git_discard_paths(input: GitDiscardInput) -> Result<(), String> {
-    run_blocking(move || service::discard_paths(input)).await
+pub async fn git_stage_paths(
+    state: State<'_, GitRuntimeState>,
+    input: GitPathsInput,
+) -> Result<(), String> {
+    let cache = state.repository_cache();
+    run_blocking(move || service::stage_paths(input, &cache)).await
 }
 
 #[tauri::command]
-pub async fn git_commit(input: GitCommitInput) -> Result<(), String> {
-    run_blocking(move || service::commit(input)).await
+pub async fn git_unstage_paths(
+    state: State<'_, GitRuntimeState>,
+    input: GitPathsInput,
+) -> Result<(), String> {
+    let cache = state.repository_cache();
+    run_blocking(move || service::unstage_paths(input, &cache)).await
 }
 
 #[tauri::command]
-pub async fn git_fetch(input: GitRepoInput) -> Result<(), String> {
-    run_blocking(move || service::fetch(input)).await
+pub async fn git_discard_paths(
+    state: State<'_, GitRuntimeState>,
+    input: GitDiscardInput,
+) -> Result<(), String> {
+    let cache = state.repository_cache();
+    run_blocking(move || service::discard_paths(input, &cache)).await
 }
 
 #[tauri::command]
-pub async fn git_pull(input: GitRepoInput) -> Result<(), String> {
-    run_blocking(move || service::pull(input)).await
+pub async fn git_commit(
+    state: State<'_, GitRuntimeState>,
+    input: GitCommitInput,
+) -> Result<(), String> {
+    let cache = state.repository_cache();
+    run_blocking(move || service::commit(input, &cache)).await
 }
 
 #[tauri::command]
-pub async fn git_push(input: GitRepoInput) -> Result<(), String> {
-    run_blocking(move || service::push(input)).await
+pub async fn git_fetch(
+    state: State<'_, GitRuntimeState>,
+    input: GitRepoInput,
+) -> Result<(), String> {
+    let cache = state.repository_cache();
+    run_blocking(move || service::fetch(input, &cache)).await
 }
 
 #[tauri::command]
-pub async fn git_checkout(input: GitCheckoutInput) -> Result<(), String> {
-    run_blocking(move || service::checkout(input)).await
+pub async fn git_pull(
+    state: State<'_, GitRuntimeState>,
+    input: GitRepoInput,
+) -> Result<(), String> {
+    let cache = state.repository_cache();
+    run_blocking(move || service::pull(input, &cache)).await
+}
+
+#[tauri::command]
+pub async fn git_push(
+    state: State<'_, GitRuntimeState>,
+    input: GitRepoInput,
+) -> Result<(), String> {
+    let cache = state.repository_cache();
+    run_blocking(move || service::push(input, &cache)).await
+}
+
+#[tauri::command]
+pub async fn git_checkout(
+    state: State<'_, GitRuntimeState>,
+    input: GitCheckoutInput,
+) -> Result<(), String> {
+    let cache = state.repository_cache();
+    run_blocking(move || service::checkout(input, &cache)).await
 }

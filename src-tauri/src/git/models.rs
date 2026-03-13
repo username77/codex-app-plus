@@ -44,6 +44,13 @@ pub struct GitCheckoutInput {
     pub create: bool,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitRemoteInput {
+    pub repo_path: String,
+    pub remote_name: String,
+}
+
 #[derive(Debug, Serialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct GitBranchSummary {
@@ -73,13 +80,11 @@ pub struct GitStatusEntry {
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct GitStatusOutput {
+pub struct GitStatusSnapshotOutput {
     pub is_repository: bool,
     pub repo_root: Option<String>,
     pub branch: Option<GitBranchSummary>,
     pub remote_name: Option<String>,
-    pub remote_url: Option<String>,
-    pub branches: Vec<GitBranchRef>,
     pub staged: Vec<GitStatusEntry>,
     pub unstaged: Vec<GitStatusEntry>,
     pub untracked: Vec<GitStatusEntry>,
@@ -87,15 +92,13 @@ pub struct GitStatusOutput {
     pub is_clean: bool,
 }
 
-impl GitStatusOutput {
+impl GitStatusSnapshotOutput {
     pub fn not_repository() -> Self {
         Self {
             is_repository: false,
             repo_root: None,
             branch: None,
             remote_name: None,
-            remote_url: None,
-            branches: Vec::new(),
             staged: Vec::new(),
             unstaged: Vec::new(),
             untracked: Vec::new(),

@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { GitDiffOutput, GitStatusOutput, HostBridge } from "../../../bridge/types";
+import type {
+  GitBranchRef,
+  GitDiffOutput,
+  GitStatusSnapshotOutput,
+  HostBridge,
+} from "../../../bridge/types";
 import { createGitDiffKey } from "./gitDiffKey";
 import type { GitNotice, WorkspaceGitController } from "./types";
 import { useWorkspaceGitActions } from "./useWorkspaceGitActions";
 import { useWorkspaceGitAutoRefresh } from "./useWorkspaceGitAutoRefresh";
+import { composeGitStatus } from "./workspaceGitStatus";
 import {
   addLoadingDiffKey,
   createStaleDiffKeys,
@@ -15,7 +21,7 @@ import {
   removeLoadingDiffKey,
   removeStaleDiffKey,
   storeDiff,
-  type GitDiffTarget
+  type GitDiffTarget,
 } from "./workspaceGitHelpers";
 
 interface UseWorkspaceGitOptions {
@@ -31,18 +37,31 @@ function createDiffTarget(path: string, staged: boolean): GitDiffTarget {
   return { path, staged };
 }
 
-function getMatchingDiff(controllerDiff: GitDiffOutput | null, target: GitDiffTarget | null): GitDiffOutput | null {
+function getMatchingDiff(
+  controllerDiff: GitDiffOutput | null,
+  target: GitDiffTarget | null,
+): GitDiffOutput | null {
   if (controllerDiff === null || target === null) {
     return null;
   }
-  return controllerDiff.path === target.path && controllerDiff.staged === target.staged ? controllerDiff : null;
+  return controllerDiff.path === target.path && controllerDiff.staged === target.staged
+    ? controllerDiff
+    : null;
 }
 
-export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitController {
+export function useWorkspaceGit(
+  options: UseWorkspaceGitOptions,
+): WorkspaceGitController {
   const diffStateEnabled = options.diffStateEnabled ?? true;
   const [loading, setLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [status, setStatus] = useState<GitStatusOutput | null>(null);
+  const [snapshot, setSnapshot] = useState<GitStatusSnapshotOutput | null>(null);
+  const [branchRefs, setBranchRefs] = useState<ReadonlyArray<GitBranchRef>>([]);
+  const [branchRefsLoading, setBranchRefsLoading] = useState(false);
+  const [branchRefsLoaded, setBranchRefsLoaded] = useState(false);
+  const [remoteUrl, setRemoteUrl] = useState<string | null>(null);
+  const [remoteUrlLoading, setRemoteUrlLoading] = useState(false);
+  const [remoteUrlLoaded, setRemoteUrlLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<GitNotice | null>(null);
   const [commitMessage, setCommitMessage] = useState("");
@@ -56,11 +75,48 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
 
   const requestIdRef = useRef(0);
   const selectionIdRef = useRef(0);
+  const branchRefsRequestIdRef = useRef(0);
+  const remoteUrlRequestIdRef = useRef(0);
   const previousRootRef = useRef<string | null>(null);
+  const selectedRootRef = useRef<string | null>(options.selectedRootPath);
+  const snapshotRef = useRef<GitStatusSnapshotOutput | null>(null);
+  const branchRefsRef = useRef<ReadonlyArray<GitBranchRef>>([]);
+  const branchRefsLoadedRef = useRef(false);
+  const remoteUrlRef = useRef<string | null>(null);
+  const remoteUrlLoadedRef = useRef(false);
   const diffCacheRef = useRef<Readonly<Record<string, GitDiffOutput>>>({});
   const diffTargetRef = useRef<GitDiffTarget | null>(null);
   const loadingDiffKeysRef = useRef<ReadonlyArray<string>>([]);
   const staleDiffKeysRef = useRef<ReadonlyArray<string>>([]);
+
+  useEffect(() => {
+    selectedRootRef.current = options.selectedRootPath;
+  }, [options.selectedRootPath]);
+
+  const writeSnapshot = useCallback((nextSnapshot: GitStatusSnapshotOutput | null) => {
+    snapshotRef.current = nextSnapshot;
+    setSnapshot(nextSnapshot);
+  }, []);
+
+  const writeBranchRefs = useCallback((nextBranchRefs: ReadonlyArray<GitBranchRef>) => {
+    branchRefsRef.current = nextBranchRefs;
+    setBranchRefs(nextBranchRefs);
+  }, []);
+
+  const writeBranchRefsLoaded = useCallback((nextLoaded: boolean) => {
+    branchRefsLoadedRef.current = nextLoaded;
+    setBranchRefsLoaded(nextLoaded);
+  }, []);
+
+  const writeRemoteUrl = useCallback((nextRemoteUrl: string | null) => {
+    remoteUrlRef.current = nextRemoteUrl;
+    setRemoteUrl(nextRemoteUrl);
+  }, []);
+
+  const writeRemoteUrlLoaded = useCallback((nextLoaded: boolean) => {
+    remoteUrlLoadedRef.current = nextLoaded;
+    setRemoteUrlLoaded(nextLoaded);
+  }, []);
 
   const writeDiffCache = useCallback((nextCache: Readonly<Record<string, GitDiffOutput>>) => {
     diffCacheRef.current = nextCache;
@@ -82,8 +138,25 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
     setStaleDiffKeys(nextKeys);
   }, []);
 
+  const resetBranchRefsState = useCallback(() => {
+    branchRefsRequestIdRef.current += 1;
+    writeBranchRefs([]);
+    writeBranchRefsLoaded(false);
+    setBranchRefsLoading(false);
+  }, [writeBranchRefs, writeBranchRefsLoaded]);
+
+  const resetRemoteUrlState = useCallback(
+    (loaded: boolean) => {
+      remoteUrlRequestIdRef.current += 1;
+      writeRemoteUrl(null);
+      writeRemoteUrlLoaded(loaded);
+      setRemoteUrlLoading(false);
+    },
+    [writeRemoteUrl, writeRemoteUrlLoaded],
+  );
+
   const resetRepositoryState = useCallback(() => {
-    setStatus(null);
+    writeSnapshot(null);
     setError(null);
     setNotice(null);
     setDiff(null);
@@ -91,7 +164,17 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
     writeDiffTarget(null);
     writeLoadingDiffKeys([]);
     writeStaleDiffKeys([]);
-  }, [writeDiffCache, writeDiffTarget, writeLoadingDiffKeys, writeStaleDiffKeys]);
+    resetBranchRefsState();
+    resetRemoteUrlState(false);
+  }, [
+    resetBranchRefsState,
+    resetRemoteUrlState,
+    writeDiffCache,
+    writeDiffTarget,
+    writeLoadingDiffKeys,
+    writeSnapshot,
+    writeStaleDiffKeys,
+  ]);
 
   const clearTransientState = useCallback(() => {
     resetRepositoryState();
@@ -100,28 +183,46 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
     setNewBranchName("");
   }, [resetRepositoryState]);
 
+  const status = useMemo(
+    () =>
+      composeGitStatus(
+        snapshot,
+        branchRefs,
+        branchRefsLoaded,
+        remoteUrl,
+        remoteUrlLoaded,
+      ),
+    [branchRefs, branchRefsLoaded, remoteUrl, remoteUrlLoaded, snapshot],
+  );
+
   const loadDiff = useCallback(
     async (repoPath: string, target: GitDiffTarget): Promise<GitDiffOutput> => {
       const diffKey = createGitDiffKey(target.path, target.staged);
       writeLoadingDiffKeys(addLoadingDiffKey(loadingDiffKeysRef.current, diffKey));
       try {
-        const nextDiff = await options.hostBridge.git.getDiff({ repoPath, path: target.path, staged: target.staged });
+        const nextDiff = await options.hostBridge.git.getDiff({
+          repoPath,
+          path: target.path,
+          staged: target.staged,
+        });
         writeDiffCache(storeDiff(diffCacheRef.current, nextDiff));
         writeStaleDiffKeys(removeStaleDiffKey(staleDiffKeysRef.current, diffKey));
         return nextDiff;
       } finally {
-        writeLoadingDiffKeys(removeLoadingDiffKey(loadingDiffKeysRef.current, diffKey));
+        writeLoadingDiffKeys(
+          removeLoadingDiffKey(loadingDiffKeysRef.current, diffKey),
+        );
       }
     },
-    [options.hostBridge.git, writeDiffCache, writeLoadingDiffKeys, writeStaleDiffKeys]
+    [options.hostBridge.git, writeDiffCache, writeLoadingDiffKeys, writeStaleDiffKeys],
   );
 
   const syncSelectedDiff = useCallback(
     async (
       repoPath: string,
-      nextStatus: GitStatusOutput,
+      nextStatus: NonNullable<typeof status>,
       requestId: number,
-      nextCache: Readonly<Record<string, GitDiffOutput>>
+      nextCache: Readonly<Record<string, GitDiffOutput>>,
     ) => {
       const nextTarget = findRetainedDiffTarget(nextStatus, diffTargetRef.current);
       if (nextTarget === null) {
@@ -142,11 +243,14 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
       }
 
       const nextDiff = await loadDiff(repoPath, nextTarget);
-      if (requestId === requestIdRef.current && isSameDiffTarget(diffTargetRef.current, nextTarget)) {
+      if (
+        requestId === requestIdRef.current
+        && isSameDiffTarget(diffTargetRef.current, nextTarget)
+      ) {
         setDiff(nextDiff);
       }
     },
-    [loadDiff, writeDiffTarget]
+    [loadDiff, writeDiffTarget],
   );
 
   const refreshSnapshot = useCallback(
@@ -157,18 +261,39 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
         return;
       }
 
+      const repoPath = options.selectedRootPath;
       const requestId = requestIdRef.current + 1;
       requestIdRef.current = requestId;
       setLoading(true);
       setError(null);
 
       try {
-        const nextStatus = await options.hostBridge.git.getStatus({ repoPath: options.selectedRootPath });
+        const nextSnapshot = await options.hostBridge.git.getStatusSnapshot({ repoPath });
         if (requestId !== requestIdRef.current) {
           return;
         }
 
-        setStatus(nextStatus);
+        const previousSnapshot = snapshotRef.current;
+        if (!nextSnapshot.isRepository) {
+          resetBranchRefsState();
+        }
+        if (nextSnapshot.remoteName === null) {
+          resetRemoteUrlState(true);
+        } else if (nextSnapshot.remoteName !== previousSnapshot?.remoteName) {
+          resetRemoteUrlState(false);
+        }
+
+        writeSnapshot(nextSnapshot);
+        const nextStatus = composeGitStatus(
+          nextSnapshot,
+          branchRefsRef.current,
+          branchRefsLoadedRef.current,
+          remoteUrlRef.current,
+          remoteUrlLoadedRef.current,
+        );
+        if (nextStatus === null) {
+          return;
+        }
         setSelectedBranch((currentBranch) => pickBranchName(nextStatus, currentBranch));
         if (!diffStateEnabled) {
           writeDiffCache({});
@@ -177,10 +302,11 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
           writeStaleDiffKeys([]);
           return;
         }
+
         const nextCache = pruneDiffCache(diffCacheRef.current, nextStatus);
         writeDiffCache(nextCache);
         writeStaleDiffKeys(createStaleDiffKeys(nextStatus));
-        await syncSelectedDiff(options.selectedRootPath, nextStatus, requestId, nextCache);
+        await syncSelectedDiff(repoPath, nextStatus, requestId, nextCache);
       } catch (reason) {
         if (requestId !== requestIdRef.current) {
           return;
@@ -195,12 +321,145 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
         }
       }
     },
-    [clearTransientState, diffStateEnabled, options.hostBridge.git, options.selectedRootPath, resetRepositoryState, syncSelectedDiff, writeDiffCache, writeDiffTarget, writeLoadingDiffKeys, writeStaleDiffKeys]
+    [
+      branchRefsLoadedRef,
+      clearTransientState,
+      diffStateEnabled,
+      options.hostBridge.git,
+      options.selectedRootPath,
+      remoteUrlLoadedRef,
+      resetBranchRefsState,
+      resetRemoteUrlState,
+      resetRepositoryState,
+      syncSelectedDiff,
+      writeDiffCache,
+      writeDiffTarget,
+      writeLoadingDiffKeys,
+      writeSnapshot,
+      writeStaleDiffKeys,
+    ],
   );
 
   const refresh = useCallback(async () => {
     await refreshSnapshot("incremental");
   }, [refreshSnapshot]);
+
+  const ensureBranchRefs = useCallback(async () => {
+    if (
+      options.selectedRootPath === null
+      || snapshotRef.current === null
+      || !snapshotRef.current.isRepository
+      || branchRefsLoadedRef.current
+      || branchRefsLoading
+    ) {
+      return;
+    }
+
+    const repoPath = options.selectedRootPath;
+    const requestId = branchRefsRequestIdRef.current + 1;
+    branchRefsRequestIdRef.current = requestId;
+    setBranchRefsLoading(true);
+    try {
+      const nextBranchRefs = await options.hostBridge.git.getBranchRefs({ repoPath });
+      if (
+        requestId !== branchRefsRequestIdRef.current
+        || selectedRootRef.current !== repoPath
+      ) {
+        return;
+      }
+      writeBranchRefs(nextBranchRefs);
+      writeBranchRefsLoaded(true);
+      setSelectedBranch((currentBranch) =>
+        pickBranchName(
+          composeGitStatus(
+            snapshotRef.current,
+            nextBranchRefs,
+            true,
+            remoteUrlRef.current,
+            remoteUrlLoadedRef.current,
+          ),
+          currentBranch,
+        ),
+      );
+    } catch (reason) {
+      if (
+        requestId === branchRefsRequestIdRef.current
+        && selectedRootRef.current === repoPath
+      ) {
+        setNotice({ kind: "error", text: formatActionError("加载分支", reason) });
+      }
+    } finally {
+      if (
+        requestId === branchRefsRequestIdRef.current
+        && selectedRootRef.current === repoPath
+      ) {
+        setBranchRefsLoading(false);
+      }
+    }
+  }, [
+    branchRefsLoading,
+    options.hostBridge.git,
+    options.selectedRootPath,
+    writeBranchRefs,
+    writeBranchRefsLoaded,
+  ]);
+
+  const ensureRemoteUrl = useCallback(async () => {
+    const currentSnapshot = snapshotRef.current;
+    if (
+      options.selectedRootPath === null
+      || currentSnapshot === null
+      || !currentSnapshot.isRepository
+      || remoteUrlLoading
+      || remoteUrlLoadedRef.current
+    ) {
+      return;
+    }
+    if (currentSnapshot.remoteName === null) {
+      resetRemoteUrlState(true);
+      return;
+    }
+
+    const repoPath = options.selectedRootPath;
+    const requestId = remoteUrlRequestIdRef.current + 1;
+    remoteUrlRequestIdRef.current = requestId;
+    setRemoteUrlLoading(true);
+    try {
+      const nextRemoteUrl = await options.hostBridge.git.getRemoteUrl({
+        repoPath,
+        remoteName: currentSnapshot.remoteName,
+      });
+      if (
+        requestId !== remoteUrlRequestIdRef.current
+        || selectedRootRef.current !== repoPath
+      ) {
+        return;
+      }
+      writeRemoteUrl(nextRemoteUrl);
+      writeRemoteUrlLoaded(true);
+    } catch (reason) {
+      if (
+        requestId === remoteUrlRequestIdRef.current
+        && selectedRootRef.current === repoPath
+      ) {
+        setNotice({ kind: "error", text: formatActionError("加载远端地址", reason) });
+      }
+    } finally {
+      if (
+        requestId === remoteUrlRequestIdRef.current
+        && selectedRootRef.current === repoPath
+      ) {
+        setRemoteUrlLoading(false);
+      }
+    }
+  }, [
+    options.hostBridge.git,
+    options.selectedRootPath,
+    remoteUrlLoading,
+    resetRemoteUrlState,
+    writeRemoteUrl,
+    writeRemoteUrlLoaded,
+  ]);
 
   useEffect(() => {
     const previousRootPath = previousRootRef.current;
@@ -220,21 +479,17 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
     selectedRootPath: options.selectedRootPath,
     loading,
     pendingAction,
-    refresh
+    refresh,
   });
 
   const selectDiff = useCallback(
     async (path: string, staged: boolean) => {
-      if (!diffStateEnabled) {
-        return;
-      }
-      if (options.selectedRootPath === null) {
+      if (!diffStateEnabled || options.selectedRootPath === null) {
         return;
       }
 
       const selectionId = selectionIdRef.current + 1;
       selectionIdRef.current = selectionId;
-
       const nextTarget = createDiffTarget(path, staged);
       const diffKey = createGitDiffKey(path, staged);
       const cachedDiff = diffCacheRef.current[diffKey] ?? null;
@@ -251,36 +506,39 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
 
       try {
         const nextDiff = await loadDiff(options.selectedRootPath, nextTarget);
-        if (selectionId === selectionIdRef.current && isSameDiffTarget(diffTargetRef.current, nextTarget)) {
+        if (
+          selectionId === selectionIdRef.current
+          && isSameDiffTarget(diffTargetRef.current, nextTarget)
+        ) {
           setDiff(nextDiff);
         }
       } catch (reason) {
         setNotice({ kind: "error", text: formatActionError("加载差异", reason) });
       }
     },
-    [diff, diffStateEnabled, loadDiff, options.selectedRootPath, writeDiffTarget]
+    [diff, diffStateEnabled, loadDiff, options.selectedRootPath, writeDiffTarget],
   );
 
   const ensureDiff = useCallback(
     async (path: string, staged: boolean) => {
-      if (!diffStateEnabled) {
+      if (!diffStateEnabled || options.selectedRootPath === null) {
         return;
       }
-      if (options.selectedRootPath === null) {
-        return;
-      }
+
       const diffKey = createGitDiffKey(path, staged);
-      const hasFreshDiff = diffCacheRef.current[diffKey] !== undefined && !staleDiffKeysRef.current.includes(diffKey);
+      const hasFreshDiff = diffCacheRef.current[diffKey] !== undefined
+        && !staleDiffKeysRef.current.includes(diffKey);
       if (hasFreshDiff || loadingDiffKeysRef.current.includes(diffKey)) {
         return;
       }
+
       try {
         await loadDiff(options.selectedRootPath, createDiffTarget(path, staged));
       } catch (reason) {
         setNotice({ kind: "error", text: formatActionError("加载差异", reason) });
       }
     },
-    [diffStateEnabled, loadDiff, options.selectedRootPath]
+    [diffStateEnabled, loadDiff, options.selectedRootPath],
   );
 
   const {
@@ -295,7 +553,7 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
     checkoutBranch,
     createBranchFromName,
     checkoutSelectedBranch,
-    createBranch
+    createBranch,
   } = useWorkspaceGitActions({
     hostBridge: options.hostBridge,
     selectedRootPath: options.selectedRootPath,
@@ -308,7 +566,9 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
     setPendingAction,
     setError,
     setNotice,
-    refresh
+    refresh,
+    invalidateBranchRefs: resetBranchRefsState,
+    invalidateRemoteUrl: () => resetRemoteUrlState(false),
   });
 
   return useMemo(
@@ -316,10 +576,14 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
       loading,
       pendingAction,
       status,
-      statusLoaded: status !== null,
+      statusLoaded: snapshot !== null,
       hasRepository: status?.isRepository ?? false,
       error,
       notice,
+      branchRefsLoading,
+      branchRefsLoaded,
+      remoteUrlLoading,
+      remoteUrlLoaded,
       commitMessage,
       selectedBranch,
       newBranchName,
@@ -341,6 +605,8 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
       createBranchFromName,
       checkoutSelectedBranch,
       createBranch,
+      ensureBranchRefs,
+      ensureRemoteUrl,
       ensureDiff,
       selectDiff,
       clearDiff: () => {
@@ -349,9 +615,11 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
       },
       setCommitMessage,
       setSelectedBranch,
-      setNewBranchName
+      setNewBranchName,
     }),
     [
+      branchRefsLoaded,
+      branchRefsLoading,
       checkoutBranch,
       checkoutSelectedBranch,
       commit,
@@ -362,26 +630,30 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
       diffCache,
       diffTarget,
       discardPaths,
+      ensureBranchRefs,
       ensureDiff,
+      ensureRemoteUrl,
       error,
       fetch,
+      initRepository,
       loading,
       loadingDiffKeys,
-      initRepository,
       newBranchName,
       notice,
-      options.hostBridge.git,
       pendingAction,
       pull,
       push,
       refresh,
+      remoteUrlLoaded,
+      remoteUrlLoading,
       selectDiff,
       selectedBranch,
       stagePaths,
       staleDiffKeys,
       status,
+      snapshot,
       unstagePaths,
-      writeDiffTarget
-    ]
+      writeDiffTarget,
+    ],
   );
 }

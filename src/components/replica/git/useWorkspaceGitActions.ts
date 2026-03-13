@@ -16,6 +16,8 @@ interface UseWorkspaceGitActionsOptions {
   readonly setError: Dispatch<SetStateAction<string | null>>;
   readonly setNotice: Dispatch<SetStateAction<GitNotice | null>>;
   readonly refresh: () => Promise<void>;
+  readonly invalidateBranchRefs: () => void;
+  readonly invalidateRemoteUrl: () => void;
 }
 
 function useRunAction(options: UseWorkspaceGitActionsOptions) {
@@ -83,33 +85,40 @@ export function useWorkspaceGitActions(options: UseWorkspaceGitActionsOptions) {
     if (normalizedBranchName.length === 0) {
       return false;
     }
+    options.invalidateBranchRefs();
     return runAction("切换分支", (repoPath) => options.hostBridge.git.checkout({ repoPath, branchName: normalizedBranchName, create: false }), `已切换到分支 ${normalizedBranchName}。`);
-  }, [options.hostBridge.git, runAction]);
+  }, [options.hostBridge.git, options.invalidateBranchRefs, runAction]);
   const checkoutSelectedBranch = useCallback(() => checkoutBranch(options.selectedBranch), [checkoutBranch, options.selectedBranch]);
   const createBranchFromName = useCallback(async (branchName: string) => {
     const normalizedBranchName = branchName.trim();
     if (normalizedBranchName.length === 0) {
       return false;
     }
+    options.invalidateBranchRefs();
     const succeeded = await runAction("新建分支", (repoPath) => options.hostBridge.git.checkout({ repoPath, branchName: normalizedBranchName, create: true }), `已创建并切换到分支 ${normalizedBranchName}。`);
     if (succeeded) {
       options.setNewBranchName("");
     }
     return succeeded;
-  }, [options.hostBridge.git, options.setNewBranchName, runAction]);
+  }, [options.hostBridge.git, options.invalidateBranchRefs, options.setNewBranchName, runAction]);
   const createBranch = useCallback(() => createBranchFromName(options.newBranchName), [createBranchFromName, options.newBranchName]);
   const initRepository = useCallback(async () => {
+    options.invalidateBranchRefs();
+    options.invalidateRemoteUrl();
     await runAction("初始化 Git 仓库", (repoPath) => options.hostBridge.git.initRepository({ repoPath }), "Git 仓库已初始化。");
-  }, [options.hostBridge.git, runAction]);
+  }, [options.hostBridge.git, options.invalidateBranchRefs, options.invalidateRemoteUrl, runAction]);
   const fetch = useCallback(async () => {
+    options.invalidateRemoteUrl();
     await runAction("抓取远端更新", (repoPath) => options.hostBridge.git.fetch({ repoPath }), "远端更新已抓取。");
-  }, [options.hostBridge.git, runAction]);
+  }, [options.hostBridge.git, options.invalidateRemoteUrl, runAction]);
   const pull = useCallback(async () => {
+    options.invalidateRemoteUrl();
     await runAction("拉取远端更新", (repoPath) => options.hostBridge.git.pull({ repoPath }), "远端更新已拉取。");
-  }, [options.hostBridge.git, runAction]);
+  }, [options.hostBridge.git, options.invalidateRemoteUrl, runAction]);
   const push = useCallback(async () => {
+    options.invalidateRemoteUrl();
     await runAction("推送分支", (repoPath) => options.hostBridge.git.push({ repoPath }), "本地提交已推送。");
-  }, [options.hostBridge.git, runAction]);
+  }, [options.hostBridge.git, options.invalidateRemoteUrl, runAction]);
   return {
     initRepository,
     fetch,

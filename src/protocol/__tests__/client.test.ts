@@ -77,7 +77,9 @@ function createHostBridge(): HostBridge {
       deleteCodexSession: vi.fn().mockResolvedValue(undefined)
     },
     git: {
-      getStatus: vi.fn(),
+      getStatusSnapshot: vi.fn(),
+      getBranchRefs: vi.fn(),
+      getRemoteUrl: vi.fn(),
       getDiff: vi.fn(),
       initRepository: vi.fn(),
       stagePaths: vi.fn(),

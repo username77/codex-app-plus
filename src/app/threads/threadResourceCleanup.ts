@@ -1,13 +1,17 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { HostBridge } from "../../bridge/types";
 import type { ConversationState } from "../../domain/conversation";
 import type { AppAction, AppState } from "../../domain/types";
 import type { AppStoreApi } from "../../state/store";
 import type { SessionSource } from "../../protocol/generated/v2/SessionSource";
 import type { CollabAgentStatus } from "../../protocol/generated/v2/CollabAgentStatus";
-import type { ThreadBackgroundTerminalsCleanResponse } from "../../protocol/generated/v2/ThreadBackgroundTerminalsCleanResponse";
-import type { ThreadUnsubscribeResponse } from "../../protocol/generated/v2/ThreadUnsubscribeResponse";
 import { isConversationStreaming } from "../conversation/conversationSelectors";
+import {
+  collectDescendantThreadIds,
+  createRpcThreadRuntimeCleanupTransport,
+  forceCloseThreadRuntime,
+  reportThreadCleanupError,
+} from "./threadRuntimeCleanup";
 
 interface UseThreadResourceCleanupOptions {
   readonly hostBridge: Pick<HostBridge, "rpc">;
@@ -72,11 +76,28 @@ function shouldUnloadMainConversation(
 function shouldUnloadHiddenMainConversation(
   conversation: ConversationState,
   selectedConversationId: string | null,
-  pendingRequestsByConversationId: PendingRequestsByConversationId,
 ): boolean {
   return conversation.hidden
+    && conversation.id !== selectedConversationId
     && isSubAgentSource(conversation.source) === false
-    && isUnloadableConversation(conversation, selectedConversationId, pendingRequestsByConversationId);
+    && conversation.resumeState === "resumed"
+    && hasTurnHistory(conversation);
+}
+
+function shouldCleanupClosedMainConversation(conversation: ConversationState): boolean {
+  return conversation.hidden === false
+    && isSubAgentSource(conversation.source) === false
+    && conversation.status === "notLoaded"
+    && conversation.resumeState === "needs_resume"
+    && hasTurnHistory(conversation);
+}
+
+function hasClosedMainConversation(
+  conversationsById: Readonly<Record<string, ConversationState | undefined>>,
+): boolean {
+  return Object.values(conversationsById).some(
+    (conversation) => conversation !== undefined && shouldCleanupClosedMainConversation(conversation),
+  );
 }
 
 function collectFinalSubagentIds(
@@ -108,64 +129,6 @@ function collectFinalSubagentIds(
   return { cleanupIds, notFoundIds };
 }
 
-function isAlreadyUnloadedError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  const normalized = message.toLowerCase();
-  return normalized.includes("not loaded") || normalized.includes("not found");
-}
-
-function reportCleanupError(
-  dispatch: (action: AppAction) => void,
-  conversation: ConversationState | null,
-  error: unknown,
-): void {
-  const detail = error instanceof Error ? error.message : String(error);
-  if (conversation !== null) {
-    dispatch({
-      type: "conversation/systemNoticeAdded",
-      conversationId: conversation.id,
-      turnId: null,
-      title: "清理线程资源失败",
-      detail,
-      level: "error",
-      source: "thread/cleanup",
-    });
-    return;
-  }
-  dispatch({
-    type: "banner/pushed",
-    banner: {
-      id: `thread-cleanup:${detail}`,
-      level: "error",
-      title: "清理线程资源失败",
-      detail,
-      source: "thread/cleanup",
-    },
-  });
-}
-
-async function cleanBackgroundTerminals(
-  hostBridge: Pick<HostBridge, "rpc">,
-  threadId: string,
-): Promise<ThreadBackgroundTerminalsCleanResponse> {
-  const response = await hostBridge.rpc.request({
-    method: "thread/backgroundTerminals/clean",
-    params: { threadId },
-  });
-  return response.result as ThreadBackgroundTerminalsCleanResponse;
-}
-
-async function unsubscribeThread(
-  hostBridge: Pick<HostBridge, "rpc">,
-  threadId: string,
-): Promise<ThreadUnsubscribeResponse> {
-  const response = await hostBridge.rpc.request({
-    method: "thread/unsubscribe",
-    params: { threadId },
-  });
-  return response.result as ThreadUnsubscribeResponse;
-}
-
 export function useThreadResourceCleanup(options: UseThreadResourceCleanupOptions): void {
   const { dispatch, hostBridge, store } = options;
   const cleanupInFlightIds = useRef(new Set<string>());
@@ -174,44 +137,31 @@ export function useThreadResourceCleanup(options: UseThreadResourceCleanupOption
   const conversationsByIdRef = useRef(store.getState().conversationsById);
   const pendingRequestsByConversationIdRef = useRef(store.getState().pendingRequestsByConversationId);
   const selectedConversationIdRef = useRef(store.getState().selectedConversationId);
+  const transport = useMemo(() => createRpcThreadRuntimeCleanupTransport(hostBridge), [hostBridge]);
 
   const cleanupThread = useCallback(async (threadId: string) => {
     if (cleanupInFlightIds.current.has(threadId) || cleanedThreadIds.current.has(threadId)) {
       return;
     }
-    if (threadId === selectedConversationIdRef.current) {
-      return;
-    }
-
     const conversation = conversationsByIdRef.current[threadId] ?? null;
-    if (hasBlockingPendingRequests(pendingRequestsByConversationIdRef.current, threadId)) {
-      return;
-    }
-    if (conversation !== null && isConversationStreaming(conversation)) {
-      return;
-    }
-
     cleanupInFlightIds.current.add(threadId);
     try {
-      if (conversation !== null && conversation.status !== "notLoaded") {
-        try {
-          await cleanBackgroundTerminals(hostBridge, threadId);
-        } catch (error) {
-          if (!isAlreadyUnloadedError(error)) {
-            throw error;
-          }
-        }
-      }
-      const response = await unsubscribeThread(hostBridge, threadId);
-      if (response.status === "unsubscribed" || response.status === "notSubscribed" || response.status === "notLoaded") {
-        cleanedThreadIds.current.add(threadId);
-      }
+      await forceCloseThreadRuntime(threadId, conversation, transport);
+      cleanedThreadIds.current.add(threadId);
     } catch (error) {
-      reportCleanupError(dispatch, conversation, error);
+      reportThreadCleanupError(dispatch, conversation, error);
     } finally {
       cleanupInFlightIds.current.delete(threadId);
     }
-  }, [dispatch, hostBridge]);
+  }, [dispatch, transport]);
+
+  const cleanupThreadTree = useCallback(async (rootThreadId: string, includeRoot: boolean) => {
+    const descendantThreadIds = collectDescendantThreadIds(rootThreadId, conversationsByIdRef.current);
+    const cleanupOrder = includeRoot ? [...descendantThreadIds, rootThreadId] : descendantThreadIds;
+    for (const threadId of cleanupOrder) {
+      await cleanupThread(threadId);
+    }
+  }, [cleanupThread]);
 
   useEffect(() => {
     let disposed = false;
@@ -236,13 +186,19 @@ export function useThreadResourceCleanup(options: UseThreadResourceCleanupOption
 
       for (const conversation of Object.values(conversationsById)) {
         if (conversation !== undefined && shouldUnloadMainConversation(conversation, selectedConversationId, pendingRequestsByConversationId)) {
-          void cleanupThread(conversation.id);
+          void cleanupThreadTree(conversation.id, true);
         }
       }
 
       for (const conversation of Object.values(conversationsById)) {
-        if (conversation !== undefined && shouldUnloadHiddenMainConversation(conversation, selectedConversationId, pendingRequestsByConversationId)) {
-          void cleanupThread(conversation.id);
+        if (conversation !== undefined && shouldUnloadHiddenMainConversation(conversation, selectedConversationId)) {
+          void cleanupThreadTree(conversation.id, true);
+        }
+      }
+
+      for (const conversation of Object.values(conversationsById)) {
+        if (conversation !== undefined && shouldCleanupClosedMainConversation(conversation)) {
+          void cleanupThreadTree(conversation.id, false);
         }
       }
 
@@ -259,6 +215,10 @@ export function useThreadResourceCleanup(options: UseThreadResourceCleanupOption
     };
 
     const scheduleCleanupStateSync = () => {
+      if (hasClosedMainConversation(store.getState().conversationsById)) {
+        syncCleanupState();
+        return;
+      }
       if (cleanupScheduledRef.current) {
         return;
       }
@@ -273,5 +233,5 @@ export function useThreadResourceCleanup(options: UseThreadResourceCleanupOption
       cleanupScheduledRef.current = false;
       unsubscribe();
     };
-  }, [cleanupThread, store]);
+  }, [cleanupThread, cleanupThreadTree, store]);
 }

@@ -13,6 +13,10 @@ export interface WorkspaceGitController {
   readonly hasRepository: boolean;
   readonly error: string | null;
   readonly notice: GitNotice | null;
+  readonly branchRefsLoading?: boolean;
+  readonly branchRefsLoaded?: boolean;
+  readonly remoteUrlLoading?: boolean;
+  readonly remoteUrlLoaded?: boolean;
   readonly commitMessage: string;
   readonly selectedBranch: string;
   readonly newBranchName: string;
@@ -34,6 +38,8 @@ export interface WorkspaceGitController {
   readonly createBranchFromName: (branchName: string) => Promise<boolean>;
   readonly checkoutSelectedBranch: () => Promise<boolean>;
   readonly createBranch: () => Promise<boolean>;
+  readonly ensureBranchRefs?: () => Promise<void>;
+  readonly ensureRemoteUrl?: () => Promise<void>;
   readonly ensureDiff: (path: string, staged: boolean) => Promise<void>;
   readonly selectDiff: (path: string, staged: boolean) => Promise<void>;
   readonly clearDiff: () => void;

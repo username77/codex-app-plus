@@ -1,8 +1,9 @@
-import { memo, useCallback } from "react";
+import { memo, useCallback, useMemo } from "react";
 import type { WorkspaceRoot } from "../../app/workspace/useWorkspaceRoots";
+import { collectDescendantThreadIds, createRpcThreadRuntimeCleanupTransport, forceCloseThreadRuntime, reportThreadCleanupError } from "../../app/threads/threadRuntimeCleanup";
 import type { HostBridge } from "../../bridge/types";
 import type { AuthStatus, ThreadSummary } from "../../domain/types";
-import { useAppDispatch } from "../../state/store";
+import { useAppDispatch, useAppStoreApi } from "../../state/store";
 import { SidebarIcon } from "./icons";
 import { OfficialSettingsGearIcon } from "./officialIcons";
 import { SettingsPopover } from "./SettingsPopover";
@@ -56,7 +57,9 @@ function SidebarNav(props: { readonly onCreateThread: () => Promise<void> }): JS
 
 function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
   const dispatch = useAppDispatch();
+  const store = useAppStoreApi();
   const sidebarClassName = props.collapsed ? "replica-sidebar sidebar-collapsed" : "replica-sidebar";
+  const cleanupTransport = useMemo(() => createRpcThreadRuntimeCleanupTransport(props.hostBridge), [props.hostBridge]);
 
   const clearSelectedThread = useCallback((threadId: string) => {
     if (threadId === props.selectedThreadId) {
@@ -70,10 +73,30 @@ function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
   }, [clearSelectedThread, props]);
 
   const handleDeleteThread = useCallback(async (thread: ThreadSummary) => {
+    const { conversationsById } = store.getState();
+    const conversation = conversationsById[thread.id] ?? null;
+
+    try {
+      if (thread.source !== "codexData" || conversation !== null) {
+        const descendantThreadIds = collectDescendantThreadIds(thread.id, conversationsById);
+        for (const threadId of [...descendantThreadIds, thread.id]) {
+          await forceCloseThreadRuntime(threadId, conversationsById[threadId] ?? null, cleanupTransport);
+        }
+      }
+    } catch (error) {
+      reportThreadCleanupError(dispatch, conversation, error);
+      throw error;
+    }
+
+    if (conversation !== null) {
+      dispatch({ type: "conversation/statusChanged", conversationId: thread.id, status: "notLoaded", activeFlags: [] });
+      dispatch({ type: "conversation/resumeStateChanged", conversationId: thread.id, resumeState: "needs_resume" });
+    }
+
     await props.hostBridge.app.deleteCodexSession({ threadId: thread.id, agentEnvironment: thread.agentEnvironment });
     dispatch({ type: "conversation/hiddenChanged", conversationId: thread.id, hidden: true });
     clearSelectedThread(thread.id);
-  }, [clearSelectedThread, dispatch, props]);
+  }, [cleanupTransport, clearSelectedThread, dispatch, props, store]);
 
   return (
     <aside className={sidebarClassName}>

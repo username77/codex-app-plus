@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { HostBridge } from "../../bridge/types";
@@ -86,6 +86,27 @@ function createCollabTurn(childThreadId: string, status: "completed" | "errored"
         [childThreadId]: { status, message: status === "notFound" ? null : "done" }
       }
     }]
+  };
+}
+
+function createRunningCollabTurn(
+  senderThreadId: string,
+  childThreadIds: ReadonlyArray<string>,
+) {
+  return {
+    id: `turn-${senderThreadId}`,
+    status: "completed" as const,
+    error: null,
+    items: [{
+      type: "collabAgentToolCall" as const,
+      id: `collab-${senderThreadId}`,
+      tool: "spawnAgent" as const,
+      status: "completed" as const,
+      senderThreadId,
+      receiverThreadIds: [...childThreadIds],
+      prompt: "inspect ui",
+      agentsStates: Object.fromEntries(childThreadIds.map((threadId) => [threadId, { status: "running", message: null }])),
+    }],
   };
 }
 
@@ -870,6 +891,119 @@ describe("useWorkspaceConversation", () => {
       await Promise.resolve();
     });
 
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/backgroundTerminals/clean", params: { threadId: "thread-1" } }));
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe", params: { threadId: "thread-1" } }));
+  });
+
+  it("force-cleans descendants when a selected main thread is naturally closed", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "turn/interrupt") {
+        return { requestId: `interrupt-${String((input.params as { threadId: string }).threadId)}`, result: {} };
+      }
+      if (input.method === "thread/backgroundTerminals/clean") {
+        return { requestId: `clean-${String((input.params as { threadId: string }).threadId)}`, result: {} };
+      }
+      if (input.method === "thread/unsubscribe") {
+        return { requestId: `unsubscribe-${String((input.params as { threadId: string }).threadId)}`, result: { status: "unsubscribed" } };
+      }
+      return { requestId: "noop", result: {} };
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({
+        type: "conversation/upserted",
+        conversation: createConversationFromThread(createThread({
+          id: "thread-1",
+          turns: [createRunningCollabTurn("thread-1", ["thread-2"])],
+        }), { resumeState: "resumed" })
+      });
+      result.current.store.dispatch({
+        type: "conversation/upserted",
+        conversation: createConversationFromThread(createThread({
+          id: "thread-2",
+          source: createSubAgentSource(),
+          status: { type: "active" as const, activeFlags: [] },
+          turns: [createTurn()],
+        }), { resumeState: "resumed" })
+      });
+      result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-1" });
+    });
+
+    act(() => {
+      applyAppServerNotification(createNotificationContext(result.current.store.dispatch), "thread/closed", { threadId: "thread-1" });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/interrupt", params: { threadId: "thread-2", turnId: "turn-1" } })));
+    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/backgroundTerminals/clean", params: { threadId: "thread-2" } })));
+    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe", params: { threadId: "thread-2" } })));
+    expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe", params: { threadId: "thread-1" } }));
+  });
+
+  it("force-cleans hidden main threads even with pending user input", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "turn/interrupt") {
+        return { requestId: `interrupt-${String((input.params as { threadId: string }).threadId)}`, result: {} };
+      }
+      if (input.method === "thread/backgroundTerminals/clean") {
+        return { requestId: `clean-${String((input.params as { threadId: string }).threadId)}`, result: {} };
+      }
+      if (input.method === "thread/unsubscribe") {
+        return { requestId: `unsubscribe-${String((input.params as { threadId: string }).threadId)}`, result: { status: "unsubscribed" } };
+      }
+      return { requestId: "noop", result: {} };
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({
+        type: "conversation/upserted",
+        conversation: createConversationFromThread(createThread({
+          id: "thread-1",
+          status: { type: "active" as const, activeFlags: ["waitingOnUserInput"] },
+          turns: [createRunningCollabTurn("thread-1", ["thread-2"]), createTurn()],
+        }), { hidden: true, resumeState: "resumed" })
+      });
+      result.current.store.dispatch({
+        type: "conversation/upserted",
+        conversation: createConversationFromThread(createThread({
+          id: "thread-2",
+          source: createSubAgentSource(),
+          status: { type: "active" as const, activeFlags: [] },
+          turns: [createTurn()],
+        }), { resumeState: "resumed" })
+      });
+      result.current.store.dispatch({
+        type: "serverRequest/received",
+        request: {
+          kind: "userInput",
+          id: "request-1",
+          rpcId: 1,
+          method: "item/tool/requestUserInput",
+          threadId: "thread-1",
+          turnId: "turn-1",
+          itemId: "item-1",
+          params: { threadId: "thread-1", turnId: "turn-1", itemId: "item-1", questions: [] },
+          questions: [],
+        },
+      });
+      result.current.store.dispatch({ type: "conversation/selected", conversationId: null });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/interrupt", params: { threadId: "thread-2", turnId: "turn-1" } }));
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/backgroundTerminals/clean", params: { threadId: "thread-2" } }));
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe", params: { threadId: "thread-2" } }));
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/interrupt", params: { threadId: "thread-1", turnId: "turn-1" } }));
     expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/backgroundTerminals/clean", params: { threadId: "thread-1" } }));
     expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe", params: { threadId: "thread-1" } }));
   });

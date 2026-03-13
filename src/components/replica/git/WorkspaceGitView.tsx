@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { GitChangeBrowser } from "./GitChangeBrowser";
 import { GitDiffPreview } from "./GitDiffPreview";
 import { GitStateCard } from "./GitStateCard";
@@ -126,6 +127,20 @@ function GitCommitCard(props: { readonly controller: WorkspaceGitController; rea
 }
 
 export function WorkspaceGitView(props: WorkspaceGitViewProps): JSX.Element {
+  useEffect(() => {
+    if (
+      props.controller.status?.isRepository !== true
+      || props.controller.status.remoteName === null
+    ) {
+      return;
+    }
+    void props.controller.ensureRemoteUrl?.();
+  }, [
+    props.controller.ensureRemoteUrl,
+    props.controller.status?.isRepository,
+    props.controller.status?.remoteName,
+  ]);
+
   const viewState = getGitViewState(props.selectedRootName, props.controller);
   if (viewState !== null) {
     return <GitWorkspaceState {...viewState} />;
