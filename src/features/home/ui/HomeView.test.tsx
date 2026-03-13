@@ -1,9 +1,9 @@
-﻿import type { ComponentProps } from "react";
+﻿import { useState, type ComponentProps } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { ComposerModelOption } from "../../composer/model/composerPreferences";
 import type { HostBridge } from "../../../bridge/types";
-import type { TurnPlanSnapshotEntry } from "../../../domain/timeline";
+import type { CollaborationPreset, TurnPlanSnapshotEntry } from "../../../domain/timeline";
 import type { ThreadSummary, TimelineEntry } from "../../../domain/types";
 import { AppStoreProvider } from "../../../state/store";
 import type { WorkspaceGitController } from "../../git/model/types";
@@ -96,68 +96,93 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
   mockedUseWorkspaceGit.mockReturnValue(createController());
   const root = { id: "root-1", name: "FPGA", path: "E:/code/FPGA" };
   const thread = createThread();
+  const {
+    collaborationPreset: initialCollaborationPreset = "default",
+    onSelectCollaborationPreset,
+    ...restOverrides
+  } = overrides ?? {};
+
+  function HomeViewHarness(
+    props: Omit<Partial<ComponentProps<typeof HomeView>>, "collaborationPreset" | "onSelectCollaborationPreset">,
+  ): JSX.Element {
+    const [collaborationPreset, setCollaborationPreset] = useState<CollaborationPreset>(
+      initialCollaborationPreset,
+    );
+    const handleSelectCollaborationPreset = (preset: CollaborationPreset) => {
+      setCollaborationPreset(preset);
+      onSelectCollaborationPreset?.(preset);
+    };
+
+    return (
+      <HomeView
+        hostBridge={{} as HostBridge}
+        busy={false}
+        inputText="请分析当前工作区"
+        roots={[root]}
+        selectedRootId={root.id}
+        selectedRootName={root.name}
+        selectedRootPath={root.path}
+        threads={[thread]}
+        selectedThread={thread}
+        selectedThreadId={thread.id}
+        activeTurnId={null}
+        isResponding={false}
+        interruptPending={false}
+        activities={[]}
+        banners={[]}
+        account={null}
+        rateLimitSummary={null}
+        queuedFollowUps={[]}
+        draftActive={false}
+        selectedConversationLoading={false}
+        collaborationPreset={collaborationPreset}
+        models={MODELS}
+        defaultModel="gpt-5.2"
+        defaultEffort="xhigh"
+        workspaceOpener="vscode"
+        embeddedTerminalShell="powerShell"
+        threadDetailLevel="commands"
+        followUpQueueMode="queue"
+        composerEnterBehavior="enter"
+        composerPermissionLevel="default"
+        connectionStatus="connected"
+        fatalError={null}
+        authStatus="authenticated"
+        authMode="chatgpt"
+        authBusy={false}
+        authLoginPending={false}
+        retryScheduledAt={null}
+        settingsMenuOpen={false}
+        onToggleSettingsMenu={vi.fn()}
+        onDismissSettingsMenu={vi.fn()}
+        onOpenSettings={vi.fn()}
+        onSelectWorkspaceOpener={vi.fn()}
+        onSelectComposerPermissionLevel={vi.fn()}
+        onSelectRoot={vi.fn()}
+        onSelectThread={vi.fn()}
+        onSelectCollaborationPreset={handleSelectCollaborationPreset}
+        onInputChange={vi.fn()}
+        onCreateThread={vi.fn().mockResolvedValue(undefined)}
+        onSendTurn={vi.fn().mockResolvedValue(undefined)}
+        onPersistComposerSelection={vi.fn().mockResolvedValue(undefined)}
+        onUpdateThreadBranch={vi.fn().mockResolvedValue(undefined)}
+        onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
+        onAddRoot={vi.fn()}
+        onRemoveRoot={vi.fn()}
+        onRetryConnection={vi.fn().mockResolvedValue(undefined)}
+        onLogin={vi.fn().mockResolvedValue(undefined)}
+        onLogout={vi.fn().mockResolvedValue(undefined)}
+        onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
+        onRemoveQueuedFollowUp={vi.fn()}
+        onClearQueuedFollowUps={vi.fn()}
+        onDismissBanner={vi.fn()}
+        {...props}
+      />
+    );
+  }
+
   return render(
-    <AppStoreProvider><HomeView
-      hostBridge={{} as HostBridge}
-      busy={false}
-      inputText="请分析当前工作区"
-      roots={[root]}
-      selectedRootId={root.id}
-      selectedRootName={root.name}
-      selectedRootPath={root.path}
-      threads={[thread]}
-      selectedThread={thread}
-      selectedThreadId={thread.id}
-      activeTurnId={null}
-      isResponding={false}
-      interruptPending={false}
-      activities={[]}
-      banners={[]}
-      account={null}
-      rateLimitSummary={null}
-      queuedFollowUps={[]}
-      draftActive={false}
-      selectedConversationLoading={false}
-      models={MODELS}
-      defaultModel="gpt-5.2"
-      defaultEffort="xhigh"
-      workspaceOpener="vscode"
-      embeddedTerminalShell="powerShell"
-      threadDetailLevel="commands"
-      followUpQueueMode="queue"
-      composerEnterBehavior="enter"
-      composerPermissionLevel="default"
-      connectionStatus="connected"
-      fatalError={null}
-      authStatus="authenticated"
-      authMode="chatgpt"
-      authBusy={false}
-      authLoginPending={false}
-      retryScheduledAt={null}
-      settingsMenuOpen={false}
-      onToggleSettingsMenu={vi.fn()}
-      onDismissSettingsMenu={vi.fn()}
-      onOpenSettings={vi.fn()}
-      onSelectWorkspaceOpener={vi.fn()}
-      onSelectComposerPermissionLevel={vi.fn()}
-      onSelectRoot={vi.fn()}
-      onSelectThread={vi.fn()}
-      onInputChange={vi.fn()}
-      onCreateThread={vi.fn().mockResolvedValue(undefined)}
-      onSendTurn={vi.fn().mockResolvedValue(undefined)}
-      onPersistComposerSelection={vi.fn().mockResolvedValue(undefined)}
-      onUpdateThreadBranch={vi.fn().mockResolvedValue(undefined)}
-      onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
-      onAddRoot={vi.fn()}
-      onRemoveRoot={vi.fn()}
-      onRetryConnection={vi.fn().mockResolvedValue(undefined)}
-      onLogin={vi.fn().mockResolvedValue(undefined)}
-      onLogout={vi.fn().mockResolvedValue(undefined)}
-      onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
-      onRemoveQueuedFollowUp={vi.fn()}
-      onClearQueuedFollowUps={vi.fn()}
-      {...overrides}
-    /></AppStoreProvider>
+    <AppStoreProvider><HomeViewHarness {...restOverrides} /></AppStoreProvider>
   );
 }
 describe("HomeView", () => {
@@ -421,6 +446,7 @@ describe("HomeView", () => {
         queuedFollowUps={[]}
         draftActive={false}
         selectedConversationLoading={false}
+        collaborationPreset="default"
         models={MODELS}
         defaultModel="gpt-5.2"
         defaultEffort="xhigh"
@@ -445,6 +471,7 @@ describe("HomeView", () => {
         onSelectComposerPermissionLevel={vi.fn()}
         onSelectRoot={vi.fn()}
         onSelectThread={vi.fn()}
+        onSelectCollaborationPreset={vi.fn()}
         onInputChange={vi.fn()}
         onCreateThread={vi.fn().mockResolvedValue(undefined)}
         onSendTurn={vi.fn().mockResolvedValue(undefined)}
@@ -459,6 +486,7 @@ describe("HomeView", () => {
         onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
         onRemoveQueuedFollowUp={vi.fn()}
         onClearQueuedFollowUps={vi.fn()}
+        onDismissBanner={vi.fn()}
       /></AppStoreProvider>
     );
 
@@ -475,6 +503,23 @@ describe("HomeView", () => {
     expect(screen.queryByText(/Auth:/)).toBeNull();
     expect(screen.queryByText(/Rate limit:/)).toBeNull();
     expect(screen.queryByText("Skills changed")).toBeNull();
+  });
+
+  it("shows dismissible warning and error banners above the conversation", () => {
+    const onDismissBanner = vi.fn();
+    renderHomeView({
+      onDismissBanner,
+      banners: [
+        { id: "banner-warning", level: "warning", title: "配置待确认", detail: "需要重新加载 MCP。", source: "test" },
+        { id: "banner-error", level: "error", title: "发送失败", detail: "network down", source: "test" },
+      ],
+    });
+
+    expect(screen.getByText("配置待确认")).toBeInTheDocument();
+    expect(screen.getByText("发送失败")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "关闭通知：发送失败" }));
+
+    expect(onDismissBanner).toHaveBeenCalledWith("banner-error");
   });
 
   it("truncates long toolbar titles while preserving the full title in tooltip", () => {

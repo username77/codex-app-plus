@@ -45,6 +45,7 @@ function ComposerHarness(props: { readonly selectedRootPath?: string | null; rea
     <HomeComposer
       busy={false}
       inputText={inputText}
+      collaborationPreset="default"
       models={MODELS}
       defaultModel="gpt-5.2"
       defaultEffort="medium"
@@ -59,6 +60,7 @@ function ComposerHarness(props: { readonly selectedRootPath?: string | null; rea
       isResponding={false}
       interruptPending={false}
       composerCommandBridge={composerCommandBridge}
+      onSelectCollaborationPreset={vi.fn()}
       onInputChange={setInputText}
       onCreateThread={props.onCreateThread ?? vi.fn().mockResolvedValue(undefined)}
       onSendTurn={vi.fn().mockResolvedValue(undefined)}

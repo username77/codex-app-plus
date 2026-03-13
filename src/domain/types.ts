@@ -19,6 +19,7 @@ import type {
   DraftConversationState,
 } from "./conversation";
 import type {
+  CollaborationPreset,
   CollaborationModePreset,
   NoticeLevel,
   QueuedFollowUp,
@@ -26,6 +27,7 @@ import type {
 import type { ReceivedServerRequest } from "./serverRequests";
 
 export type {
+  CollaborationPreset,
   CollaborationModePreset,
   ComposerAttachment,
   ComposerEnterBehavior,
@@ -51,6 +53,7 @@ export type TimelineItem = import("./timeline").ConversationMessage;
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
 export type AuthStatus = "unknown" | "authenticated" | "needs_login";
 export type WorkspaceView = "conversation" | "settings" | "skills" | "mcp" | "worktrees";
+const INITIAL_DRAFT_COLLABORATION_PRESET: CollaborationPreset = "default";
 
 export interface ReceivedNotification {
   readonly method: string;
@@ -107,6 +110,11 @@ export interface FuzzySearchSessionState {
   readonly completed: boolean;
 }
 
+export interface ComposerUiState {
+  readonly threadCollaborationPresets: Readonly<Record<string, CollaborationPreset>>;
+  readonly draftCollaborationPreset: CollaborationPreset;
+}
+
 export interface AppState {
   readonly connectionStatus: ConnectionStatus;
   readonly fatalError: string | null;
@@ -136,6 +144,7 @@ export interface AppState {
   readonly initialized: boolean;
   readonly retryScheduledAt: number | null;
   readonly inputText: string;
+  readonly composerUi: ComposerUiState;
   readonly bootstrapBusy: boolean;
 }
 
@@ -203,9 +212,13 @@ export type AppAction =
   | { type: "fuzzySearch/completed"; sessionId: string }
   | { type: "fuzzySearch/removed"; sessionId: string }
   | { type: "banner/pushed"; banner: UiBanner }
+  | { type: "banner/dismissed"; bannerId: string }
   | { type: "initialized/changed"; ready: boolean }
   | { type: "retry/scheduled"; at: number | null }
   | { type: "input/changed"; value: string }
+  | { type: "composer/threadCollaborationPresetSelected"; conversationId: string; preset: CollaborationPreset }
+  | { type: "composer/draftCollaborationPresetSelected"; preset: CollaborationPreset }
+  | { type: "composer/draftCollaborationPresetTransferred"; conversationId: string }
   | { type: "bootstrapBusy/changed"; busy: boolean };
 
 export const INITIAL_STATE: AppState = {
@@ -237,5 +250,9 @@ export const INITIAL_STATE: AppState = {
   initialized: false,
   retryScheduledAt: null,
   inputText: "",
+  composerUi: {
+    threadCollaborationPresets: {},
+    draftCollaborationPreset: INITIAL_DRAFT_COLLABORATION_PRESET,
+  },
   bootstrapBusy: false,
 };

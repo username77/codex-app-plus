@@ -1,6 +1,8 @@
 import { renderHook, waitFor } from "@testing-library/react";
+import type { PropsWithChildren } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { HostBridge } from "../../../bridge/types";
+import { AppStoreProvider } from "../../../state/store";
 import { useComposerPicker } from "./useComposerPicker";
 
 function createHostBridge(request: ReturnType<typeof vi.fn>): HostBridge {
@@ -39,9 +41,12 @@ describe("useComposerPicker", () => {
       }
     });
     const hostBridge = createHostBridge(request);
+    function Wrapper({ children }: PropsWithChildren): JSX.Element {
+      return <AppStoreProvider>{children}</AppStoreProvider>;
+    }
     const { result, rerender } = renderHook(
       ({ ready }) => useComposerPicker(hostBridge, null, ready),
-      { initialProps: { ready: false } }
+      { initialProps: { ready: false }, wrapper: Wrapper }
     );
 
     expect(request).not.toHaveBeenCalled();

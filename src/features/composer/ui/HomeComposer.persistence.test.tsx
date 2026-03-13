@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ComposerModelOption } from "../model/composerPreferences";
-import { AppStoreProvider } from "../../../state/store";
+import { AppStoreProvider, useAppSelector } from "../../../state/store";
 import type { ComposerCommandBridge } from "../service/composerCommandBridge";
 import { HomeComposer } from "./HomeComposer";
 
@@ -82,11 +82,17 @@ function renderComposer(overrides?: Partial<ComponentProps<typeof HomeComposer>>
   const onSendTurn = vi.fn().mockResolvedValue(undefined);
   const onPersistComposerSelection = vi.fn().mockResolvedValue(undefined);
 
+  function BannerProbe(): JSX.Element | null {
+    const latestBanner = useAppSelector((state) => state.banners[0] ?? null);
+    return latestBanner === null ? null : <span>{latestBanner.title}</span>;
+  }
+
   render(
     <AppStoreProvider>
       <HomeComposer
         busy={false}
         inputText="continue analyzing composer selection"
+        collaborationPreset="default"
         models={MODELS}
         defaultModel="custom-model"
         defaultEffort="high"
@@ -101,6 +107,7 @@ function renderComposer(overrides?: Partial<ComponentProps<typeof HomeComposer>>
         isResponding={false}
         interruptPending={false}
         composerCommandBridge={createCommandBridge()}
+        onSelectCollaborationPreset={vi.fn()}
         onInputChange={vi.fn()}
         onCreateThread={vi.fn().mockResolvedValue(undefined)}
         onSendTurn={onSendTurn}
@@ -113,6 +120,7 @@ function renderComposer(overrides?: Partial<ComponentProps<typeof HomeComposer>>
         onClearQueuedFollowUps={vi.fn()}
         {...overrides}
       />
+      <BannerProbe />
     </AppStoreProvider>,
   );
 
@@ -153,7 +161,6 @@ describe("HomeComposer persistence", () => {
   });
 
   it("rolls back to the last persisted selection when persistence fails", async () => {
-    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => undefined);
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const onPersistComposerSelection = vi.fn().mockRejectedValue(new Error("write failed"));
     const onSendTurn = vi.fn().mockResolvedValue(undefined);
@@ -163,7 +170,7 @@ describe("HomeComposer persistence", () => {
     fireEvent.click(screen.getByRole("button", { name: /选择模型/ }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "GPT-5.2" }));
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByText("保存 Composer 配置失败")).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 

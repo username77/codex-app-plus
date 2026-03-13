@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { HostBridge, WorkspaceOpener } from "../../../bridge/types";
+import { useAppSelector } from "../../../state/store";
+import { AppStoreProvider } from "../../../state/store";
 import { WorkspaceOpenButton } from "./WorkspaceOpenButton";
 
 function createHostBridge(overrides?: {
@@ -12,15 +14,15 @@ function createHostBridge(overrides?: {
     appServer: {
       start: vi.fn(),
       stop: vi.fn(),
-      restart: vi.fn()
+      restart: vi.fn(),
     },
     rpc: {
       request: vi.fn(),
       notify: vi.fn(),
-      cancel: vi.fn()
+      cancel: vi.fn(),
     },
     serverRequest: {
-      resolve: vi.fn()
+      resolve: vi.fn(),
     },
     app: {
       openExternal: overrides?.openExternal ?? vi.fn().mockResolvedValue(undefined),
@@ -28,11 +30,11 @@ function createHostBridge(overrides?: {
       openCodexConfigToml: vi.fn(),
       clearChatgptAuthState: vi.fn(),
       showNotification: vi.fn(),
-    showContextMenu: vi.fn(),
-    importOfficialData: vi.fn(),
-    listCodexSessions: vi.fn(),
-    readCodexSession: vi.fn(),
-    deleteCodexSession: vi.fn()
+      showContextMenu: vi.fn(),
+      importOfficialData: vi.fn(),
+      listCodexSessions: vi.fn(),
+      readCodexSession: vi.fn(),
+      deleteCodexSession: vi.fn(),
     },
     git: {
       getStatusSnapshot: vi.fn(),
@@ -48,16 +50,27 @@ function createHostBridge(overrides?: {
       fetch: vi.fn(),
       pull: vi.fn(),
       push: vi.fn(),
-      checkout: vi.fn()
+      checkout: vi.fn(),
     },
     terminal: {
       createSession: vi.fn(),
       write: vi.fn(),
       resize: vi.fn(),
-      closeSession: vi.fn()
+      closeSession: vi.fn(),
     },
-    subscribe: vi.fn()
+    subscribe: vi.fn(),
   } as unknown as HostBridge;
+}
+
+function BannerProbe(): JSX.Element | null {
+  const banners = useAppSelector((state) => state.banners);
+  const latestBanner = banners[0] ?? null;
+
+  if (latestBanner === null) {
+    return null;
+  }
+
+  return <span>{latestBanner.title}</span>;
 }
 
 function renderControlledButton(props: {
@@ -66,14 +79,20 @@ function renderControlledButton(props: {
   readonly initialOpener?: WorkspaceOpener;
 }): void {
   function Wrapper(): JSX.Element {
-    const [selectedOpener, setSelectedOpener] = useState<WorkspaceOpener>(props.initialOpener ?? "vscode");
+    const [selectedOpener, setSelectedOpener] = useState<WorkspaceOpener>(
+      props.initialOpener ?? "vscode",
+    );
+
     return (
-      <WorkspaceOpenButton
-        hostBridge={props.hostBridge}
-        selectedRootPath={props.selectedRootPath}
-        selectedOpener={selectedOpener}
-        onSelectOpener={setSelectedOpener}
-      />
+      <AppStoreProvider>
+        <WorkspaceOpenButton
+          hostBridge={props.hostBridge}
+          selectedRootPath={props.selectedRootPath}
+          selectedOpener={selectedOpener}
+          onSelectOpener={setSelectedOpener}
+        />
+        <BannerProbe />
+      </AppStoreProvider>
     );
   }
 
@@ -82,37 +101,48 @@ function renderControlledButton(props: {
 
 describe("WorkspaceOpenButton", () => {
   it("disables the main button when no workspace is selected", () => {
-    renderControlledButton({ hostBridge: createHostBridge(), selectedRootPath: null });
+    renderControlledButton({
+      hostBridge: createHostBridge(),
+      selectedRootPath: null,
+    });
 
-    expect(screen.getByRole("button", { name: "使用 VS Code 打开当前工作区" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "使用 VS Code 打开当前工作区" }),
+    ).toBeDisabled();
   });
 
   it("opens the selected workspace in VS Code by default", async () => {
     const openExternal = vi.fn().mockResolvedValue(undefined);
-
     renderControlledButton({
       hostBridge: createHostBridge({ openExternal }),
-      selectedRootPath: "E:/code/My Project"
+      selectedRootPath: "E:/code/My Project",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "使用 VS Code 打开当前工作区" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "使用 VS Code 打开当前工作区" }),
+    );
 
     await waitFor(() => {
-      expect(openExternal).toHaveBeenCalledWith("vscode://file/E:/code/My%20Project");
+      expect(openExternal).toHaveBeenCalledWith(
+        "vscode://file/E:/code/My%20Project",
+      );
     });
   });
 
   it("switches the main action after choosing File Explorer", async () => {
     const openExternal = vi.fn().mockResolvedValue(undefined);
-
     renderControlledButton({
       hostBridge: createHostBridge({ openExternal }),
-      selectedRootPath: "E:/code/project"
+      selectedRootPath: "E:/code/project",
     });
 
     fireEvent.click(screen.getByRole("button", { name: "选择打开方式" }));
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "File Explorer" }));
-    fireEvent.click(screen.getByRole("button", { name: "使用 File Explorer 打开当前工作区" }));
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: "File Explorer" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "使用 File Explorer 打开当前工作区" }),
+    );
 
     await waitFor(() => {
       expect(openExternal).toHaveBeenCalledWith("E:/code/project");
@@ -121,21 +151,39 @@ describe("WorkspaceOpenButton", () => {
 
   it("switches the main action after choosing Terminal", async () => {
     const openWorkspace = vi.fn().mockResolvedValue(undefined);
-
     renderControlledButton({
       hostBridge: createHostBridge({ openWorkspace }),
-      selectedRootPath: "E:/code/project"
+      selectedRootPath: "E:/code/project",
     });
 
     fireEvent.click(screen.getByRole("button", { name: "选择打开方式" }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Terminal" }));
-    fireEvent.click(screen.getByRole("button", { name: "使用 Terminal 打开当前工作区" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "使用 Terminal 打开当前工作区" }),
+    );
 
     await waitFor(() => {
       expect(openWorkspace).toHaveBeenCalledWith({
         path: "E:/code/project",
-        opener: "terminal"
+        opener: "terminal",
       });
+    });
+  });
+
+  it("pushes an error banner when opening the workspace fails", async () => {
+    const openWorkspace = vi.fn().mockRejectedValue(new Error("open failed"));
+    renderControlledButton({
+      hostBridge: createHostBridge({ openWorkspace }),
+      selectedRootPath: "E:/code/project",
+      initialOpener: "terminal",
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "使用 Terminal 打开当前工作区" }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Terminal 打开失败")).toBeInTheDocument();
     });
   });
 });

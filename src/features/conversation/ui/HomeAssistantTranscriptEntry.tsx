@@ -28,7 +28,7 @@ export function HomeAssistantTranscriptEntry(props: HomeAssistantTranscriptEntry
   }
   if (props.node.kind === "auxiliaryBlock" && props.node.entry.kind === "turnDiffSnapshot") {
     if (props.turnStatus === "inProgress") {
-      return null;
+      return <></>;
     }
     return (
       <section className="home-assistant-transcript-entry">

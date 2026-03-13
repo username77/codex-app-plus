@@ -239,6 +239,39 @@ describe("useWorkspaceConversation", () => {
     expect(result.current.conversation.selectedThreadId).toBe("thread-1");
   });
 
+  it("keeps collaboration presets isolated between threads", () => {
+    const request = vi.fn(async () => ({ requestId: "noop", result: {} }));
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({
+        type: "conversation/upserted",
+        conversation: createConversationFromThread(createThread({ id: "thread-1" }), { resumeState: "resumed" }),
+      });
+      result.current.store.dispatch({
+        type: "conversation/upserted",
+        conversation: createConversationFromThread(createThread({ id: "thread-2" }), { resumeState: "resumed" }),
+      });
+      result.current.conversation.selectThread("thread-1");
+    });
+
+    expect(result.current.conversation.collaborationPreset).toBe("default");
+
+    act(() => {
+      result.current.conversation.selectCollaborationPreset("plan");
+      result.current.conversation.selectThread("thread-2");
+    });
+
+    expect(result.current.conversation.collaborationPreset).toBe("default");
+
+    act(() => {
+      result.current.conversation.selectThread("thread-1");
+    });
+
+    expect(result.current.conversation.collaborationPreset).toBe("plan");
+  });
+
   it("starts official conversation on first send after opening a draft", async () => {
     const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
       if (input.method === "thread/start") {
@@ -280,6 +313,42 @@ describe("useWorkspaceConversation", () => {
     expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ method: "turn/start", params: expect.objectContaining({ approvalPolicy: "on-request", sandboxPolicy: expect.objectContaining({ type: "workspaceWrite", networkAccess: false }) }) }));
     expect(result.current.conversation.draftActive).toBe(false);
     expect(result.current.conversation.selectedThreadId).toBe("thread-1");
+  });
+
+  it("transfers the draft collaboration preset into the first created thread", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "thread/start") {
+        return createThreadStartResponse();
+      }
+      if (input.method === "turn/start") {
+        return { requestId: "request-2", result: { turn: createTurn() } };
+      }
+      throw new Error(`unexpected method: ${input.method}`);
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.conversation.selectCollaborationPreset("plan");
+    });
+
+    expect(result.current.conversation.collaborationPreset).toBe("plan");
+
+    await act(async () => {
+      await result.current.conversation.sendTurn({
+        ...createSendOptions("first turn"),
+        collaborationPreset: result.current.conversation.collaborationPreset,
+      });
+    });
+
+    expect(result.current.conversation.selectedThreadId).toBe("thread-1");
+    expect(result.current.conversation.collaborationPreset).toBe("plan");
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      method: "turn/start",
+      params: expect.objectContaining({
+        collaborationMode: expect.objectContaining({ mode: "plan" }),
+      }),
+    }));
   });
 
   it("keeps the first pending turn in responding state before turn/start resolves", async () => {

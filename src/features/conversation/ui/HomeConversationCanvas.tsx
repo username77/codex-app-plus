@@ -12,7 +12,7 @@ interface HomeConversationCanvasProps {
   readonly activities: ReadonlyArray<TimelineEntry>;
   readonly selectedThread: ThreadSummary | null;
   readonly activeTurnId: string | null;
-  readonly turnStatuses: Readonly<Record<string, TurnStatus>>;
+  readonly turnStatuses?: Readonly<Record<string, TurnStatus>>;
   readonly threadDetailLevel: ThreadDetailLevel;
   readonly placeholder: { readonly title: string; readonly body: string } | null;
   readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
@@ -34,7 +34,7 @@ interface RenderGroup {
 export function HomeConversationCanvas(props: HomeConversationCanvasProps): JSX.Element {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const renderGroups = useMemo(
-    () => createRenderGroups(props.activities, props.activeTurnId, props.turnStatuses, props.threadDetailLevel),
+    () => createRenderGroups(props.activities, props.activeTurnId, props.turnStatuses ?? {}, props.threadDetailLevel),
     [props.activities, props.activeTurnId, props.turnStatuses, props.threadDetailLevel]
   );
   const scrollKey = useMemo(() => createScrollKey(renderGroups), [renderGroups]);

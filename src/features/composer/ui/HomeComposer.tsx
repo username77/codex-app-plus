@@ -18,12 +18,14 @@ import { useComposerCommandPalette } from "../hooks/useComposerCommandPalette";
 import { useComposerSelectionPersistence } from "../hooks/useComposerSelectionPersistence";
 import { useComposerAttachments } from "../hooks/useComposerAttachments";
 import { useToolbarMenuDismissal } from "../../shared/hooks/useToolbarMenuDismissal";
+import { useUiBannerNotifications } from "../../shared/hooks/useUiBannerNotifications";
 
 const MIN_TRIMMED_MESSAGE_LENGTH = 1;
 
 export interface HomeComposerProps {
   readonly busy: boolean;
   readonly inputText: string;
+  readonly collaborationPreset: CollaborationPreset;
   readonly models: ReadonlyArray<ComposerModelOption>;
   readonly defaultModel: string | null;
   readonly defaultEffort: ComposerSelection["effort"];
@@ -41,6 +43,7 @@ export interface HomeComposerProps {
   readonly composerCommandBridge: ComposerCommandBridge;
   readonly multiAgentAvailable?: boolean;
   readonly multiAgentEnabled?: boolean;
+  readonly onSelectCollaborationPreset: (preset: CollaborationPreset) => void;
   readonly onInputChange: (text: string) => void;
   readonly onCreateThread: () => Promise<void>;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
@@ -55,13 +58,13 @@ export interface HomeComposerProps {
 }
 
 export function HomeComposer(props: HomeComposerProps): JSX.Element {
+  const { notifyError } = useUiBannerNotifications("composer");
   const defaultServiceTier = props.defaultServiceTier ?? null;
   const multiAgentAvailable = props.multiAgentAvailable ?? false;
   const multiAgentEnabled = props.multiAgentEnabled ?? false;
   const setMultiAgentEnabled = props.onSetMultiAgentEnabled ?? (async () => undefined);
   const containerRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [collaborationPreset, setCollaborationPreset] = useState<CollaborationPreset>("default");
   const [multiAgentPending, setMultiAgentPending] = useState(false);
   const { attachments, appendPaths, clearAttachments, openFilePicker, removeAttachment, handlePaste } = useComposerAttachments({ selectedThreadId: props.selectedThreadId });
   const composerSelection = useComposerSelection(props.models, props.defaultModel, props.defaultEffort, defaultServiceTier);
@@ -75,8 +78,26 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
   useToolbarMenuDismissal(commandPalette.open, containerRef, () => void commandPalette.dismiss());
 
   const submit = useCallback((followUpOverride?: FollowUpMode) => {
-    void submitTurn(props, canSend, attachments, composerSelection, clearAttachments, commandPalette.dismiss, collaborationPreset, followUpOverride);
-  }, [attachments, canSend, clearAttachments, collaborationPreset, commandPalette.dismiss, composerSelection, props]);
+    void submitTurn(
+      props,
+      canSend,
+      attachments,
+      composerSelection,
+      clearAttachments,
+      commandPalette.dismiss,
+      props.collaborationPreset,
+      notifyError,
+      followUpOverride,
+    );
+  }, [
+    attachments,
+    canSend,
+    clearAttachments,
+    commandPalette.dismiss,
+    composerSelection,
+    notifyError,
+    props,
+  ]);
 
   const handleToggleMultiAgent = useCallback(async () => {
     setMenuOpen(false);
@@ -100,7 +121,7 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
         <div className="composer-bar">
           <div className="composer-left">
             <div className="composer-plus-anchor">
-              {menuOpen ? <ComposerAttachmentMenu collaborationPreset={collaborationPreset} serviceTier={composerSelection.selectedServiceTier} multiAgentAvailable={multiAgentAvailable} multiAgentEnabled={multiAgentEnabled} multiAgentDisabled={interactionDisabled || props.isResponding} onAddAttachments={() => handleAddAttachments(openFilePicker, setMenuOpen)} onSelectCollaborationPreset={setCollaborationPreset} onSelectServiceTier={handleSelectServiceTier} onToggleMultiAgent={handleToggleMultiAgent} onClose={() => setMenuOpen(false)} /> : null}
+              {menuOpen ? <ComposerAttachmentMenu collaborationPreset={props.collaborationPreset} serviceTier={composerSelection.selectedServiceTier} multiAgentAvailable={multiAgentAvailable} multiAgentEnabled={multiAgentEnabled} multiAgentDisabled={interactionDisabled || props.isResponding} onAddAttachments={() => handleAddAttachments(openFilePicker, setMenuOpen)} onSelectCollaborationPreset={props.onSelectCollaborationPreset} onSelectServiceTier={handleSelectServiceTier} onToggleMultiAgent={handleToggleMultiAgent} onClose={() => setMenuOpen(false)} /> : null}
               <button type="button" className={menuOpen ? "composer-mini-btn composer-mini-btn-active" : "composer-mini-btn"} aria-label="Open attachment menu" aria-haspopup="menu" aria-expanded={menuOpen} disabled={interactionDisabled} onClick={() => void toggleAttachmentMenu(menuOpen, setMenuOpen, commandPalette.dismiss)}>
                 <OfficialPlusIcon className="composer-plus-icon" />
               </button>
@@ -208,6 +229,7 @@ async function submitTurn(
   clearAttachments: () => void,
   dismissPalette: () => Promise<void>,
   collaborationPreset: CollaborationPreset,
+  notifyError: (title: string, error: unknown, detail?: string | null) => void,
   followUpOverride?: FollowUpMode,
 ): Promise<void> {
   if (!canSend) {
@@ -218,9 +240,8 @@ async function submitTurn(
     await props.onSendTurn({ text: props.inputText, attachments, selection: { model: composerSelection.selectedModel, effort: composerSelection.selectedEffort, serviceTier: composerSelection.selectedServiceTier }, permissionLevel: props.permissionLevel, collaborationPreset, followUpOverride });
     clearAttachments();
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
     console.error("发送消息失败", error);
-    window.alert(`发送消息失败: ${detail}`);
+    notifyError("发送消息失败", error);
   }
 }
 

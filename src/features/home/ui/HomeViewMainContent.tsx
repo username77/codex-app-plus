@@ -12,7 +12,12 @@ import type {
   TimelineEntry,
   UiBanner,
 } from "../../../domain/types";
-import type { ComposerEnterBehavior, FollowUpMode, QueuedFollowUp } from "../../../domain/timeline";
+import type {
+  CollaborationPreset,
+  ComposerEnterBehavior,
+  FollowUpMode,
+  QueuedFollowUp,
+} from "../../../domain/timeline";
 import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
 import { HomeConversationCanvas } from "../../conversation/ui/HomeConversationCanvas";
 import { HomeComposer } from "../../composer/ui/HomeComposer";
@@ -27,6 +32,7 @@ import { removeTurnPlanEntries, selectLatestTurnPlan } from "../../conversation/
 import { selectLatestPendingUserInput } from "../../conversation/model/homeUserInputPromptModel";
 import { OfficialChevronRightIcon } from "../../shared/ui/officialIcons";
 import { selectLatestPlanModePrompt } from "../../composer/model/planModePrompt";
+import { HomeBannerStack, selectVisibleHomeBanners } from "./HomeBannerStack";
 
 interface PlanPromptTurnOptions {
   readonly text: string;
@@ -44,6 +50,7 @@ export interface HomeViewMainContentProps {
   readonly account: AccountSummary | null;
   readonly rateLimitSummary: string | null;
   readonly queuedFollowUps: ReadonlyArray<QueuedFollowUp>;
+  readonly collaborationPreset: CollaborationPreset;
   readonly models: ReadonlyArray<ComposerModelOption>;
   readonly defaultModel: string | null;
   readonly defaultEffort: ComposerSelection["effort"];
@@ -53,7 +60,7 @@ export interface HomeViewMainContentProps {
   readonly selectedRootPath: string | null;
   readonly selectedThread: ThreadSummary | null;
   readonly activeTurnId: string | null;
-  readonly turnStatuses: Readonly<Record<string, TurnStatus>>;
+  readonly turnStatuses?: Readonly<Record<string, TurnStatus>>;
   readonly threadDetailLevel: ThreadDetailLevel;
   readonly isResponding: boolean;
   readonly interruptPending: boolean;
@@ -69,6 +76,7 @@ export interface HomeViewMainContentProps {
   readonly fatalError: string | null;
   readonly retryScheduledAt: number | null;
   readonly onSelectWorkspaceOpener: (opener: WorkspaceOpener) => void;
+  readonly onSelectCollaborationPreset: (preset: CollaborationPreset) => void;
   readonly onInputChange: (text: string) => void;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
   readonly onPersistComposerSelection: (selection: ComposerSelection) => Promise<void>;
@@ -85,6 +93,7 @@ export interface HomeViewMainContentProps {
   readonly onToggleDiff: () => void;
   readonly onToggleTerminal: () => void;
   readonly onRetryConnection: () => Promise<void>;
+  readonly onDismissBanner: (bannerId: string) => void;
 }
 
 export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Element {
@@ -107,6 +116,10 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
   const pendingUserInput = useMemo(
     () => selectLatestPendingUserInput(props.activities),
     [props.activities],
+  );
+  const visibleBanners = useMemo(
+    () => selectVisibleHomeBanners(props.banners),
+    [props.banners],
   );
   const [planDrawerCollapsed, setPlanDrawerCollapsed] = useState(true);
   const [dismissedPlanPromptId, setDismissedPlanPromptId] = useState<string | null>(null);
@@ -185,6 +198,10 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
         onToggleDiff={props.onToggleDiff}
         onToggleTerminal={props.onToggleTerminal}
       />
+      <HomeBannerStack
+        banners={visibleBanners}
+        onDismissBanner={props.onDismissBanner}
+      />
       {conversationActive ? (
         <HomeConversationCanvas
           activities={renderableActivities}
@@ -234,6 +251,7 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
         <HomeComposer
           busy={props.busy}
           inputText={props.inputText}
+          collaborationPreset={props.collaborationPreset}
           models={props.models}
           defaultModel={props.defaultModel}
           defaultEffort={props.defaultEffort}
@@ -249,6 +267,7 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
           isResponding={props.isResponding}
           interruptPending={props.interruptPending}
           composerCommandBridge={composerCommandBridge}
+          onSelectCollaborationPreset={props.onSelectCollaborationPreset}
           onInputChange={props.onInputChange}
           onCreateThread={props.onCreateThread}
           onSendTurn={props.onSendTurn}

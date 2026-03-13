@@ -105,6 +105,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       queuedFollowUps={[]}
       draftActive={false}
       selectedConversationLoading={false}
+      collaborationPreset="default"
       models={MODELS}
       defaultModel="gpt-5.2"
       defaultEffort="xhigh"
@@ -130,6 +131,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       onUpdateThreadBranch={vi.fn().mockResolvedValue(undefined)}
       onSelectRoot={vi.fn()}
       onSelectThread={vi.fn()}
+      onSelectCollaborationPreset={vi.fn()}
       onInputChange={vi.fn()}
       onCreateThread={vi.fn().mockResolvedValue(undefined)}
       onSendTurn={vi.fn().mockResolvedValue(undefined)}
@@ -143,6 +145,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
       onRemoveQueuedFollowUp={vi.fn()}
       onClearQueuedFollowUps={vi.fn()}
+      onDismissBanner={vi.fn()}
       {...overrides}
     /></AppStoreProvider>
   );

@@ -3,6 +3,7 @@ import type { CollaborationMode } from "../../../protocol/generated/Collaboratio
 import type { ComposerSelection } from "../../composer/model/composerPreferences";
 import type { AgentEnvironment, HostBridge } from "../../../bridge/types";
 import type { ConversationState } from "../../../domain/conversation";
+import { DEFAULT_COLLABORATION_PRESET } from "../../../domain/timeline";
 import type {
   CollaborationModePreset,
   CollaborationPreset,
@@ -62,6 +63,7 @@ interface WorkspaceConversationController {
   readonly turnStatuses: Readonly<Record<string, TurnStatus>>;
   readonly isResponding: boolean;
   readonly interruptPending: boolean;
+  readonly collaborationPreset: CollaborationPreset;
   readonly workspaceThreads: ReadonlyArray<ThreadSummary>;
   readonly activities: ReadonlyArray<TimelineEntry>;
   readonly queuedFollowUps: ReadonlyArray<QueuedFollowUp>;
@@ -69,6 +71,7 @@ interface WorkspaceConversationController {
   readonly selectedConversationLoading: boolean;
   createThread: () => Promise<void>;
   selectThread: (threadId: string | null) => void;
+  selectCollaborationPreset: (preset: CollaborationPreset) => void;
   sendTurn: (options: SendTurnOptions) => Promise<void>;
   interruptActiveTurn: () => Promise<void>;
   updateThreadBranch: (branch: string) => Promise<void>;
@@ -202,6 +205,16 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     () => mapActivities(selectedConversation, selectedRequests, { realtime: selectedRealtime, fuzzySessions }),
     [fuzzySessions, mapActivities, selectedConversation, selectedRealtime, selectedRequests],
   );
+  const collaborationPreset = useAppSelector(
+    useMemo(
+      () => (currentState: ReturnType<typeof store.getState>) => (
+        selectedConversation === null
+          ? currentState.composerUi.draftCollaborationPreset
+          : currentState.composerUi.threadCollaborationPresets[selectedConversation.id] ?? DEFAULT_COLLABORATION_PRESET
+      ),
+      [selectedConversation, store],
+    ),
+  );
   const nextQueuedConversationId = useAppSelector(queuedConversationIdSelector);
   const draftActive = useAppSelector((currentState) => currentState.draftConversation !== null);
   const queuedFollowUps = selectedConversation?.queuedFollowUps ?? [];
@@ -318,6 +331,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     if (localPreviewTitle !== null && localPreviewTitle !== conversation.title) {
       dispatch({ type: "conversation/titleChanged", conversationId: conversation.id, title: localPreviewTitle });
     }
+    dispatch({ type: "composer/draftCollaborationPresetTransferred", conversationId: conversation.id });
     dispatch({ type: "conversation/selected", conversationId: conversation.id });
     await startTurn(conversation.id, sendOptions, response.thread.cwd || response.cwd || agentWorkspacePath);
   }, [dispatch, options.agentEnvironment, options.hostBridge.rpc, options.selectedRootPath, startTurn, store]);
@@ -429,6 +443,13 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     }
     dispatch({ type: "conversation/selected", conversationId: threadId });
   }, [dispatch, getConversation]);
+  const selectCollaborationPreset = useCallback((preset: CollaborationPreset) => {
+    if (selectedConversation === null) {
+      dispatch({ type: "composer/draftCollaborationPresetSelected", preset });
+      return;
+    }
+    dispatch({ type: "composer/threadCollaborationPresetSelected", conversationId: selectedConversation.id, preset });
+  }, [dispatch, selectedConversation]);
   const updateThreadBranch = useCallback(async (branch: string) => {
     if (selectedConversation === null) {
       return;
@@ -453,6 +474,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     turnStatuses,
     isResponding,
     interruptPending,
+    collaborationPreset,
     workspaceThreads,
     activities,
     queuedFollowUps,
@@ -460,6 +482,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     selectedConversationLoading: selectedConversation?.resumeState === "resuming",
     createThread,
     selectThread,
+    selectCollaborationPreset,
     sendTurn,
     interruptActiveTurn,
     updateThreadBranch,

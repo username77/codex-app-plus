@@ -6,6 +6,7 @@ import { useAppController } from "./controller/useAppController";
 import { useAppPreferences } from "../features/settings/hooks/useAppPreferences";
 import { useComposerPicker } from "../features/composer/hooks/useComposerPicker";
 import { useWorkspaceConversation } from "../features/conversation/hooks/useWorkspaceConversation";
+import { useUiBannerNotifications } from "../features/shared/hooks/useUiBannerNotifications";
 import { useWorkspaceRoots } from "../features/workspace/hooks/useWorkspaceRoots";
 import type { HostBridge } from "../bridge/types";
 import { AuthChoiceView } from "../features/auth/ui/AuthChoiceView";
@@ -33,11 +34,12 @@ export function App({ hostBridge }: AppProps): JSX.Element {
     (key: MessageKey, params?: TranslationParams) => translate(preferences.uiLanguage, key, params),
     [preferences.uiLanguage]
   );
-  const showAlert = useCallback(
+  const { dismissBanner, pushBanner } = useUiBannerNotifications("app");
+  const reportAppError = useCallback(
     (key: MessageKey, error: unknown) => {
-      window.alert(t(key, { error: String(error) }));
+      pushBanner({ level: "error", title: t(key, { error: String(error) }) });
     },
-    [t]
+    [pushBanner, t]
   );
 
   const selectedRoot = workspace.roots.find((root) => root.id === workspace.selectedRootId) ?? null;
@@ -63,9 +65,9 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       });
     } catch (error) {
       console.error("打开 config.toml 失败", error);
-      showAlert("app.alerts.openConfigFailed", error);
+      reportAppError("app.alerts.openConfigFailed", error);
     }
-  }, [controller.state.configSnapshot, hostBridge.app, preferences.agentEnvironment, showAlert]);
+  }, [controller.state.configSnapshot, hostBridge.app, preferences.agentEnvironment, reportAppError]);
   const readGlobalAgentInstructions = useCallback(
     () => hostBridge.app.readGlobalAgentInstructions({ agentEnvironment: preferences.agentEnvironment }),
     [hostBridge.app, preferences.agentEnvironment]
@@ -115,27 +117,27 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       }
     } catch (error) {
       console.error("选择工作区文件夹失败", error);
-      showAlert("app.alerts.selectWorkspaceFailed", error);
+      reportAppError("app.alerts.selectWorkspaceFailed", error);
     }
-  }, [showAlert, t, workspace]);
+  }, [reportAppError, t, workspace]);
   const createWorkspaceThread = useCallback(async () => {
     try {
       await conversation.createThread();
     } catch (error) {
       console.error("创建工作区会话失败", error);
-      showAlert("app.alerts.createThreadFailed", error);
+      reportAppError("app.alerts.createThreadFailed", error);
     }
-  }, [conversation.createThread, showAlert]);
+  }, [conversation.createThread, reportAppError]);
   const sendWorkspaceTurn = useCallback(
     async (sendOptions: Parameters<typeof conversation.sendTurn>[0]) => {
       try {
         await conversation.sendTurn(sendOptions);
       } catch (error) {
         console.error("发送工作区消息失败", error);
-        showAlert("app.alerts.sendTurnFailed", error);
+        reportAppError("app.alerts.sendTurnFailed", error);
       }
     },
-    [conversation.sendTurn, showAlert]
+    [conversation.sendTurn, reportAppError]
   );
 
   const persistComposerSelection = useCallback(
@@ -161,10 +163,10 @@ export function App({ hostBridge }: AppProps): JSX.Element {
       await controller.setMultiAgentEnabled(enabled);
     } catch (error) {
       console.error("切换多代理失败", error);
-      showAlert("app.alerts.setMultiAgentFailed", error);
+      reportAppError("app.alerts.setMultiAgentFailed", error);
       throw error;
     }
-  }, [controller, showAlert]);
+  }, [controller, reportAppError]);
 
   const rateLimitSummary = controller.state.rateLimits === null
     ? null
@@ -234,6 +236,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
           queuedFollowUps={conversation.queuedFollowUps}
           draftActive={conversation.draftActive}
           selectedConversationLoading={conversation.selectedConversationLoading}
+          collaborationPreset={conversation.collaborationPreset}
           models={composerPicker.models}
           defaultModel={composerPicker.defaultModel}
           defaultEffort={composerPicker.defaultEffort}
@@ -259,6 +262,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
           onSelectComposerPermissionLevel={preferences.setComposerPermissionLevel}
           onSelectRoot={workspace.selectRoot}
           onSelectThread={conversation.selectThread}
+          onSelectCollaborationPreset={conversation.selectCollaborationPreset}
           onInputChange={controller.setInput}
           onCreateThread={createWorkspaceThread}
           onArchiveThread={controller.archiveThread}
@@ -277,6 +281,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
           onResolveServerRequest={controller.resolveServerRequest}
           onRemoveQueuedFollowUp={conversation.removeQueuedFollowUp}
           onClearQueuedFollowUps={conversation.clearQueuedFollowUps}
+          onDismissBanner={dismissBanner}
         />
       );
 

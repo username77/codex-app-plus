@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import type { HostBridge, WorkspaceOpener } from "../../../bridge/types";
 import terminalIconUrl from "../../../assets/official/apps/microsoft-terminal.png";
 import vscodeIconUrl from "../../../assets/official/apps/vscode.png";
+import { useUiBannerNotifications } from "../../shared/hooks/useUiBannerNotifications";
 import { OfficialChevronRightIcon } from "../../shared/ui/officialIcons";
 import { useToolbarMenuDismissal } from "../../shared/hooks/useToolbarMenuDismissal";
 
@@ -166,6 +167,7 @@ function WorkspaceOpenMenu(props: {
 }
 
 export function WorkspaceOpenButton(props: WorkspaceOpenButtonProps): JSX.Element {
+  const { notifyError } = useUiBannerNotifications("workspace-open");
   const [menuOpen, setMenuOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const canOpenWorkspace = props.selectedRootPath !== null;
@@ -192,9 +194,9 @@ export function WorkspaceOpenButton(props: WorkspaceOpenButtonProps): JSX.Elemen
       });
     } catch (error) {
       console.error(`Failed to open workspace with ${selectedOption.label}`, error);
-      window.alert(`${selectedOption.label}\u6253\u5f00\u5931\u8d25\uff1a${String(error)}`);
+      notifyError(`${selectedOption.label} 打开失败`, error);
     }
-  }, [props.hostBridge.app, props.selectedOpener, props.selectedRootPath, selectedOption.label]);
+  }, [notifyError, props.hostBridge.app, props.selectedOpener, props.selectedRootPath, selectedOption.label]);
 
   const selectOpener = useCallback(
     (opener: WorkspaceOpener) => {

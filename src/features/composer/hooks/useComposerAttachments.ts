@@ -4,6 +4,7 @@ import {
   createComposerAttachmentsFromPaths,
   readClipboardImageAttachment,
 } from "../model/composerAttachments";
+import { useUiBannerNotifications } from "../../shared/hooks/useUiBannerNotifications";
 import type { ComposerAttachment } from "../../../domain/timeline";
 
 interface UseComposerAttachmentsOptions {
@@ -22,6 +23,7 @@ interface ComposerAttachmentsState {
 const DIALOG_TITLE = "Add files and photos";
 
 export function useComposerAttachments(options: UseComposerAttachmentsOptions): ComposerAttachmentsState {
+  const { notifyError } = useUiBannerNotifications("composer-attachments");
   const [attachments, setAttachments] = useState<ReadonlyArray<ComposerAttachment>>([]);
   const previousThreadIdRef = useRef(options.selectedThreadId);
 
@@ -52,9 +54,9 @@ export function useComposerAttachments(options: UseComposerAttachmentsOptions): 
         appendPaths(paths);
       }
     } catch (error) {
-      reportAttachmentError("添加文件或图片失败", error);
+      reportAttachmentError(notifyError, "添加文件或图片失败", error);
     }
-  }, [appendPaths]);
+  }, [appendPaths, notifyError]);
 
   const handlePaste = useCallback(async (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const files = getClipboardImageFiles(event);
@@ -68,9 +70,9 @@ export function useComposerAttachments(options: UseComposerAttachmentsOptions): 
       const nextAttachments = await Promise.all(files.map((file, index) => readClipboardImageAttachment(file, index)));
       setAttachments((current) => [...current, ...nextAttachments]);
     } catch (error) {
-      reportAttachmentError("读取剪贴板图片失败", error);
+      reportAttachmentError(notifyError, "读取剪贴板图片失败", error);
     }
-  }, []);
+  }, [notifyError]);
 
   return { attachments, appendPaths, clearAttachments, openFilePicker, removeAttachment, handlePaste };
 }
@@ -89,8 +91,12 @@ function normalizeDialogSelection(selected: string | Array<string> | null): Arra
   return Array.isArray(selected) ? selected : [selected];
 }
 
-function reportAttachmentError(message: string, error: unknown): void {
+function reportAttachmentError(
+  notifyError: (title: string, error: unknown, detail?: string | null) => void,
+  message: string,
+  error: unknown,
+): void {
   const detail = error instanceof Error ? error.message : String(error);
   console.error(message, error);
-  window.alert(`${message}: ${detail}`);
+  notifyError(message, error, detail);
 }

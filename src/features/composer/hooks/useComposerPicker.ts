@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { HostBridge } from "../../../bridge/types";
+import { useUiBannerNotifications } from "../../shared/hooks/useUiBannerNotifications";
 import type { ReasoningEffort } from "../../../protocol/generated/ReasoningEffort";
 import type { ServiceTier } from "../../../protocol/generated/ServiceTier";
 import {
@@ -20,6 +21,7 @@ export function useComposerPicker(
   configSnapshot: unknown,
   ready: boolean
 ): ComposerPickerState {
+  const { notifyError } = useUiBannerNotifications("composer-picker");
   const [models, setModels] = useState<ReadonlyArray<ComposerModelOption>>([]);
   const defaults = useMemo(() => readComposerSelectionFromConfig(configSnapshot), [configSnapshot]);
 
@@ -38,6 +40,7 @@ export function useComposerPicker(
         }
       } catch (error) {
         console.error("读取模型列表失败", error);
+        notifyError("读取模型列表失败", error);
       }
     };
 
@@ -45,7 +48,7 @@ export function useComposerPicker(
     return () => {
       cancelled = true;
     };
-  }, [hostBridge, ready]);
+  }, [hostBridge, notifyError, ready]);
 
   return {
     models,

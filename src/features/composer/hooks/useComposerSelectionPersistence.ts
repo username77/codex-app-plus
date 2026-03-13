@@ -6,6 +6,7 @@ import {
   resolveComposerEffort,
   resolveConfiguredComposerSelection
 } from "../model/composerPreferences";
+import { useUiBannerNotifications } from "../../shared/hooks/useUiBannerNotifications";
 import type { ReasoningEffort } from "../../../protocol/generated/ReasoningEffort";
 import type { ServiceTier } from "../../../protocol/generated/ServiceTier";
 
@@ -40,6 +41,7 @@ interface ComposerSelectionPersistence {
 export function useComposerSelectionPersistence(
   options: UseComposerSelectionPersistenceOptions
 ): ComposerSelectionPersistence {
+  const { notifyError } = useUiBannerNotifications("composer-selection");
   const persistedSelection = useMemo(
     () => resolveConfiguredComposerSelection(
       options.models,
@@ -89,7 +91,7 @@ export function useComposerSelectionPersistence(
       queuedSelectionRef.current = null;
       options.replaceSelection(lastPersistedSelectionRef.current);
       console.error("保存 Composer 配置失败", error);
-      window.alert(`保存 Composer 配置失败: ${toErrorMessage(error)}`);
+      notifyError("保存 Composer 配置失败", error, toErrorMessage(error));
     } finally {
       inFlightSelectionRef.current = null;
     }
@@ -101,7 +103,7 @@ export function useComposerSelectionPersistence(
       }
       void flushPersistQueue();
     }
-  }, [options]);
+  }, [notifyError, options]);
 
   const schedulePersist = useCallback((selection: ComposerSelection) => {
     queuedSelectionRef.current = selection;

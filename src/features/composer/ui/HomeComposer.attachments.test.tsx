@@ -2,6 +2,7 @@ import { createEvent, fireEvent, render, screen, waitFor } from "@testing-librar
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComposerModelOption } from "../model/composerPreferences";
+import { useAppSelector } from "../../../state/store";
 import { AppStoreProvider } from "../../../state/store";
 import type { ComposerCommandBridge } from "../service/composerCommandBridge";
 import { HomeComposer } from "./HomeComposer";
@@ -77,11 +78,17 @@ function createCommandBridge(): ComposerCommandBridge {
 function renderComposer(overrides?: Partial<ComponentProps<typeof HomeComposer>>) {
   const onSendTurn = vi.fn().mockResolvedValue(undefined);
 
+  function BannerProbe(): JSX.Element | null {
+    const latestBanner = useAppSelector((state) => state.banners[0] ?? null);
+    return latestBanner === null ? null : <span>{latestBanner.title}</span>;
+  }
+
   render(
     <AppStoreProvider>
       <HomeComposer
         busy={false}
         inputText=""
+        collaborationPreset="default"
         models={MODELS}
         defaultModel="gpt-5.2"
         defaultEffort="medium"
@@ -96,6 +103,7 @@ function renderComposer(overrides?: Partial<ComponentProps<typeof HomeComposer>>
         isResponding={false}
         interruptPending={false}
         composerCommandBridge={createCommandBridge()}
+        onSelectCollaborationPreset={vi.fn()}
         onInputChange={vi.fn()}
         onCreateThread={vi.fn().mockResolvedValue(undefined)}
         onSendTurn={onSendTurn}
@@ -108,6 +116,7 @@ function renderComposer(overrides?: Partial<ComponentProps<typeof HomeComposer>>
         onClearQueuedFollowUps={vi.fn()}
         {...overrides}
       />
+      <BannerProbe />
     </AppStoreProvider>,
   );
 
@@ -164,7 +173,6 @@ describe("HomeComposer attachments", () => {
   });
 
   it("keeps clips when send fails and surfaces the error", async () => {
-    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => undefined);
     openMock.mockResolvedValue(["E:/code/codex-app-plus/notes.md"]);
     const onSendTurn = vi.fn().mockRejectedValue(new Error("send failed"));
     renderComposer({ onSendTurn });
@@ -175,7 +183,7 @@ describe("HomeComposer attachments", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByText("发送消息失败")).toBeInTheDocument());
     expect(screen.getByText("notes.md")).toBeInTheDocument();
     expect(onSendTurn).toHaveBeenCalledWith(expect.objectContaining({
       text: "",

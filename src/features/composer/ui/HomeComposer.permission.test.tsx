@@ -81,6 +81,7 @@ function ComposerHarness(props: {
       <HomeComposer
         busy={false}
         inputText="检查权限链路"
+        collaborationPreset="default"
         models={MODELS}
         defaultModel="gpt-5.2"
         defaultEffort="xhigh"
@@ -95,6 +96,7 @@ function ComposerHarness(props: {
         isResponding={false}
         interruptPending={false}
         composerCommandBridge={createCommandBridge()}
+        onSelectCollaborationPreset={vi.fn()}
         onInputChange={vi.fn()}
         onCreateThread={vi.fn().mockResolvedValue(undefined)}
         onSendTurn={props.onSendTurn}

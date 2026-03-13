@@ -34,6 +34,7 @@ export type MessageStatus = "streaming" | "done";
 export type ThreadRuntimeStatus = "notLoaded" | "idle" | "systemError" | "active";
 export type ThreadActiveFlag = "waitingOnApproval" | "waitingOnUserInput";
 export type CollaborationPreset = "default" | "plan";
+export const DEFAULT_COLLABORATION_PRESET: CollaborationPreset = "default";
 export type FollowUpMode = "queue" | "steer" | "interrupt";
 export type ComposerEnterBehavior = "enter" | "cmdIfMultiline";
 export type NoticeLevel = "info" | "warning" | "error";

@@ -1,6 +1,7 @@
 import type { ConversationState } from "../domain/conversation";
 import type { AppAction, AppState, RealtimeState, UiBanner } from "../domain/types";
 import { INITIAL_STATE } from "../domain/types";
+import { DEFAULT_COLLABORATION_PRESET } from "../domain/timeline";
 import {
   addConversationMcpProgress,
   addConversationSystemNotice,
@@ -57,6 +58,19 @@ function upsertConversationState(state: AppState, conversation: ConversationStat
   return { ...state, conversationsById: { ...state.conversationsById, [conversation.id]: nextConversation }, orderedConversationIds: upsertOrder(state.orderedConversationIds, conversation.id) };
 }
 
+function pruneThreadCollaborationPresets(
+  currentPresets: AppState["composerUi"]["threadCollaborationPresets"],
+  conversationIds: ReadonlyArray<string>,
+): AppState["composerUi"]["threadCollaborationPresets"] {
+  return conversationIds.reduce<Record<string, AppState["composerUi"]["draftCollaborationPreset"]>>((nextPresets, conversationId) => {
+    const preset = currentPresets[conversationId];
+    if (preset !== undefined) {
+      nextPresets[conversationId] = preset;
+    }
+    return nextPresets;
+  }, {});
+}
+
 function updateConversation(state: AppState, conversationId: string, updater: (conversation: ConversationState) => ConversationState): AppState {
   const current = state.conversationsById[conversationId];
   if (current === undefined) {
@@ -81,6 +95,33 @@ function pushNotification(state: AppState, action: Extract<AppAction, { type: "n
   return { ...state, notifications: notifications.length > MAX_NOTIFICATION_LOG ? notifications.slice(-MAX_NOTIFICATION_LOG) : notifications };
 }
 
+function setDraftCollaborationPreset(state: AppState, preset: AppState["composerUi"]["draftCollaborationPreset"]): AppState {
+  return { ...state, composerUi: { ...state.composerUi, draftCollaborationPreset: preset } };
+}
+
+function resetDraftCollaborationPreset(state: AppState): AppState {
+  return setDraftCollaborationPreset(state, DEFAULT_COLLABORATION_PRESET);
+}
+
+function setThreadCollaborationPreset(
+  state: AppState,
+  conversationId: string,
+  preset: AppState["composerUi"]["draftCollaborationPreset"],
+): AppState {
+  return {
+    ...state,
+    composerUi: {
+      ...state.composerUi,
+      threadCollaborationPresets: { ...state.composerUi.threadCollaborationPresets, [conversationId]: preset },
+    },
+  };
+}
+
+function transferDraftCollaborationPreset(state: AppState, conversationId: string): AppState {
+  const nextState = setThreadCollaborationPreset(state, conversationId, state.composerUi.draftCollaborationPreset);
+  return resetDraftCollaborationPreset(nextState);
+}
+
 function updateQueuedFollowUps(state: AppState, conversationId: string, nextQueuedFollowUps: ConversationState["queuedFollowUps"]): AppState {
   return updateConversation(state, conversationId, (conversation) => ({ ...conversation, queuedFollowUps: nextQueuedFollowUps }));
 }
@@ -88,6 +129,10 @@ function updateQueuedFollowUps(state: AppState, conversationId: string, nextQueu
 function pushBanner(state: AppState, banner: UiBanner): AppState {
   const banners = [banner, ...state.banners.filter((item) => item.id !== banner.id)].slice(0, MAX_BANNERS);
   return { ...state, banners };
+}
+
+function dismissBanner(state: AppState, bannerId: string): AppState {
+  return { ...state, banners: state.banners.filter((banner) => banner.id !== bannerId) };
 }
 
 function updateRealtimeState(state: AppState, threadId: string, updater: (current: RealtimeState) => RealtimeState): AppState {
@@ -118,16 +163,27 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       const selectedConversationId = state.selectedConversationId !== null && conversationsById[state.selectedConversationId] !== undefined
         ? state.selectedConversationId
         : null;
-      return { ...state, conversationsById, orderedConversationIds, selectedConversationId };
+      return {
+        ...state,
+        conversationsById,
+        orderedConversationIds,
+        selectedConversationId,
+        composerUi: {
+          ...state.composerUi,
+          threadCollaborationPresets: pruneThreadCollaborationPresets(state.composerUi.threadCollaborationPresets, orderedConversationIds),
+        },
+      };
     }
     case "conversation/upserted":
       return upsertConversationState(state, action.conversation);
     case "conversation/selected":
-      return { ...state, selectedConversationId: action.conversationId, draftConversation: action.conversationId === null ? state.draftConversation : null };
+      return action.conversationId === null
+        ? { ...state, selectedConversationId: null, draftConversation: state.draftConversation }
+        : resetDraftCollaborationPreset({ ...state, selectedConversationId: action.conversationId, draftConversation: null });
     case "conversation/draftOpened":
-      return { ...state, draftConversation: action.draft, selectedConversationId: null };
+      return { ...resetDraftCollaborationPreset(state), draftConversation: action.draft, selectedConversationId: null };
     case "conversation/draftCleared":
-      return { ...state, draftConversation: null };
+      return { ...resetDraftCollaborationPreset(state), draftConversation: null };
     case "conversation/hiddenChanged":
       return updateConversation(state, action.conversationId, (conversation) => setConversationHidden(conversation, action.hidden));
     case "conversation/titleChanged":
@@ -278,12 +334,20 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     }
     case "banner/pushed":
       return pushBanner(state, action.banner);
+    case "banner/dismissed":
+      return dismissBanner(state, action.bannerId);
     case "initialized/changed":
       return { ...state, initialized: action.ready };
     case "retry/scheduled":
       return { ...state, retryScheduledAt: action.at };
     case "input/changed":
       return { ...state, inputText: action.value };
+    case "composer/threadCollaborationPresetSelected":
+      return setThreadCollaborationPreset(state, action.conversationId, action.preset);
+    case "composer/draftCollaborationPresetSelected":
+      return setDraftCollaborationPreset(state, action.preset);
+    case "composer/draftCollaborationPresetTransferred":
+      return transferDraftCollaborationPreset(state, action.conversationId);
     case "bootstrapBusy/changed":
       return { ...state, bootstrapBusy: action.busy };
     default:
