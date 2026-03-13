@@ -1,4 +1,5 @@
 import type { AuthStatus } from "../../domain/types";
+import "../../styles/replica/replica-settings-popover.css";
 
 interface SettingsPopoverProps {
   readonly authStatus: AuthStatus;
