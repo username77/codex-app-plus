@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { CollaborationMode } from "../../protocol/generated/CollaborationMode";
 import type { ComposerSelection } from "./composerPreferences";
 import type { AgentEnvironment, HostBridge } from "../../bridge/types";
+import type { ConversationState } from "../../domain/conversation";
 import type {
   CollaborationModePreset,
   CollaborationPreset,
@@ -18,6 +19,7 @@ import type { TurnStartParams } from "../../protocol/generated/v2/TurnStartParam
 import type { TurnStartResponse } from "../../protocol/generated/v2/TurnStartResponse";
 import type { TurnSteerParams } from "../../protocol/generated/v2/TurnSteerParams";
 import type { TurnInterruptParams } from "../../protocol/generated/v2/TurnInterruptParams";
+import type { Turn } from "../../protocol/generated/v2/Turn";
 import type { UserInput } from "../../protocol/generated/v2/UserInput";
 import { createConversationFromThread } from "./conversationState";
 import { deriveConversationPreviewTitle, pickConversationTitle } from "./conversationTitle";
@@ -34,6 +36,7 @@ import { buildComposerUserInputs } from "./composerAttachments";
 import { resolveCollaborationModePreset } from "./collaborationModeResolver";
 import { resolveAgentWorkspacePath } from "../workspace/workspacePath";
 import { useThreadResourceCleanup } from "../threads/threadResourceCleanup";
+import { collectDescendantThreadIds, createRpcThreadRuntimeCleanupTransport, forceCloseThreadRuntime, reportThreadCleanupError } from "../threads/threadRuntimeCleanup";
 import {
   createNonComposerFuzzySessionsSelector,
   createQueuedConversationIdSelector,
@@ -106,6 +109,19 @@ function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function buildInterruptedTurn(conversation: ConversationState | null, turnId: string): Turn | null {
+  const turn = conversation?.turns.find((entry) => entry.turnId === turnId) ?? null;
+  if (turn === null || turn.turnId === null) {
+    return null;
+  }
+  return {
+    id: turn.turnId,
+    items: turn.items.map((itemState) => itemState.item),
+    status: "interrupted",
+    error: null,
+  };
+}
+
 function resolvePlanMode(modes: ReadonlyArray<CollaborationModePreset>, selection: ComposerSelection): CollaborationMode | undefined {
   const preset = modes.find((mode) => mode.mode === "plan") ?? null;
   if (preset === null) {
@@ -133,6 +149,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
   const resumingConversationIds = useRef(new Set<string>());
   const drainingConversationIds = useRef(new Set<string>());
   const interruptRequestKeys = useRef(new Set<string>());
+  const deferredResumeConversationIds = useRef(new Set<string>());
   const mapThreadSummary = useMemo(() => createThreadSummaryMemo(), []);
   const mapActivities = useMemo(() => createConversationTimelineMemo(), []);
   const workspaceThreadsSelector = useMemo(
@@ -197,6 +214,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     const conversation = store.getState().conversationsById[conversationId] ?? null;
     return conversation?.agentEnvironment === options.agentEnvironment ? conversation : null;
   }, [options.agentEnvironment, store]);
+  const cleanupTransport = useMemo(() => createRpcThreadRuntimeCleanupTransport(options.hostBridge), [options.hostBridge]);
   useEffect(() => {
     const activeKey = selectedConversation === null || activeTurnId === null ? null : `${selectedConversation.id}:${activeTurnId}`;
     if (interruptPending) {
@@ -214,6 +232,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     }
   }, [activeTurnId, interruptPending, selectedConversation]);
   const ensureConversationResumed = useCallback(async (conversationId: string) => {
+    deferredResumeConversationIds.current.delete(conversationId);
     const conversation = getConversation(conversationId);
     if (
       conversation === null
@@ -244,9 +263,13 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     }
   }, [dispatch, getConversation, options.hostBridge.rpc]);
   useEffect(() => {
-    if (selectedConversation !== null && selectedConversation.resumeState === "needs_resume") {
-      void ensureConversationResumed(selectedConversation.id);
+    if (selectedConversation === null || selectedConversation.resumeState !== "needs_resume") {
+      return;
     }
+    if (deferredResumeConversationIds.current.has(selectedConversation.id)) {
+      return;
+    }
+    void ensureConversationResumed(selectedConversation.id);
   }, [ensureConversationResumed, selectedConversation]);
   const createThread = useCallback(async () => {
     if (options.selectedRootPath === null) {
@@ -311,6 +334,28 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
       throw error;
     }
   }, [dispatch, options.hostBridge.rpc]);
+  const interruptAndUnloadConversation = useCallback(async (conversationId: string, turnId: string) => {
+    const descendantThreadIds = collectDescendantThreadIds(conversationId, store.getState().conversationsById);
+    try {
+      for (const threadId of descendantThreadIds) {
+        await forceCloseThreadRuntime(threadId, getConversation(threadId), cleanupTransport);
+      }
+      await forceCloseThreadRuntime(conversationId, getConversation(conversationId), cleanupTransport);
+    } catch (error) {
+      reportThreadCleanupError(dispatch, getConversation(conversationId), error);
+      throw error;
+    }
+
+    deferredResumeConversationIds.current.add(conversationId);
+    const nextConversation = getConversation(conversationId);
+    const interruptedTurn = buildInterruptedTurn(nextConversation, turnId);
+    if (interruptedTurn !== null) {
+      dispatch({ type: "conversation/turnCompleted", conversationId, turn: interruptedTurn });
+    }
+    dispatch({ type: "conversation/statusChanged", conversationId, status: "notLoaded", activeFlags: [] });
+    dispatch({ type: "conversation/resumeStateChanged", conversationId, resumeState: "needs_resume" });
+  }, [cleanupTransport, dispatch, getConversation, store]);
+
   const processQueuedFollowUp = useCallback(async (conversationId: string) => {
     if (drainingConversationIds.current.has(conversationId)) {
       return;
@@ -368,8 +413,8 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     if (selectedConversation === null || activeTurnId === null || selectedConversation.interruptRequestedTurnId === activeTurnId) {
       return;
     }
-    await interruptTurn(selectedConversation.id, activeTurnId);
-  }, [activeTurnId, interruptTurn, selectedConversation]);
+    await interruptAndUnloadConversation(selectedConversation.id, activeTurnId);
+  }, [activeTurnId, interruptAndUnloadConversation, selectedConversation]);
   const selectThread = useCallback((threadId: string | null) => {
     if (threadId !== null && getConversation(threadId)?.resumeState === "resume_failed") {
       dispatch({ type: "conversation/resumeStateChanged", conversationId: threadId, resumeState: "needs_resume" });

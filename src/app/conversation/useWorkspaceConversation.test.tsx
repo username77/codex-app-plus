@@ -463,7 +463,7 @@ describe("useWorkspaceConversation", () => {
     }));
   });
 
-  it("does not resume the brand new thread after thread/started and still allows interrupt", async () => {
+  it("does not auto-resume the brand new thread after explicit interrupt unload", async () => {
     let resumeCalls = 0;
     const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
       if (input.method === "thread/start") {
@@ -487,9 +487,15 @@ describe("useWorkspaceConversation", () => {
       if (input.method === "turn/interrupt") {
         return { requestId: "request-3", result: { success: true } };
       }
+      if (input.method === "thread/backgroundTerminals/clean") {
+        return { requestId: "request-4", result: {} };
+      }
+      if (input.method === "thread/unsubscribe") {
+        return { requestId: "request-5", result: { status: "unsubscribed" } };
+      }
       if (input.method === "thread/resume") {
         resumeCalls += 1;
-        return { requestId: "request-4", result: { thread: createThread({ turns: [createTurn()] }) } };
+        return { requestId: "request-6", result: { thread: createThread() } };
       }
       throw new Error(`unexpected method: ${input.method}`);
     });
@@ -523,15 +529,14 @@ describe("useWorkspaceConversation", () => {
       await result.current.conversation.interruptActiveTurn();
     });
 
-    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/interrupt", params: { threadId: "thread-1", turnId: "turn-1" } }));
-
-    act(() => {
-      const notificationContext = createNotificationContext(result.current.store.dispatch);
-      applyAppServerNotification(notificationContext, "turn/completed", { threadId: "thread-1", turn: createTurn("completed") });
-      applyAppServerNotification(notificationContext, "thread/status/changed", { threadId: "thread-1", status: { type: "idle" } });
-    });
-
+    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/interrupt", params: { threadId: "thread-1", turnId: "turn-1" } })));
+    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/backgroundTerminals/clean", params: { threadId: "thread-1" } })));
+    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe", params: { threadId: "thread-1" } })));
+    expect(resumeCalls).toBe(0);
+    expect(result.current.conversation.selectedThreadId).toBe("thread-1");
+    expect(result.current.conversation.selectedThread?.status).toBe("notLoaded");
     expect(result.current.conversation.isResponding).toBe(false);
+    expect(result.current.conversation.interruptPending).toBe(false);
   });
 
   it("queues follow-ups when selected conversation is active", async () => {
@@ -619,6 +624,32 @@ describe("useWorkspaceConversation", () => {
     expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/steer" }));
   });
 
+  it("keeps follow-up interrupt mode as turn-only interruption", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "turn/interrupt") {
+        return { requestId: "request-1", result: { success: true } };
+      }
+      throw new Error(`unexpected method: ${input.method}`);
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread({ status: { type: "active" as const, activeFlags: [] }, turns: [createTurn()] }), { resumeState: "resumed" }) });
+      result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-1" });
+      result.current.store.dispatch({ type: "input/changed", value: "打断后继续" });
+    });
+
+    await act(async () => {
+      await result.current.conversation.sendTurn({ ...createSendOptions("interrupt from follow-up"), followUpOverride: "interrupt" });
+    });
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/interrupt", params: { threadId: "thread-1", turnId: "turn-1" } }));
+    expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ method: "thread/backgroundTerminals/clean" }));
+    expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe" }));
+    expect(result.current.conversation.queuedFollowUps).toHaveLength(1);
+  });
+
   it("overrides an existing thread to full access on the next turn", async () => {
     const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
       if (input.method === "turn/start") {
@@ -666,10 +697,16 @@ describe("useWorkspaceConversation", () => {
     expect(result.current.conversation.selectedThread?.branch).toBe("feature/agent");
   });
 
-  it("interrupts the active turn once and clears pending state after completion", async () => {
+  it("interrupt button force-cleans descendants before unloading the selected thread", async () => {
     const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
       if (input.method === "turn/interrupt") {
-        return { requestId: "request-1", result: { success: true } };
+        return { requestId: `interrupt-${String((input.params as { threadId: string }).threadId)}`, result: { success: true } };
+      }
+      if (input.method === "thread/backgroundTerminals/clean") {
+        return { requestId: `clean-${String((input.params as { threadId: string }).threadId)}`, result: {} };
+      }
+      if (input.method === "thread/unsubscribe") {
+        return { requestId: `unsubscribe-${String((input.params as { threadId: string }).threadId)}`, result: { status: "unsubscribed" } };
       }
       return { requestId: "noop", result: {} };
     });
@@ -677,34 +714,41 @@ describe("useWorkspaceConversation", () => {
     const { result } = renderConversation(hostBridge);
 
     act(() => {
-      result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread(), { resumeState: "resumed" }) });
+      result.current.store.dispatch({
+        type: "conversation/upserted",
+        conversation: createConversationFromThread(createThread({
+          id: "thread-1",
+          status: { type: "active" as const, activeFlags: [] },
+          turns: [createRunningCollabTurn("thread-1", ["thread-2"]), createTurn()],
+        }), { resumeState: "resumed" })
+      });
+      result.current.store.dispatch({
+        type: "conversation/upserted",
+        conversation: createConversationFromThread(createThread({
+          id: "thread-2",
+          source: createSubAgentSource(),
+          status: { type: "active" as const, activeFlags: [] },
+          turns: [createTurn()],
+        }), { resumeState: "resumed" })
+      });
       result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-1" });
-      result.current.store.dispatch({ type: "conversation/turnPlaceholderAdded", conversationId: "thread-1", params: { input: [{ type: "text", text: "hello", text_elements: [] }], cwd: "E:/code/FPGA", model: "gpt-5.2", effort: "medium", serviceTier: null, collaborationMode: null } });
-      result.current.store.dispatch({ type: "conversation/turnStarted", conversationId: "thread-1", turn: createTurn() });
-      result.current.store.dispatch({ type: "conversation/statusChanged", conversationId: "thread-1", status: "active", activeFlags: [] });
     });
 
     expect(result.current.conversation.isResponding).toBe(true);
-    expect(result.current.conversation.interruptPending).toBe(false);
 
     await act(async () => {
       await result.current.conversation.interruptActiveTurn();
     });
 
-    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/interrupt", params: { threadId: "thread-1", turnId: "turn-1" } }));
-    expect(result.current.conversation.interruptPending).toBe(true);
-
-    await act(async () => {
-      await result.current.conversation.interruptActiveTurn();
-    });
-
-    expect(request).toHaveBeenCalledTimes(1);
-
-    act(() => {
-      result.current.store.dispatch({ type: "conversation/turnCompleted", conversationId: "thread-1", turn: createTurn("completed") });
-      result.current.store.dispatch({ type: "conversation/statusChanged", conversationId: "thread-1", status: "idle", activeFlags: [] });
-    });
-
+    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/interrupt", params: { threadId: "thread-2", turnId: "turn-1" } })));
+    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe", params: { threadId: "thread-1" } })));
+    const childUnsubscribeCall = request.mock.calls.findIndex(([input]) => input.method === "thread/unsubscribe" && (input.params as { threadId: string }).threadId === "thread-2");
+    const rootUnsubscribeCall = request.mock.calls.findIndex(([input]) => input.method === "thread/unsubscribe" && (input.params as { threadId: string }).threadId === "thread-1");
+    expect(childUnsubscribeCall).toBeGreaterThanOrEqual(0);
+    expect(rootUnsubscribeCall).toBeGreaterThanOrEqual(0);
+    expect(request.mock.invocationCallOrder[childUnsubscribeCall]).toBeLessThan(request.mock.invocationCallOrder[rootUnsubscribeCall]);
+    expect(result.current.conversation.selectedThreadId).toBe("thread-1");
+    expect(result.current.conversation.selectedThread?.status).toBe("notLoaded");
     expect(result.current.conversation.isResponding).toBe(false);
     expect(result.current.conversation.interruptPending).toBe(false);
   });
