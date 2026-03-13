@@ -8,6 +8,7 @@ import type { ThreadSummary } from "../../../domain/types";
 import type { TimelineEntry } from "../../../domain/timeline";
 import type { ThreadTokenUsage } from "../../../protocol/generated/v2/ThreadTokenUsage";
 import type { Turn } from "../../../protocol/generated/v2/Turn";
+import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
 import { HomeConversationCanvas } from "./HomeConversationCanvas";
 
 const TOKEN_USAGE: ThreadTokenUsage = {
@@ -37,6 +38,7 @@ function renderCanvas(
   options?: {
     readonly status?: ThreadSummary["status"];
     readonly activeTurnId?: string | null;
+    readonly turnStatuses?: Readonly<Record<string, TurnStatus>>;
     readonly threadDetailLevel?: ThreadDetailLevel;
   },
 ) {
@@ -45,6 +47,7 @@ function renderCanvas(
       activities={activities}
       selectedThread={createThread(options?.status ?? "idle")}
       activeTurnId={options?.activeTurnId ?? null}
+      turnStatuses={options?.turnStatuses ?? {}}
       threadDetailLevel={options?.threadDetailLevel ?? "commands"}
       placeholder={null}
       onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
@@ -191,6 +194,22 @@ const STREAMING_ASSISTANT_MESSAGE: TimelineEntry = {
   status: "streaming",
 };
 
+const DIFF_ENTRY: TimelineEntry = {
+  id: "turn-diff-1",
+  kind: "turnDiffSnapshot",
+  threadId: "thread-1",
+  turnId: "turn-1",
+  itemId: null,
+  diff: [
+    "diff --git a/src/App.tsx b/src/App.tsx",
+    "--- a/src/App.tsx",
+    "+++ b/src/App.tsx",
+    "@@ -1 +1 @@",
+    "-old",
+    "+new",
+  ].join("\n"),
+};
+
 const REQUEST_ENTRY: TimelineEntry = {
   id: "request-1",
   kind: "pendingUserInput",
@@ -294,6 +313,22 @@ describe("HomeConversationCanvas", () => {
     expect(classNames[0]).toContain("home-chat-message-user");
     expect(classNames[1]).toContain("home-assistant-transcript-details");
     expect(classNames[2]).toContain("home-turn-thinking-indicator");
+  });
+
+  it("keeps turn diff snapshots hidden while the turn is still running", () => {
+    renderCanvas([USER_MESSAGE, DIFF_ENTRY], { activeTurnId: "turn-1", turnStatuses: { "turn-1": "inProgress" } });
+
+    expect(screen.queryByText("代码 diff 已更新")).toBeNull();
+    expect(screen.queryByText("src/App.tsx")).toBeNull();
+  });
+
+  it("shows the diff summary card automatically after the turn is interrupted", () => {
+    const { container } = renderCanvas([USER_MESSAGE, DIFF_ENTRY], { turnStatuses: { "turn-1": "interrupted" } });
+
+    expect(container.querySelector("summary")).toBeNull();
+    expect(container.querySelector('[data-variant="diffSummary"]')).not.toBeNull();
+    expect(screen.getByText("1 个文件已更改")).toBeInTheDocument();
+    expect(screen.getByText("src/App.tsx")).toBeInTheDocument();
   });
 
   it("hides command summaries in compact mode", () => {

@@ -1,14 +1,17 @@
 import { ConversationMessageContent } from "./ConversationMessageContent";
 import type { ConversationRenderNode } from "../model/localConversationGroups";
 import { createAssistantTranscriptEntryModel } from "../model/assistantTranscript";
+import { createDetailPanel } from "../model/assistantTranscriptDetailModel";
 import { HomeAssistantTranscriptDetailBlock } from "./HomeAssistantTranscriptDetailBlock";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { HomePlanDraftCard } from "../../composer/ui/HomePlanDraftCard";
+import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
 
 type AssistantNode = Extract<ConversationRenderNode, { kind: "assistantMessage" | "reasoningBlock" | "traceItem" | "auxiliaryBlock" }>;
 
 interface HomeAssistantTranscriptEntryProps {
   readonly node: AssistantNode;
+  readonly turnStatus?: TurnStatus | null;
 }
 
 export function HomeAssistantTranscriptEntry(props: HomeAssistantTranscriptEntryProps): JSX.Element {
@@ -21,6 +24,16 @@ export function HomeAssistantTranscriptEntry(props: HomeAssistantTranscriptEntry
       <article className="home-assistant-transcript-entry home-assistant-transcript-plan">
         <HomePlanDraftCard markdown={props.node.entry.text} />
       </article>
+    );
+  }
+  if (props.node.kind === "auxiliaryBlock" && props.node.entry.kind === "turnDiffSnapshot") {
+    if (props.turnStatus === "inProgress") {
+      return null;
+    }
+    return (
+      <section className="home-assistant-transcript-entry">
+        <HomeAssistantTranscriptDetailBlock panel={createDetailPanel({ body: props.node.entry.diff, label: "Diff", variant: "diffSummary" })} />
+      </section>
     );
   }
 

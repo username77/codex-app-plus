@@ -224,6 +224,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
           selectedThread={conversation.selectedThread}
           selectedThreadId={conversation.selectedThreadId}
           activeTurnId={conversation.activeTurnId}
+          turnStatuses={conversation.turnStatuses}
           isResponding={conversation.isResponding}
           interruptPending={conversation.interruptPending}
           activities={conversation.activities}

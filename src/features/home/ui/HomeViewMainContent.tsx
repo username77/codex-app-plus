@@ -13,6 +13,7 @@ import type {
   UiBanner,
 } from "../../../domain/types";
 import type { ComposerEnterBehavior, FollowUpMode, QueuedFollowUp } from "../../../domain/timeline";
+import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
 import { HomeConversationCanvas } from "../../conversation/ui/HomeConversationCanvas";
 import { HomeComposer } from "../../composer/ui/HomeComposer";
 import { HomeMainToolbar } from "./HomeMainToolbar";
@@ -52,6 +53,7 @@ export interface HomeViewMainContentProps {
   readonly selectedRootPath: string | null;
   readonly selectedThread: ThreadSummary | null;
   readonly activeTurnId: string | null;
+  readonly turnStatuses: Readonly<Record<string, TurnStatus>>;
   readonly threadDetailLevel: ThreadDetailLevel;
   readonly isResponding: boolean;
   readonly interruptPending: boolean;
@@ -188,6 +190,7 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
           activities={renderableActivities}
           selectedThread={props.selectedThread}
           activeTurnId={props.activeTurnId}
+          turnStatuses={props.turnStatuses}
           threadDetailLevel={props.threadDetailLevel}
           placeholder={placeholder}
           onResolveServerRequest={props.onResolveServerRequest}

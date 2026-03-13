@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { ThreadDetailLevel } from "../../settings/hooks/useAppPreferences";
 import type { ConnectionStatus, ServerRequestResolution, ThreadSummary, TimelineEntry } from "../../../domain/types";
+import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
 import { HomeTimelineEntry } from "./HomeTimelineEntry";
 import { HomeTurnThinkingIndicator } from "./HomeTurnThinkingIndicator";
 import { HomeConnectionStatusToast } from "../../home/ui/HomeConnectionStatusToast";
@@ -11,6 +12,7 @@ interface HomeConversationCanvasProps {
   readonly activities: ReadonlyArray<TimelineEntry>;
   readonly selectedThread: ThreadSummary | null;
   readonly activeTurnId: string | null;
+  readonly turnStatuses: Readonly<Record<string, TurnStatus>>;
   readonly threadDetailLevel: ThreadDetailLevel;
   readonly placeholder: { readonly title: string; readonly body: string } | null;
   readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
@@ -26,13 +28,14 @@ interface RenderGroup {
   readonly key: string;
   readonly nodes: ReturnType<typeof flattenConversationRenderGroup>;
   readonly showThinkingIndicator: boolean;
+  readonly turnStatus: TurnStatus | null;
 }
 
 export function HomeConversationCanvas(props: HomeConversationCanvasProps): JSX.Element {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const renderGroups = useMemo(
-    () => createRenderGroups(props.activities, props.activeTurnId, props.threadDetailLevel),
-    [props.activities, props.activeTurnId, props.threadDetailLevel]
+    () => createRenderGroups(props.activities, props.activeTurnId, props.turnStatuses, props.threadDetailLevel),
+    [props.activities, props.activeTurnId, props.turnStatuses, props.threadDetailLevel]
   );
   const scrollKey = useMemo(() => createScrollKey(renderGroups), [renderGroups]);
 
@@ -51,7 +54,12 @@ export function HomeConversationCanvas(props: HomeConversationCanvasProps): JSX.
           {renderGroups.map((group) => (
             <section key={group.key} className="home-turn-group">
               {group.nodes.map((node) => (
-                <HomeTimelineEntry key={node.key} node={node} onResolveServerRequest={props.onResolveServerRequest} />
+                <HomeTimelineEntry
+                  key={node.key}
+                  node={node}
+                  turnStatus={group.turnStatus}
+                  onResolveServerRequest={props.onResolveServerRequest}
+                />
               ))}
               {group.showThinkingIndicator ? <HomeTurnThinkingIndicator /> : null}
             </section>
@@ -73,6 +81,7 @@ export function HomeConversationCanvas(props: HomeConversationCanvasProps): JSX.
 function createRenderGroups(
   activities: ReadonlyArray<TimelineEntry>,
   activeTurnId: string | null,
+  turnStatuses: Readonly<Record<string, TurnStatus>>,
   threadDetailLevel: ThreadDetailLevel,
 ): Array<RenderGroup> {
   return splitActivitiesIntoRenderGroups(activities, activeTurnId, threadDetailLevel)
@@ -80,6 +89,7 @@ function createRenderGroups(
       key: group.key,
       nodes: flattenConversationRenderGroup(group),
       showThinkingIndicator: group.showThinkingIndicator,
+      turnStatus: group.turnId === null ? null : turnStatuses[group.turnId] ?? null,
     }))
     .filter((group) => group.nodes.length > 0 || group.showThinkingIndicator);
 }

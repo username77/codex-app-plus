@@ -1,4 +1,5 @@
 import type { ServerRequestResolution } from "../../../domain/types";
+import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
 import { HomeAssistantTranscriptEntry } from "./HomeAssistantTranscriptEntry";
 import { HomeChatMessage } from "./HomeChatMessage";
 import { HomeRequestEntry } from "./HomeRequestEntry";
@@ -6,6 +7,7 @@ import type { ConversationRenderNode } from "../model/localConversationGroups";
 
 interface HomeTimelineEntryProps {
   readonly node: ConversationRenderNode;
+  readonly turnStatus: TurnStatus | null;
   readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
 }
 
@@ -13,20 +15,11 @@ export function HomeTimelineEntry(props: HomeTimelineEntryProps): JSX.Element | 
   if (props.node.kind === "userBubble") {
     return <HomeChatMessage message={props.node.message} />;
   }
-  if (props.node.kind === "assistantMessage") {
-    return <HomeAssistantTranscriptEntry node={props.node} />;
-  }
-  if (props.node.kind === "reasoningBlock") {
-    return <HomeAssistantTranscriptEntry node={props.node} />;
-  }
-  if (props.node.kind === "traceItem") {
-    return <HomeAssistantTranscriptEntry node={props.node} />;
-  }
   if (props.node.kind === "requestBlock") {
     if (props.node.entry.kind === "pendingUserInput") {
       return null;
     }
     return <HomeRequestEntry entry={props.node.entry} onResolveServerRequest={props.onResolveServerRequest} />;
   }
-  return <HomeAssistantTranscriptEntry node={props.node} />;
+  return <HomeAssistantTranscriptEntry node={props.node} turnStatus={props.turnStatus} />;
 }

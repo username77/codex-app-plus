@@ -15,6 +15,7 @@ import type {
   UiBanner,
 } from "../../../domain/types";
 import type { ComposerEnterBehavior, FollowUpMode, QueuedFollowUp } from "../../../domain/timeline";
+import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
 import { TerminalPanel } from "../../terminal/ui/TerminalPanel";
 import { WorkspaceDiffSidebarHost } from "../../workspace/ui/WorkspaceDiffSidebarHost";
 import type { WorkspaceGitController } from "../../git/model/types";
@@ -36,6 +37,7 @@ export interface HomeViewProps {
   readonly selectedThread: ThreadSummary | null;
   readonly selectedThreadId: string | null;
   readonly activeTurnId: string | null;
+  readonly turnStatuses: Readonly<Record<string, TurnStatus>>;
   readonly isResponding: boolean;
   readonly interruptPending: boolean;
   readonly activities: ReadonlyArray<TimelineEntry>;
@@ -217,6 +219,7 @@ function HomeSidebarPanel(props: HomeViewProps & {
         selectedRootPath={props.selectedRootPath}
         selectedThread={props.selectedThread}
         activeTurnId={props.activeTurnId}
+        turnStatuses={props.turnStatuses}
         threadDetailLevel={props.threadDetailLevel}
         isResponding={props.isResponding}
         interruptPending={props.interruptPending}

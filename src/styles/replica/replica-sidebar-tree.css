@@ -66,8 +66,9 @@
 .workspace-thread-button {
   width: 100%;
   min-width: 0;
+  min-height: 32px;
   display: block;
-  padding: 4px 6px;
+  padding: 6px;
   box-sizing: border-box;
   border-radius: 8px;
   color: #606060;
@@ -93,7 +94,7 @@
   min-width: 0;
   flex: 1 1 auto;
   font-size: 12px;
-  line-height: 1.2;
+  line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

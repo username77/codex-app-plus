@@ -20,6 +20,7 @@ import type { TurnStartResponse } from "../../../protocol/generated/v2/TurnStart
 import type { TurnSteerParams } from "../../../protocol/generated/v2/TurnSteerParams";
 import type { TurnInterruptParams } from "../../../protocol/generated/v2/TurnInterruptParams";
 import type { Turn } from "../../../protocol/generated/v2/Turn";
+import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
 import type { UserInput } from "../../../protocol/generated/v2/UserInput";
 import { createConversationFromThread } from "../model/conversationState";
 import { deriveConversationPreviewTitle, pickConversationTitle } from "../model/conversationTitle";
@@ -58,6 +59,7 @@ interface WorkspaceConversationController {
   readonly selectedThreadId: string | null;
   readonly selectedThread: ThreadSummary | null;
   readonly activeTurnId: string | null;
+  readonly turnStatuses: Readonly<Record<string, TurnStatus>>;
   readonly isResponding: boolean;
   readonly interruptPending: boolean;
   readonly workspaceThreads: ReadonlyArray<ThreadSummary>;
@@ -203,6 +205,12 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
   const nextQueuedConversationId = useAppSelector(queuedConversationIdSelector);
   const draftActive = useAppSelector((currentState) => currentState.draftConversation !== null);
   const queuedFollowUps = selectedConversation?.queuedFollowUps ?? [];
+  const turnStatuses = useMemo(() => (
+    selectedConversation?.turns.reduce<Record<string, TurnStatus>>((current, turn) => {
+      if (turn.turnId !== null) current[turn.turnId] = turn.status;
+      return current;
+    }, {}) ?? {}
+  ), [selectedConversation]);
   const isResponding = hasInProgressTurn(selectedConversation) || selectedConversation?.status === "active";
   const interruptPending = activeTurnId !== null && selectedConversation?.interruptRequestedTurnId === activeTurnId;
   useThreadResourceCleanup({
@@ -442,6 +450,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     selectedThreadId: selectedConversation?.id ?? null,
     selectedThread,
     activeTurnId,
+    turnStatuses,
     isResponding,
     interruptPending,
     workspaceThreads,
