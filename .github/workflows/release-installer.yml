@@ -108,7 +108,10 @@ jobs:
           }
 
           git show-ref --verify --quiet "refs/tags/$tag"
-          if ($LASTEXITCODE -eq 0) {
+          $tagExistsExitCode = $LASTEXITCODE
+          $global:LASTEXITCODE = 0
+
+          if ($tagExistsExitCode -eq 0) {
             $tagCommit = (git rev-list -n 1 $tag).Trim()
             if ([string]::IsNullOrWhiteSpace($tagCommit)) {
               throw "无法解析现有 tag 指向的 commit：$tag"
@@ -117,6 +120,9 @@ jobs:
             if ($tagCommit -ne $env:GITHUB_SHA) {
               throw "tag 已存在且指向其他 commit：$tag -> $tagCommit"
             }
+          }
+          elseif ($tagExistsExitCode -ne 1) {
+            throw "检查 tag 是否存在失败：$tag"
           }
 
           $notesFile = Join-Path $env:RUNNER_TEMP "release-notes.md"
