@@ -1,4 +1,5 @@
 import { Suspense, lazy } from "react";
+import type { HostBridge } from "../../../bridge/types";
 import type { WorkspaceGitController } from "../../git/model/types";
 
 const LazyWorkspaceDiffSidebar = lazy(async () => {
@@ -7,6 +8,7 @@ const LazyWorkspaceDiffSidebar = lazy(async () => {
 });
 
 interface WorkspaceDiffSidebarHostProps {
+  readonly hostBridge: HostBridge;
   readonly controller: WorkspaceGitController;
   readonly onClose: () => void;
   readonly selectedRootName: string;
@@ -21,6 +23,7 @@ export function WorkspaceDiffSidebarHost(props: WorkspaceDiffSidebarHostProps): 
   return (
     <Suspense fallback={null}>
       <LazyWorkspaceDiffSidebar
+        hostBridge={props.hostBridge}
         controller={props.controller}
         onClose={props.onClose}
         open={true}

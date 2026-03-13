@@ -17,6 +17,8 @@ import type {
   GitCommitInput,
   GitDiffInput,
   GitDiffOutput,
+  GitWorkspaceDiffsInput,
+  GitWorkspaceDiffOutput,
   GitDiscardInput,
   GitPathsInput,
   GitRemoteInput,
@@ -171,6 +173,10 @@ export function createTauriHostBridge(): HostBridge {
         }),
       getDiff: (input: GitDiffInput) =>
         invoke<GitDiffOutput>("git_get_diff", {
+          input
+        }),
+      getWorkspaceDiffs: (input: GitWorkspaceDiffsInput) =>
+        invoke<ReadonlyArray<GitWorkspaceDiffOutput>>("git_get_workspace_diffs", {
           input
         }),
       initRepository: (input: GitRepoInput) =>

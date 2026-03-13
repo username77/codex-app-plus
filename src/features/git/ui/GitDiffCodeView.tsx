@@ -1,6 +1,6 @@
 import {
   collapseDiffRows,
-  parseUnifiedDiff,
+  parseUnifiedDiffCached,
   type CollapsedDiffRow,
   type DiffDisplayRow,
   type ParsedDiffFile,
@@ -118,7 +118,7 @@ function StructuredDiff(props: { readonly parsed: ParsedDiffFile; readonly path?
 }
 
 export function GitDiffCodeView(props: GitDiffCodeViewProps): JSX.Element {
-  const parsed = props.parsed ?? parseUnifiedDiff(props.diff ?? "");
+  const parsed = props.parsed ?? parseUnifiedDiffCached(props.diff ?? "");
   if (parsed.hunks.length === 0) {
     return <RawDiffFallback parsed={parsed} />;
   }

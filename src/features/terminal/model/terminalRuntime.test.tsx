@@ -54,10 +54,13 @@ function createHostBridge(createSession: ReturnType<typeof vi.fn>): HostBridge {
     listCodexSessions: vi.fn(),
     readCodexSession: vi.fn(),
     deleteCodexSession: vi.fn()
-  },
+    },
     git: {
-      getStatus: vi.fn(),
+      getStatusSnapshot: vi.fn(),
+      getBranchRefs: vi.fn(),
+      getRemoteUrl: vi.fn(),
       getDiff: vi.fn(),
+      getWorkspaceDiffs: vi.fn(),
       initRepository: vi.fn(),
       stagePaths: vi.fn(),
       unstagePaths: vi.fn(),

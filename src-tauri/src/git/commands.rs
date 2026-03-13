@@ -5,6 +5,7 @@ use crate::error::AppResult;
 use super::models::{
     GitBranchRef, GitCheckoutInput, GitCommitInput, GitDiffInput, GitDiffOutput,
     GitDiscardInput, GitPathsInput, GitRemoteInput, GitRepoInput, GitStatusSnapshotOutput,
+    GitWorkspaceDiffOutput, GitWorkspaceDiffsInput,
 };
 use super::repository::resolve_workspace;
 use super::runtime::GitRuntimeState;
@@ -67,6 +68,15 @@ pub async fn git_get_diff(
 ) -> Result<GitDiffOutput, String> {
     let cache = state.repository_cache();
     run_blocking(move || service::get_diff(input, &cache)).await
+}
+
+#[tauri::command]
+pub async fn git_get_workspace_diffs(
+    state: State<'_, GitRuntimeState>,
+    input: GitWorkspaceDiffsInput,
+) -> Result<Vec<GitWorkspaceDiffOutput>, String> {
+    let cache = state.repository_cache();
+    run_blocking(move || service::get_workspace_diffs(input, &cache)).await
 }
 
 #[tauri::command]

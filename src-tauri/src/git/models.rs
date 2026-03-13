@@ -29,6 +29,32 @@ pub struct GitDiffInput {
     pub staged: bool,
 }
 
+#[derive(Debug, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum GitWorkspaceDiffScope {
+    Unstaged,
+    Staged,
+    All,
+}
+
+impl GitWorkspaceDiffScope {
+    pub fn includes_staged(self) -> bool {
+        matches!(self, Self::Staged | Self::All)
+    }
+
+    pub fn includes_unstaged(self) -> bool {
+        matches!(self, Self::Unstaged | Self::All)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitWorkspaceDiffsInput {
+    pub repo_path: String,
+    pub scope: GitWorkspaceDiffScope,
+    pub ignore_whitespace_changes: Option<bool>,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GitCommitInput {
@@ -114,4 +140,27 @@ pub struct GitDiffOutput {
     pub path: String,
     pub staged: bool,
     pub diff: String,
+}
+
+#[derive(Debug, Serialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum GitWorkspaceDiffSection {
+    Unstaged,
+    Staged,
+    Untracked,
+    Conflicted,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GitWorkspaceDiffOutput {
+    pub path: String,
+    pub display_path: String,
+    pub original_path: Option<String>,
+    pub status: String,
+    pub staged: bool,
+    pub section: GitWorkspaceDiffSection,
+    pub diff: String,
+    pub additions: usize,
+    pub deletions: usize,
 }

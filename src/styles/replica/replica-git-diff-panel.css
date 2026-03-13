@@ -67,6 +67,10 @@
   min-height: 0;
 }
 
+.workspace-diff-sidebar-content-stream .workspace-diff-viewer {
+  flex: 1 1 auto;
+}
+
 .workspace-diff-layout {
   min-height: 0;
   display: grid;
@@ -361,5 +365,17 @@
 
   .workspace-diff-layout {
     grid-template-rows: minmax(120px, 40%) minmax(0, 1fr);
+  }
+}
+
+.workspace-diff-layout-stream {
+  grid-template-columns: minmax(180px, 34%) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+@media (max-width: 1080px) {
+  .workspace-diff-layout-stream {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(140px, 34%) minmax(0, 1fr);
   }
 }

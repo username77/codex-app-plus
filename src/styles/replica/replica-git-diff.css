@@ -96,48 +96,107 @@
 
 .workspace-diff-file-card {
   overflow: hidden;
-  border: 1px solid #e8e8e8;
+  border: 1px solid #e4e4e4;
   border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 8px 24px rgba(20, 20, 20, 0.04);
-}
-
-.workspace-diff-file-card-active {
-  border-color: #d7d7d7;
-  box-shadow: 0 10px 28px rgba(20, 20, 20, 0.08);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 10px 24px rgba(20, 20, 20, 0.04);
 }
 
 .workspace-diff-file-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-bottom: 1px solid #f1f1f1;
+  align-items: start;
+  gap: 12px;
+  padding: 12px;
 }
 
-.workspace-diff-file-title {
+.workspace-diff-file-trigger {
   min-width: 0;
   border: 0;
   padding: 0;
   background: transparent;
-  color: #2b2b2b;
-  font-size: 14px;
-  line-height: 1.4;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
   text-align: left;
   cursor: pointer;
 }
 
-.workspace-diff-file-title-active {
-  font-weight: 700;
+.workspace-diff-file-chevron-wrap {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #f3f3f3;
+  color: #5c5c5c;
+  flex: 0 0 auto;
+}
+
+.workspace-diff-file-trigger:hover .workspace-diff-file-chevron-wrap {
+  background: #ececec;
+}
+
+.workspace-diff-file-chevron {
+  width: 16px;
+  height: 16px;
+}
+
+.workspace-diff-file-title-wrap {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.workspace-diff-file-title {
+  min-width: 0;
+  color: #252525;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.workspace-diff-file-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.workspace-diff-file-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f3f4f4;
+  color: #666666;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.workspace-diff-file-badge-status {
+  font-variant-numeric: tabular-nums;
 }
 
 .workspace-diff-file-summary {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  align-self: center;
+  justify-self: end;
+  gap: 8px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #f4f5f5;
   font-size: 12px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .workspace-diff-file-summary-add {
@@ -152,6 +211,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  align-self: center;
 }
 
 .workspace-diff-file-action {
@@ -179,6 +239,12 @@
 .workspace-diff-file-action-icon {
   width: 16px;
   height: 16px;
+}
+
+.workspace-diff-file-body {
+  border-top: 1px solid #f1f1f1;
+  content-visibility: auto;
+  contain-intrinsic-size: 320px;
 }
 
 .workspace-diff-file-loading {
@@ -287,20 +353,57 @@
   .workspace-diff-file-header {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "title actions"
+      "trigger actions"
       "summary actions";
     align-items: start;
   }
 
-  .workspace-diff-file-title {
-    grid-area: title;
+  .workspace-diff-file-trigger {
+    grid-area: trigger;
   }
 
   .workspace-diff-file-summary {
     grid-area: summary;
+    justify-self: start;
   }
 
   .workspace-diff-file-actions {
     grid-area: actions;
   }
+}
+
+.workspace-diff-viewer {
+  position: relative;
+  min-height: 0;
+}
+
+.workspace-diff-viewer-scroll {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  padding: 4px 0 12px;
+}
+
+.workspace-diff-viewer-list {
+  position: relative;
+  width: 100%;
+}
+
+.workspace-diff-viewer-row {
+  position: absolute;
+  inset: 0 0 auto;
+  padding-bottom: 14px;
+}
+
+.workspace-diff-viewer-loading-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(245, 245, 245, 0.96);
+  color: #6d6d6d;
+  font-size: 12px;
 }

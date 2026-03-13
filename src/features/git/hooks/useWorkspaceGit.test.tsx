@@ -58,6 +58,7 @@ function createHostBridge(
       getBranchRefs: getBranchRefs ?? vi.fn().mockResolvedValue([{ name: "main", upstream: "origin/main", isCurrent: true }] satisfies ReadonlyArray<GitBranchRef>),
       getRemoteUrl: getRemoteUrl ?? vi.fn().mockResolvedValue("https://example.com/repo.git"),
       getDiff,
+      getWorkspaceDiffs: vi.fn().mockResolvedValue([]),
       initRepository: vi.fn().mockResolvedValue(undefined),
       stagePaths: vi.fn().mockResolvedValue(undefined),
       unstagePaths: vi.fn().mockResolvedValue(undefined),

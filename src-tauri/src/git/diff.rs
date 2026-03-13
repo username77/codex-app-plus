@@ -12,10 +12,24 @@ const EMPTY_FILE_MESSAGE: &str = "空文件暂时没有可显示的差异。";
 const DIRECTORY_PREVIEW_MESSAGE: &str = "目录变更暂不支持内联预览。";
 const BINARY_PREVIEW_MESSAGE: &str = "该文件不是 UTF-8 文本，无法显示预览。";
 
+#[derive(Clone, Copy, Debug, Default)]
+pub struct GitDiffPreviewOptions {
+    pub ignore_whitespace_changes: bool,
+}
+
 pub fn get_diff_preview(repo_root: &Path, path: &str, staged: bool) -> AppResult<String> {
+    get_diff_preview_with_options(repo_root, path, staged, GitDiffPreviewOptions::default())
+}
+
+pub fn get_diff_preview_with_options(
+    repo_root: &Path,
+    path: &str,
+    staged: bool,
+    options: GitDiffPreviewOptions,
+) -> AppResult<String> {
     let tracked_diff = run_git(
         repo_root,
-        &create_tracked_diff_args(path, staged),
+        &create_tracked_diff_args(path, staged, options),
         &DIFF_EXIT_CODES,
     )?;
     if !tracked_diff.is_empty() {
@@ -52,20 +66,21 @@ fn build_fallback_preview(repo_root: &Path, path: &str, staged: bool) -> AppResu
     Ok(untracked_diff)
 }
 
-fn create_tracked_diff_args(path: &str, staged: bool) -> Vec<OsString> {
+fn create_tracked_diff_args(
+    path: &str,
+    staged: bool,
+    options: GitDiffPreviewOptions,
+) -> Vec<OsString> {
+    let mut args = vec![OsString::from("diff")];
     if staged {
-        return vec![
-            OsString::from("diff"),
-            OsString::from("--cached"),
-            OsString::from("--"),
-            OsString::from(path),
-        ];
+        args.push(OsString::from("--cached"));
     }
-    vec![
-        OsString::from("diff"),
-        OsString::from("--"),
-        OsString::from(path),
-    ]
+    if options.ignore_whitespace_changes {
+        args.push(OsString::from("--ignore-space-change"));
+    }
+    args.push(OsString::from("--"));
+    args.push(OsString::from(path));
+    args
 }
 
 fn create_untracked_diff_args(path: &str) -> Vec<OsString> {

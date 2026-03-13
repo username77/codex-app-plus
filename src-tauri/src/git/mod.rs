@@ -6,3 +6,4 @@ mod repository;
 mod process;
 pub mod runtime;
 pub mod service;
+mod workspace_diffs;

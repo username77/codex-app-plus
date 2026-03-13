@@ -7,6 +7,7 @@ use super::diff::get_diff_preview;
 use super::models::{
     GitBranchRef, GitCheckoutInput, GitCommitInput, GitDiffInput, GitDiffOutput, GitDiscardInput,
     GitPathsInput, GitRemoteInput, GitRepoInput, GitStatusSnapshotOutput,
+    GitWorkspaceDiffOutput, GitWorkspaceDiffsInput,
 };
 use super::parse::{parse_branch_refs, parse_status_output};
 use super::process::{has_head, run_git};
@@ -14,6 +15,7 @@ use super::repository::{
     require_repository_context, resolve_workspace, to_args, validate_paths, validate_pathspec,
 };
 use super::runtime::RepositoryContextCache;
+use super::workspace_diffs::load_workspace_diffs;
 
 const STATUS_ARGS: [&str; 4] = [
     "status",
@@ -75,6 +77,22 @@ pub fn get_diff(input: GitDiffInput, cache: &RepositoryContextCache) -> AppResul
         staged: input.staged,
         diff: get_diff_preview(&context.repo_root, &path, input.staged)?,
     })
+}
+
+pub fn get_workspace_diffs(
+    input: GitWorkspaceDiffsInput,
+    cache: &RepositoryContextCache,
+) -> AppResult<Vec<GitWorkspaceDiffOutput>> {
+    let context = require_repository_context(&input.repo_path, cache)?;
+    let snapshot = get_status_snapshot_for_repo_root(&context.repo_root)?;
+    load_workspace_diffs(
+        &context.repo_root,
+        &snapshot,
+        input.scope,
+        super::diff::GitDiffPreviewOptions {
+            ignore_whitespace_changes: input.ignore_whitespace_changes.unwrap_or(false),
+        },
+    )
 }
 
 pub fn init_repository(

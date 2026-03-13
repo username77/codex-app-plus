@@ -81,6 +81,7 @@ function createHostBridge(): HostBridge {
       getBranchRefs: vi.fn(),
       getRemoteUrl: vi.fn(),
       getDiff: vi.fn(),
+      getWorkspaceDiffs: vi.fn(),
       initRepository: vi.fn(),
       stagePaths: vi.fn(),
       unstagePaths: vi.fn(),

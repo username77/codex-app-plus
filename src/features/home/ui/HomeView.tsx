@@ -133,6 +133,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
       />
       {canShowDiffSidebar ? (
         <WorkspaceDiffSidebarHost
+          hostBridge={props.hostBridge}
           controller={gitController}
           selectedRootName={props.selectedRootName}
           selectedRootPath={props.selectedRootPath}

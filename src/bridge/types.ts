@@ -256,6 +256,13 @@ export interface GitDiffInput extends GitRepoInput {
   readonly staged: boolean;
 }
 
+export type GitWorkspaceDiffScope = "unstaged" | "staged" | "all";
+
+export interface GitWorkspaceDiffsInput extends GitRepoInput {
+  readonly scope: GitWorkspaceDiffScope;
+  readonly ignoreWhitespaceChanges?: boolean;
+}
+
 export interface GitCommitInput extends GitRepoInput {
   readonly message: string;
 }
@@ -322,6 +329,24 @@ export interface GitDiffOutput {
   readonly diff: string;
 }
 
+export type GitWorkspaceDiffSection =
+  | "unstaged"
+  | "staged"
+  | "untracked"
+  | "conflicted";
+
+export interface GitWorkspaceDiffOutput {
+  readonly path: string;
+  readonly displayPath: string;
+  readonly originalPath: string | null;
+  readonly status: string;
+  readonly staged: boolean;
+  readonly section: GitWorkspaceDiffSection;
+  readonly diff: string;
+  readonly additions: number;
+  readonly deletions: number;
+}
+
 export type BridgeEventPayloadMap = {
   "connection-changed": ConnectionChangedPayload;
   "notification-received": NotificationEventPayload;
@@ -374,6 +399,7 @@ export interface HostBridge {
     getBranchRefs(input: GitRepoInput): Promise<ReadonlyArray<GitBranchRef>>;
     getRemoteUrl(input: GitRemoteInput): Promise<string | null>;
     getDiff(input: GitDiffInput): Promise<GitDiffOutput>;
+    getWorkspaceDiffs(input: GitWorkspaceDiffsInput): Promise<ReadonlyArray<GitWorkspaceDiffOutput>>;
     initRepository(input: GitRepoInput): Promise<void>;
     stagePaths(input: GitPathsInput): Promise<void>;
     unstagePaths(input: GitPathsInput): Promise<void>;
