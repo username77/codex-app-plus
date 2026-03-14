@@ -1,5 +1,6 @@
 import type { AssistantTranscriptDetailPanel } from "../model/assistantTranscriptDetailModel";
 import { TurnDiffSummaryList } from "./TurnDiffSummaryList";
+import { HomeAssistantTranscriptFileDiffPanel } from "./HomeAssistantTranscriptFileDiffPanel";
 
 interface HomeAssistantTranscriptDetailBlockProps {
   readonly panel: AssistantTranscriptDetailPanel;
@@ -10,6 +11,15 @@ export function HomeAssistantTranscriptDetailBlock(
 ): JSX.Element {
   if (props.panel.variant === "diffSummary") {
     return <DiffSummaryPanel diffText={props.panel.body} />;
+  }
+  if (props.panel.variant === "fileDiff") {
+    return (
+      <HomeAssistantTranscriptFileDiffPanel
+        label={props.panel.label}
+        changes={props.panel.changes}
+        footerStatus={props.panel.footerStatus}
+      />
+    );
   }
 
   const hasFooter = props.panel.footerMeta !== null || props.panel.footerStatus !== null;

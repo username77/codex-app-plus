@@ -1,8 +1,10 @@
 import type { ConversationMessage } from "../../../domain/timeline";
+import type { FileUpdateChange } from "../../../protocol/generated/v2/FileUpdateChange";
 import type { AuxiliaryBlock, ConversationRenderNode, TraceEntry } from "./localConversationGroups";
 import { createTurnPlanDetailLines, createTurnPlanModel } from "./homeTurnPlanModel";
 import {
   createDetailPanel,
+  createFileDiffDetailPanel,
   createShellBody,
   formatCommandFooterStatus,
   formatDuration,
@@ -12,6 +14,7 @@ import {
   joinMetaParts,
   safeJson,
   type AssistantTranscriptDetailPanel,
+  type AssistantTranscriptTextDetailPanel,
 } from "./assistantTranscriptDetailModel";
 import { formatFileChangeSummary, getFileChangeDisplayName } from "./fileChangeSummary";
 interface MessageEntryModel {
@@ -47,7 +50,7 @@ interface DetailBlockOptions {
   readonly topMeta?: string | null;
   readonly footerMeta?: string | null;
   readonly footerStatus?: string | null;
-  readonly variant?: AssistantTranscriptDetailPanel["variant"];
+  readonly variant?: AssistantTranscriptTextDetailPanel["variant"];
 }
 type AssistantNode = Extract<ConversationRenderNode, { kind: "assistantMessage" | "reasoningBlock" | "traceItem" | "auxiliaryBlock" }>;
 export function createAssistantTranscriptEntryModel(node: AssistantNode): AssistantTranscriptEntryModel {
@@ -110,15 +113,7 @@ function createFileChangeTraceModel(key: string, entry: Extract<TraceEntry, { ki
   return createDetailsModel({
     key,
     summary: formatFileChangeSummary(entry.status, entry.changes),
-    detailPanel: createDetailBlockPanel({
-      body: joinDetailLines([
-        entry.changes.length > 0 ? "变更文件：" : null,
-        ...entry.changes.map((change) => getFileChangeDisplayName(change.path)),
-        entry.output.trim().length > 0 ? entry.output : null,
-      ]),
-      label: "Patch",
-      footerStatus: formatPatchFooterStatus(entry.status),
-    }),
+    detailPanel: createFileChangeDetailPanel(entry),
   });
 }
 
@@ -263,7 +258,7 @@ function createLineModel(key: string, summary: string): AssistantTranscriptEntry
 }
 
 function createDetailsModel(options: DetailsModelOptions): AssistantTranscriptEntryModel {
-  if (options.detailPanel === null || options.detailPanel.body.trim().length === 0) {
+  if (options.detailPanel === null || hasDetailPanelContent(options.detailPanel) === false) {
     return createLineModel(options.key, options.summary);
   }
 
@@ -274,6 +269,33 @@ function createDetailsModel(options: DetailsModelOptions): AssistantTranscriptEn
     detailPanel: options.detailPanel,
     truncateSummaryWhenCollapsed: options.truncateSummaryWhenCollapsed,
   };
+}
+
+function hasDetailPanelContent(panel: AssistantTranscriptDetailPanel): boolean {
+  if (panel.variant === "fileDiff") {
+    return panel.changes.length > 0;
+  }
+  return panel.body.trim().length > 0;
+}
+
+function createFileChangeDetailPanel(entry: Extract<TraceEntry, { kind: "fileChange" }>): AssistantTranscriptDetailPanel | null {
+  const footerStatus = formatPatchFooterStatus(entry.status);
+  if (entry.status === "completed" && hasRenderableFileDiff(entry.changes)) {
+    return createFileDiffDetailPanel({ label: "Patch", changes: entry.changes, footerStatus });
+  }
+  return createDetailBlockPanel({
+    body: joinDetailLines([
+      entry.changes.length > 0 ? "变更文件：" : null,
+      ...entry.changes.map((change) => getFileChangeDisplayName(change.path)),
+      entry.output.trim().length > 0 ? entry.output : null,
+    ]),
+    label: "Patch",
+    footerStatus,
+  });
+}
+
+function hasRenderableFileDiff(changes: ReadonlyArray<FileUpdateChange>): boolean {
+  return changes.some((change) => change.diff.trim().length > 0);
 }
 
 function createDetailBlockPanel(options: DetailBlockOptions): AssistantTranscriptDetailPanel | null {

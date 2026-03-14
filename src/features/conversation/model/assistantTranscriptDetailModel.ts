@@ -1,16 +1,15 @@
 import { stripConnectionRetryLines } from "../../home/model/homeConnectionRetry";
+import type { FileUpdateChange } from "../../../protocol/generated/v2/FileUpdateChange";
 
 const EMPTY_VALUE = "-";
 
-export type AssistantTranscriptDetailPanelVariant = "generic" | "shell" | "diffSummary";
+export type AssistantTranscriptTextDetailPanelVariant = "generic" | "shell" | "diffSummary";
 
-export interface AssistantTranscriptDetailPanel {
+interface AssistantTranscriptDetailPanelBase {
   readonly label: string;
-  readonly body: string;
   readonly topMeta: string | null;
   readonly footerMeta: string | null;
   readonly footerStatus: string | null;
-  readonly variant: AssistantTranscriptDetailPanelVariant;
 }
 
 interface DetailPanelOptions {
@@ -19,10 +18,28 @@ interface DetailPanelOptions {
   readonly topMeta?: string | null;
   readonly footerMeta?: string | null;
   readonly footerStatus?: string | null;
-  readonly variant?: AssistantTranscriptDetailPanelVariant;
+  readonly variant?: AssistantTranscriptTextDetailPanelVariant;
 }
 
-export function createDetailPanel(options: DetailPanelOptions): AssistantTranscriptDetailPanel {
+interface FileDiffDetailPanelOptions {
+  readonly label: string;
+  readonly changes: ReadonlyArray<FileUpdateChange>;
+  readonly footerStatus?: string | null;
+}
+
+export interface AssistantTranscriptTextDetailPanel extends AssistantTranscriptDetailPanelBase {
+  readonly body: string;
+  readonly variant: AssistantTranscriptTextDetailPanelVariant;
+}
+
+export interface AssistantTranscriptFileDiffDetailPanel extends AssistantTranscriptDetailPanelBase {
+  readonly changes: ReadonlyArray<FileUpdateChange>;
+  readonly variant: "fileDiff";
+}
+
+export type AssistantTranscriptDetailPanel = AssistantTranscriptTextDetailPanel | AssistantTranscriptFileDiffDetailPanel;
+
+export function createDetailPanel(options: DetailPanelOptions): AssistantTranscriptTextDetailPanel {
   return {
     label: options.label,
     body: options.body,
@@ -30,6 +47,17 @@ export function createDetailPanel(options: DetailPanelOptions): AssistantTranscr
     footerMeta: options.footerMeta ?? null,
     footerStatus: options.footerStatus ?? null,
     variant: options.variant ?? "generic",
+  };
+}
+
+export function createFileDiffDetailPanel(options: FileDiffDetailPanelOptions): AssistantTranscriptFileDiffDetailPanel {
+  return {
+    label: options.label,
+    topMeta: null,
+    footerMeta: null,
+    footerStatus: options.footerStatus ?? null,
+    variant: "fileDiff",
+    changes: options.changes,
   };
 }
 

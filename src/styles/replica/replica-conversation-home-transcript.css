@@ -104,12 +104,11 @@
 }
 
 .home-assistant-transcript-file-name {
-  display: inline-block;
-  margin: 0 2px;
-  padding: 1px 8px;
-  border: 1px solid #d9ddfb;
-  border-radius: 999px;
-  background: #eef2ff;
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
   color: #1d4ed8;
   font-weight: 600;
 }
@@ -224,6 +223,42 @@
 
 .home-assistant-transcript-detail-panel[data-variant="diffSummary"] {
   padding: 14px;
+}
+
+.home-assistant-transcript-detail-panel[data-variant="fileDiff"] {
+  padding: 14px;
+}
+
+.home-assistant-transcript-file-diff-list {
+  display: grid;
+  gap: 12px;
+}
+
+.home-assistant-transcript-file-diff-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-assistant-transcript-file-diff-card {
+  min-height: 0;
+}
+
+.home-assistant-transcript-file-diff-card-body {
+  min-height: 0;
+  border-top: 1px solid #f1f1f1;
+}
+
+.home-assistant-transcript-file-diff-card-body .workspace-diff-code-scroll,
+.home-assistant-transcript-file-diff-card-body .workspace-diff-raw {
+  max-height: 260px;
+}
+
+.home-assistant-transcript-file-diff-empty {
+  padding: 18px 16px;
+  color: #7a7a7a;
+  font-size: 13px;
 }
 
 .home-turn-diff-summary {

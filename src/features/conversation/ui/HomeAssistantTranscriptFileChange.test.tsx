@@ -18,17 +18,18 @@ function createFileChangeEntry(changes: FileChangeEntry["changes"]): FileChangeE
 }
 
 describe("HomeAssistantTranscriptEntry file change summary", () => {
-  it("shows only the edited file name for a single-file patch", () => {
+  it("shows a structured diff card for a single edited file", () => {
     const entry = createFileChangeEntry([
-      { path: "/mnt/e/code/codex-app-plus/src/App.tsx", kind: { type: "update", move_path: null }, diff: "@@ -1 +1 @@" },
+      {
+        path: "/mnt/e/code/codex-app-plus/src/App.tsx",
+        kind: { type: "update", move_path: null },
+        diff: ["@@ -1 +1,2 @@", "-old line", "+new line", "+another line"].join("\n"),
+      },
     ]);
 
-    render(<HomeAssistantTranscriptEntry node={{ key: entry.id, kind: "traceItem", item: entry }} />);
+    const { container } = render(<HomeAssistantTranscriptEntry node={{ key: entry.id, kind: "traceItem", item: entry }} />);
 
     const fileName = screen.getByText("App.tsx", { selector: ".home-assistant-transcript-file-name" });
-    const detailBody = screen.getByText(
-      (_, element) => element?.classList.contains("home-assistant-transcript-detail-body") === true && element.textContent?.includes("App.tsx") === true,
-    );
 
     expect(fileName).toHaveClass("home-assistant-transcript-file-name");
     expect(
@@ -36,23 +37,36 @@ describe("HomeAssistantTranscriptEntry file change summary", () => {
         (_, element) => element?.classList.contains("home-assistant-transcript-summary-text") === true && element.textContent === "已编辑 App.tsx",
       ),
     ).toBeInTheDocument();
-    expect(detailBody).toHaveTextContent(/变更文件：\s+App\.tsx\s+patched/u);
-    expect(detailBody).not.toHaveTextContent("/mnt/e/code/codex-app-plus/src/App.tsx");
+    expect(container.querySelector('[data-variant="fileDiff"]')).not.toBeNull();
+    expect(screen.getByText("App.tsx", { selector: ".workspace-diff-preview-title" })).toBeInTheDocument();
+    expect(screen.getByText("+2")).toBeInTheDocument();
+    expect(screen.getByText("-1")).toBeInTheDocument();
+    expect(screen.getByText("old line", { selector: ".workspace-diff-code-content" })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, element) => element?.classList.contains("workspace-diff-code-content") === true && element.textContent === "new line",
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByText("/mnt/e/code/codex-app-plus/src/App.tsx")).not.toBeInTheDocument();
   });
 
-  it("shows the first edited file name and total count for multi-file patches", () => {
+  it("shows one diff card per edited file for multi-file patches", () => {
     const entry = createFileChangeEntry([
-      { path: "C:\\workspace\\codex-app-plus\\src\\App.tsx", kind: { type: "update", move_path: null }, diff: "@@ -1 +1 @@" },
-      { path: "C:\\workspace\\codex-app-plus\\src\\styles.css", kind: { type: "update", move_path: null }, diff: "@@ -1 +1 @@" },
+      {
+        path: "C:\\workspace\\codex-app-plus\\src\\App.tsx",
+        kind: { type: "update", move_path: null },
+        diff: ["@@ -1 +1 @@", "-alpha", "+beta"].join("\n"),
+      },
+      {
+        path: "C:\\workspace\\codex-app-plus\\src\\styles.css",
+        kind: { type: "update", move_path: null },
+        diff: ["@@ -1 +1 @@", "-body {}", "+body { color: red; }"].join("\n"),
+      },
     ]);
 
-    render(<HomeAssistantTranscriptEntry node={{ key: entry.id, kind: "traceItem", item: entry }} />);
+    const { container } = render(<HomeAssistantTranscriptEntry node={{ key: entry.id, kind: "traceItem", item: entry }} />);
 
     const fileName = screen.getByText("App.tsx", { selector: ".home-assistant-transcript-file-name" });
-    const detailBody = screen.getByText(
-      (_, element) => element?.classList.contains("home-assistant-transcript-detail-body") === true && element.textContent?.includes("styles.css") === true,
-    );
 
     expect(fileName).toHaveClass("home-assistant-transcript-file-name");
     expect(
@@ -62,8 +76,9 @@ describe("HomeAssistantTranscriptEntry file change summary", () => {
           element.textContent === "已编辑 App.tsx 等 2 个文件",
       ),
     ).toBeInTheDocument();
-    expect(detailBody).toHaveTextContent(/变更文件：\s+App\.tsx\s+styles\.css\s+patched/u);
-    expect(detailBody).not.toHaveTextContent("C:\\workspace\\codex-app-plus\\src\\App.tsx");
+    expect(container.querySelectorAll(".home-assistant-transcript-file-diff-card")).toHaveLength(2);
+    expect(screen.getByText("App.tsx", { selector: ".workspace-diff-preview-title" })).toBeInTheDocument();
+    expect(screen.getByText("styles.css", { selector: ".workspace-diff-preview-title" })).toBeInTheDocument();
     expect(screen.queryByText("C:\\workspace\\codex-app-plus\\src\\App.tsx")).not.toBeInTheDocument();
   });
 });
