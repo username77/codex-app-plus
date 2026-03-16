@@ -43,12 +43,15 @@ export function PromptBody(props: {
   readonly busy: boolean;
   readonly currentIndex: number;
   readonly question: ToolRequestUserInputQuestion;
+  readonly currentQuestionAnswered: boolean;
   readonly questions: ReadonlyArray<ToolRequestUserInputQuestion>;
   readonly selectedOptions: UserInputDraftMap;
   readonly freeText: UserInputDraftMap;
   readonly setCurrentIndex: Dispatch<SetStateAction<number>>;
   readonly setFreeText: Dispatch<SetStateAction<Record<string, string>>>;
   readonly setSelectedOptions: Dispatch<SetStateAction<Record<string, string>>>;
+  readonly submitDisabled: boolean;
+  readonly onSubmit: () => void;
 }): JSX.Element {
   return (
     <>
@@ -70,6 +73,12 @@ export function PromptBody(props: {
         freeText={props.freeText}
         setFreeText={props.setFreeText}
         setSelectedOptions={props.setSelectedOptions}
+        currentIndex={props.currentIndex}
+        totalQuestions={props.questions.length}
+        currentQuestionAnswered={props.currentQuestionAnswered}
+        submitDisabled={props.submitDisabled}
+        setCurrentIndex={props.setCurrentIndex}
+        onSubmit={props.onSubmit}
       />
     </>
   );
@@ -206,16 +215,23 @@ function OptionButton(props: {
 
 function FreeTextField(props: {
   readonly busy: boolean;
+  readonly currentIndex: number;
+  readonly totalQuestions: number;
+  readonly currentQuestionAnswered: boolean;
   readonly question: ToolRequestUserInputQuestion;
   readonly selectedOptions: UserInputDraftMap;
   readonly freeText: UserInputDraftMap;
+  readonly submitDisabled: boolean;
+  readonly setCurrentIndex: Dispatch<SetStateAction<number>>;
   readonly setFreeText: Dispatch<SetStateAction<Record<string, string>>>;
   readonly setSelectedOptions: Dispatch<SetStateAction<Record<string, string>>>;
+  readonly onSubmit: () => void;
 }): JSX.Element | null {
   if (!usesFreeTextInput(props.question)) {
     return null;
   }
 
+  const isLastQuestion = props.currentIndex >= props.totalQuestions - 1;
   const label = props.question.isOther ? "其他答案" : "回答";
   const value = props.freeText[props.question.id] ?? "";
   const placeholder = props.question.isSecret ? "请输入答案" : "输入你的回答";
@@ -241,6 +257,29 @@ function FreeTextField(props: {
           onChange={(event) => handleFreeTextChange(props, event.currentTarget.value)}
         />
       )}
+      <div className="home-user-input-freeform-actions">
+        {isLastQuestion ? (
+          <button
+            type="button"
+            className="plan-request-submit home-user-input-submit home-user-input-inline-action"
+            aria-label="当前题提交答案"
+            disabled={props.busy || props.submitDisabled}
+            onClick={props.onSubmit}
+          >
+            提交答案
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="plan-request-submit home-user-input-inline-action"
+            aria-label="当前题下一题"
+            disabled={props.busy || !props.currentQuestionAnswered}
+            onClick={() => props.setCurrentIndex((index) => Math.min(props.totalQuestions - 1, index + 1))}
+          >
+            下一题
+          </button>
+        )}
+      </div>
     </label>
   );
 }

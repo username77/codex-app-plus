@@ -186,6 +186,151 @@ describe("HomeUserInputPrompt", () => {
     expect(screen.getByDisplayValue("只改标题")).toBeInTheDocument();
   });
 
+  it("shows an inline next action for free-text questions and advances after input", () => {
+    const entry = createEntry({
+      request: {
+        ...createEntry().request,
+        questions: [
+          {
+            id: "notes",
+            header: "补充说明",
+            question: "还有什么特别要求？",
+            isOther: true,
+            isSecret: false,
+            options: null,
+          },
+          {
+            id: "mode",
+            header: "修改方式",
+            question: "请选择变更方式",
+            isOther: false,
+            isSecret: false,
+            options: [{ label: "最小改动", description: "只修正当前问题" }],
+          },
+        ],
+        params: {
+          threadId: "thread-1",
+          turnId: "turn-1",
+          itemId: "item-request-1",
+          questions: [
+            {
+              id: "notes",
+              header: "补充说明",
+              question: "还有什么特别要求？",
+              isOther: true,
+              isSecret: false,
+              options: null,
+            },
+            {
+              id: "mode",
+              header: "修改方式",
+              question: "请选择变更方式",
+              isOther: false,
+              isSecret: false,
+              options: [{ label: "最小改动", description: "只修正当前问题" }],
+            },
+          ],
+        },
+      },
+    });
+
+    render(
+      <HomeUserInputPrompt
+        busy={false}
+        entry={entry}
+        onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    const nextButton = screen.getByRole("button", { name: "当前题下一题" });
+    expect(nextButton).toBeDisabled();
+
+    fireEvent.change(screen.getByPlaceholderText("输入你的回答"), { target: { value: "只改标题" } });
+    expect(nextButton).toBeEnabled();
+
+    fireEvent.click(nextButton);
+
+    expect(screen.getByText("请选择变更方式")).toBeInTheDocument();
+    expect(screen.getByText("2/2")).toBeInTheDocument();
+  });
+
+  it("submits from the inline free-text action on the last question", async () => {
+    const onResolveServerRequest = vi.fn().mockResolvedValue(undefined);
+    const entry = createEntry({
+      request: {
+        ...createEntry().request,
+        questions: [
+          {
+            id: "scope",
+            header: "范围",
+            question: "请选择处理范围",
+            isOther: false,
+            isSecret: false,
+            options: [{ label: "主画布", description: "只改主画布" }],
+          },
+          {
+            id: "notes",
+            header: "补充说明",
+            question: "还有什么特别要求？",
+            isOther: true,
+            isSecret: false,
+            options: null,
+          },
+        ],
+        params: {
+          threadId: "thread-1",
+          turnId: "turn-1",
+          itemId: "item-request-1",
+          questions: [
+            {
+              id: "scope",
+              header: "范围",
+              question: "请选择处理范围",
+              isOther: false,
+              isSecret: false,
+              options: [{ label: "主画布", description: "只改主画布" }],
+            },
+            {
+              id: "notes",
+              header: "补充说明",
+              question: "还有什么特别要求？",
+              isOther: true,
+              isSecret: false,
+              options: null,
+            },
+          ],
+        },
+      },
+    });
+
+    render(
+      <HomeUserInputPrompt
+        busy={false}
+        entry={entry}
+        onResolveServerRequest={onResolveServerRequest}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /主画布/ }));
+
+    const submitButton = screen.getByRole("button", { name: "当前题提交答案" });
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.change(screen.getByPlaceholderText("输入你的回答"), { target: { value: "只改标题" } });
+    expect(submitButton).toBeEnabled();
+
+    fireEvent.click(submitButton);
+
+    await waitFor(() => expect(onResolveServerRequest).toHaveBeenCalledWith({
+      kind: "userInput",
+      requestId: "request-1",
+      answers: {
+        scope: ["主画布"],
+        notes: ["只改标题"],
+      },
+    }));
+  });
+
   it("renders secret questions with a password field", () => {
     const entry = createEntry({
       request: {
@@ -227,5 +372,48 @@ describe("HomeUserInputPrompt", () => {
     );
 
     expect(screen.getByPlaceholderText("请输入答案")).toHaveAttribute("type", "password");
+  });
+
+  it("keeps the inline submit disabled for unanswered last free-text questions", () => {
+    const entry = createEntry({
+      request: {
+        ...createEntry().request,
+        questions: [
+          {
+            id: "token",
+            header: "令牌",
+            question: "请输入访问令牌",
+            isOther: true,
+            isSecret: true,
+            options: null,
+          },
+        ],
+        params: {
+          threadId: "thread-1",
+          turnId: "turn-1",
+          itemId: "item-request-1",
+          questions: [
+            {
+              id: "token",
+              header: "令牌",
+              question: "请输入访问令牌",
+              isOther: true,
+              isSecret: true,
+              options: null,
+            },
+          ],
+        },
+      },
+    });
+
+    render(
+      <HomeUserInputPrompt
+        busy={false}
+        entry={entry}
+        onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "当前题提交答案" })).toBeDisabled();
   });
 });

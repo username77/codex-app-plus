@@ -1,40 +1,26 @@
 # 更新日志 / Changelog
 
-## Features
+## Recent Updates
 
-- i18n：新增自动语言检测并改进语言选项体验。  
-	i18n: Added automatic language detection and improved language option experience.
+### Features
 
-- 启动体验：新增应用启动屏幕，优化初始加载流程。  
-	Startup experience: Added a startup screen and optimized the initial loading flow.
+- Git 工作流：新增二段式提交流程，点击提交后可弹出提交卡片，在卡片中填写说明并正式提交。  
+	Git workflow: Added a two-step commit flow that opens a commit dialog before the final commit is submitted.
 
-- 加载交互：新增侧边栏加载覆盖层，强化加载状态可感知性。  
-	Loading interaction: Added a sidebar loading overlay to improve loading-state visibility.
+- Git 交互：统一提交入口状态判断，区分“可打开提交卡片”和“可正式提交”，并补充提交错误反馈与快捷提交体验。  
+	Git interaction: Unified commit-entry availability rules by separating “can open commit dialog” from “can submit commit”, with clearer error feedback and shortcut submission support.
 
-- 文件变更视图：新增文件变更详情面板，提升差异信息展示能力。  
-	File changes view: Added a detailed file change panel for better diff presentation.
+- 架构整理：拆分应用控制器、Bridge 类型与共享 reducer 逻辑，降低跨层耦合并提升维护性。  
+	Architecture cleanup: Split app controller modules, bridge types, and shared reducer logic to reduce cross-layer coupling and improve maintainability.
 
-- 会话能力：重构会话管理，加入会话索引与路径查找能力。  
-	Session capabilities: Refactored session management with session indexing and path lookup.
+- 用户输入提示卡：为自由输入题新增行内“下一题 / 提交答案”操作，优化多题问答流。  
+	User input prompt: Added inline “Next” and “Submit answers” actions for free-text questions to improve multi-step prompting.
 
-- 控制器与状态：完善应用控制器状态管理，并接入会话增量（delta）处理。  
-	Controller and state: Improved app controller state management and integrated conversation delta handling.
+### Bug Fixes
 
-- Composer：增强命令桥接能力，新增 slash command 执行器。  
-	Composer: Enhanced command bridge support and added a slash command executor.
+- Git 提交体验：修复提交入口因缺少说明而容易被误判为失效的问题，让提交流程更直观可理解。  
+	Git commit experience: Fixed the confusing commit entry flow that could appear broken when no message had been entered, making the workflow clearer and more discoverable.
 
-## Bug Fixes
+- 提示卡交互：优化自由输入题的切题与末题提交行为，避免多题场景下操作路径不清晰。  
+	Prompt interaction: Improved free-text question navigation and final-question submission behavior to make multi-question flows clearer.
 
-- 连接恢复：在连接状态变化时重置临时请求状态，避免残留请求状态导致异常。  
-	Connection recovery: Reset transient request state on connection-status changes to avoid stale-state issues.
-
-- 会话删除：优化会话删除逻辑，降低状态不一致风险。  
-	Session deletion: Improved deletion logic to reduce state inconsistency risks.
-
-- 终端显示：更新终端配色与过渡效果，提升可读性与视觉一致性。  
-	Terminal display: Updated terminal color scheme and transitions for better readability and visual consistency.
-
-## Tests
-
-- 为启动屏幕与连接状态重置等关键路径补充单元测试，提升回归保障。  
-	Added unit tests for key paths such as startup screen behavior and connection-state reset to improve regression coverage.

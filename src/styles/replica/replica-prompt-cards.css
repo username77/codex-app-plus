@@ -93,6 +93,11 @@
   gap: 8px;
 }
 
+.home-user-input-freeform-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .home-user-input-input,
 .home-user-input-textarea {
   width: 100%;
@@ -115,5 +120,9 @@
 }
 
 .home-user-input-submit {
+  min-width: 104px;
+}
+
+.home-user-input-inline-action {
   min-width: 104px;
 }

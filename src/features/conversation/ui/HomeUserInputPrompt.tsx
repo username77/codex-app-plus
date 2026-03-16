@@ -7,6 +7,7 @@ import { HomePromptCard } from "../../composer/ui/HomePromptCard";
 import {
   buildUserInputResolution,
   isUserInputQuestionAnswered,
+  usesFreeTextInput,
   type UserInputDraftMap,
 } from "../model/homeUserInputPromptModel";
 import {
@@ -34,6 +35,9 @@ export function HomeUserInputPrompt(props: HomeUserInputPromptProps): JSX.Elemen
   }, [props.entry.requestId]);
 
   const currentQuestion = questions[currentIndex];
+  const currentQuestionAnswered = currentQuestion
+    ? isUserInputQuestionAnswered(currentQuestion, selectedOptions, freeText)
+    : false;
   const allQuestionsAnswered = useMemo(
     () => questions.every((question) => isUserInputQuestionAnswered(question, selectedOptions, freeText)),
     [freeText, questions, selectedOptions],
@@ -52,6 +56,7 @@ export function HomeUserInputPrompt(props: HomeUserInputPromptProps): JSX.Elemen
       freeText={freeText}
       onResolveServerRequest={props.onResolveServerRequest}
       questions={questions}
+      currentQuestionAnswered={currentQuestionAnswered}
       selectedOptions={selectedOptions}
       setCurrentIndex={setCurrentIndex}
       setFreeText={setFreeText}
@@ -65,6 +70,7 @@ function UserInputPromptCard(props: {
   readonly busy: boolean;
   readonly currentIndex: number;
   readonly currentQuestion: ToolRequestUserInputQuestion;
+  readonly currentQuestionAnswered: boolean;
   readonly entry: PendingUserInputEntry;
   readonly freeText: UserInputDraftMap;
   readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
@@ -75,6 +81,9 @@ function UserInputPromptCard(props: {
   readonly setSelectedOptions: Dispatch<SetStateAction<Record<string, string>>>;
   readonly submitDisabled: boolean;
 }): JSX.Element {
+  const submitAnswers = () =>
+    void props.onResolveServerRequest(buildUserInputResolution(props.entry, props.selectedOptions, props.freeText));
+
   return (
     <HomePromptCard
       ariaLabel="需要补充信息"
@@ -83,18 +92,23 @@ function UserInputPromptCard(props: {
       subtitle="先回答这个问题，Codex 才能继续执行。"
       headerAside={<PromptHeaderAside currentIndex={props.currentIndex} questions={props.questions} setCurrentIndex={props.setCurrentIndex} />}
       bodyClassName="home-user-input-prompt-body"
-      actions={<PromptActions busy={props.busy} submitDisabled={props.submitDisabled} onSubmit={() => void props.onResolveServerRequest(buildUserInputResolution(props.entry, props.selectedOptions, props.freeText))} />}
+      actions={usesFreeTextInput(props.currentQuestion)
+        ? null
+        : <PromptActions busy={props.busy} submitDisabled={props.submitDisabled} onSubmit={submitAnswers} />}
     >
       <PromptBody
         busy={props.busy}
         currentIndex={props.currentIndex}
         question={props.currentQuestion}
+        currentQuestionAnswered={props.currentQuestionAnswered}
         questions={props.questions}
         selectedOptions={props.selectedOptions}
         freeText={props.freeText}
         setCurrentIndex={props.setCurrentIndex}
         setFreeText={props.setFreeText}
         setSelectedOptions={props.setSelectedOptions}
+        submitDisabled={props.submitDisabled}
+        onSubmit={submitAnswers}
       />
     </HomePromptCard>
   );
