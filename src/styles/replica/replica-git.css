@@ -73,6 +73,15 @@
   overflow: hidden;
 }
 
+.git-commit-dialog {
+  width: min(620px, calc(100vw - 48px));
+  border: 1px solid #dfdfdf;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
 .git-push-confirm-header,
 .git-push-confirm-row {
   display: flex;
@@ -106,6 +115,10 @@
   padding: 12px 24px 24px;
 }
 
+.git-commit-dialog-body {
+  gap: 12px;
+}
+
 .git-push-confirm-title,
 .git-push-confirm-text {
   margin: 0;
@@ -132,6 +145,31 @@
   color: #7a7a7a;
   font-size: 14px;
   line-height: 1.6;
+}
+
+.git-commit-dialog-label {
+  color: #3d3d3d;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.git-commit-dialog-textarea {
+  min-height: 148px;
+  margin-top: -2px;
+}
+
+.git-commit-dialog-error {
+  margin: -2px 0 0;
+  color: #aa3434;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.git-commit-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
 }
 
 .git-push-confirm-submit {

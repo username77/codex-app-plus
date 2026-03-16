@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod agent_environment;
+mod app_support;
 mod app_server_io;
 mod app_server_stderr;
 mod codex_cli;

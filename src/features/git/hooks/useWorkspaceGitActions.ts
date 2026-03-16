@@ -17,10 +17,14 @@ interface UseWorkspaceGitActionsOptions {
   readonly setPendingAction: (value: string | null) => void;
   readonly setError: (value: string | null) => void;
   readonly setNotice: (value: GitNotice | null) => void;
+  readonly setCommitDialogOpen: (value: boolean) => void;
+  readonly setCommitDialogError: (value: string | null) => void;
   readonly refresh: () => Promise<void>;
   readonly invalidateBranchRefs: () => void;
   readonly invalidateRemoteUrl: () => void;
 }
+
+const COMMIT_ACTION_NAME = "提交更改";
 
 function applyBranchPrefix(branchPrefix: string, branchName: string): string {
   const normalizedPrefix = branchPrefix.trim();
@@ -83,13 +87,49 @@ export function useWorkspaceGitActions(options: UseWorkspaceGitActionsOptions) {
   const commit = useCallback(async () => {
     const message = options.commitMessage.trim();
     if (message.length === 0) {
+      options.setCommitDialogError("请先填写提交说明。");
       return;
     }
-    const succeeded = await runAction("提交更改", (repoPath) => options.hostBridge.git.commit({ repoPath, message }), "提交已创建。");
-    if (succeeded) {
-      options.setCommitMessage("");
+    if (options.selectedRootPath === null) {
+      return;
     }
-  }, [options.commitMessage, options.hostBridge.git, options.setCommitMessage, runAction]);
+    options.setPendingAction(COMMIT_ACTION_NAME);
+    options.setError(null);
+    options.setNotice(null);
+    options.setCommitDialogError(null);
+    try {
+      await options.hostBridge.git.commit({ repoPath: options.selectedRootPath, message });
+      options.setNotice({ kind: "success", text: "提交已创建。" });
+      options.setCommitDialogOpen(false);
+      options.setCommitMessage("");
+      await options.refresh();
+    } catch (reason) {
+      const errorText = formatActionError(COMMIT_ACTION_NAME, reason);
+      options.setNotice({ kind: "error", text: errorText });
+      options.setCommitDialogError(errorText);
+    } finally {
+      options.setPendingAction(null);
+    }
+  }, [
+    options.commitMessage,
+    options.hostBridge.git,
+    options.refresh,
+    options.selectedRootPath,
+    options.setCommitDialogError,
+    options.setCommitDialogOpen,
+    options.setCommitMessage,
+    options.setError,
+    options.setNotice,
+    options.setPendingAction,
+  ]);
+  const openCommitDialog = useCallback(() => {
+    options.setCommitDialogError(null);
+    options.setCommitDialogOpen(true);
+  }, [options.setCommitDialogError, options.setCommitDialogOpen]);
+  const closeCommitDialog = useCallback(() => {
+    options.setCommitDialogError(null);
+    options.setCommitDialogOpen(false);
+  }, [options.setCommitDialogError, options.setCommitDialogOpen]);
   const checkoutBranch = useCallback(async (branchName: string) => {
     const normalizedBranchName = branchName.trim();
     if (normalizedBranchName.length === 0) {
@@ -147,6 +187,8 @@ export function useWorkspaceGitActions(options: UseWorkspaceGitActionsOptions) {
     unstagePaths,
     discardPaths,
     commit,
+    openCommitDialog,
+    closeCommitDialog,
     checkoutBranch,
     createBranchFromName,
     checkoutSelectedBranch,

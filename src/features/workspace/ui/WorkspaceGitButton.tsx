@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GitCommitIcon, GitPullIcon, GitPushIcon } from "../../git/ui/gitIcons";
 import { GitPushConfirmDialog } from "../../git/ui/GitPushConfirmDialog";
-import { canCommitChanges, canPullChanges, canPushChanges } from "../../git/model/gitActionAvailability";
+import { canOpenCommitDialog, canPullChanges, canPushChanges } from "../../git/model/gitActionAvailability";
 import type { WorkspaceGitController } from "../../git/model/types";
 import { readStoredAppPreferences } from "../../settings/hooks/useAppPreferences";
 import { OfficialChevronRightIcon } from "../../shared/ui/officialIcons";
@@ -52,7 +52,7 @@ interface GitMenuAction {
 
 function createMenuActions(controller: WorkspaceGitController, requestPush: () => void): ReadonlyArray<GitMenuAction> {
   return [
-    { label: COMMIT_LABEL, disabled: !canCommitChanges(controller), onClick: controller.commit, renderIcon: (className) => <GitCommitIcon className={className} /> },
+    { label: COMMIT_LABEL, disabled: !canOpenCommitDialog(controller), onClick: controller.openCommitDialog, renderIcon: (className) => <GitCommitIcon className={className} /> },
     { label: PUSH_LABEL, disabled: !canPushChanges(controller), onClick: requestPush, renderIcon: (className) => <GitPushIcon className={className} /> },
     { label: PULL_LABEL, disabled: !canPullChanges(controller), onClick: controller.pull, renderIcon: (className) => <GitPullIcon className={className} /> }
   ];

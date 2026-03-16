@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { GitChangeBrowser } from "./GitChangeBrowser";
 import { GitDiffPreview } from "./GitDiffPreview";
 import { GitStateCard } from "./GitStateCard";
-import { canCommitChanges, canPullChanges, canPushChanges } from "../model/gitActionAvailability";
+import { canOpenCommitDialog, canPullChanges, canPushChanges } from "../model/gitActionAvailability";
 import type { WorkspaceGitController } from "../model/types";
 import { getCurrentBranchTitle, getGitViewState, getSelectedDiffKey, isGitBusy } from "../model/gitViewState";
 
@@ -110,18 +110,21 @@ function GitBranchCard(props: { readonly controller: WorkspaceGitController; rea
   );
 }
 
-function GitCommitCard(props: { readonly controller: WorkspaceGitController; readonly busy: boolean }): JSX.Element | null {
+function GitCommitCard(props: { readonly controller: WorkspaceGitController }): JSX.Element | null {
   const status = props.controller.status;
   if (status === null) {
     return null;
   }
 
-  const canCommit = canCommitChanges(props.controller);
+  const canOpen = canOpenCommitDialog(props.controller);
+  const helperText = status.staged.length === 0
+    ? "先在左侧把要提交的文件暂存起来，然后点击下面的按钮填写提交说明。"
+    : `当前有 ${status.staged.length} 项已暂存更改，点击按钮后可填写提交说明并正式提交。`;
   return (
     <section className="git-card">
       <h3 className="git-card-title">提交</h3>
-      <textarea className="git-textarea" placeholder="填写提交说明，提交的是当前已暂存的更改。" value={props.controller.commitMessage} disabled={props.busy} onChange={(event) => props.controller.setCommitMessage(event.currentTarget.value)} />
-      <button type="button" className="git-primary-btn git-full-width" disabled={!canCommit} onClick={() => void props.controller.commit()}>提交已暂存更改</button>
+      <p className="git-card-meta">{helperText}</p>
+      <button type="button" className="git-primary-btn git-full-width" disabled={!canOpen} onClick={props.controller.openCommitDialog}>填写说明并提交</button>
     </section>
   );
 }
@@ -162,7 +165,7 @@ export function WorkspaceGitView(props: WorkspaceGitViewProps): JSX.Element {
           </div>
           <div className="git-column git-column-right">
             <GitBranchCard controller={props.controller} busy={busy} />
-            <GitCommitCard controller={props.controller} busy={busy} />
+            <GitCommitCard controller={props.controller} />
             <GitDiffPreview controller={props.controller} busy={busy} />
           </div>
         </div>

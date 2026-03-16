@@ -27,6 +27,7 @@ import { HomeTurnPlanDrawer } from "../../conversation/ui/HomeTurnPlanDrawer";
 import { HomeUserInputPrompt } from "../../conversation/ui/HomeUserInputPrompt";
 import { createComposerCommandBridge } from "../../composer/service/composerCommandBridge";
 import type { WorkspaceGitController } from "../../git/model/types";
+import { GitCommitDialog } from "../../git/ui/GitCommitDialog";
 import { extractConnectionRetryInfo } from "../model/homeConnectionRetry";
 import { removeTurnPlanEntries, selectLatestTurnPlan } from "../../conversation/model/homeTurnPlanModel";
 import { selectLatestPendingUserInput } from "../../conversation/model/homeUserInputPromptModel";
@@ -203,6 +204,7 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
         banners={visibleBanners}
         onDismissBanner={props.onDismissBanner}
       />
+      <GitCommitDialog controller={props.gitController} />
       {conversationActive ? (
         <HomeConversationCanvas
           activities={renderableActivities}

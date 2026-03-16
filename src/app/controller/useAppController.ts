@@ -1,242 +1,36 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { AgentEnvironment, HostBridge } from "../../bridge/types";
 import type { ReceivedServerRequest } from "../../domain/serverRequests";
-import type { AppAction, AuthStatus, ServerRequestResolution, ThreadSummary } from "../../domain/types";
-import type { GetAuthStatusResponse } from "../../protocol/generated/GetAuthStatusResponse";
-import type { InitializeParams } from "../../protocol/generated/InitializeParams";
-import type { GetAccountRateLimitsResponse } from "../../protocol/generated/v2/GetAccountRateLimitsResponse";
-import type { GetAccountResponse } from "../../protocol/generated/v2/GetAccountResponse";
-import type { CollaborationModeListResponse } from "../../protocol/generated/v2/CollaborationModeListResponse";
-import type { ConfigBatchWriteParams } from "../../protocol/generated/v2/ConfigBatchWriteParams";
-import type { ConfigReadResponse } from "../../protocol/generated/v2/ConfigReadResponse";
-import type { ConfigValueWriteParams } from "../../protocol/generated/v2/ConfigValueWriteParams";
-import type { SkillsConfigWriteParams } from "../../protocol/generated/v2/SkillsConfigWriteParams";
-import type { SkillsConfigWriteResponse } from "../../protocol/generated/v2/SkillsConfigWriteResponse";
-import type { SkillsListParams } from "../../protocol/generated/v2/SkillsListParams";
-import type { SkillsListResponse } from "../../protocol/generated/v2/SkillsListResponse";
-import type { SkillsRemoteReadParams } from "../../protocol/generated/v2/SkillsRemoteReadParams";
-import type { SkillsRemoteReadResponse } from "../../protocol/generated/v2/SkillsRemoteReadResponse";
-import type { SkillsRemoteWriteParams } from "../../protocol/generated/v2/SkillsRemoteWriteParams";
-import type { SkillsRemoteWriteResponse } from "../../protocol/generated/v2/SkillsRemoteWriteResponse";
-import type { LoginAccountResponse } from "../../protocol/generated/v2/LoginAccountResponse";
-import type { McpServerStatus } from "../../protocol/generated/v2/McpServerStatus";
 import type { WindowsSandboxSetupCompletedNotification } from "../../protocol/generated/v2/WindowsSandboxSetupCompletedNotification";
-import type { WindowsSandboxSetupMode } from "../../protocol/generated/v2/WindowsSandboxSetupMode";
-import type { WindowsSandboxSetupStartResponse } from "../../protocol/generated/v2/WindowsSandboxSetupStartResponse";
-import type { ThreadUnarchiveResponse } from "../../protocol/generated/v2/ThreadUnarchiveResponse";
-import {
-  batchWriteConfigAndReadSnapshot,
-  batchWriteConfigAndRefresh,
-  type ConfigMutationResult,
-  type ConfigSnapshotMutationResult,
-  listAllExperimentalFeatures,
-  listAllMcpServerStatuses,
-  readConfigSnapshot,
-  refreshMcpData,
-  type McpRefreshResult,
-  writeConfigValueAndRefresh,
-} from "../../features/settings/config/configOperations";
-import { readUserConfigWriteTarget } from "../../features/settings/config/configWriteTarget";
 import { applyAppServerNotification } from "./appControllerNotifications";
-import { createConversationFromThread, createConversationFromThreadSummary } from "../../features/conversation/model/conversationState";
 import { FrameTextDeltaQueue } from "../../features/conversation/model/frameTextDeltaQueue";
 import { OutputDeltaQueue } from "../../features/conversation/model/outputDeltaQueue";
-import { createServerRequestPayload, normalizeServerRequest } from "./serverRequests";
-import { listAllThreads, loadThreadCatalog } from "../../features/workspace/model/threadCatalog";
-import { refreshConfigAfterWindowsSandboxSetup, startWindowsSandboxSetupRequest } from "../../features/settings/sandbox/windowsSandboxSetup";
+import { normalizeServerRequest } from "./serverRequests";
+import { refreshConfigAfterWindowsSandboxSetup } from "../../features/settings/sandbox/windowsSandboxSetup";
 import { ProtocolClient } from "../../protocol/client";
 import { useAppDispatch } from "../../state/store";
 import { useAppControllerRuntimeState } from "./appControllerState";
+import {
+  createAppServerStartInput,
+  loadBootstrapSnapshot,
+  startOrReuseAppServer,
+} from "./appControllerBootstrap";
+import { openChatgptLogin, refreshAccountState } from "./appControllerAccount";
+import {
+  decrementThreadElicitation,
+  incrementThreadElicitation,
+  reportServerRequestError,
+} from "./appControllerServerRequests";
+import {
+  createInitializeParams,
+  RETRY_DELAY_MS,
+  toErrorMessage,
+  type AppController,
+  WINDOWS_SANDBOX_STATE_IDLE_RESET_MS,
+} from "./appControllerTypes";
+import { useAppControllerActions } from "./useAppControllerActions";
 
-const APP_VERSION = "0.1.0";
-const RETRY_DELAY_MS = 3_000;
-const WINDOWS_SANDBOX_STATE_IDLE_RESET_MS = 120_000;
-
-type AccountRequestClient = Pick<ProtocolClient, "request">;
-type AppHostBridge = Pick<HostBridge, "app">;
-
-interface AppController {
-  setInput: (text: string) => void;
-  retryConnection: () => Promise<void>;
-  refreshConfigSnapshot: () => Promise<ConfigReadResponse>;
-  refreshAuthState: () => Promise<void>;
-  refreshMcpData: () => Promise<McpRefreshResult>;
-  listMcpServerStatuses: () => Promise<ReadonlyArray<McpServerStatus>>;
-  listArchivedThreads: () => Promise<ReadonlyArray<ThreadSummary>>;
-  archiveThread: (threadId: string) => Promise<void>;
-  unarchiveThread: (threadId: string) => Promise<void>;
-  writeConfigValue: (params: ConfigValueWriteParams) => Promise<ConfigMutationResult>;
-  batchWriteConfig: (params: ConfigBatchWriteParams) => Promise<ConfigMutationResult>;
-  batchWriteConfigSnapshot: (params: ConfigBatchWriteParams) => Promise<ConfigSnapshotMutationResult>;
-  listSkills: (params: SkillsListParams) => Promise<SkillsListResponse>;
-  listRemoteSkills: (params: SkillsRemoteReadParams) => Promise<SkillsRemoteReadResponse>;
-  writeSkillConfig: (params: SkillsConfigWriteParams) => Promise<SkillsConfigWriteResponse>;
-  exportRemoteSkill: (params: SkillsRemoteWriteParams) => Promise<SkillsRemoteWriteResponse>;
-  setMultiAgentEnabled: (enabled: boolean) => Promise<void>;
-  startWindowsSandboxSetup: (mode: WindowsSandboxSetupMode) => Promise<WindowsSandboxSetupStartResponse>;
-  login: () => Promise<void>;
-  logout: () => Promise<void>;
-  resolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
-}
-
-function createInitializeParams(): InitializeParams {
-  return { clientInfo: { name: "codex_app_plus", title: "Codex App Plus", version: APP_VERSION }, capabilities: { experimentalApi: true, optOutNotificationMethods: null } };
-}
-
-function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-function mapAuthStatus(response: GetAuthStatusResponse): { status: AuthStatus; mode: string | null } {
-  if (response.requiresOpenaiAuth === true && response.authMethod === null) {
-    return { status: "needs_login", mode: null };
-  }
-  if (response.authMethod !== null || response.requiresOpenaiAuth === false) {
-    return { status: "authenticated", mode: response.authMethod };
-  }
-  return { status: "unknown", mode: response.authMethod };
-}
-
-async function loadAuthStatus(client: AccountRequestClient, dispatch: (action: AppAction) => void): Promise<void> {
-  try {
-    const response = (await client.request("getAuthStatus", { includeToken: false, refreshToken: false })) as GetAuthStatusResponse;
-    const auth = mapAuthStatus(response);
-    dispatch({ type: "auth/changed", status: auth.status, mode: auth.mode });
-  } catch {
-    dispatch({ type: "auth/changed", status: "unknown", mode: null });
-  }
-}
-
-async function loadConversationCatalog(
-  client: ProtocolClient,
-  hostBridge: HostBridge,
-  dispatch: (action: AppAction) => void,
-  agentEnvironment: AgentEnvironment,
-): Promise<void> {
-  const threads = await loadThreadCatalog(
-    { request: (method, params) => client.request(method, params) },
-    () => hostBridge.app.listCodexSessions({ agentEnvironment }),
-    agentEnvironment,
-  );
-  const conversations = threads.map(createConversationFromThreadSummary);
-  dispatch({ type: "conversations/catalogLoaded", conversations });
-}
-
-async function loadAccountSnapshot(client: AccountRequestClient, dispatch: (action: AppAction) => void): Promise<void> {
-  try {
-    const response = (await client.request("account/read", { refreshToken: false })) as GetAccountResponse;
-    if (response.account === null) {
-      dispatch({ type: "account/updated", account: null });
-      return;
-    }
-    dispatch({ type: "account/updated", account: { authMode: response.account.type === "apiKey" ? "apikey" : "chatgpt", planType: response.account.type === "chatgpt" ? response.account.planType : null } });
-  } catch {
-    dispatch({ type: "account/updated", account: null });
-  }
-}
-
-async function loadRateLimits(client: AccountRequestClient, dispatch: (action: AppAction) => void): Promise<void> {
-  try {
-    const response = (await client.request("account/rateLimits/read", undefined)) as GetAccountRateLimitsResponse;
-    dispatch({ type: "rateLimits/updated", rateLimits: response.rateLimits });
-  } catch {
-    dispatch({ type: "rateLimits/updated", rateLimits: null });
-  }
-}
-
-export async function refreshAccountState(client: AccountRequestClient, dispatch: (action: AppAction) => void): Promise<void> {
-  await Promise.all([
-    loadAuthStatus(client, dispatch),
-    loadAccountSnapshot(client, dispatch),
-    loadRateLimits(client, dispatch),
-  ]);
-}
-
-async function loadBootstrapSnapshot(client: ProtocolClient, hostBridge: HostBridge, dispatch: (action: AppAction) => void, agentEnvironment: AgentEnvironment): Promise<void> {
-  const [, , config, collaborationModes, experimentalFeatures, statuses] = await Promise.all([
-    refreshAccountState(client, dispatch),
-    loadConversationCatalog(client, hostBridge, dispatch, agentEnvironment),
-    client.request("config/read", { includeLayers: true }),
-    client.request("collaborationMode/list", {}),
-    listAllExperimentalFeatures(client),
-    listAllMcpServerStatuses(client),
-  ]);
-  dispatch({ type: "config/loaded", config: config as ConfigReadResponse });
-  dispatch({ type: "mcp/statusesLoaded", statuses: statuses as ReadonlyArray<McpServerStatus> });
-  const response = collaborationModes as CollaborationModeListResponse;
-  dispatch({ type: "collaborationModes/loaded", modes: response.data.map((mode) => ({ name: mode.name, mode: mode.mode, model: mode.model, reasoningEffort: mode.reasoning_effort })) });
-  dispatch({ type: "experimentalFeatures/loaded", features: experimentalFeatures });
-}
-
-async function startOrReuseAppServer(
-  client: ProtocolClient,
-  agentEnvironment: AgentEnvironment
-): Promise<void> {
-  try {
-    await client.startAppServer(createAppServerStartInput(agentEnvironment));
-  } catch (error) {
-    if (!toErrorMessage(error).includes("already")) {
-      throw error;
-    }
-  }
-}
-
-function createAppServerStartInput(agentEnvironment: AgentEnvironment) {
-  return { agentEnvironment };
-}
-
-async function incrementThreadElicitation(client: ProtocolClient, threadId: string): Promise<void> {
-  await client.request("thread/increment_elicitation", { threadId });
-}
-
-async function decrementThreadElicitation(client: ProtocolClient, threadId: string): Promise<void> {
-  await client.request("thread/decrement_elicitation", { threadId });
-}
-
-function reportServerRequestError(
-  dispatch: (action: AppAction) => void,
-  threadId: string | null,
-  turnId: string | null,
-  title: string,
-  error: unknown,
-): void {
-  const detail = toErrorMessage(error);
-  dispatch({
-    type: "banner/pushed",
-    banner: { id: `server-request:${title}:${detail}`, level: "error", title, detail, source: "server-request" },
-  });
-  if (threadId !== null) {
-    dispatch({ type: "conversation/systemNoticeAdded", conversationId: threadId, turnId, title, detail, level: "error", source: "server-request" });
-  }
-}
-
-export async function openChatgptLogin(client: AccountRequestClient, hostBridge: AppHostBridge, dispatch: (action: AppAction) => void): Promise<boolean> {
-  const response = (await client.request("account/login/start", { type: "chatgpt" })) as LoginAccountResponse;
-  if (response.type !== "chatgpt") {
-    dispatch({ type: "authLogin/completed", success: true, error: null });
-    return false;
-  }
-  dispatch({ type: "authLogin/started", loginId: response.loginId, authUrl: response.authUrl });
-  await hostBridge.app.openExternal(response.authUrl);
-  return true;
-}
-
-export async function loginWithStoredTokens(client: AccountRequestClient, hostBridge: AppHostBridge): Promise<boolean> {
-  try {
-    const tokens = await hostBridge.app.readChatgptAuthTokens();
-    await hostBridge.app.writeChatgptAuthTokens(tokens);
-    const response = (await client.request("account/login/start", { type: "chatgptAuthTokens", accessToken: tokens.accessToken, chatgptAccountId: tokens.chatgptAccountId, chatgptPlanType: tokens.chatgptPlanType })) as LoginAccountResponse;
-    return response.type === "chatgptAuthTokens";
-  } catch {
-    return false;
-  }
-}
-
-export async function logoutWithLocalCleanup(client: AccountRequestClient, hostBridge: AppHostBridge, dispatch: (action: AppAction) => void): Promise<void> {
-  await client.request("account/logout", undefined);
-  await hostBridge.app.clearChatgptAuthState();
-  await refreshAccountState(client, dispatch);
-}
+export { loginWithStoredTokens, logoutWithLocalCleanup, openChatgptLogin, refreshAccountState } from "./appControllerAccount";
 
 export function useAppController(hostBridge: HostBridge, agentEnvironment: AgentEnvironment): AppController {
   const dispatch = useAppDispatch();
@@ -306,7 +100,7 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
       return;
     }
     void decrementThreadElicitation(clientRef.current, threadId).catch((error) => {
-      reportServerRequestError(dispatch, threadId, turnId, "Failed to resume request timeout", error);
+      reportServerRequestError(dispatch, { threadId, turnId }, "Failed to resume request timeout", error);
     });
   }, [dispatch]);
 
@@ -327,7 +121,7 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
       })
       .catch((error) => {
         requestThreadMetaRef.current.delete(request.id);
-        reportServerRequestError(dispatch, threadId, request.turnId, "Failed to pause request timeout", error);
+        reportServerRequestError(dispatch, request, "Failed to pause request timeout", error);
       });
   }, [dispatch, resumeThreadTimeout]);
 
@@ -478,126 +272,20 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
     void bootstrap(true);
   }, [agentEnvironment, bootstrap]);
 
-  const runBusy = useCallback(async <T,>(runner: () => Promise<T>): Promise<T> => {
-    dispatch({ type: "bootstrapBusy/changed", busy: true });
-    try {
-      return await runner();
-    } finally {
-      dispatch({ type: "bootstrapBusy/changed", busy: false });
-    }
-  }, [dispatch]);
-
-  const login = useCallback(async () => {
-    await runBusy(async () => {
-      const loggedInWithTokens = await loginWithStoredTokens(client, hostBridge);
-      if (loggedInWithTokens) {
-        dispatch({ type: "authLogin/completed", success: true, error: null });
-        await refreshAccountState(client, dispatch);
-        return;
-      }
-      const openedBrowser = await openChatgptLogin(client, hostBridge, dispatch);
-      if (!openedBrowser) {
-        await refreshAccountState(client, dispatch);
-      }
-    });
-  }, [client, dispatch, hostBridge, runBusy]);
-
-  const logout = useCallback(async () => {
-    await runBusy(async () => {
-      await logoutWithLocalCleanup(client, hostBridge, dispatch);
-    });
-  }, [client, dispatch, hostBridge, runBusy]);
-
-  const refreshConfig = useCallback(() => readConfigSnapshot(client, dispatch), [client, dispatch]);
-  const refreshAuth = useCallback(() => refreshAccountState(client, dispatch), [client, dispatch]);
-  const refreshMcp = useCallback(() => refreshMcpData(client, dispatch), [client, dispatch]);
-  const listStatuses = useCallback(async () => {
-    const statuses = await listAllMcpServerStatuses(client);
-    dispatch({ type: "mcp/statusesLoaded", statuses });
-    return statuses;
-  }, [client, dispatch]);
-  const listArchivedThreads = useCallback(
-    () => listAllThreads({ request: (method, params) => client.request(method, params) }, agentEnvironment, true),
-    [agentEnvironment, client]
-  );
-  const archiveThread = useCallback(async (threadId: string) => {
-    await client.request("thread/archive", { threadId });
-    dispatch({ type: "conversation/hiddenChanged", conversationId: threadId, hidden: true });
-    if (runtimeState.selectedConversationId === threadId) {
-      dispatch({ type: "conversation/selected", conversationId: null });
-    }
-  }, [client, dispatch, runtimeState.selectedConversationId]);
-  const unarchiveThread = useCallback(async (threadId: string) => {
-    const response = (await client.request("thread/unarchive", { threadId })) as ThreadUnarchiveResponse;
-    dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(response.thread, { agentEnvironment }) });
-    dispatch({ type: "conversation/hiddenChanged", conversationId: threadId, hidden: false });
-  }, [agentEnvironment, client, dispatch]);
-  const writeConfigValue = useCallback((params: ConfigValueWriteParams) => runBusy(() => writeConfigValueAndRefresh(client, dispatch, params)), [client, dispatch, runBusy]);
-  const batchWriteConfig = useCallback((params: ConfigBatchWriteParams) => runBusy(() => batchWriteConfigAndRefresh(client, dispatch, params)), [client, dispatch, runBusy]);
-  const batchWriteConfigSnapshot = useCallback((params: ConfigBatchWriteParams) => runBusy(() => batchWriteConfigAndReadSnapshot(client, dispatch, params)), [client, dispatch, runBusy]);
-  const listSkills = useCallback((params: SkillsListParams) => (
-    client.request("skills/list", params) as Promise<SkillsListResponse>
-  ), [client]);
-  const listRemoteSkills = useCallback((params: SkillsRemoteReadParams) => (
-    client.request("skills/remote/list", params) as Promise<SkillsRemoteReadResponse>
-  ), [client]);
-  const writeSkillConfig = useCallback((params: SkillsConfigWriteParams) => (
-    client.request("skills/config/write", params) as Promise<SkillsConfigWriteResponse>
-  ), [client]);
-  const exportRemoteSkill = useCallback((params: SkillsRemoteWriteParams) => (
-    client.request("skills/remote/export", params) as Promise<SkillsRemoteWriteResponse>
-  ), [client]);
-  const setMultiAgentEnabled = useCallback(async (enabled: boolean) => {
-    await runBusy(async () => {
-      const writeTarget = readUserConfigWriteTarget(runtimeState.configSnapshot);
-      await client.request("config/value/write", {
-        keyPath: "features.multi_agent",
-        value: enabled,
-        mergeStrategy: "replace",
-        filePath: writeTarget.filePath,
-        expectedVersion: writeTarget.expectedVersion
-      });
-      await bootstrap(true);
-    });
-  }, [bootstrap, client, runBusy, runtimeState.configSnapshot]);
-  const startWindowsSandboxSetup = useCallback((mode: WindowsSandboxSetupMode) => startWindowsSandboxSetupRequest(client, dispatch, mode), [client, dispatch]);
-
-  const resolveServerRequest = useCallback(async (resolution: ServerRequestResolution) => {
-    const request = pendingRequestsRef.current[resolution.requestId];
-    if (request === undefined) {
-      return;
-    }
-    try {
-      if (resolution.kind === "tokenRefresh") {
-        await hostBridge.app.writeChatgptAuthTokens({ accessToken: resolution.result.accessToken, chatgptAccountId: resolution.result.chatgptAccountId, chatgptPlanType: resolution.result.chatgptPlanType });
-      }
-      await client.resolveServerRequest(request.rpcId, createServerRequestPayload(resolution));
-    } catch (error) {
-      reportServerRequestError(dispatch, request.threadId, request.turnId, "Failed to submit request response", error);
-    }
-  }, [client, dispatch, hostBridge.app]);
+  const controllerActions = useAppControllerActions({
+    agentEnvironment,
+    bootstrap,
+    client,
+    dispatch,
+    hostBridge,
+    pendingRequestsRef,
+    selectedConversationId: runtimeState.selectedConversationId,
+    configSnapshot: runtimeState.configSnapshot,
+  });
 
   return {
     setInput: (text) => dispatch({ type: "input/changed", value: text }),
     retryConnection: () => bootstrap(true),
-    refreshConfigSnapshot: refreshConfig,
-    refreshAuthState: refreshAuth,
-    refreshMcpData: refreshMcp,
-    listMcpServerStatuses: listStatuses,
-    listArchivedThreads,
-    archiveThread,
-    unarchiveThread,
-    writeConfigValue,
-    batchWriteConfig,
-    batchWriteConfigSnapshot,
-    listSkills,
-    listRemoteSkills,
-    writeSkillConfig,
-    exportRemoteSkill,
-    setMultiAgentEnabled,
-    startWindowsSandboxSetup,
-    login,
-    logout,
-    resolveServerRequest,
+    ...controllerActions,
   };
 }

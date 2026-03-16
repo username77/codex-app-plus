@@ -38,6 +38,10 @@ export interface WorkspaceGitState {
   readonly setError: (value: string | null) => void;
   readonly notice: GitNotice | null;
   readonly setNotice: (value: GitNotice | null) => void;
+  readonly commitDialogOpen: boolean;
+  readonly setCommitDialogOpen: (value: boolean) => void;
+  readonly commitDialogError: string | null;
+  readonly setCommitDialogError: (value: string | null) => void;
   readonly commitMessage: string;
   readonly setCommitMessage: (value: string) => void;
   readonly selectedBranch: string;
@@ -94,6 +98,8 @@ export function useWorkspaceGitState(selectedRootPath: string | null): Workspace
   const remoteUrlLoadedState = useRefBackedState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<GitNotice | null>(null);
+  const [commitDialogOpen, setCommitDialogOpen] = useState(false);
+  const [commitDialogError, setCommitDialogError] = useState<string | null>(null);
   const [commitMessage, setCommitMessage] = useState("");
   const selectedBranchState = useRefBackedState("");
   const [newBranchName, setNewBranchName] = useState("");
@@ -131,6 +137,7 @@ export function useWorkspaceGitState(selectedRootPath: string | null): Workspace
     snapshotState.write(null);
     setError(null);
     setNotice(null);
+    setCommitDialogError(null);
     setDiff(null);
     diffCacheState.write({});
     diffTargetState.write(null);
@@ -150,6 +157,7 @@ export function useWorkspaceGitState(selectedRootPath: string | null): Workspace
 
   const clearTransientState = useCallback(() => {
     resetRepositoryState();
+    setCommitDialogOpen(false);
     setCommitMessage("");
     selectedBranchState.write("");
     setNewBranchName("");
@@ -200,6 +208,10 @@ export function useWorkspaceGitState(selectedRootPath: string | null): Workspace
     setError,
     notice,
     setNotice,
+    commitDialogOpen,
+    setCommitDialogOpen,
+    commitDialogError,
+    setCommitDialogError,
     commitMessage,
     setCommitMessage,
     selectedBranch: selectedBranchState.value,

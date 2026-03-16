@@ -256,4 +256,66 @@ describe("useWorkspaceGit", () => {
       forceWithLease: true
     });
   });
+
+  it("opens the commit dialog and closes it after a successful commit", async () => {
+    const commit = vi.fn().mockResolvedValue(undefined);
+    const hostBridge = createHostBridge(
+      vi.fn().mockResolvedValue(createSnapshot({
+        staged: [{ path: "src/App.tsx", originalPath: null, indexStatus: "M", worktreeStatus: " " }],
+      })),
+      vi.fn().mockResolvedValue(createDiff("src/App.tsx")),
+      undefined,
+      undefined,
+      { commit },
+    );
+
+    const { result } = renderHook(() => useWorkspaceGit({ hostBridge, selectedRootPath: "E:/code/project", autoRefreshEnabled: false }));
+
+    await waitFor(() => expect(result.current.status?.staged).toHaveLength(1));
+    act(() => {
+      result.current.openCommitDialog();
+      result.current.setCommitMessage("feat: improve commit flow");
+    });
+
+    await act(async () => {
+      await result.current.commit();
+    });
+
+    expect(commit).toHaveBeenCalledWith({
+      repoPath: "E:/code/project",
+      message: "feat: improve commit flow",
+    });
+    expect(result.current.commitDialogOpen).toBe(false);
+    expect(result.current.commitMessage).toBe("");
+    expect(result.current.commitDialogError).toBeNull();
+  });
+
+  it("keeps the commit dialog open and preserves input after a failed commit", async () => {
+    const commit = vi.fn().mockRejectedValue(new Error("hook failed"));
+    const hostBridge = createHostBridge(
+      vi.fn().mockResolvedValue(createSnapshot({
+        staged: [{ path: "src/App.tsx", originalPath: null, indexStatus: "M", worktreeStatus: " " }],
+      })),
+      vi.fn().mockResolvedValue(createDiff("src/App.tsx")),
+      undefined,
+      undefined,
+      { commit },
+    );
+
+    const { result } = renderHook(() => useWorkspaceGit({ hostBridge, selectedRootPath: "E:/code/project", autoRefreshEnabled: false }));
+
+    await waitFor(() => expect(result.current.status?.staged).toHaveLength(1));
+    act(() => {
+      result.current.openCommitDialog();
+      result.current.setCommitMessage("feat: improve commit flow");
+    });
+
+    await act(async () => {
+      await result.current.commit();
+    });
+
+    expect(result.current.commitDialogOpen).toBe(true);
+    expect(result.current.commitMessage).toBe("feat: improve commit flow");
+    expect(result.current.commitDialogError).toContain("提交更改失败");
+  });
 });

@@ -61,6 +61,8 @@ function renderPopover(options: RenderOptions = {}) {
       hasRepository: status?.isRepository ?? false,
       error: options.error ?? null,
       notice,
+      commitDialogOpen: false,
+      commitDialogError: null,
       branchRefsLoading: options.branchRefsLoading ?? false,
       branchRefsLoaded: options.branchRefsLoaded ?? true,
       commitMessage: "",
@@ -80,6 +82,8 @@ function renderPopover(options: RenderOptions = {}) {
       unstagePaths: vi.fn().mockResolvedValue(undefined),
       discardPaths: vi.fn().mockResolvedValue(undefined),
       commit: vi.fn().mockResolvedValue(undefined),
+      openCommitDialog: vi.fn(),
+      closeCommitDialog: vi.fn(),
       checkoutBranch: vi.fn(async (branchName: string) => {
         calls.push(`checkout:${branchName}`);
         if (options.checkoutSucceeds === false) {

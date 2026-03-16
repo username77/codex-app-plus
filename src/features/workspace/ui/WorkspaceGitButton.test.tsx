@@ -29,6 +29,8 @@ function createController(overrides?: Partial<WorkspaceGitController>): Workspac
     hasRepository: true,
     error: null,
     notice: null,
+    commitDialogOpen: false,
+    commitDialogError: null,
     branchRefsLoading: false,
     branchRefsLoaded: true,
     remoteUrlLoading: false,
@@ -50,6 +52,8 @@ function createController(overrides?: Partial<WorkspaceGitController>): Workspac
     unstagePaths: vi.fn().mockResolvedValue(undefined),
     discardPaths: vi.fn().mockResolvedValue(undefined),
     commit: vi.fn().mockResolvedValue(undefined),
+    openCommitDialog: vi.fn(),
+    closeCommitDialog: vi.fn(),
     checkoutBranch: vi.fn().mockResolvedValue(true),
     createBranchFromName: vi.fn().mockResolvedValue(true),
     checkoutSelectedBranch: vi.fn().mockResolvedValue(true),
@@ -118,6 +122,26 @@ describe("WorkspaceGitButton", () => {
     expect(menuItems[0]).toBeDisabled();
     expect(menuItems[1]).toBeDisabled();
     expect(menuItems[2]).not.toBeDisabled();
+  });
+
+  it("有已暂存更改时允许打开提交卡片", () => {
+    const openCommitDialog = vi.fn();
+    renderButton({
+      controller: createController({
+        openCommitDialog,
+        commitMessage: "",
+        status: {
+          ...status,
+          staged: [{ path: "src/App.tsx", originalPath: null, indexStatus: "M", worktreeStatus: " " }],
+          branch: { ...status.branch!, ahead: 0 }
+        }
+      })
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "选择 Git 操作" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "提交" }));
+
+    expect(openCommitDialog).toHaveBeenCalledTimes(1);
   });
 
   it("点击推送会先弹出确认框", () => {

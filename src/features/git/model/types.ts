@@ -13,6 +13,8 @@ export interface WorkspaceGitController {
   readonly hasRepository: boolean;
   readonly error: string | null;
   readonly notice: GitNotice | null;
+  readonly commitDialogOpen: boolean;
+  readonly commitDialogError: string | null;
   readonly branchRefsLoading?: boolean;
   readonly branchRefsLoaded?: boolean;
   readonly remoteUrlLoading?: boolean;
@@ -34,6 +36,8 @@ export interface WorkspaceGitController {
   readonly unstagePaths: (paths: ReadonlyArray<string>) => Promise<void>;
   readonly discardPaths: (paths: ReadonlyArray<string>, deleteUntracked: boolean) => Promise<void>;
   readonly commit: () => Promise<void>;
+  readonly openCommitDialog: () => void;
+  readonly closeCommitDialog: () => void;
   readonly checkoutBranch: (branchName: string) => Promise<boolean>;
   readonly createBranchFromName: (branchName: string) => Promise<boolean>;
   readonly checkoutSelectedBranch: () => Promise<boolean>;
