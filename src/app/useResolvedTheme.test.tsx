@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { applyResolvedTheme, useResolvedTheme } from "./useResolvedTheme";
+import { applyResolvedTheme } from "./startupTheme";
+import { useResolvedTheme } from "./useResolvedTheme";
 
 function installMatchMedia(initialMatches: boolean) {
   let matches = initialMatches;

@@ -4,11 +4,90 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Codex App Plus</title>
+    <script>
+      (() => {
+        const storageKey = "codex-app-plus.app-preferences";
+        const prefersDark = typeof window.matchMedia === "function"
+          && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        let theme = prefersDark ? "dark" : "light";
+
+        const rawPreferences = window.localStorage.getItem(storageKey);
+        if (rawPreferences !== null) {
+          try {
+            const parsed = JSON.parse(rawPreferences);
+            if (parsed?.themeMode === "light" || parsed?.themeMode === "dark") {
+              theme = parsed.themeMode;
+            }
+          } catch (error) {
+            console.error("读取启动主题偏好失败", error);
+          }
+        }
+
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
     <style>
+      :root {
+        --startup-body-bg: #f3efe6;
+        --startup-overlay-primary: rgba(241, 185, 105, 0.2);
+        --startup-overlay-secondary: rgba(214, 194, 150, 0.24);
+        --startup-screen-bg-start: #fcfbf7;
+        --startup-screen-bg-end: #f2ede2;
+        --startup-blob-primary: rgba(240, 180, 83, 0.16);
+        --startup-blob-secondary: rgba(191, 165, 113, 0.18);
+        --startup-panel-border: rgba(210, 192, 161, 0.68);
+        --startup-panel-bg: rgba(255, 255, 255, 0.76);
+        --startup-panel-shadow: rgba(103, 82, 48, 0.12);
+        --startup-panel-highlight: rgba(255, 255, 255, 0.72);
+        --startup-ring-color: rgba(203, 157, 78, 0.38);
+        --startup-shell-bg-start: rgba(255, 255, 255, 0.96);
+        --startup-shell-bg-end: rgba(246, 238, 225, 0.88);
+        --startup-shell-shadow: rgba(169, 125, 55, 0.18);
+        --startup-shell-highlight: rgba(255, 255, 255, 0.92);
+        --startup-shell-inner-start: rgba(255, 248, 236, 0.88);
+        --startup-shell-inner-end: rgba(255, 255, 255, 0.18);
+        --startup-logo-shadow: rgba(183, 118, 27, 0.18);
+        --startup-title-color: #47331b;
+        --startup-subtitle-color: #7b6b53;
+        --startup-meter-bg: rgba(190, 156, 96, 0.14);
+        --startup-meter-start: #bf8741;
+        --startup-meter-mid: #f0cf95;
+        --startup-meter-shadow: rgba(220, 167, 80, 0.38);
+      }
+
+      html[data-theme="dark"] {
+        --startup-body-bg: #111315;
+        --startup-overlay-primary: rgba(126, 86, 34, 0.22);
+        --startup-overlay-secondary: rgba(70, 60, 40, 0.34);
+        --startup-screen-bg-start: #16191d;
+        --startup-screen-bg-end: #0e1013;
+        --startup-blob-primary: rgba(176, 121, 43, 0.22);
+        --startup-blob-secondary: rgba(120, 95, 56, 0.26);
+        --startup-panel-border: rgba(149, 122, 78, 0.4);
+        --startup-panel-bg: rgba(22, 25, 30, 0.8);
+        --startup-panel-shadow: rgba(0, 0, 0, 0.34);
+        --startup-panel-highlight: rgba(255, 255, 255, 0.06);
+        --startup-ring-color: rgba(222, 170, 88, 0.34);
+        --startup-shell-bg-start: rgba(50, 43, 34, 0.92);
+        --startup-shell-bg-end: rgba(23, 27, 31, 0.9);
+        --startup-shell-shadow: rgba(0, 0, 0, 0.28);
+        --startup-shell-highlight: rgba(255, 255, 255, 0.08);
+        --startup-shell-inner-start: rgba(255, 224, 173, 0.18);
+        --startup-shell-inner-end: rgba(255, 255, 255, 0.02);
+        --startup-logo-shadow: rgba(255, 181, 76, 0.24);
+        --startup-title-color: #f2e6d1;
+        --startup-subtitle-color: #b7a68a;
+        --startup-meter-bg: rgba(235, 183, 96, 0.14);
+        --startup-meter-start: #d39a47;
+        --startup-meter-mid: #f6d9a2;
+        --startup-meter-shadow: rgba(222, 163, 72, 0.32);
+      }
+
       html,
       body {
         margin: 0;
-        background: #f3efe6;
+        background: var(--startup-body-bg);
       }
 
       #startup-screen {
@@ -20,9 +99,9 @@
         overflow: hidden;
         font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
         background:
-          radial-gradient(circle at 18% 18%, rgba(241, 185, 105, 0.2), transparent 30%),
-          radial-gradient(circle at 82% 14%, rgba(214, 194, 150, 0.24), transparent 28%),
-          linear-gradient(180deg, #fcfbf7 0%, #f2ede2 100%);
+          radial-gradient(circle at 18% 18%, var(--startup-overlay-primary), transparent 30%),
+          radial-gradient(circle at 82% 14%, var(--startup-overlay-secondary), transparent 28%),
+          linear-gradient(180deg, var(--startup-screen-bg-start) 0%, var(--startup-screen-bg-end) 100%);
         transition: opacity 420ms ease, visibility 420ms ease;
       }
 
@@ -39,7 +118,7 @@
         height: min(40vw, 420px);
         top: 10%;
         left: 8%;
-        background: rgba(240, 180, 83, 0.16);
+        background: var(--startup-blob-primary);
         animation: startup-screen-drift 10s ease-in-out infinite;
       }
 
@@ -48,7 +127,7 @@
         height: min(34vw, 360px);
         right: 10%;
         bottom: 12%;
-        background: rgba(191, 165, 113, 0.18);
+        background: var(--startup-blob-secondary);
         animation: startup-screen-drift 12s ease-in-out infinite reverse;
       }
 
@@ -64,12 +143,12 @@
         gap: 16px;
         width: min(320px, calc(100vw - 48px));
         padding: 34px 30px 28px;
-        border: 1px solid rgba(210, 192, 161, 0.68);
+        border: 1px solid var(--startup-panel-border);
         border-radius: 32px;
-        background: rgba(255, 255, 255, 0.76);
+        background: var(--startup-panel-bg);
         box-shadow:
-          0 28px 64px rgba(103, 82, 48, 0.12),
-          inset 0 1px 0 rgba(255, 255, 255, 0.72);
+          0 28px 64px var(--startup-panel-shadow),
+          inset 0 1px 0 var(--startup-panel-highlight);
         backdrop-filter: blur(18px);
       }
 
@@ -86,7 +165,7 @@
         position: absolute;
         inset: 8px;
         border-radius: 44px;
-        border: 1px solid rgba(203, 157, 78, 0.38);
+        border: 1px solid var(--startup-ring-color);
         animation: startup-badge-ring 2.4s ease-out infinite;
       }
 
@@ -97,10 +176,10 @@
         width: 124px;
         height: 124px;
         border-radius: 36px;
-        background: linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(246, 238, 225, 0.88));
+        background: linear-gradient(160deg, var(--startup-shell-bg-start), var(--startup-shell-bg-end));
         box-shadow:
-          0 18px 44px rgba(169, 125, 55, 0.18),
-          inset 0 1px 0 rgba(255, 255, 255, 0.92);
+          0 18px 44px var(--startup-shell-shadow),
+          inset 0 1px 0 var(--startup-shell-highlight);
         animation: startup-shell-breathe 2.8s ease-in-out infinite;
       }
 
@@ -109,7 +188,7 @@
         position: absolute;
         inset: 12px;
         border-radius: 28px;
-        background: linear-gradient(180deg, rgba(255, 248, 236, 0.88), rgba(255, 255, 255, 0.18));
+        background: linear-gradient(180deg, var(--startup-shell-inner-start), var(--startup-shell-inner-end));
       }
 
       .startup-screen__logo {
@@ -118,7 +197,7 @@
         width: 78px;
         height: 78px;
         object-fit: contain;
-        filter: drop-shadow(0 12px 20px rgba(183, 118, 27, 0.18));
+        filter: drop-shadow(0 12px 20px var(--startup-logo-shadow));
         animation: startup-logo-float 1.9s cubic-bezier(0.33, 1, 0.68, 1) infinite;
       }
 
@@ -126,12 +205,12 @@
         font-size: 22px;
         font-weight: 700;
         letter-spacing: 0.04em;
-        color: #47331b;
+        color: var(--startup-title-color);
       }
 
       .startup-screen__subtitle {
         font-size: 13px;
-        color: #7b6b53;
+        color: var(--startup-subtitle-color);
         text-align: center;
         line-height: 1.6;
       }
@@ -142,7 +221,7 @@
         height: 6px;
         overflow: hidden;
         border-radius: 999px;
-        background: rgba(190, 156, 96, 0.14);
+        background: var(--startup-meter-bg);
       }
 
       .startup-screen__meter-fill {
@@ -150,8 +229,13 @@
         width: 38%;
         height: 100%;
         border-radius: inherit;
-        background: linear-gradient(90deg, #bf8741 0%, #f0cf95 50%, #bf8741 100%);
-        box-shadow: 0 0 16px rgba(220, 167, 80, 0.38);
+        background: linear-gradient(
+          90deg,
+          var(--startup-meter-start) 0%,
+          var(--startup-meter-mid) 50%,
+          var(--startup-meter-start) 100%
+        );
+        box-shadow: 0 0 16px var(--startup-meter-shadow);
         animation: startup-meter-slide 1.35s ease-in-out infinite;
       }
 
@@ -171,15 +255,15 @@
         100% {
           transform: scale(1);
           box-shadow:
-            0 18px 44px rgba(169, 125, 55, 0.18),
-            inset 0 1px 0 rgba(255, 255, 255, 0.92);
+            0 18px 44px var(--startup-shell-shadow),
+            inset 0 1px 0 var(--startup-shell-highlight);
         }
 
         50% {
           transform: scale(1.03);
           box-shadow:
-            0 22px 52px rgba(169, 125, 55, 0.24),
-            inset 0 1px 0 rgba(255, 255, 255, 0.96);
+            0 22px 52px var(--startup-shell-shadow),
+            inset 0 1px 0 var(--startup-shell-highlight);
         }
       }
 

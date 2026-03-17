@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { resolveThemeMode, type ResolvedTheme, type ThemeMode } from "../domain/theme";
+import { applyResolvedTheme } from "./startupTheme";
 
 const COLOR_SCHEME_QUERY = "(prefers-color-scheme: dark)";
 
@@ -12,11 +13,6 @@ function readPrefersDark(): boolean {
 
 function readThemeState(themeMode: ThemeMode): ResolvedTheme {
   return resolveThemeMode(themeMode, readPrefersDark());
-}
-
-export function applyResolvedTheme(theme: ResolvedTheme): void {
-  document.documentElement.dataset.theme = theme;
-  document.documentElement.style.colorScheme = theme;
 }
 
 export function useResolvedTheme(themeMode: ThemeMode): ResolvedTheme {
