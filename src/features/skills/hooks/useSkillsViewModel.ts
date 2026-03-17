@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReceivedNotification } from "../../../domain/types";
+import type { AuthMode } from "../../../protocol/generated/AuthMode";
 import type { SkillsConfigWriteParams } from "../../../protocol/generated/v2/SkillsConfigWriteParams";
 import type { SkillsConfigWriteResponse } from "../../../protocol/generated/v2/SkillsConfigWriteResponse";
 import type { SkillsListParams } from "../../../protocol/generated/v2/SkillsListParams";
@@ -32,6 +33,8 @@ interface AsyncState<T> {
 }
 
 interface SkillsViewModelOptions {
+  readonly authStatus: "unknown" | "authenticated" | "needs_login";
+  readonly authMode: AuthMode | null;
   readonly selectedRootPath: string | null;
   readonly notifications: ReadonlyArray<ReceivedNotification>;
   readonly listSkills: (params: SkillsListParams) => Promise<SkillsListResponse>;
@@ -64,6 +67,8 @@ const EMPTY_REMOTE_SKILLS: ReadonlyArray<RemoteSkillCard> = [];
 
 export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewModel {
   const {
+    authStatus,
+    authMode,
     selectedRootPath,
     notifications,
     listSkills,
@@ -83,6 +88,11 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
   const [installingIds, setInstallingIds] = useState<Readonly<Record<string, boolean>>>({});
   const lastHandledSkillsChangeRef = useRef(0);
 
+  const recommendedUnavailableReason = useMemo(
+    () => getRecommendedUnavailableReason(authStatus, authMode),
+    [authMode, authStatus],
+  );
+
   const refreshInstalled = useCallback(async (forceReload: boolean) => {
     setInstalledState((current) => ({ ...current, loading: true, error: null }));
     try {
@@ -94,6 +104,14 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
   }, [listSkills, selectedRootPath]);
 
   const refreshRecommended = useCallback(async () => {
+    if (recommendedUnavailableReason !== null) {
+      setRecommendedState({
+        data: EMPTY_REMOTE_SKILLS,
+        loading: false,
+        error: recommendedUnavailableReason,
+      });
+      return;
+    }
     setRecommendedState((current) => ({ ...current, loading: true, error: null }));
     try {
       const response = await listRemoteSkills(REMOTE_SKILLS_PARAMS);
@@ -101,7 +119,7 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
     } catch (error) {
       setRecommendedState((current) => ({ ...current, loading: false, error: toErrorMessage(error) }));
     }
-  }, [listRemoteSkills]);
+  }, [listRemoteSkills, recommendedUnavailableReason]);
 
   const refresh = useCallback(async () => {
     await Promise.all([refreshInstalled(true), refreshRecommended()]);
@@ -124,6 +142,10 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
   }, [writeSkillConfig]);
 
   const installRemoteSkill = useCallback(async (skill: RemoteSkillCard) => {
+    if (recommendedUnavailableReason !== null) {
+      setActionError(recommendedUnavailableReason);
+      return;
+    }
     setActionError(null);
     setInstallingIds((current) => ({ ...current, [skill.id]: true }));
     try {
@@ -134,7 +156,7 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
     } finally {
       setInstallingIds((current) => omitRecordKey(current, skill.id));
     }
-  }, [exportRemoteSkill, refreshInstalled]);
+  }, [exportRemoteSkill, recommendedUnavailableReason, refreshInstalled]);
 
   useEffect(() => {
     void Promise.all([refreshInstalled(false), refreshRecommended()]);
@@ -176,6 +198,22 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
     toggleSkillEnabled,
     installRemoteSkill,
   };
+}
+
+function getRecommendedUnavailableReason(
+  authStatus: "unknown" | "authenticated" | "needs_login",
+  authMode: AuthMode | null,
+): string | null {
+  if (authStatus === "needs_login") {
+    return "推荐技能仅支持 ChatGPT 登录。请先完成 ChatGPT 登录后再刷新。";
+  }
+  if (authStatus === "unknown") {
+    return "正在检测认证状态，暂时无法加载推荐技能。";
+  }
+  if (authMode === "chatgpt" || authMode === "chatgptAuthTokens") {
+    return null;
+  }
+  return "推荐技能仅支持 ChatGPT 登录；当前是 API Key 认证，官方远程技能链路不可用。";
 }
 
 function createAsyncState<T>(data: T): AsyncState<T> {

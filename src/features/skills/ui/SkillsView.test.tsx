@@ -38,6 +38,8 @@ function createRemoteSkillsResponse(): SkillsRemoteReadResponse {
 }
 
 function renderSkillsView(overrides?: {
+  readonly authStatus?: "unknown" | "authenticated" | "needs_login";
+  readonly authMode?: "apikey" | "chatgpt" | "chatgptAuthTokens" | null;
   readonly notifications?: ReadonlyArray<ReceivedNotification>;
   readonly listSkills?: ReturnType<typeof vi.fn>;
   readonly listRemoteSkills?: ReturnType<typeof vi.fn>;
@@ -54,6 +56,8 @@ function renderSkillsView(overrides?: {
 
   const view = render(
     <SkillsView
+      authStatus={overrides?.authStatus ?? "authenticated"}
+      authMode={overrides?.authMode ?? "chatgpt"}
       selectedRootPath="E:/code/codex-app-plus"
       notifications={overrides?.notifications ?? []}
       onBackHome={vi.fn()}
@@ -113,6 +117,17 @@ describe("SkillsView", () => {
     expect(await screen.findByText("git fetch failed: git process timed out after 30000ms")).toBeInTheDocument();
   });
 
+  it("does not call remote skills when authenticated with api key", async () => {
+    const listRemoteSkills = vi.fn();
+    renderSkillsView({
+      authMode: "apikey",
+      listRemoteSkills,
+    });
+
+    expect(await screen.findByText("推荐技能仅支持 ChatGPT 登录；当前是 API Key 认证，官方远程技能链路不可用。")).toBeInTheDocument();
+    expect(listRemoteSkills).not.toHaveBeenCalled();
+  });
+
   it("forces reload on manual refresh and skills changed notifications", async () => {
     const listSkills = vi.fn().mockResolvedValue(createInstalledSkillsResponse());
     const view = renderSkillsView({ listSkills, notifications: [] });
@@ -126,6 +141,8 @@ describe("SkillsView", () => {
 
     view.rerender(
       <SkillsView
+        authStatus="authenticated"
+        authMode="chatgpt"
         selectedRootPath="E:/code/codex-app-plus"
         notifications={[{ method: "skills/changed", params: null }]}
         onBackHome={vi.fn()}

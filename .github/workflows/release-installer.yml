@@ -69,6 +69,11 @@ jobs:
           }
 
           $tag = $manualTag
+          $version = if ($tag.StartsWith("v")) { $tag.Substring(1) } else { $tag }
+
+          if (-not [regex]::IsMatch($version, '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$')) {
+            throw "tag 必须包含合法语义化版本，例如 v0.2.0 或 0.2.0；当前输入：$tag"
+          }
 
           git check-ref-format "refs/tags/$tag"
           if ($LASTEXITCODE -ne 0) {
@@ -99,6 +104,47 @@ jobs:
           }
 
           "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Apply release version from tag
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          $version = $env:RELEASE_VERSION
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "缺少发布版本号输出。"
+          }
+
+          $package = Get-Content package.json -Raw | ConvertFrom-Json
+          $package.version = $version
+          $package | ConvertTo-Json -Depth 100 | Set-Content package.json -Encoding utf8
+
+          $tauriConfig = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
+          $tauriConfig.version = $version
+          $tauriConfig | ConvertTo-Json -Depth 100 | Set-Content src-tauri/tauri.conf.json -Encoding utf8
+
+          $cargoToml = Get-Content src-tauri/Cargo.toml -Raw
+          $updatedCargoToml = [regex]::Replace(
+            $cargoToml,
+            '(?m)^version\s*=\s*"[^"]+"',
+            "version = ""$version""",
+            1
+          )
+
+          if ($updatedCargoToml -eq $cargoToml) {
+            throw "未能更新 src-tauri/Cargo.toml 中的版本号。"
+          }
+
+          Set-Content src-tauri/Cargo.toml -Value $updatedCargoToml -Encoding utf8
+
+      - name: Show effective release version
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          Write-Host "Release tag: ${{ steps.meta.outputs.tag }}"
+          Write-Host "Effective version: $env:RELEASE_VERSION"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

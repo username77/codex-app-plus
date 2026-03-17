@@ -227,6 +227,10 @@ function createHomeProps(props: AppScreenContentProps): HomeViewProps {
 
 function createSkillsProps(props: AppScreenContentProps): SkillsViewProps {
   return {
+    authStatus: props.appState.authStatus,
+    authMode: props.appState.authMode === "apikey" || props.appState.authMode === "chatgpt" || props.appState.authMode === "chatgptAuthTokens"
+      ? props.appState.authMode
+      : null,
     selectedRootPath: props.selectedRootPath,
     notifications: props.appState.notifications,
     onBackHome: props.onBackHome,

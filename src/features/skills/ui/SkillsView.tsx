@@ -1,4 +1,5 @@
 import type { ReceivedNotification } from "../../../domain/types";
+import type { AuthMode } from "../../../protocol/generated/AuthMode";
 import type { SkillsConfigWriteParams } from "../../../protocol/generated/v2/SkillsConfigWriteParams";
 import type { SkillsConfigWriteResponse } from "../../../protocol/generated/v2/SkillsConfigWriteResponse";
 import type { SkillsListParams } from "../../../protocol/generated/v2/SkillsListParams";
@@ -13,6 +14,8 @@ import type { InstalledSkillCard, RemoteSkillCard } from "../model/skillCatalog"
 import { SkillAvatar } from "./SkillAvatar";
 
 export interface SkillsViewProps {
+  readonly authStatus: "unknown" | "authenticated" | "needs_login";
+  readonly authMode: AuthMode | null;
   readonly selectedRootPath: string | null;
   readonly notifications: ReadonlyArray<ReceivedNotification>;
   readonly onBackHome: () => void;
@@ -25,6 +28,8 @@ export interface SkillsViewProps {
 
 export function SkillsView(props: SkillsViewProps): JSX.Element {
   const model = useSkillsViewModel({
+    authStatus: props.authStatus,
+    authMode: props.authMode,
     selectedRootPath: props.selectedRootPath,
     notifications: props.notifications,
     listSkills: props.listSkills,

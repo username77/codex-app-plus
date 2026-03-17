@@ -269,6 +269,111 @@
   font-size: 16px;
 }
 
+html[data-theme="dark"] .skills-page {
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 24%),
+    linear-gradient(180deg, #181818 0%, #121212 100%);
+}
+
+html[data-theme="dark"] .skills-back-button,
+html[data-theme="dark"] .skills-header-copy p,
+html[data-theme="dark"] .skills-section-heading span,
+html[data-theme="dark"] .skills-card-copy p,
+html[data-theme="dark"] .skills-empty-state,
+html[data-theme="dark"] .skills-toolbar-icon {
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .skills-header-copy h1,
+html[data-theme="dark"] .skills-section-heading h2,
+html[data-theme="dark"] .skills-card-copy strong,
+html[data-theme="dark"] .skills-empty-state strong {
+  color: var(--text-main);
+}
+
+html[data-theme="dark"] .skills-ghost-button,
+html[data-theme="dark"] .skills-search-field,
+html[data-theme="dark"] .skills-card,
+html[data-theme="dark"] .skills-empty-state,
+html[data-theme="dark"] .skills-avatar-image {
+  border-color: var(--border-light);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-lg);
+}
+
+html[data-theme="dark"] .skills-ghost-button,
+html[data-theme="dark"] .skills-search-field {
+  background: var(--surface-panel-muted);
+  color: var(--text-main);
+}
+
+html[data-theme="dark"] .skills-ghost-button:hover,
+html[data-theme="dark"] .skills-search-field:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+
+html[data-theme="dark"] .skills-search-field input {
+  color: var(--text-main);
+}
+
+html[data-theme="dark"] .skills-search-field input::placeholder {
+  color: var(--text-subtle);
+}
+
+html[data-theme="dark"] .skills-primary-button {
+  border-color: #0f0f10;
+  background: #0f0f10;
+  color: #f5f5f5;
+}
+
+html[data-theme="dark"] .skills-primary-button:disabled {
+  opacity: 0.72;
+}
+
+html[data-theme="dark"] .skills-inline-link {
+  color: var(--accent-strong);
+}
+
+html[data-theme="dark"] .skills-card {
+  background:
+    linear-gradient(180deg, rgba(34, 34, 34, 0.96) 0%, rgba(26, 26, 26, 0.96) 100%);
+}
+
+html[data-theme="dark"] .skills-scope-pill {
+  background: var(--surface-panel-soft);
+  border-color: var(--border-light);
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .skills-install-button {
+  border-color: rgba(96, 165, 250, 0.34);
+  background: rgba(79, 140, 255, 0.14);
+  color: var(--info-fg);
+}
+
+html[data-theme="dark"] .skills-banner-error {
+  background: var(--error-bg);
+  color: var(--error-fg);
+  border-color: rgba(248, 113, 113, 0.26);
+}
+
+html[data-theme="dark"] .skills-banner-warning {
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+  border-color: rgba(250, 204, 21, 0.26);
+}
+
+html[data-theme="dark"] .skills-empty-state {
+  border-color: var(--border-light);
+  background: rgba(31, 31, 31, 0.82);
+}
+
+html[data-theme="dark"] .skills-error-state {
+  border-color: rgba(248, 113, 113, 0.28);
+  background: rgba(127, 29, 29, 0.08);
+}
+
 @media (max-width: 920px) {
   .skills-toolbar,
   .skills-main {
