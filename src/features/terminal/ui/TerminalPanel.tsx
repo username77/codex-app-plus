@@ -1,45 +1,37 @@
-import type { EmbeddedTerminalShell, HostBridge } from "../../../bridge/types";
-import type { ResolvedTheme } from "../../../domain/theme";
-import { OfficialCloseIcon } from "../../shared/ui/officialIcons";
-import { useEmbeddedTerminal } from "../hooks/useEmbeddedTerminal";
+import type { Ref } from "react";
+import type { TerminalStatus } from "../model/terminalRuntime";
 
 interface TerminalPanelProps {
-  readonly hostBridge: HostBridge;
-  readonly open: boolean;
-  readonly cwd: string | null;
-  readonly cwdLabel: string;
-  readonly enforceUtf8?: boolean;
-  readonly shell: EmbeddedTerminalShell;
-  readonly theme?: ResolvedTheme;
-  readonly onClose: () => void;
+  readonly containerRef: Ref<HTMLDivElement>;
+  readonly message: string;
+  readonly onRestart: () => void;
+  readonly status: TerminalStatus;
 }
 
 export function TerminalPanel(props: TerminalPanelProps): JSX.Element {
-  const terminal = useEmbeddedTerminal(props);
+  const showRestart = props.status === "exited" || props.status === "error";
 
   return (
-    <section className={terminal.className} aria-label="Terminal">
-      <header className="terminal-toolbar">
-        <div className="terminal-title">
-          <span className="terminal-title-main">Terminal</span>
-          <span className="terminal-title-sub">{terminal.subtitle}</span>
-          <span className={`terminal-status terminal-status-${terminal.status}`}>{terminal.statusLabel}</span>
-        </div>
-        <div className="terminal-actions">
-          {terminal.showRestartAction ? (
-            <button type="button" className="terminal-action-btn" onClick={() => void terminal.openTerminal()}>
-              Reopen
-            </button>
-          ) : null}
-          <button type="button" className="terminal-close-btn" aria-label="Close terminal" onClick={props.onClose}>
-            <OfficialCloseIcon className="terminal-close-icon" />
-          </button>
-        </div>
-      </header>
-      {terminal.errorMessage === null ? null : <div className="terminal-error">{terminal.errorMessage}</div>}
-      <div className="terminal-body" onClick={terminal.focusTerminal}>
-        <div ref={terminal.containerRef} className="terminal-surface" />
+    <div className="terminal-body">
+      <div className="terminal-shell">
+        <div ref={props.containerRef} className="terminal-surface" />
+        {props.status !== "ready" ? (
+          <div className="terminal-overlay">
+            <div className="terminal-overlay-message">
+              <span>{props.message}</span>
+              {showRestart ? (
+                <button
+                  type="button"
+                  className="terminal-overlay-action"
+                  onClick={props.onRestart}
+                >
+                  Reopen
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </div>
-    </section>
+    </div>
   );
 }

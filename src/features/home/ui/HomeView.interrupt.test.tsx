@@ -8,9 +8,16 @@ import { AppStoreProvider } from "../../../state/store";
 import type { WorkspaceGitController } from "../../git/model/types";
 import { HomeView } from "./HomeView";
 
-const { mockedUseWorkspaceGit } = vi.hoisted(() => ({ mockedUseWorkspaceGit: vi.fn() }));
+const { mockedUseWorkspaceGit, mockedUseTerminalController } = vi.hoisted(() => ({
+  mockedUseWorkspaceGit: vi.fn(),
+  mockedUseTerminalController: vi.fn(),
+}));
 
+vi.mock("../../terminal/ui/TerminalDock", () => ({ TerminalDock: () => null }));
 vi.mock("../../terminal/ui/TerminalPanel", () => ({ TerminalPanel: () => null }));
+vi.mock("../../terminal/hooks/useTerminalController", () => ({
+  useTerminalController: mockedUseTerminalController,
+}));
 vi.mock("../../git/hooks/useWorkspaceGit", () => ({ useWorkspaceGit: mockedUseWorkspaceGit }));
 
 const DEFAULT_GIT_BRANCH_PREFIX = "codex/";
@@ -85,14 +92,43 @@ function createThread(overrides?: Partial<ThreadSummary>): ThreadSummary {
   };
 }
 
+function createHostBridge(): HostBridge {
+  return {
+    terminal: {
+      createSession: vi.fn(),
+      write: vi.fn(),
+      resize: vi.fn(),
+      closeSession: vi.fn().mockResolvedValue(undefined),
+    },
+    subscribe: vi.fn().mockResolvedValue(() => undefined),
+  } as unknown as HostBridge;
+}
+
 function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
   mockedUseWorkspaceGit.mockReturnValue(createController());
+  mockedUseTerminalController.mockReturnValue({
+    activeTerminalId: null,
+    hasWorkspace: true,
+    onCloseTerminal: vi.fn(),
+    onNewTerminal: vi.fn(),
+    onSelectTerminal: vi.fn(),
+    requestTerminalFocus: vi.fn(),
+    terminalState: {
+      closeTerminalSession: vi.fn().mockResolvedValue(undefined),
+      containerRef: { current: null },
+      focusTerminal: vi.fn(),
+      message: "Open a terminal to start a session.",
+      restartSession: vi.fn().mockResolvedValue(undefined),
+      status: "idle",
+    },
+    terminals: [],
+  });
   const root = { id: "root-1", name: "FPGA", path: "E:/code/FPGA" };
   const thread = createThread();
 
   return render(
     <AppStoreProvider><HomeView
-      hostBridge={{} as HostBridge}
+      hostBridge={createHostBridge()}
       busy={false}
       inputText="继续分析"
       roots={[root]}

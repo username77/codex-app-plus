@@ -85,9 +85,9 @@ describe("useTerminalOpenAction", () => {
   it("fits the terminal before creating the session", async () => {
     const createSession = vi.fn().mockResolvedValue({ sessionId: "terminal-1", shell: "Git Bash" });
     const fit = vi.fn();
-    const setErrorMessage = vi.fn();
-    const setShellLabel = vi.fn();
-    const setStatus = vi.fn();
+    const onErrorMessage = vi.fn();
+    const onSessionCreated = vi.fn();
+    const onStatusChange = vi.fn();
     const syncTerminalSize = vi.fn().mockResolvedValue(undefined);
     const terminalState = {
       cols: 80,
@@ -116,9 +116,9 @@ describe("useTerminalOpenAction", () => {
         open: true,
         reportError: vi.fn(),
         sessionIdRef: { current: null },
-        setErrorMessage,
-        setShellLabel,
-        setStatus,
+        onSessionCreated,
+        onStatusChange,
+        onErrorMessage,
         shell: "gitBash",
         syncTerminalSize,
         terminalRef
@@ -137,7 +137,9 @@ describe("useTerminalOpenAction", () => {
       enforceUtf8: true
     });
     expect(fit).toHaveBeenCalledTimes(1);
-    expect(setShellLabel).toHaveBeenCalledWith("Git Bash");
+    expect(onStatusChange).toHaveBeenCalledWith("starting");
+    expect(onErrorMessage).toHaveBeenCalledWith(null);
+    expect(onSessionCreated).toHaveBeenCalledWith("terminal-1", "Git Bash");
     expect(syncTerminalSize).toHaveBeenCalled();
   });
 
@@ -154,9 +156,9 @@ describe("useTerminalOpenAction", () => {
         open: true,
         reportError: vi.fn(),
         sessionIdRef: { current: null },
-        setErrorMessage: vi.fn(),
-        setShellLabel: vi.fn(),
-        setStatus: vi.fn(),
+        onSessionCreated: vi.fn(),
+        onStatusChange: vi.fn(),
+        onErrorMessage: vi.fn(),
         shell: "powerShell",
         syncTerminalSize: vi.fn().mockResolvedValue(undefined),
         terminalRef: { current: null }

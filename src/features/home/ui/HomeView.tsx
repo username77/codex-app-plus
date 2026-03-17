@@ -32,6 +32,8 @@ import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
 import { useWorkspaceGit } from "../../git/hooks/useWorkspaceGit";
 import type { WorkspaceGitController } from "../../git/model/types";
 import { OfficialSidebarToggleIcon } from "../../shared/ui/officialIcons";
+import { useTerminalController } from "../../terminal/hooks/useTerminalController";
+import { TerminalDock } from "../../terminal/ui/TerminalDock";
 import { TerminalPanel } from "../../terminal/ui/TerminalPanel";
 import { WorkspaceDiffSidebarHost } from "../../workspace/ui/WorkspaceDiffSidebarHost";
 import { extractConnectionRetryInfo } from "../model/homeConnectionRetry";
@@ -127,8 +129,8 @@ function createReplicaAppClassName(diffSidebarOpen: boolean): string {
 
 export function HomeView(props: HomeViewProps): JSX.Element {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [terminalOpen, setTerminalOpen] = useState(true);
   const [diffSidebarOpen, setDiffSidebarOpen] = useState(false);
+  const [terminalOpen, setTerminalOpen] = useState(true);
   const canShowDiffSidebar = diffSidebarOpen && props.selectedRootPath !== null;
   const gitController = useWorkspaceGit({
     hostBridge: props.hostBridge,
@@ -148,8 +150,19 @@ export function HomeView(props: HomeViewProps): JSX.Element {
     }
   }, [props.selectedRootPath]);
 
-  const toggleTerminal = useCallback(() => setTerminalOpen((value) => !value), []);
+  const terminalController = useTerminalController({
+    activeRootId: props.selectedRootId,
+    activeRootPath: props.selectedRootPath,
+    hostBridge: props.hostBridge,
+    isOpen: terminalOpen,
+    onClosePanel: () => setTerminalOpen(false),
+    resolvedTheme: props.resolvedTheme ?? "light",
+    shell: props.embeddedTerminalShell,
+    enforceUtf8: props.embeddedTerminalUtf8 ?? true,
+  });
+
   const toggleDiffSidebar = useCallback(() => setDiffSidebarOpen((value) => !value), []);
+  const toggleTerminal = useCallback(() => setTerminalOpen((value) => !value), []);
   const sidebarProps = createHomeSidebarProps(props, sidebarCollapsed);
   const contentProps = createHomeMainContentProps(
     props,
@@ -175,18 +188,26 @@ export function HomeView(props: HomeViewProps): JSX.Element {
           onClose={() => setDiffSidebarOpen(false)}
         />
       ) : null}
-      {terminalOpen ? (
-        <TerminalPanel
-          hostBridge={props.hostBridge}
-          open={terminalOpen}
-          cwd={props.selectedRootPath}
-          cwdLabel={props.selectedRootName}
-          enforceUtf8={props.embeddedTerminalUtf8}
-          shell={props.embeddedTerminalShell}
-          theme={props.resolvedTheme ?? "light"}
-          onClose={() => setTerminalOpen(false)}
-        />
-      ) : null}
+      <TerminalDock
+        activeTabId={terminalController.activeTerminalId}
+        hasWorkspace={terminalController.hasWorkspace}
+        isOpen={terminalOpen}
+        onCloseTab={terminalController.onCloseTerminal}
+        onCreateTab={terminalController.onNewTerminal}
+        onSelectTab={terminalController.onSelectTerminal}
+        tabs={terminalController.terminals}
+      >
+        {terminalController.activeTerminalId !== null ? (
+          <TerminalPanel
+            containerRef={terminalController.terminalState.containerRef}
+            message={terminalController.terminalState.message}
+            onRestart={() => {
+              void terminalController.terminalState.restartSession();
+            }}
+            status={terminalController.terminalState.status}
+          />
+        ) : null}
+      </TerminalDock>
       <SidebarCollapseButton
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((value) => !value)}

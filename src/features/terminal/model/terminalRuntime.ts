@@ -1,13 +1,14 @@
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal, type ITheme } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Dispatch, MutableRefObject, SetStateAction } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import type { MutableRefObject } from "react";
 import type { EmbeddedTerminalShell, HostBridge } from "../../../bridge/types";
 import type { ResolvedTheme } from "../../../domain/theme";
 
 const DEFAULT_COLUMNS = 120;
 const DEFAULT_ROWS = 32;
+
 export type TerminalStatus = "idle" | "starting" | "ready" | "exited" | "error";
 
 interface UseMountedTerminalOptions {
@@ -15,14 +16,6 @@ interface UseMountedTerminalOptions {
   readonly reportError: (title: string, error: unknown) => void;
   readonly sessionIdRef: MutableRefObject<string | null>;
   readonly theme: ResolvedTheme;
-}
-
-interface UseTerminalEventOptions {
-  readonly hostBridge: HostBridge;
-  readonly reportError: (title: string, error: unknown) => void;
-  readonly sessionIdRef: MutableRefObject<string | null>;
-  readonly setStatus: Dispatch<SetStateAction<TerminalStatus>>;
-  readonly terminalRef: MutableRefObject<Terminal | null>;
 }
 
 interface UseResizeObserverOptions {
@@ -50,9 +43,9 @@ interface UseTerminalOpenActionOptions {
   readonly open: boolean;
   readonly reportError: (title: string, error: unknown) => void;
   readonly sessionIdRef: MutableRefObject<string | null>;
-  readonly setErrorMessage: Dispatch<SetStateAction<string | null>>;
-  readonly setShellLabel: Dispatch<SetStateAction<string>>;
-  readonly setStatus: Dispatch<SetStateAction<TerminalStatus>>;
+  readonly onSessionCreated: (sessionId: string, shellLabel: string) => void;
+  readonly onStatusChange: (status: TerminalStatus) => void;
+  readonly onErrorMessage: (message: string | null) => void;
   readonly shell: EmbeddedTerminalShell;
   readonly syncTerminalSize: () => Promise<void>;
   readonly terminalRef: MutableRefObject<Terminal | null>;
@@ -67,14 +60,14 @@ function buildTerminalCreateInput(
   cwd: string | null,
   shell: EmbeddedTerminalShell,
   enforceUtf8: boolean,
-  size: { readonly cols: number; readonly rows: number }
+  size: { readonly cols: number; readonly rows: number },
 ) {
   return {
     cwd: cwd ?? undefined,
     cols: size.cols,
     rows: size.rows,
     shell,
-    enforceUtf8
+    enforceUtf8,
   };
 }
 
@@ -100,7 +93,7 @@ function createTerminalTheme(theme: ResolvedTheme): ITheme {
       brightBlue: "#78a8ff",
       brightMagenta: "#d8b4fe",
       brightCyan: "#67e8f9",
-      brightWhite: "#fafafa"
+      brightWhite: "#fafafa",
     };
   }
 
@@ -124,11 +117,13 @@ function createTerminalTheme(theme: ResolvedTheme): ITheme {
     brightBlue: "#79c0ff",
     brightMagenta: "#bc8cff",
     brightCyan: "#39c5cf",
-    brightWhite: "#f6f8fa"
+    brightWhite: "#f6f8fa",
   };
 }
 
-function createTerminalInstance(theme: ResolvedTheme): { readonly terminal: Terminal; readonly fitAddon: FitAddon } {
+function createTerminalInstance(
+  theme: ResolvedTheme,
+): { readonly terminal: Terminal; readonly fitAddon: FitAddon } {
   const terminal = new Terminal({
     allowTransparency: false,
     convertEol: true,
@@ -136,23 +131,25 @@ function createTerminalInstance(theme: ResolvedTheme): { readonly terminal: Term
     fontFamily: 'Consolas, "Cascadia Mono", "Courier New", monospace',
     fontSize: 13,
     scrollback: 5000,
-    theme: createTerminalTheme(theme)
+    theme: createTerminalTheme(theme),
   });
   const fitAddon = new FitAddon();
   terminal.loadAddon(fitAddon);
   return { fitAddon, terminal };
 }
 
-function readTerminalSize(terminal: Terminal): { readonly cols: number; readonly rows: number } {
+function readTerminalSize(
+  terminal: Terminal,
+): { readonly cols: number; readonly rows: number } {
   return {
     cols: Math.max(terminal.cols, DEFAULT_COLUMNS),
-    rows: Math.max(terminal.rows, DEFAULT_ROWS)
+    rows: Math.max(terminal.rows, DEFAULT_ROWS),
   };
 }
 
 function readInitialTerminalSize(
   terminalRef: MutableRefObject<Terminal | null>,
-  fitAddonRef: MutableRefObject<FitAddon | null>
+  fitAddonRef: MutableRefObject<FitAddon | null>,
 ): { readonly cols: number; readonly rows: number } {
   const terminal = terminalRef.current;
   const fitAddon = fitAddonRef.current;
@@ -197,7 +194,9 @@ export function useMountedTerminal(options: UseMountedTerminalOptions) {
       if (sessionId === null) {
         return;
       }
-      void hostBridge.terminal.write({ data, sessionId }).catch((error) => reportError("failed to write terminal input", error));
+      void hostBridge.terminal
+        .write({ data, sessionId })
+        .catch((error) => reportError("failed to write terminal input", error));
     });
     terminal.open(container);
     fitAddonRef.current = fitAddon;
@@ -209,11 +208,6 @@ export function useMountedTerminal(options: UseMountedTerminalOptions) {
       terminal.dispose();
       fitAddonRef.current = null;
       terminalRef.current = null;
-      const sessionId = sessionIdRef.current;
-      sessionIdRef.current = null;
-      if (sessionId !== null) {
-        void hostBridge.terminal.closeSession({ sessionId });
-      }
     };
   }, [hostBridge.terminal, reportError, sessionIdRef]);
 
@@ -223,58 +217,9 @@ export function useMountedTerminal(options: UseMountedTerminalOptions) {
       return;
     }
     terminal.options.theme = createTerminalTheme(theme);
-  }, [theme, terminalRef]);
+  }, [theme]);
 
   return { containerRef, fitAddonRef, mountedRef, terminalRef };
-}
-
-export function useTerminalEvents(options: UseTerminalEventOptions): boolean {
-  const { hostBridge, reportError, sessionIdRef, setStatus, terminalRef } = options;
-  const [subscriptionsReady, setSubscriptionsReady] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    setSubscriptionsReady(false);
-
-    async function subscribe(): Promise<void> {
-      const [unlistenOutput, unlistenExit] = await Promise.all([
-        hostBridge.subscribe("terminal-output", (payload) => {
-          if (active && payload.sessionId === sessionIdRef.current) {
-            terminalRef.current?.write(payload.data);
-          }
-        }),
-        hostBridge.subscribe("terminal-exit", (payload) => {
-          if (!active || payload.sessionId !== sessionIdRef.current) {
-            return;
-          }
-          sessionIdRef.current = null;
-          setStatus("exited");
-          const suffix = payload.exitCode == null ? "" : `, exit code ${payload.exitCode}`;
-          terminalRef.current?.writeln(`\r\n\r\n[terminal exited${suffix}]`);
-        })
-      ]);
-      if (!active) {
-        unlistenOutput();
-        unlistenExit();
-        return;
-      }
-      setSubscriptionsReady(true);
-      cleanupRef.current = () => {
-        unlistenOutput();
-        unlistenExit();
-      };
-    }
-
-    const cleanupRef: { current: () => void } = { current: () => undefined };
-
-    void subscribe().catch((error) => reportError("failed to subscribe terminal events", error));
-    return () => {
-      active = false;
-      cleanupRef.current();
-    };
-  }, [hostBridge, reportError, sessionIdRef, setStatus, terminalRef]);
-
-  return subscriptionsReady;
 }
 
 export function useResizeObserver(options: UseResizeObserverOptions): void {
@@ -296,19 +241,23 @@ export function useResizeObserver(options: UseResizeObserverOptions): void {
 }
 
 export function useTerminalSyncSize(options: UseTerminalSyncSizeOptions) {
-  const { fitAddonRef, hostBridge, open, reportError, sessionIdRef, terminalRef } = options;
+  const {
+    fitAddonRef,
+    hostBridge,
+    open,
+    reportError,
+    sessionIdRef,
+    terminalRef,
+  } = options;
 
   return useCallback(async () => {
     const terminal = terminalRef.current;
     const fitAddon = fitAddonRef.current;
     const sessionId = sessionIdRef.current;
-    if (!open || terminal === null || fitAddon === null) {
+    if (!open || terminal === null || fitAddon === null || sessionId === null) {
       return;
     }
     fitAddon.fit();
-    if (sessionId === null) {
-      return;
-    }
     const { cols, rows } = readTerminalSize(terminal);
     try {
       await hostBridge.terminal.resize({ cols, rows, sessionId });
@@ -329,12 +278,12 @@ export function useTerminalOpenAction(options: UseTerminalOpenActionOptions) {
     open,
     reportError,
     sessionIdRef,
-    setErrorMessage,
-    setShellLabel,
-    setStatus,
+    onSessionCreated,
+    onStatusChange,
+    onErrorMessage,
     shell,
     syncTerminalSize,
-    terminalRef
+    terminalRef,
   } = options;
 
   return useCallback(async () => {
@@ -342,27 +291,42 @@ export function useTerminalOpenAction(options: UseTerminalOpenActionOptions) {
       return;
     }
     creatingRef.current = true;
-    setStatus("starting");
-    setErrorMessage(null);
+    onStatusChange("starting");
+    onErrorMessage(null);
     try {
       const size = readInitialTerminalSize(terminalRef, fitAddonRef);
       const result = await hostBridge.terminal.createSession(
-        buildTerminalCreateInput(cwd, shell, enforceUtf8, size)
+        buildTerminalCreateInput(cwd, shell, enforceUtf8, size),
       );
       if (!mountedRef.current) {
         await hostBridge.terminal.closeSession({ sessionId: result.sessionId });
         return;
       }
       sessionIdRef.current = result.sessionId;
-      setShellLabel(result.shell);
-      setStatus("ready");
+      onSessionCreated(result.sessionId, result.shell);
       await syncTerminalSize();
     } catch (error) {
       reportError("failed to start terminal", error);
     } finally {
       creatingRef.current = false;
     }
-  }, [creatingRef, cwd, enforceUtf8, fitAddonRef, hostBridge.terminal, mountedRef, open, reportError, sessionIdRef, setErrorMessage, setShellLabel, setStatus, shell, syncTerminalSize, terminalRef]);
+  }, [
+    creatingRef,
+    cwd,
+    enforceUtf8,
+    fitAddonRef,
+    hostBridge.terminal,
+    mountedRef,
+    open,
+    reportError,
+    sessionIdRef,
+    onSessionCreated,
+    onStatusChange,
+    onErrorMessage,
+    shell,
+    syncTerminalSize,
+    terminalRef,
+  ]);
 }
 
 export function useScheduledLayout(options: UseScheduledLayoutOptions): () => void {

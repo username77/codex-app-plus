@@ -37,6 +37,7 @@ mod platform {
     const DWMWA_BORDER_COLOR: u32 = 34;
     const DWMWA_CAPTION_COLOR: u32 = 35;
     const DWMWA_TEXT_COLOR: u32 = 36;
+    const E_INVALIDARG: i32 = -2147024809;
 
     const LIGHT_CAPTION_COLOR: u32 = rgb(245, 247, 251);
     const LIGHT_BORDER_COLOR: u32 = rgb(226, 232, 240);
@@ -72,26 +73,25 @@ mod platform {
             WindowTheme::Dark => (DARK_CAPTION_COLOR, DARK_BORDER_COLOR, DARK_TEXT_COLOR),
         };
 
-        set_dwm_attribute(
+        set_required_dwm_attribute(
             raw_hwnd,
             DWMWA_USE_IMMERSIVE_DARK_MODE,
             &dark_mode_enabled,
             "沉浸式深色模式",
         )?;
-        set_dwm_attribute(raw_hwnd, DWMWA_CAPTION_COLOR, &caption_color, "标题栏颜色")?;
-        set_dwm_attribute(raw_hwnd, DWMWA_BORDER_COLOR, &border_color, "窗口边框颜色")?;
-        set_dwm_attribute(raw_hwnd, DWMWA_TEXT_COLOR, &text_color, "标题栏文本颜色")?;
+        set_optional_dwm_attribute(raw_hwnd, DWMWA_CAPTION_COLOR, &caption_color, "标题栏颜色")?;
+        set_optional_dwm_attribute(raw_hwnd, DWMWA_BORDER_COLOR, &border_color, "窗口边框颜色")?;
+        set_optional_dwm_attribute(raw_hwnd, DWMWA_TEXT_COLOR, &text_color, "标题栏文本颜色")?;
         force_title_bar_redraw(raw_hwnd);
 
         Ok(())
     }
 
-    fn set_dwm_attribute<T>(
+    fn apply_dwm_attribute<T>(
         hwnd: HWND,
         attribute: u32,
         value: &T,
-        label: &str,
-    ) -> AppResult<()> {
+    ) -> Result<(), i32> {
         let status = unsafe {
             DwmSetWindowAttribute(
                 hwnd,
@@ -103,9 +103,41 @@ mod platform {
         if status == 0 {
             return Ok(());
         }
+        Err(status)
+    }
+
+    fn set_required_dwm_attribute<T>(
+        hwnd: HWND,
+        attribute: u32,
+        value: &T,
+        label: &str,
+    ) -> AppResult<()> {
+        let status = apply_dwm_attribute(hwnd, attribute, value);
+        if status.is_ok() {
+            return Ok(());
+        }
+        let status = status.unwrap_err();
         Err(AppError::Protocol(format!(
             "设置{label}失败，DWM 错误码: {status}"
         )))
+    }
+
+    fn set_optional_dwm_attribute<T>(
+        hwnd: HWND,
+        attribute: u32,
+        value: &T,
+        label: &str,
+    ) -> AppResult<()> {
+        match apply_dwm_attribute(hwnd, attribute, value) {
+            Ok(()) => Ok(()),
+            Err(status) if status == E_INVALIDARG => {
+                eprintln!("跳过不受支持的 {label}，DWM 错误码: {status}");
+                Ok(())
+            }
+            Err(status) => Err(AppError::Protocol(format!(
+                "设置{label}失败，DWM 错误码: {status}"
+            ))),
+        }
     }
 
     fn force_title_bar_redraw(hwnd: HWND) {
