@@ -16,6 +16,18 @@ const TOKEN_USAGE_LATE: ThreadTokenUsage = {
   modelContextWindow: 258000,
 };
 
+const TOKEN_USAGE_OVER_WINDOW: ThreadTokenUsage = {
+  total: { totalTokens: 320000, inputTokens: 317000, cachedInputTokens: 0, outputTokens: 3000, reasoningOutputTokens: 0 },
+  last: { totalTokens: 64000, inputTokens: 61000, cachedInputTokens: 0, outputTokens: 3000, reasoningOutputTokens: 0 },
+  modelContextWindow: 128000,
+};
+
+const TOKEN_USAGE_INVALID: ThreadTokenUsage = {
+  total: { totalTokens: 320000, inputTokens: 317000, cachedInputTokens: 0, outputTokens: 3000, reasoningOutputTokens: 0 },
+  last: { totalTokens: 160000, inputTokens: 157000, cachedInputTokens: 0, outputTokens: 3000, reasoningOutputTokens: 0 },
+  modelContextWindow: 128000,
+};
+
 function createTurn(overrides: Partial<ConversationTurnState> = {}): ConversationTurnState {
   return {
     localId: `local-${overrides.turnId ?? "turn"}`,
@@ -109,6 +121,37 @@ describe("selectConversationContextWindowUsage", () => {
       usedPercent: 15,
       remainingPercent: 85,
       autoCompactConfigured: true,
+    });
+  });
+
+  it("falls back to the latest-turn delta when the cumulative total exceeds the context window", () => {
+    const conversation = createConversation([
+      createTurn({ turnId: "turn-1", tokenUsage: TOKEN_USAGE_EARLY }),
+      createTurn({ turnId: "turn-2", tokenUsage: TOKEN_USAGE_OVER_WINDOW }),
+    ]);
+
+    expect(selectConversationContextWindowUsage(conversation, createConfigSnapshot())).toEqual({
+      turnId: "turn-2",
+      usedTokens: 64000,
+      totalTokens: 128000,
+      usedPercent: 50,
+      remainingPercent: 50,
+      autoCompactConfigured: false,
+    });
+  });
+
+  it("clamps the display usage when both total and delta exceed the context window", () => {
+    const conversation = createConversation([
+      createTurn({ turnId: "turn-1", tokenUsage: TOKEN_USAGE_INVALID }),
+    ]);
+
+    expect(selectConversationContextWindowUsage(conversation, createConfigSnapshot())).toEqual({
+      turnId: "turn-1",
+      usedTokens: 128000,
+      totalTokens: 128000,
+      usedPercent: 100,
+      remainingPercent: 0,
+      autoCompactConfigured: false,
     });
   });
 

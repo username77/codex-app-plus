@@ -4,9 +4,22 @@ import { describe, expect, it, vi } from "vitest";
 import { createConversationFromThread } from "../../conversation/model/conversationState";
 import type { GitStatusOutput } from "../../../bridge/types";
 import type { ConfigReadResponse } from "../../../protocol/generated/v2/ConfigReadResponse";
+import type { ThreadTokenUsage } from "../../../protocol/generated/v2/ThreadTokenUsage";
 import type { WorkspaceGitController } from "../../git/model/types";
 import { ComposerFooter } from "./ComposerFooter";
 import { AppStoreProvider, useAppStore } from "../../../state/store";
+
+const DEFAULT_USAGE: ThreadTokenUsage = {
+  total: { totalTokens: 39000, inputTokens: 36000, cachedInputTokens: 0, outputTokens: 3000, reasoningOutputTokens: 0 },
+  last: { totalTokens: 3000, inputTokens: 0, cachedInputTokens: 0, outputTokens: 3000, reasoningOutputTokens: 0 },
+  modelContextWindow: 258000,
+};
+
+const OVER_WINDOW_USAGE: ThreadTokenUsage = {
+  total: { totalTokens: 320000, inputTokens: 317000, cachedInputTokens: 0, outputTokens: 3000, reasoningOutputTokens: 0 },
+  last: { totalTokens: 64000, inputTokens: 61000, cachedInputTokens: 0, outputTokens: 3000, reasoningOutputTokens: 0 },
+  modelContextWindow: 128000,
+};
 
 function Wrapper(props: PropsWithChildren): JSX.Element {
   return <AppStoreProvider>{props.children}</AppStoreProvider>;
@@ -133,7 +146,7 @@ function createConfigSnapshot(): ConfigReadResponse {
   };
 }
 
-function FooterHarness(props: { readonly withUsage: boolean }): JSX.Element {
+function FooterHarness(props: { readonly usage: ThreadTokenUsage | null }): JSX.Element {
   const { dispatch } = useAppStore();
 
   useEffect(() => {
@@ -141,19 +154,15 @@ function FooterHarness(props: { readonly withUsage: boolean }): JSX.Element {
     dispatch({ type: "conversation/upserted", conversation });
     dispatch({ type: "conversation/selected", conversationId: "thread-1" });
     dispatch({ type: "config/loaded", config: createConfigSnapshot() });
-    if (props.withUsage) {
+    if (props.usage !== null) {
       dispatch({
         type: "conversation/tokenUsageUpdated",
         conversationId: "thread-1",
         turnId: "turn-1",
-        usage: {
-          total: { totalTokens: 39000, inputTokens: 36000, cachedInputTokens: 0, outputTokens: 3000, reasoningOutputTokens: 0 },
-          last: { totalTokens: 3000, inputTokens: 0, cachedInputTokens: 0, outputTokens: 3000, reasoningOutputTokens: 0 },
-          modelContextWindow: 258000,
-        },
+        usage: props.usage,
       });
     }
-  }, [dispatch, props.withUsage]);
+  }, [dispatch, props.usage]);
 
   return (
     <ComposerFooter
@@ -169,13 +178,13 @@ function FooterHarness(props: { readonly withUsage: boolean }): JSX.Element {
 
 describe("ComposerFooter context window indicator", () => {
   it("does not render the indicator before official usage arrives", () => {
-    const { container } = render(<FooterHarness withUsage={false} />, { wrapper: Wrapper });
+    const { container } = render(<FooterHarness usage={null} />, { wrapper: Wrapper });
 
     expect(container.querySelector(".composer-context-window-trigger")).toBeNull();
   });
 
   it("shows the tooltip on hover and focus with official usage copy", async () => {
-    render(<FooterHarness withUsage={true} />, { wrapper: Wrapper });
+    render(<FooterHarness usage={DEFAULT_USAGE} />, { wrapper: Wrapper });
     const trigger = await screen.findByLabelText("查看上下文窗口信息（已检测到自动压缩配置）");
 
     fireEvent.mouseEnter(trigger);
@@ -191,8 +200,18 @@ describe("ComposerFooter context window indicator", () => {
     expect(screen.getByText("15% 已用（剩余 85%）")).toBeInTheDocument();
   });
 
+  it("keeps the tooltip within 100 percent when cumulative totals exceed the context window", async () => {
+    render(<FooterHarness usage={OVER_WINDOW_USAGE} />, { wrapper: Wrapper });
+    const trigger = await screen.findByLabelText("查看上下文窗口信息（已检测到自动压缩配置）");
+
+    fireEvent.mouseEnter(trigger);
+
+    expect(screen.getByText("50% 已用（剩余 50%）")).toBeInTheDocument();
+    expect(screen.getByText("已用 64k 标记，共 128k")).toBeInTheDocument();
+  });
+
   it("keeps branch controls usable while the indicator exists", async () => {
-    const { container } = render(<FooterHarness withUsage={true} />, { wrapper: Wrapper });
+    const { container } = render(<FooterHarness usage={DEFAULT_USAGE} />, { wrapper: Wrapper });
     const trigger = await screen.findByLabelText("查看上下文窗口信息（已检测到自动压缩配置）");
 
     fireEvent.mouseEnter(trigger);

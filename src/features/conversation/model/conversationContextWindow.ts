@@ -3,6 +3,7 @@ import type { ConfigReadResponse } from "../../../protocol/generated/v2/ConfigRe
 
 const PERCENT_SCALE = 100;
 const TOKEN_ABBREVIATION_BASE = 1000;
+const MIN_CONTEXT_TOKENS = 0;
 
 export interface ConversationContextWindowUsage {
   readonly turnId: string;
@@ -32,8 +33,27 @@ function isAutoCompactConfigured(configSnapshot: ConfigReadResponse | null): boo
   return readWholeNumber(configSnapshot?.config.model_auto_compact_token_limit) !== null;
 }
 
+function clampTokens(tokens: number, maxTokens: number): number {
+  return Math.min(Math.max(tokens, MIN_CONTEXT_TOKENS), maxTokens);
+}
+
+function isWithinContextWindow(tokens: number, totalTokens: number): boolean {
+  return tokens > MIN_CONTEXT_TOKENS && tokens <= totalTokens;
+}
+
+function selectDisplayedUsedTokens(totalTokens: number, lastTokens: number, contextWindow: number): number {
+  if (isWithinContextWindow(totalTokens, contextWindow)) {
+    return totalTokens;
+  }
+  if (isWithinContextWindow(lastTokens, contextWindow)) {
+    return lastTokens;
+  }
+  const fallbackTokens = totalTokens > MIN_CONTEXT_TOKENS ? totalTokens : lastTokens;
+  return clampTokens(fallbackTokens, contextWindow);
+}
+
 function calculatePercent(usedTokens: number, totalTokens: number): number {
-  return Math.round((usedTokens / totalTokens) * PERCENT_SCALE);
+  return Math.round((clampTokens(usedTokens, totalTokens) / totalTokens) * PERCENT_SCALE);
 }
 
 export function formatContextWindowTokenCount(tokens: number): string {
@@ -54,18 +74,22 @@ export function selectConversationContextWindowUsage(
   if (turn === null || turn.turnId === null || turn.tokenUsage === null) {
     return null;
   }
-  const usedTokens = turn.tokenUsage.total.totalTokens;
   const totalTokens = turn.tokenUsage.modelContextWindow;
   if (totalTokens === null || totalTokens <= 0) {
     return null;
   }
+  const usedTokens = selectDisplayedUsedTokens(
+    turn.tokenUsage.total.totalTokens,
+    turn.tokenUsage.last.totalTokens,
+    totalTokens,
+  );
   const usedPercent = calculatePercent(usedTokens, totalTokens);
   return {
     turnId: turn.turnId,
     usedTokens,
     totalTokens,
     usedPercent,
-    remainingPercent: PERCENT_SCALE - usedPercent,
+    remainingPercent: Math.max(MIN_CONTEXT_TOKENS, PERCENT_SCALE - usedPercent),
     autoCompactConfigured: isAutoCompactConfigured(configSnapshot),
   };
 }
