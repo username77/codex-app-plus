@@ -74,6 +74,8 @@ export interface HomeViewProps {
   readonly workspaceOpener: WorkspaceOpener;
   readonly embeddedTerminalShell: EmbeddedTerminalShell;
   readonly embeddedTerminalUtf8?: boolean;
+  readonly gitBranchPrefix: string;
+  readonly gitPushForceWithLease: boolean;
   readonly resolvedTheme?: ResolvedTheme;
   readonly threadDetailLevel: ThreadDetailLevel;
   readonly followUpQueueMode: FollowUpMode;
@@ -132,6 +134,8 @@ export function HomeView(props: HomeViewProps): JSX.Element {
     hostBridge: props.hostBridge,
     selectedRootPath: props.selectedRootPath,
     autoRefreshEnabled: canShowDiffSidebar,
+    gitBranchPrefix: props.gitBranchPrefix,
+    gitPushForceWithLease: props.gitPushForceWithLease,
   });
   const { activities: filteredActivities, retryInfo } = useMemo(
     () => extractConnectionRetryInfo(props.activities),

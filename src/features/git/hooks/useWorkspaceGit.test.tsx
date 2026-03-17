@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   GitBranchRef,
   GitDiffOutput,
@@ -74,13 +74,22 @@ function createHostBridge(
   } as unknown as HostBridge;
 }
 
-describe("useWorkspaceGit", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-  });
+function createGitOptions(
+  hostBridge: HostBridge,
+  overrides?: Partial<Parameters<typeof useWorkspaceGit>[0]>,
+): Parameters<typeof useWorkspaceGit>[0] {
+  return {
+    hostBridge,
+    selectedRootPath: "E:/code/project",
+    autoRefreshEnabled: false,
+    gitBranchPrefix: "codex/",
+    gitPushForceWithLease: false,
+    ...overrides,
+  };
+}
 
+describe("useWorkspaceGit", () => {
   afterEach(() => {
-    window.localStorage.clear();
     vi.useRealTimers();
   });
 
@@ -95,7 +104,7 @@ describe("useWorkspaceGit", () => {
     const getDiff = vi.fn().mockResolvedValue(createDiff("src/App.tsx"));
     const hostBridge = createHostBridge(getStatusSnapshot, getDiff);
 
-    const { result } = renderHook(() => useWorkspaceGit({ hostBridge, selectedRootPath: "E:/code/project", autoRefreshEnabled: false }));
+    const { result } = renderHook(() => useWorkspaceGit(createGitOptions(hostBridge)));
 
     await waitFor(() => expect(result.current.status?.unstaged).toHaveLength(1));
     await act(async () => {
@@ -125,7 +134,7 @@ describe("useWorkspaceGit", () => {
 
     const { rerender } = renderHook(
       (props: { readonly autoRefreshEnabled: boolean }) =>
-        useWorkspaceGit({ hostBridge, selectedRootPath: "E:/code/project", autoRefreshEnabled: props.autoRefreshEnabled }),
+        useWorkspaceGit(createGitOptions(hostBridge, { autoRefreshEnabled: props.autoRefreshEnabled })),
       { initialProps: { autoRefreshEnabled: false } }
     );
 
@@ -160,7 +169,7 @@ describe("useWorkspaceGit", () => {
     const getDiff = vi.fn().mockImplementation(async ({ path }: { readonly path: string }) => createDiff(path));
     const hostBridge = createHostBridge(getStatusSnapshot, getDiff);
 
-    const { result } = renderHook(() => useWorkspaceGit({ hostBridge, selectedRootPath: "E:/code/project", autoRefreshEnabled: false }));
+    const { result } = renderHook(() => useWorkspaceGit(createGitOptions(hostBridge)));
 
     await waitFor(() => expect(result.current.status?.unstaged).toHaveLength(1));
     await act(async () => {
@@ -185,7 +194,7 @@ describe("useWorkspaceGit", () => {
     ] satisfies ReadonlyArray<GitBranchRef>);
     const hostBridge = createHostBridge(getStatusSnapshot, vi.fn().mockResolvedValue(createDiff("src/App.tsx")), getBranchRefs);
 
-    const { result } = renderHook(() => useWorkspaceGit({ hostBridge, selectedRootPath: "E:/code/project", autoRefreshEnabled: false }));
+    const { result } = renderHook(() => useWorkspaceGit(createGitOptions(hostBridge)));
 
     await waitFor(() => expect(result.current.statusLoaded).toBe(true));
     expect(result.current.branchRefsLoaded).toBe(false);
@@ -202,9 +211,6 @@ describe("useWorkspaceGit", () => {
   });
 
   it("applies the configured branch prefix when creating a branch", async () => {
-    window.localStorage.setItem("codex-app-plus.app-preferences", JSON.stringify({
-      gitBranchPrefix: "feature/"
-    }));
     const checkout = vi.fn().mockResolvedValue(undefined);
     const hostBridge = createHostBridge(
       vi.fn().mockResolvedValue(createSnapshot()),
@@ -214,7 +220,9 @@ describe("useWorkspaceGit", () => {
       { checkout }
     );
 
-    const { result } = renderHook(() => useWorkspaceGit({ hostBridge, selectedRootPath: "E:/code/project", autoRefreshEnabled: false }));
+    const { result } = renderHook(() => useWorkspaceGit(
+      createGitOptions(hostBridge, { gitBranchPrefix: "feature/" }),
+    ));
 
     await waitFor(() => expect(result.current.statusLoaded).toBe(true));
     act(() => {
@@ -232,9 +240,6 @@ describe("useWorkspaceGit", () => {
   });
 
   it("passes force-with-lease to push when enabled in preferences", async () => {
-    window.localStorage.setItem("codex-app-plus.app-preferences", JSON.stringify({
-      gitPushForceWithLease: true
-    }));
     const push = vi.fn().mockResolvedValue(undefined);
     const hostBridge = createHostBridge(
       vi.fn().mockResolvedValue(createSnapshot()),
@@ -244,7 +249,9 @@ describe("useWorkspaceGit", () => {
       { push }
     );
 
-    const { result } = renderHook(() => useWorkspaceGit({ hostBridge, selectedRootPath: "E:/code/project", autoRefreshEnabled: false }));
+    const { result } = renderHook(() => useWorkspaceGit(
+      createGitOptions(hostBridge, { gitPushForceWithLease: true }),
+    ));
 
     await waitFor(() => expect(result.current.statusLoaded).toBe(true));
     await act(async () => {
@@ -269,7 +276,7 @@ describe("useWorkspaceGit", () => {
       { commit },
     );
 
-    const { result } = renderHook(() => useWorkspaceGit({ hostBridge, selectedRootPath: "E:/code/project", autoRefreshEnabled: false }));
+    const { result } = renderHook(() => useWorkspaceGit(createGitOptions(hostBridge)));
 
     await waitFor(() => expect(result.current.status?.staged).toHaveLength(1));
     act(() => {
@@ -302,7 +309,7 @@ describe("useWorkspaceGit", () => {
       { commit },
     );
 
-    const { result } = renderHook(() => useWorkspaceGit({ hostBridge, selectedRootPath: "E:/code/project", autoRefreshEnabled: false }));
+    const { result } = renderHook(() => useWorkspaceGit(createGitOptions(hostBridge)));
 
     await waitFor(() => expect(result.current.status?.staged).toHaveLength(1));
     act(() => {

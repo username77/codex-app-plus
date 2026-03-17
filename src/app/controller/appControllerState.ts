@@ -1,7 +1,15 @@
 import type { AppState } from "../../domain/types";
 import { useAppSelector } from "../../state/store";
 
-export interface AppShellState {
+export interface AppBootstrapState {
+  readonly authLoginPending: boolean;
+  readonly authStatus: AppState["authStatus"];
+  readonly bootstrapBusy: boolean;
+  readonly fatalError: AppState["fatalError"];
+  readonly initialized: boolean;
+}
+
+export interface HomeScreenState {
   readonly account: AppState["account"];
   readonly authLoginPending: boolean;
   readonly authMode: AppState["authMode"];
@@ -15,10 +23,20 @@ export interface AppShellState {
   readonly fatalError: AppState["fatalError"];
   readonly initialized: boolean;
   readonly inputText: AppState["inputText"];
-  readonly notifications: AppState["notifications"];
   readonly rateLimits: AppState["rateLimits"];
   readonly retryScheduledAt: AppState["retryScheduledAt"];
+}
+
+export interface SettingsScreenState {
+  readonly bootstrapBusy: boolean;
+  readonly configSnapshot: AppState["configSnapshot"];
   readonly windowsSandboxSetup: AppState["windowsSandboxSetup"];
+}
+
+export interface SkillsScreenState {
+  readonly authMode: AppState["authMode"];
+  readonly authStatus: AppState["authStatus"];
+  readonly notifications: AppState["notifications"];
 }
 
 interface AppControllerRuntimeState {
@@ -29,7 +47,25 @@ interface AppControllerRuntimeState {
   readonly windowsSandboxSetup: AppState["windowsSandboxSetup"];
 }
 
-function selectAppShellState(state: AppState): AppShellState {
+function selectAppBootstrapState(state: AppState): AppBootstrapState {
+  return {
+    authLoginPending: state.authLogin.pending,
+    authStatus: state.authStatus,
+    bootstrapBusy: state.bootstrapBusy,
+    fatalError: state.fatalError,
+    initialized: state.initialized,
+  };
+}
+
+function isAppBootstrapStateEqual(left: AppBootstrapState, right: AppBootstrapState): boolean {
+  return left.authLoginPending === right.authLoginPending
+    && left.authStatus === right.authStatus
+    && left.bootstrapBusy === right.bootstrapBusy
+    && left.fatalError === right.fatalError
+    && left.initialized === right.initialized;
+}
+
+function selectHomeScreenState(state: AppState): HomeScreenState {
   return {
     account: state.account,
     authLoginPending: state.authLogin.pending,
@@ -44,14 +80,12 @@ function selectAppShellState(state: AppState): AppShellState {
     fatalError: state.fatalError,
     initialized: state.initialized,
     inputText: state.inputText,
-    notifications: state.notifications,
     rateLimits: state.rateLimits,
     retryScheduledAt: state.retryScheduledAt,
-    windowsSandboxSetup: state.windowsSandboxSetup,
   };
 }
 
-function isAppShellStateEqual(left: AppShellState, right: AppShellState): boolean {
+function isHomeScreenStateEqual(left: HomeScreenState, right: HomeScreenState): boolean {
   return Object.is(left.account, right.account)
     && left.authLoginPending === right.authLoginPending
     && left.authMode === right.authMode
@@ -65,10 +99,36 @@ function isAppShellStateEqual(left: AppShellState, right: AppShellState): boolea
     && left.fatalError === right.fatalError
     && left.initialized === right.initialized
     && left.inputText === right.inputText
-    && Object.is(left.notifications, right.notifications)
     && Object.is(left.rateLimits, right.rateLimits)
-    && left.retryScheduledAt === right.retryScheduledAt
+    && left.retryScheduledAt === right.retryScheduledAt;
+}
+
+function selectSettingsScreenState(state: AppState): SettingsScreenState {
+  return {
+    bootstrapBusy: state.bootstrapBusy,
+    configSnapshot: state.configSnapshot,
+    windowsSandboxSetup: state.windowsSandboxSetup,
+  };
+}
+
+function isSettingsScreenStateEqual(left: SettingsScreenState, right: SettingsScreenState): boolean {
+  return left.bootstrapBusy === right.bootstrapBusy
+    && Object.is(left.configSnapshot, right.configSnapshot)
     && Object.is(left.windowsSandboxSetup, right.windowsSandboxSetup);
+}
+
+function selectSkillsScreenState(state: AppState): SkillsScreenState {
+  return {
+    authMode: state.authMode,
+    authStatus: state.authStatus,
+    notifications: state.notifications,
+  };
+}
+
+function isSkillsScreenStateEqual(left: SkillsScreenState, right: SkillsScreenState): boolean {
+  return left.authMode === right.authMode
+    && left.authStatus === right.authStatus
+    && Object.is(left.notifications, right.notifications);
 }
 
 function selectAppControllerRuntimeState(state: AppState): AppControllerRuntimeState {
@@ -89,8 +149,20 @@ function isAppControllerRuntimeStateEqual(left: AppControllerRuntimeState, right
     && Object.is(left.windowsSandboxSetup, right.windowsSandboxSetup);
 }
 
-export function useAppShellState(): AppShellState {
-  return useAppSelector(selectAppShellState, isAppShellStateEqual);
+export function useAppBootstrapState(): AppBootstrapState {
+  return useAppSelector(selectAppBootstrapState, isAppBootstrapStateEqual);
+}
+
+export function useHomeScreenState(): HomeScreenState {
+  return useAppSelector(selectHomeScreenState, isHomeScreenStateEqual);
+}
+
+export function useSettingsScreenState(): SettingsScreenState {
+  return useAppSelector(selectSettingsScreenState, isSettingsScreenStateEqual);
+}
+
+export function useSkillsScreenState(): SkillsScreenState {
+  return useAppSelector(selectSkillsScreenState, isSkillsScreenStateEqual);
 }
 
 export function useAppControllerRuntimeState(): AppControllerRuntimeState {

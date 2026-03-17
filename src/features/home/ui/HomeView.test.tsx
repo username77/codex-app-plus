@@ -11,6 +11,10 @@ import { HomeView } from "./HomeView";
 const { mockedUseWorkspaceGit } = vi.hoisted(() => ({ mockedUseWorkspaceGit: vi.fn() }));
 vi.mock("../../terminal/ui/TerminalPanel", () => ({ TerminalPanel: () => null }));
 vi.mock("../../git/hooks/useWorkspaceGit", () => ({ useWorkspaceGit: mockedUseWorkspaceGit }));
+
+const DEFAULT_GIT_BRANCH_PREFIX = "codex/";
+const DEFAULT_GIT_PUSH_FORCE_WITH_LEASE = false;
+
 const MODELS: ReadonlyArray<ComposerModelOption> = [
   {
     id: "model-1",
@@ -159,6 +163,8 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
         defaultEffort="xhigh"
         workspaceOpener="vscode"
         embeddedTerminalShell="powerShell"
+        gitBranchPrefix={DEFAULT_GIT_BRANCH_PREFIX}
+        gitPushForceWithLease={DEFAULT_GIT_PUSH_FORCE_WITH_LEASE}
         threadDetailLevel="commands"
         followUpQueueMode="queue"
         composerEnterBehavior="enter"
@@ -205,6 +211,21 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
   );
 }
 describe("HomeView", () => {
+  it("forwards git preferences to useWorkspaceGit", () => {
+    renderHomeView({
+      gitBranchPrefix: "feature/",
+      gitPushForceWithLease: true,
+      selectedRootPath: "E:/code/FPGA",
+    });
+
+    expect(mockedUseWorkspaceGit).toHaveBeenCalledWith(expect.objectContaining({
+      selectedRootPath: "E:/code/FPGA",
+      autoRefreshEnabled: false,
+      gitBranchPrefix: "feature/",
+      gitPushForceWithLease: true,
+    }));
+  });
+
   it("submits with plan mode after selecting the collaboration preset", async () => {
     const onSendTurn = vi.fn().mockResolvedValue(undefined);
     renderHomeView({ onSendTurn });
@@ -471,6 +492,8 @@ describe("HomeView", () => {
         defaultEffort="xhigh"
         workspaceOpener="vscode"
         embeddedTerminalShell="powerShell"
+        gitBranchPrefix={DEFAULT_GIT_BRANCH_PREFIX}
+        gitPushForceWithLease={DEFAULT_GIT_PUSH_FORCE_WITH_LEASE}
         threadDetailLevel="commands"
         followUpQueueMode="queue"
         composerEnterBehavior="enter"

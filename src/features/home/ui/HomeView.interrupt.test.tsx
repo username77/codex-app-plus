@@ -13,6 +13,9 @@ const { mockedUseWorkspaceGit } = vi.hoisted(() => ({ mockedUseWorkspaceGit: vi.
 vi.mock("../../terminal/ui/TerminalPanel", () => ({ TerminalPanel: () => null }));
 vi.mock("../../git/hooks/useWorkspaceGit", () => ({ useWorkspaceGit: mockedUseWorkspaceGit }));
 
+const DEFAULT_GIT_BRANCH_PREFIX = "codex/";
+const DEFAULT_GIT_PUSH_FORCE_WITH_LEASE = false;
+
 const MODELS: ReadonlyArray<ComposerModelOption> = [{
   id: "model-1",
   value: "gpt-5.2",
@@ -115,6 +118,8 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       defaultEffort="xhigh"
       workspaceOpener="vscode"
       embeddedTerminalShell="powerShell"
+      gitBranchPrefix={DEFAULT_GIT_BRANCH_PREFIX}
+      gitPushForceWithLease={DEFAULT_GIT_PUSH_FORCE_WITH_LEASE}
       threadDetailLevel="commands"
       followUpQueueMode="queue"
       composerEnterBehavior="enter"
