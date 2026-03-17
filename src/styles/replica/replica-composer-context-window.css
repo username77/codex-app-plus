@@ -29,14 +29,14 @@
 .composer-context-window-trigger:hover,
 .composer-context-window-trigger:focus-visible,
 .composer-context-window-trigger-open {
-  background: #ececec;
+  background: var(--surface-hover);
   outline: none;
 }
 
 .composer-context-window-trigger-dot {
   width: 12px;
   height: 12px;
-  border: 1.5px solid #c8c8c8;
+  border: 1.5px solid var(--border-strong);
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
@@ -48,7 +48,7 @@
   width: 4px;
   height: 4px;
   border-radius: 999px;
-  background: #c8c8c8;
+  background: var(--text-muted);
 }
 
 .composer-context-window-tooltip {
@@ -56,20 +56,20 @@
   right: 0;
   bottom: calc(100% + 10px);
   min-width: 210px;
-  border: 1px solid #dedede;
+  border: 1px solid var(--border-light);
   border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 6px 10px 22px rgba(0, 0, 0, 0.12);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-lg);
   padding: 10px 14px;
   z-index: 42;
   text-align: center;
-  color: #3f3f46;
+  color: var(--text-soft);
   white-space: nowrap;
 }
 
 .composer-context-window-tooltip-title {
   font-size: 13px;
-  color: #9a9a9a;
+  color: var(--text-muted);
   margin-bottom: 4px;
 }
 

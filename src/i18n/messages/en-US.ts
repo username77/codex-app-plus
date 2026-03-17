@@ -77,6 +77,16 @@ export const enUS = {
         description: "Inject UTF-8 locale environment variables into built-in terminal sessions on Windows.",
         note: "Keeps the existing shell init and also sets LANG, LC_ALL, and LC_CTYPE.",
       },
+      theme: {
+        label: "Theme",
+        description: "Controls the light and dark appearance of the app.",
+        note: "Defaults to the system color scheme, but you can lock the app to light or dark.",
+        options: {
+          system: "Follow system",
+          light: "Light",
+          dark: "Dark",
+        },
+      },
       language: {
         label: "Interface language",
         description: "Display language for the app UI.",

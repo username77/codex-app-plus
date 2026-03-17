@@ -26,6 +26,7 @@ function createHostBridge(): HostBridge {
       resolve: vi.fn().mockResolvedValue(undefined)
     },
     app: {
+      setWindowTheme: vi.fn().mockResolvedValue(undefined),
       openExternal: vi.fn().mockResolvedValue(undefined),
       openWorkspace: vi.fn().mockResolvedValue(undefined),
       openCodexConfigToml: vi.fn().mockResolvedValue(undefined),

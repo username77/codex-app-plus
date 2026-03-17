@@ -24,6 +24,7 @@ use crate::models::{
 };
 use crate::process_manager::ProcessManager;
 use crate::terminal_manager::TerminalManager;
+use crate::window_theme::{apply_window_theme, WindowTheme};
 
 fn to_result<T>(result: AppResult<T>) -> Result<T, String> {
     result.map_err(|error| error.to_string())
@@ -93,6 +94,12 @@ pub fn app_open_external(url: String) -> Result<(), String> {
         return Err("url 不能为空".to_string());
     }
     to_result(open::that_detached(url).map_err(|e| AppError::Io(e.to_string())))
+}
+
+#[tauri::command]
+pub fn app_set_window_theme(window: tauri::WebviewWindow, theme: String) -> Result<(), String> {
+    let parsed_theme = to_result(WindowTheme::parse(theme.trim()))?;
+    to_result(apply_window_theme(&window, parsed_theme))
 }
 
 #[tauri::command]

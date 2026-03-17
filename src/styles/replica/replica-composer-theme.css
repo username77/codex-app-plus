@@ -1,0 +1,185 @@
+.plan-request-composer,
+.composer-queue-panel,
+.composer-card,
+.composer-select-menu,
+.composer-select-submenu,
+.composer-footer-popover,
+.composer-attachment-popover {
+  border-color: var(--border-light);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-lg);
+}
+
+.plan-request-header,
+.plan-request-actions {
+  border-color: var(--border-light);
+}
+
+.plan-request-title,
+.plan-request-option,
+.plan-request-notes,
+.composer-select-menu-item,
+.composer-select-folder-trigger,
+.composer-select-check,
+.composer-attachment-item,
+.composer-attachment-row,
+.composer-attachment-mode-copy,
+.composer-footer-popover-item,
+.popover-check {
+  color: var(--text-main);
+}
+
+.plan-request-subtitle,
+.plan-request-question-header,
+.plan-request-option-index,
+.plan-request-option-copy small,
+.composer-queue-item p,
+.composer-queue-clear,
+.composer-queue-remove,
+.composer-footer,
+.composer-footer-item,
+.composer-mini-btn,
+.composer-chip,
+.chip-caret,
+.composer-select-caret,
+.composer-select-menu-title,
+.composer-select-folder-icon,
+.composer-select-folder-count,
+.composer-select-folder-caret,
+.composer-select-brain,
+.composer-footer-popover-title,
+.popover-item-icon,
+.popover-item-right,
+.composer-attachment-icon,
+.composer-attachment-chevron,
+.composer-attachment-group-title {
+  color: var(--text-muted);
+}
+
+.plan-request-option,
+.plan-request-escape,
+.composer-queue-item,
+.attachment-clip,
+.attachment-clip-file,
+.composer-mini-btn,
+.composer-select-trigger,
+.composer-attachment-choice,
+.composer-attachment-mode-icon-wrap,
+.composer-attachment-toggle {
+  border-color: var(--border-light);
+  background: var(--surface-panel-muted);
+  color: var(--text-soft);
+}
+
+.plan-request-option[data-selected="true"],
+.composer-mini-btn-active,
+.composer-select-trigger-active,
+.composer-select-menu-item-selected,
+.composer-select-folder-trigger-active,
+.composer-footer-item-active {
+  border-color: var(--border-strong);
+  background: var(--surface-active);
+  color: var(--text-main);
+}
+
+.plan-request-option:hover,
+.plan-request-escape:hover,
+.composer-mini-btn:hover,
+.composer-select-trigger:hover,
+.composer-select-menu-item:hover,
+.composer-select-folder-trigger:hover,
+.composer-footer-item:hover,
+.composer-footer-popover-item:hover,
+.composer-attachment-item:hover,
+.composer-attachment-row:hover,
+.attachment-clip-remove:hover {
+  background: var(--surface-hover);
+}
+
+.plan-request-notes {
+  background: var(--surface-panel);
+}
+
+.plan-request-submit {
+  border-color: var(--accent-color);
+  background: var(--accent-color);
+  color: var(--text-inverse);
+}
+
+.composer-card {
+  background: var(--surface-panel);
+}
+
+.composer-card:focus-within {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.composer-reload-overlay {
+  background: rgba(15, 23, 42, 0.24);
+  color: var(--text-main);
+}
+
+.composer-reload-spinner {
+  border-color: rgba(148, 163, 184, 0.28);
+  border-top-color: var(--text-main);
+}
+
+.composer-input::placeholder {
+  color: var(--text-subtle);
+}
+
+.attachment-clip {
+  color: var(--text-soft);
+}
+
+.attachment-clip-image {
+  background: var(--info-bg);
+  border-color: rgba(96, 165, 250, 0.32);
+  color: var(--info-fg);
+}
+
+.composer-select-menu-separator,
+.composer-attachment-separator {
+  background: var(--border-light);
+}
+
+.composer-select-folder-count {
+  background: var(--surface-panel-soft);
+}
+
+.composer-attachment-choice-selected {
+  border-color: var(--accent-color);
+  background: var(--accent-color);
+  color: var(--text-inverse);
+}
+
+.composer-attachment-toggle {
+  border-color: var(--border-strong);
+  background: var(--surface-panel-soft);
+}
+
+.composer-attachment-toggle-knob {
+  background: var(--surface-panel);
+}
+
+.composer-attachment-toggle-on,
+.composer-attachment-mode-toggle-on {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.send-btn {
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+}
+
+.send-btn:hover {
+  background: var(--accent-color);
+}
+
+.send-btn:disabled,
+.send-btn:disabled:hover {
+  background: var(--surface-panel-muted);
+  color: var(--text-subtle);
+}

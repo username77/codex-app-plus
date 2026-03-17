@@ -4,8 +4,8 @@
   height: 280px;
   display: flex;
   flex-direction: column;
-  border-top: 1px solid #ebebeb;
-  background: #ffffff;
+  border-top: 1px solid var(--border-light);
+  background: var(--terminal-toolbar-bg);
 }
 
 .replica-terminal-hidden {
@@ -20,7 +20,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .terminal-title {
@@ -32,12 +32,12 @@
 
 .terminal-title-main {
   font-weight: 600;
-  color: #2c2c2c;
+  color: var(--text-main);
   font-size: 12px;
 }
 
 .terminal-title-sub {
-  color: #8d8d8d;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -48,24 +48,24 @@
   padding: 0 8px;
   border-radius: 999px;
   font-size: 11px;
-  color: #4f4f4f;
-  background: #f2f2f2;
+  color: var(--text-soft);
+  background: var(--surface-panel-soft);
 }
 
 .terminal-status-ready {
-  color: #166534;
-  background: #dcfce7;
+  color: var(--success-fg);
+  background: var(--success-bg);
 }
 
 .terminal-status-starting {
-  color: #9a6700;
-  background: #fef3c7;
+  color: var(--warning-fg);
+  background: var(--warning-bg);
 }
 
 .terminal-status-exited,
 .terminal-status-error {
-  color: #b42318;
-  background: #fee4e2;
+  color: var(--error-fg);
+  background: var(--error-bg);
 }
 
 .terminal-actions {
@@ -76,17 +76,17 @@
 
 .terminal-action-btn {
   height: 26px;
-  border: 1px solid #e2e2e2;
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   padding: 0 10px;
-  background: #ffffff;
-  color: #3f3f3f;
+  background: var(--surface-panel);
+  color: var(--text-soft);
   font-size: 12px;
   cursor: pointer;
 }
 
 .terminal-action-btn:hover {
-  background: #f7f7f7;
+  background: var(--surface-hover);
 }
 
 .terminal-close-btn {
@@ -100,11 +100,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #8f8f8f;
+  color: var(--text-muted);
 }
 
 .terminal-close-btn:hover {
-  background: #f2f2f2;
+  background: var(--surface-hover);
 }
 
 .terminal-close-icon {
@@ -115,12 +115,12 @@
 .terminal-body {
   flex: 1;
   min-height: 0;
-  background: #ffffff;
+  background: var(--terminal-bg);
 }
 
 .terminal-error {
   padding: 8px 12px 0;
-  color: #b42318;
+  color: var(--error-fg);
   font-size: 12px;
 }
 

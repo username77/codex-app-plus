@@ -1096,3 +1096,213 @@
 .archived-thread-actions {
   flex: 0 0 auto;
 }
+
+html[data-theme="dark"] .settings-head-action,
+html[data-theme="dark"] .settings-text-input,
+html[data-theme="dark"] .settings-select-trigger,
+html[data-theme="dark"] .settings-mini-btn,
+html[data-theme="dark"] .settings-action-btn,
+html[data-theme="dark"] .settings-plus-btn,
+html[data-theme="dark"] .settings-dialog-close,
+html[data-theme="dark"] .settings-licenses-search,
+html[data-theme="dark"] .settings-licenses-summary,
+html[data-theme="dark"] .settings-license-toggle,
+html[data-theme="dark"] .mcp-chip,
+html[data-theme="dark"] .mcp-runtime-badge,
+html[data-theme="dark"] .mcp-readonly-label,
+html[data-theme="dark"] .mcp-form-input,
+html[data-theme="dark"] .mcp-form-select,
+html[data-theme="dark"] .mcp-form-textarea,
+html[data-theme="dark"] .codex-provider-row,
+html[data-theme="dark"] .settings-dialog-textarea {
+  border-color: var(--border-light);
+  background: var(--surface-panel-muted);
+  color: var(--text-main);
+}
+
+html[data-theme="dark"] .settings-head-action:hover,
+html[data-theme="dark"] .settings-text-input:hover,
+html[data-theme="dark"] .settings-select-trigger:hover,
+html[data-theme="dark"] .settings-select-trigger[aria-expanded="true"],
+html[data-theme="dark"] .settings-mini-btn:hover,
+html[data-theme="dark"] .settings-action-btn:hover,
+html[data-theme="dark"] .settings-plus-btn:hover,
+html[data-theme="dark"] .settings-dialog-close:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  color: var(--text-main);
+}
+
+html[data-theme="dark"] .settings-head-action:focus-visible,
+html[data-theme="dark"] .settings-select-trigger:focus-visible,
+html[data-theme="dark"] .settings-action-btn:focus-visible,
+html[data-theme="dark"] .windows-sandbox-action:focus-visible {
+  outline-color: var(--accent-color);
+}
+
+html[data-theme="dark"] .settings-section-head strong,
+html[data-theme="dark"] .windows-sandbox-head-main strong,
+html[data-theme="dark"] .windows-sandbox-meta-block strong,
+html[data-theme="dark"] .settings-reco-text strong,
+html[data-theme="dark"] .settings-config-card .settings-row-heading,
+html[data-theme="dark"] .settings-dialog-header strong,
+html[data-theme="dark"] .settings-license-summary-title,
+html[data-theme="dark"] .settings-license-title,
+html[data-theme="dark"] .settings-env-main strong,
+html[data-theme="dark"] .mcp-server-title-row strong,
+html[data-theme="dark"] .mcp-form-field,
+html[data-theme="dark"] .mcp-form-label,
+html[data-theme="dark"] .mcp-form-toggle-row,
+html[data-theme="dark"] .codex-provider-title-row strong,
+html[data-theme="dark"] .archived-thread-title {
+  color: var(--text-main);
+}
+
+html[data-theme="dark"] .settings-note,
+html[data-theme="dark"] .settings-note code,
+html[data-theme="dark"] .windows-sandbox-summary-copy,
+html[data-theme="dark"] .windows-sandbox-meta-label,
+html[data-theme="dark"] .windows-sandbox-meta-block p,
+html[data-theme="dark"] .windows-sandbox-action-copy,
+html[data-theme="dark"] .settings-inline-action,
+html[data-theme="dark"] .settings-reco-text strong span,
+html[data-theme="dark"] .settings-reco-text p,
+html[data-theme="dark"] .settings-config-card .settings-row-meta,
+html[data-theme="dark"] .settings-inline-doc,
+html[data-theme="dark"] .settings-licenses-search-icon,
+html[data-theme="dark"] .settings-licenses-hint,
+html[data-theme="dark"] .settings-license-count,
+html[data-theme="dark"] .settings-license-desc,
+html[data-theme="dark"] .settings-license-sub,
+html[data-theme="dark"] .settings-empty,
+html[data-theme="dark"] .settings-placeholder,
+html[data-theme="dark"] .settings-folder,
+html[data-theme="dark"] .settings-env-main span,
+html[data-theme="dark"] .codex-provider-meta-row,
+html[data-theme="dark"] .archived-thread-meta {
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .settings-row-note {
+  color: var(--warning-fg);
+}
+
+html[data-theme="dark"] .settings-status-note-success {
+  color: var(--success-fg);
+}
+
+html[data-theme="dark"] .settings-status-note-error,
+html[data-theme="dark"] .archived-thread-error,
+html[data-theme="dark"] .mcp-error-note,
+html[data-theme="dark"] .mcp-danger-btn,
+html[data-theme="dark"] .mcp-form-error,
+html[data-theme="dark"] .mcp-form-submit-error {
+  color: var(--error-fg);
+}
+
+html[data-theme="dark"] .windows-sandbox-meta-block,
+html[data-theme="dark"] .settings-select-menu,
+html[data-theme="dark"] .settings-dialog,
+html[data-theme="dark"] .settings-license-group {
+  border-color: var(--border-light);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-lg);
+}
+
+html[data-theme="dark"] .windows-sandbox-action {
+  border-color: var(--border-light);
+  background: var(--surface-panel-muted);
+  color: var(--text-main);
+}
+
+html[data-theme="dark"] .windows-sandbox-action:hover {
+  border-color: var(--accent-color);
+  background: var(--surface-hover);
+  box-shadow: 0 8px 20px var(--accent-soft);
+}
+
+html[data-theme="dark"] .windows-sandbox-action-primary {
+  border-color: rgba(96, 165, 250, 0.42);
+  background: linear-gradient(180deg, rgba(96, 165, 250, 0.2) 0%, rgba(59, 130, 246, 0.12) 100%);
+}
+
+html[data-theme="dark"] .settings-toggle {
+  background: var(--surface-panel-soft);
+  border-color: var(--border-strong);
+}
+
+html[data-theme="dark"] .settings-toggle-knob {
+  background: var(--surface-canvas);
+}
+
+html[data-theme="dark"] .settings-toggle-on {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+html[data-theme="dark"] .settings-reco-row,
+html[data-theme="dark"] .settings-env-row,
+html[data-theme="dark"] .mcp-server-row,
+html[data-theme="dark"] .archived-thread-row {
+  border-top-color: var(--border-light);
+}
+
+html[data-theme="dark"] .settings-reco-avatar {
+  border-color: var(--border-light);
+  background: var(--surface-panel-muted);
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .settings-action-btn-primary {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: var(--text-inverse);
+}
+
+html[data-theme="dark"] .settings-action-btn-primary:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+html[data-theme="dark"] .settings-dialog-backdrop {
+  background: var(--surface-overlay);
+}
+
+html[data-theme="dark"] .settings-dialog-header,
+html[data-theme="dark"] .settings-license-summary {
+  border-bottom-color: var(--border-light);
+  background: var(--surface-panel-muted);
+}
+
+html[data-theme="dark"] .settings-licenses-summary {
+  background: var(--surface-panel-soft);
+}
+
+html[data-theme="dark"] .settings-licenses-search-input,
+html[data-theme="dark"] .settings-dialog-textarea,
+html[data-theme="dark"] .mcp-form-input,
+html[data-theme="dark"] .mcp-form-select,
+html[data-theme="dark"] .mcp-form-textarea {
+  color: var(--text-main);
+}
+
+html[data-theme="dark"] .settings-licenses-search-input::placeholder {
+  color: var(--text-subtle);
+}
+
+html[data-theme="dark"] .settings-license-item,
+html[data-theme="dark"] .settings-licenses-empty {
+  border-color: var(--border-light);
+  background: var(--surface-panel-muted);
+}
+
+html[data-theme="dark"] .settings-license-version,
+html[data-theme="dark"] .codex-provider-current {
+  background: var(--info-bg);
+  border-color: rgba(96, 165, 250, 0.32);
+  color: var(--info-fg);
+}
+
+html[data-theme="dark"] .settings-license-link {
+  color: var(--accent-strong);
+}

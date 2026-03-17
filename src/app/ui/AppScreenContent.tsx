@@ -7,6 +7,7 @@ import { useAppPreferences } from "../../features/settings/hooks/useAppPreferenc
 import { useWorkspaceRoots } from "../../features/workspace/hooks/useWorkspaceRoots";
 import type { HostBridge } from "../../bridge/types";
 import { AuthChoiceView } from "../../features/auth/ui/AuthChoiceView";
+import type { ResolvedTheme } from "../../domain/theme";
 import { selectMultiAgentFeatureState } from "../../features/settings/config/experimentalFeatures";
 import { useAppShellState } from "../controller/appControllerState";
 import { useAppController } from "../controller/useAppController";
@@ -44,6 +45,7 @@ interface AppScreenContentProps {
   readonly composerPicker: ComposerPickerView;
   readonly controller: ControllerView;
   readonly multiAgentState: MultiAgentStateView;
+  readonly resolvedTheme: ResolvedTheme;
   readonly selectedRootName: string;
   readonly selectedRootPath: string | null;
   readonly settingsMenuOpen: boolean;
@@ -169,6 +171,7 @@ function createHomeProps(props: AppScreenContentProps): HomeViewProps {
     embeddedTerminalUtf8: props.preferences.embeddedTerminalUtf8,
     threadDetailLevel: props.preferences.threadDetailLevel,
     followUpQueueMode: props.preferences.followUpQueueMode,
+    resolvedTheme: props.resolvedTheme,
     composerEnterBehavior: props.preferences.composerEnterBehavior,
     composerPermissionLevel: props.preferences.composerPermissionLevel,
     connectionStatus: props.appState.connectionStatus,

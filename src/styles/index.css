@@ -7,6 +7,7 @@
 @import "./replica/replica-empty-state.css";
 @import "./replica/replica-toolbar.css";
 @import "./replica/replica-composer.css";
+@import "./replica/replica-composer-theme.css";
 @import "./replica/replica-prompt-cards.css";
 @import "./replica/replica-composer-command-palette.css";
 @import "./replica/replica-composer-context-window.css";
@@ -20,23 +21,100 @@
 :root {
   color-scheme: light;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Microsoft YaHei UI", sans-serif;
-  --bg-main: #f9f9fb;
-  --text-main: #1e293b;
+  --bg-main: #f5f7fb;
+  --surface-canvas: #ffffff;
+  --surface-panel: #ffffff;
+  --surface-panel-muted: #f8fafc;
+  --surface-panel-soft: #f3f6fb;
+  --surface-hover: #eef2f7;
+  --surface-active: #e6edf7;
+  --surface-overlay: rgba(15, 23, 42, 0.36);
+  --surface-overlay-strong: rgba(15, 23, 42, 0.62);
+  --surface-inverse: #0f172a;
+  --text-main: #0f172a;
   --text-muted: #64748b;
+  --text-soft: #475569;
+  --text-subtle: #94a3b8;
+  --text-inverse: #f8fafc;
   --border-light: #e2e8f0;
+  --border-strong: #cbd5e1;
   --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
   --radius-md: 12px;
   --radius-lg: 16px;
-  --accent-color: #0066cc;
-  --accent-soft: rgba(0, 102, 204, 0.08);
+  --accent-color: #2563eb;
+  --accent-strong: #1d4ed8;
+  --accent-soft: rgba(37, 99, 235, 0.12);
+  --focus-ring: rgba(96, 165, 250, 0.24);
+  --success-bg: #edf9f1;
+  --success-fg: #217a46;
+  --error-bg: #fdf0f0;
+  --error-fg: #b42318;
+  --warning-bg: #fff7e6;
+  --warning-fg: #9a6b0f;
+  --info-bg: #eef5ff;
+  --info-fg: #1d4ed8;
+  --code-bg: #f6f8fa;
+  --code-inline-bg: #f1f3f7;
+  --scrollbar-thumb: rgba(15, 23, 42, 0.16);
+  --scrollbar-thumb-hover: rgba(15, 23, 42, 0.28);
+  --scrollbar-track: #eef2f7;
+  --terminal-bg: #ffffff;
+  --terminal-toolbar-bg: #ffffff;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-main: #171717;
+  --surface-canvas: #181818;
+  --surface-panel: #1f1f1f;
+  --surface-panel-muted: #252525;
+  --surface-panel-soft: #2a2a2a;
+  --surface-hover: #303030;
+  --surface-active: #3a3a3a;
+  --surface-overlay: rgba(0, 0, 0, 0.56);
+  --surface-overlay-strong: rgba(0, 0, 0, 0.74);
+  --surface-inverse: #f1f1f1;
+  --text-main: #f3f3f3;
+  --text-muted: #a3a3a3;
+  --text-soft: #d0d0d0;
+  --text-subtle: #7c7c7c;
+  --text-inverse: #171717;
+  --border-light: #2f2f2f;
+  --border-strong: #424242;
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.32), 0 1px 2px -1px rgba(0, 0, 0, 0.32);
+  --shadow-md: 0 8px 20px -10px rgba(0, 0, 0, 0.44), 0 4px 12px -8px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 24px 48px -24px rgba(0, 0, 0, 0.78);
+  --accent-color: #4f8cff;
+  --accent-strong: #78a8ff;
+  --accent-soft: rgba(79, 140, 255, 0.18);
+  --focus-ring: rgba(96, 165, 250, 0.32);
+  --success-bg: rgba(34, 197, 94, 0.16);
+  --success-fg: #86efac;
+  --error-bg: rgba(248, 113, 113, 0.16);
+  --error-fg: #fca5a5;
+  --warning-bg: rgba(250, 204, 21, 0.16);
+  --warning-fg: #fde68a;
+  --info-bg: rgba(79, 140, 255, 0.16);
+  --info-fg: #d6e5ff;
+  --code-bg: #141414;
+  --code-inline-bg: #242424;
+  --scrollbar-thumb: rgba(163, 163, 163, 0.28);
+  --scrollbar-thumb-hover: rgba(163, 163, 163, 0.42);
+  --scrollbar-track: #1f1f1f;
+  --terminal-bg: #181818;
+  --terminal-toolbar-bg: #1f1f1f;
+}
+
+html {
+  background: var(--bg-main);
 }
 
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 *::-webkit-scrollbar {
@@ -45,18 +123,18 @@
 }
 
 *::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--scrollbar-track);
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: var(--scrollbar-thumb);
   border-radius: 20px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: var(--scrollbar-thumb-hover);
 }
 
 body {
@@ -65,11 +143,12 @@ body {
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #root {
   height: 100vh;
+  background: var(--bg-main);
 }
 
 /* Smooth transitions for interactive elements */
@@ -100,16 +179,16 @@ textarea,
 }
 
 .settings-loading-card {
-  border: 1px solid #d8d8d8;
+  border: 1px solid var(--border-light);
   border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-lg);
 }
 
 .settings-loading-empty {
   padding: 40px 24px;
   text-align: center;
-  color: #5f5f5f;
+  color: var(--text-muted);
 }
 
 button,

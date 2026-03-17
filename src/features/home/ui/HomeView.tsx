@@ -27,6 +27,7 @@ import type {
   FollowUpMode,
   QueuedFollowUp,
 } from "../../../domain/timeline";
+import type { ResolvedTheme } from "../../../domain/theme";
 import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
 import { useWorkspaceGit } from "../../git/hooks/useWorkspaceGit";
 import type { WorkspaceGitController } from "../../git/model/types";
@@ -73,6 +74,7 @@ export interface HomeViewProps {
   readonly workspaceOpener: WorkspaceOpener;
   readonly embeddedTerminalShell: EmbeddedTerminalShell;
   readonly embeddedTerminalUtf8?: boolean;
+  readonly resolvedTheme?: ResolvedTheme;
   readonly threadDetailLevel: ThreadDetailLevel;
   readonly followUpQueueMode: FollowUpMode;
   readonly composerEnterBehavior: ComposerEnterBehavior;
@@ -177,6 +179,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
           cwdLabel={props.selectedRootName}
           enforceUtf8={props.embeddedTerminalUtf8}
           shell={props.embeddedTerminalShell}
+          theme={props.resolvedTheme ?? "light"}
           onClose={() => setTerminalOpen(false)}
         />
       ) : null}

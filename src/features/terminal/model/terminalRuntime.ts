@@ -1,9 +1,10 @@
 import { FitAddon } from "@xterm/addon-fit";
-import { Terminal } from "@xterm/xterm";
+import { Terminal, type ITheme } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { EmbeddedTerminalShell, HostBridge } from "../../../bridge/types";
+import type { ResolvedTheme } from "../../../domain/theme";
 
 const DEFAULT_COLUMNS = 120;
 const DEFAULT_ROWS = 32;
@@ -13,6 +14,7 @@ interface UseMountedTerminalOptions {
   readonly hostBridge: HostBridge;
   readonly reportError: (title: string, error: unknown) => void;
   readonly sessionIdRef: MutableRefObject<string | null>;
+  readonly theme: ResolvedTheme;
 }
 
 interface UseTerminalEventOptions {
@@ -76,7 +78,57 @@ function buildTerminalCreateInput(
   };
 }
 
-function createTerminalInstance(): { readonly terminal: Terminal; readonly fitAddon: FitAddon } {
+function createTerminalTheme(theme: ResolvedTheme): ITheme {
+  if (theme === "dark") {
+    return {
+      background: "#181818",
+      foreground: "#f3f3f3",
+      cursor: "#f1f1f1",
+      selectionBackground: "#3a3a3a",
+      black: "#181818",
+      red: "#f87171",
+      green: "#4ade80",
+      yellow: "#facc15",
+      blue: "#4f8cff",
+      magenta: "#c084fc",
+      cyan: "#22d3ee",
+      white: "#d4d4d4",
+      brightBlack: "#525252",
+      brightRed: "#fca5a5",
+      brightGreen: "#86efac",
+      brightYellow: "#fde68a",
+      brightBlue: "#78a8ff",
+      brightMagenta: "#d8b4fe",
+      brightCyan: "#67e8f9",
+      brightWhite: "#fafafa"
+    };
+  }
+
+  return {
+    background: "#ffffff",
+    foreground: "#24292f",
+    cursor: "#1f1f1f",
+    selectionBackground: "#dbeafe",
+    black: "#24292f",
+    red: "#cf222e",
+    green: "#116329",
+    yellow: "#4d2d00",
+    blue: "#0550ae",
+    magenta: "#8250df",
+    cyan: "#0f766e",
+    white: "#ffffff",
+    brightBlack: "#57606a",
+    brightRed: "#ff8182",
+    brightGreen: "#3fb950",
+    brightYellow: "#d29922",
+    brightBlue: "#79c0ff",
+    brightMagenta: "#bc8cff",
+    brightCyan: "#39c5cf",
+    brightWhite: "#f6f8fa"
+  };
+}
+
+function createTerminalInstance(theme: ResolvedTheme): { readonly terminal: Terminal; readonly fitAddon: FitAddon } {
   const terminal = new Terminal({
     allowTransparency: false,
     convertEol: true,
@@ -84,20 +136,7 @@ function createTerminalInstance(): { readonly terminal: Terminal; readonly fitAd
     fontFamily: 'Consolas, "Cascadia Mono", "Courier New", monospace',
     fontSize: 13,
     scrollback: 5000,
-    theme: {
-      background: "#ffffff",
-      brightWhite: "#ffffff",
-      cursor: "#1f1f1f",
-      foreground: "#24292f",
-      black: "#24292f",
-      white: "#ffffff",
-      blue: "#0550ae",
-      green: "#116329",
-      red: "#cf222e",
-      yellow: "#4d2d00",
-      magenta: "#8250df",
-      cyan: "#8250df"
-    }
+    theme: createTerminalTheme(theme)
   });
   const fitAddon = new FitAddon();
   terminal.loadAddon(fitAddon);
@@ -140,7 +179,7 @@ export function buildSubTitle(shellLabel: string, cwdLabel: string): string {
 }
 
 export function useMountedTerminal(options: UseMountedTerminalOptions) {
-  const { hostBridge, reportError, sessionIdRef } = options;
+  const { hostBridge, reportError, sessionIdRef, theme } = options;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -152,7 +191,7 @@ export function useMountedTerminal(options: UseMountedTerminalOptions) {
     if (container === null) {
       return undefined;
     }
-    const { fitAddon, terminal } = createTerminalInstance();
+    const { fitAddon, terminal } = createTerminalInstance(theme);
     const disposable = terminal.onData((data) => {
       const sessionId = sessionIdRef.current;
       if (sessionId === null) {
@@ -177,6 +216,14 @@ export function useMountedTerminal(options: UseMountedTerminalOptions) {
       }
     };
   }, [hostBridge.terminal, reportError, sessionIdRef]);
+
+  useEffect(() => {
+    const terminal = terminalRef.current;
+    if (terminal === null) {
+      return;
+    }
+    terminal.options.theme = createTerminalTheme(theme);
+  }, [theme, terminalRef]);
 
   return { containerRef, fitAddonRef, mountedRef, terminalRef };
 }

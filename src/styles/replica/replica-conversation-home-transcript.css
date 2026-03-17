@@ -3,12 +3,12 @@
   max-width: 100%;
   min-width: 0;
   align-self: flex-start;
-  color: #111827;
+  color: var(--text-main);
 }
 
 .home-assistant-transcript-line {
   margin: 0;
-  color: #4b5563;
+  color: var(--text-soft);
   font-size: 13px;
   line-height: 1.6;
   white-space: pre-wrap;
@@ -16,11 +16,11 @@
 
 .home-assistant-transcript-line-trace,
 .home-assistant-transcript-details-trace .home-assistant-transcript-summary {
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .home-assistant-transcript-message .home-chat-markdown {
-  color: #111827;
+  color: var(--text-main);
 }
 
 .home-assistant-transcript-message .home-chat-markdown > * {
@@ -42,7 +42,7 @@
 .home-assistant-transcript-reasoning-summary-markdown,
 .home-assistant-transcript-reasoning-title-markdown {
   display: inline;
-  color: #4b5563;
+  color: var(--text-soft);
 }
 
 .home-assistant-transcript-reasoning-summary-markdown > *,
@@ -53,7 +53,7 @@
 
 .home-assistant-transcript-reasoning-summary-markdown strong,
 .home-assistant-transcript-reasoning-title-markdown strong {
-  color: #111827;
+  color: var(--text-main);
   font-weight: 600;
 }
 
@@ -62,7 +62,7 @@
 }
 
 .home-assistant-transcript-reasoning-body-markdown {
-  color: #4b5563;
+  color: var(--text-soft);
   font-size: 13px;
   line-height: 1.6;
   white-space: pre-wrap;
@@ -109,7 +109,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: #1d4ed8;
+  color: var(--accent-color);
   font-weight: 600;
 }
 
@@ -127,9 +127,10 @@
   --assistant-transcript-detail-height: 170px;
   margin: 8px 0 0 16px;
   padding: 12px;
-  border: 1px solid #e4e8f0;
+  border: 1px solid var(--border-light);
   border-radius: 14px;
-  background: linear-gradient(180deg, #f5f5f5 0%, #eeeeee 100%);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-md);
 }
 
 .home-assistant-transcript-detail-header,
@@ -148,7 +149,7 @@
 
 .home-assistant-transcript-detail-label,
 .home-assistant-transcript-detail-footer-status {
-  color: #525252;
+  color: var(--text-main);
   font-size: 13px;
 }
 
@@ -159,7 +160,7 @@
 .home-assistant-transcript-detail-top-meta,
 .home-assistant-transcript-detail-footer-meta {
   min-width: 0;
-  color: #8b8b8b;
+  color: var(--text-muted);
   font-size: 12px;
   line-height: 1.4;
 }
@@ -181,7 +182,7 @@
   overscroll-behavior: contain;
   scrollbar-gutter: stable both-edges;
   scrollbar-width: thin;
-  scrollbar-color: rgba(110, 110, 110, 0.45) transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 .home-assistant-transcript-detail-scroll::-webkit-scrollbar {
@@ -193,7 +194,7 @@
 }
 
 .home-assistant-transcript-detail-scroll::-webkit-scrollbar-thumb {
-  background-color: rgba(110, 110, 110, 0.45);
+  background-color: var(--scrollbar-thumb);
   border-radius: 999px;
   border: 2px solid transparent;
 }
@@ -202,7 +203,7 @@
   margin: 0;
   min-width: 100%;
   width: max-content;
-  color: #242424;
+  color: var(--text-main);
   white-space: pre;
   font-family: Consolas, "Cascadia Code", monospace;
   font-size: 12px;
@@ -218,7 +219,7 @@
 }
 
 .home-assistant-transcript-detail-panel[data-variant="shell"] .home-assistant-transcript-detail-body {
-  color: #202020;
+  color: var(--text-main);
 }
 
 .home-assistant-transcript-detail-panel[data-variant="diffSummary"] {
@@ -229,6 +230,7 @@
   padding: 0;
   border: none;
   background: none;
+  box-shadow: none;
 }
 
 .home-assistant-transcript-detail-panel[data-variant="fileDiff"] .home-assistant-transcript-file-diff-list {
@@ -261,7 +263,7 @@
 
 .home-assistant-transcript-file-diff-card-body {
   min-height: 0;
-  border-top: 1px solid #f1f1f1;
+  border-top: 1px solid var(--border-light);
 }
 
 .home-assistant-transcript-file-diff-card-body .workspace-diff-code-scroll,
@@ -271,7 +273,7 @@
 
 .home-assistant-transcript-file-diff-empty {
   padding: 18px 16px;
-  color: #7a7a7a;
+  color: var(--text-muted);
   font-size: 13px;
 }
 
@@ -291,7 +293,7 @@
 
 .home-turn-diff-summary-title {
   min-width: 0;
-  color: #2b2b2b;
+  color: var(--text-main);
   font-size: 14px;
   font-weight: 600;
 }
@@ -299,9 +301,9 @@
 .home-turn-diff-summary-list {
   max-height: 320px;
   overflow: auto;
-  border: 1px solid #e7e7e7;
+  border: 1px solid var(--border-light);
   border-radius: 14px;
-  background: #fcfcfc;
+  background: var(--surface-panel);
 }
 
 .home-turn-diff-summary-row {
@@ -314,13 +316,13 @@
 }
 
 .home-turn-diff-summary-row + .home-turn-diff-summary-row {
-  border-top: 1px solid #ececec;
+  border-top: 1px solid var(--border-light);
 }
 
 .home-turn-diff-summary-row-title {
   min-width: 0;
   overflow: hidden;
-  color: #242424;
+  color: var(--text-main);
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 14px;
@@ -328,7 +330,7 @@
 
 .home-turn-diff-summary-empty {
   margin: 0;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 13px;
   line-height: 1.6;
 }

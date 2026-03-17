@@ -4,6 +4,7 @@ import type {
 } from "../hooks/useAppPreferences";
 import type { AgentEnvironment, EmbeddedTerminalShell, WorkspaceOpener } from "../../../bridge/types";
 import type { ComposerEnterBehavior, FollowUpMode } from "../../../domain/timeline";
+import type { ThemeMode } from "../../../domain/theme";
 import { createLanguageOptions, useI18n, type MessageKey } from "../../../i18n";
 import { SettingsSelectRow, type SettingsSelectOption } from "./SettingsSelectRow";
 
@@ -32,6 +33,14 @@ function createTerminalShellOptions(t: Translator): ReadonlyArray<SettingsSelect
     { value: "powerShell", label: t("settings.general.embeddedTerminalShell.options.powerShell") },
     { value: "commandPrompt", label: t("settings.general.embeddedTerminalShell.options.commandPrompt") },
     { value: "gitBash", label: t("settings.general.embeddedTerminalShell.options.gitBash") }
+  ];
+}
+
+function createThemeOptions(t: Translator): ReadonlyArray<SettingsSelectOption<ThemeMode>> {
+  return [
+    { value: "system", label: t("settings.general.theme.options.system") },
+    { value: "light", label: t("settings.general.theme.options.light") },
+    { value: "dark", label: t("settings.general.theme.options.dark") }
   ];
 }
 
@@ -87,6 +96,7 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
   const agentEnvironmentOptions = createAgentEnvironmentOptions(t);
   const workspaceOpenerOptions = createWorkspaceOpenerOptions(t);
   const terminalShellOptions = createTerminalShellOptions(t);
+  const themeOptions = createThemeOptions(t);
   const languageOptions = createLanguageOptions(t);
   const threadDetailOptions = createThreadDetailOptions(t);
   const followUpModeOptions = createFollowUpModeOptions(t);
@@ -133,6 +143,14 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
             />
           </div>
         </div>
+        <SettingsSelectRow
+          label={t("settings.general.theme.label")}
+          description={t("settings.general.theme.description")}
+          value={preferences.themeMode}
+          options={themeOptions}
+          onChange={preferences.setThemeMode}
+          statusNote={t("settings.general.theme.note")}
+        />
         <SettingsSelectRow
           label={t("settings.general.language.label")}
           description={t("settings.general.language.description")}

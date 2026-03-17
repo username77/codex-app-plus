@@ -157,7 +157,8 @@
   gap: 8px;
   padding: 3px 9px;
   border-radius: 999px;
-  background: #f5f6f6;
+  background: var(--surface-panel-soft);
+  color: var(--text-soft);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
@@ -381,4 +382,111 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(140px, 34%) minmax(0, 1fr);
   }
+}
+
+html[data-theme="dark"] .workspace-diff-file-list-pane,
+html[data-theme="dark"] .workspace-diff-preview-card {
+  background: var(--surface-panel);
+}
+
+html[data-theme="dark"] .workspace-diff-file-group-title,
+html[data-theme="dark"] .workspace-diff-file-row-summary-pending,
+html[data-theme="dark"] .workspace-diff-preview-status,
+html[data-theme="dark"] .workspace-diff-preview-loading {
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .workspace-diff-file-row {
+  border-color: var(--border-light);
+  background: var(--surface-panel-muted);
+  color: var(--text-main);
+}
+
+html[data-theme="dark"] .workspace-diff-file-row:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+html[data-theme="dark"] .workspace-diff-file-row-active {
+  background: var(--surface-panel);
+  box-shadow: 0 4px 12px var(--accent-soft);
+}
+
+html[data-theme="dark"] .workspace-diff-file-row-summary,
+html[data-theme="dark"] .workspace-diff-preview-summary,
+html[data-theme="dark"] .workspace-diff-preview-action {
+  background: var(--surface-panel-soft);
+  color: var(--text-soft);
+}
+
+html[data-theme="dark"] .workspace-diff-preview-header {
+  border-bottom-color: var(--border-light);
+}
+
+html[data-theme="dark"] .workspace-diff-preview-title,
+html[data-theme="dark"] .workspace-diff-code-row,
+html[data-theme="dark"] .workspace-diff-raw-content {
+  color: var(--text-main);
+}
+
+html[data-theme="dark"] .workspace-diff-code-content .hljs-comment,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-comment,
+html[data-theme="dark"] .workspace-diff-code-content .hljs-quote,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-quote {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .workspace-diff-code-content .hljs-keyword,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-keyword,
+html[data-theme="dark"] .workspace-diff-code-content .hljs-selector-tag,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-selector-tag,
+html[data-theme="dark"] .workspace-diff-code-content .hljs-literal,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-literal,
+html[data-theme="dark"] .workspace-diff-code-content .hljs-tag,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-tag,
+html[data-theme="dark"] .workspace-diff-code-content .hljs-name,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-name {
+  color: #fda4af;
+}
+
+html[data-theme="dark"] .workspace-diff-code-content .hljs-string,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-string,
+html[data-theme="dark"] .workspace-diff-code-content .hljs-regexp,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-regexp,
+html[data-theme="dark"] .workspace-diff-code-content .hljs-attribute,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-attribute {
+  color: #7dd3fc;
+}
+
+html[data-theme="dark"] .workspace-diff-code-content .hljs-number,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-number,
+html[data-theme="dark"] .workspace-diff-code-content .hljs-attr,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-attr,
+html[data-theme="dark"] .workspace-diff-code-content .hljs-variable,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-variable,
+html[data-theme="dark"] .workspace-diff-code-content .hljs-template-variable,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-template-variable {
+  color: #fdba74;
+}
+
+html[data-theme="dark"] .workspace-diff-code-content .hljs-title,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-title,
+html[data-theme="dark"] .workspace-diff-code-content .hljs-title.function_,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-title.function_,
+html[data-theme="dark"] .workspace-diff-code-content .hljs-built_in,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-built_in,
+html[data-theme="dark"] .workspace-diff-code-content .hljs-property,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-property,
+html[data-theme="dark"] .workspace-diff-code-content .hljs-title.class_,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-title.class_ {
+  color: #c4b5fd;
+}
+
+html[data-theme="dark"] .workspace-diff-code-content .hljs-punctuation,
+html[data-theme="dark"] .workspace-diff-raw-content .hljs-punctuation {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .workspace-diff-line-number {
+  background: rgba(15, 23, 42, 0.68);
 }

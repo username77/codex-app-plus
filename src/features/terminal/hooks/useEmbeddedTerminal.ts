@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { EmbeddedTerminalShell, HostBridge } from "../../../bridge/types";
+import type { ResolvedTheme } from "../../../domain/theme";
 import {
   buildSubTitle,
   getStatusLabel,
@@ -20,6 +21,7 @@ interface UseEmbeddedTerminalOptions {
   readonly hostBridge: HostBridge;
   readonly open: boolean;
   readonly shell: EmbeddedTerminalShell;
+  readonly theme?: ResolvedTheme;
 }
 
 export interface EmbeddedTerminalController {
@@ -79,7 +81,7 @@ function useTerminalSessionReset(options: UseTerminalSessionResetOptions): void 
 }
 
 export function useEmbeddedTerminal(options: UseEmbeddedTerminalOptions): EmbeddedTerminalController {
-  const { cwd, cwdLabel, enforceUtf8 = true, hostBridge, open, shell } = options;
+  const { cwd, cwdLabel, enforceUtf8 = true, hostBridge, open, shell, theme = "light" } = options;
   const sessionKey = `${cwd ?? ""}::${shell}::${enforceUtf8 ? "utf8" : "system"}`;
   const sessionIdRef = useRef<string | null>(null);
   const creatingRef = useRef(false);
@@ -92,7 +94,7 @@ export function useEmbeddedTerminal(options: UseEmbeddedTerminalOptions): Embedd
     setErrorMessage(message);
     terminalRef.current?.writeln(`\r\n${message}`);
   }, []);
-  const { containerRef, fitAddonRef, mountedRef, terminalRef } = useMountedTerminal({ hostBridge, reportError, sessionIdRef });
+  const { containerRef, fitAddonRef, mountedRef, terminalRef } = useMountedTerminal({ hostBridge, reportError, sessionIdRef, theme });
   const focusTerminal = useCallback(() => {
     terminalRef.current?.focus();
   }, [terminalRef]);

@@ -7,6 +7,7 @@ import {
 } from "../../composer/model/composerPermission";
 import type { AgentEnvironment, EmbeddedTerminalShell, WorkspaceOpener } from "../../../bridge/types";
 import type { ComposerEnterBehavior, FollowUpMode } from "../../../domain/timeline";
+import { DEFAULT_THEME_MODE, isThemeMode, type ThemeMode } from "../../../domain/theme";
 import type { UiLanguage } from "../../../i18n";
 export type ThreadDetailLevel = "compact" | "commands" | "full";
 
@@ -15,6 +16,7 @@ export interface AppPreferences {
   readonly workspaceOpener: WorkspaceOpener;
   readonly embeddedTerminalShell: EmbeddedTerminalShell;
   readonly embeddedTerminalUtf8: boolean;
+  readonly themeMode: ThemeMode;
   readonly uiLanguage: UiLanguage;
   readonly threadDetailLevel: ThreadDetailLevel;
   readonly followUpQueueMode: FollowUpMode;
@@ -29,6 +31,7 @@ export interface AppPreferencesController extends AppPreferences {
   setWorkspaceOpener: (workspaceOpener: WorkspaceOpener) => void;
   setEmbeddedTerminalShell: (shell: EmbeddedTerminalShell) => void;
   setEmbeddedTerminalUtf8: (enabled: boolean) => void;
+  setThemeMode: (themeMode: ThemeMode) => void;
   setUiLanguage: (language: UiLanguage) => void;
   setThreadDetailLevel: (detailLevel: ThreadDetailLevel) => void;
   setFollowUpQueueMode: (mode: FollowUpMode) => void;
@@ -69,6 +72,7 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   workspaceOpener: "vscode",
   embeddedTerminalShell: "powerShell",
   embeddedTerminalUtf8: true,
+  themeMode: DEFAULT_THEME_MODE,
   uiLanguage: "auto",
   threadDetailLevel: "commands",
   followUpQueueMode: "queue",
@@ -125,6 +129,9 @@ function sanitizeStoredPreferences(value: unknown): AppPreferences {
     embeddedTerminalUtf8: typeof record.embeddedTerminalUtf8 === "boolean"
       ? record.embeddedTerminalUtf8
       : DEFAULT_APP_PREFERENCES.embeddedTerminalUtf8,
+    themeMode: isThemeMode(record.themeMode)
+      ? record.themeMode
+      : DEFAULT_APP_PREFERENCES.themeMode,
     uiLanguage: readStoredUiLanguage(record),
     threadDetailLevel: isPreferenceValue(THREAD_DETAIL_LEVELS, record.threadDetailLevel)
       ? record.threadDetailLevel
@@ -198,6 +205,7 @@ export function useAppPreferences(): AppPreferencesController {
   const setWorkspaceOpener = usePreferenceSetter(setPreferences, "workspaceOpener");
   const setEmbeddedTerminalShell = usePreferenceSetter(setPreferences, "embeddedTerminalShell");
   const setEmbeddedTerminalUtf8 = usePreferenceSetter(setPreferences, "embeddedTerminalUtf8");
+  const setThemeMode = usePreferenceSetter(setPreferences, "themeMode");
   const setUiLanguage = usePreferenceSetter(setPreferences, "uiLanguage");
   const setThreadDetailLevel = usePreferenceSetter(setPreferences, "threadDetailLevel");
   const setFollowUpQueueMode = usePreferenceSetter(setPreferences, "followUpQueueMode");
@@ -213,6 +221,7 @@ export function useAppPreferences(): AppPreferencesController {
       setWorkspaceOpener,
       setEmbeddedTerminalShell,
       setEmbeddedTerminalUtf8,
+      setThemeMode,
       setUiLanguage,
       setThreadDetailLevel,
       setFollowUpQueueMode,
@@ -231,6 +240,7 @@ export function useAppPreferences(): AppPreferencesController {
       setFollowUpQueueMode,
       setGitBranchPrefix,
       setGitPushForceWithLease,
+      setThemeMode,
       setThreadDetailLevel,
       setUiLanguage,
       setWorkspaceOpener

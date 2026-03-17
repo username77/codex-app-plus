@@ -15,28 +15,28 @@
   line-height: 1.2;
   font-weight: 700;
   letter-spacing: -0.025em;
-  color: #0f172a;
+  color: var(--text-main);
 }
 
 .settings-subtitle {
   margin-top: 10px;
   font-size: 15px;
   line-height: 1.6;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .settings-card {
   margin-top: 24px;
   border-radius: 24px;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--border-light);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-md);
   transition: box-shadow 0.2s ease;
 }
 
 .settings-card:hover {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-lg);
 }
 
 .settings-row {
@@ -45,7 +45,7 @@
   align-items: center;
   gap: 32px;
   padding: 24px 32px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .settings-row:last-child {
@@ -61,14 +61,14 @@
   font-size: 16px;
   line-height: 1.5;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text-main);
 }
 
 .settings-row p {
   margin-top: 6px;
   font-size: 14px;
   line-height: 1.6;
-  color: #64748b;
+  color: var(--text-muted);
   max-width: 60ch;
 }
 
@@ -84,13 +84,13 @@
 
 .settings-row-note {
   margin-top: 12px;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 13px;
   line-height: 1.6;
-  background: #f8fafc;
+  background: var(--surface-panel-muted);
   padding: 8px 12px;
   border-radius: 8px;
-  border-left: 3px solid #cbd5e1;
+  border-left: 3px solid var(--border-strong);
 }
 
 .settings-select-trigger {
@@ -98,10 +98,12 @@
   min-width: 0;
   min-height: 42px;
   padding: 0 14px;
+  border: 1px solid var(--border-light);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--surface-panel-muted);
+  color: var(--text-main);
   font-size: 15px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .settings-select-menu {
@@ -139,7 +141,7 @@
 
   .settings-sidebar {
     border-right: 0;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--border-light);
     padding-bottom: 16px;
   }
 

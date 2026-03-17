@@ -46,6 +46,8 @@ export interface ShowNotificationInput {
   readonly body: string;
 }
 
+export type WindowTheme = "light" | "dark";
+
 export interface ShowContextMenuInput {
   readonly x: number;
   readonly y: number;

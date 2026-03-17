@@ -1,4 +1,5 @@
 import type { EmbeddedTerminalShell, HostBridge } from "../../../bridge/types";
+import type { ResolvedTheme } from "../../../domain/theme";
 import { OfficialCloseIcon } from "../../shared/ui/officialIcons";
 import { useEmbeddedTerminal } from "../hooks/useEmbeddedTerminal";
 
@@ -9,6 +10,7 @@ interface TerminalPanelProps {
   readonly cwdLabel: string;
   readonly enforceUtf8?: boolean;
   readonly shell: EmbeddedTerminalShell;
+  readonly theme?: ResolvedTheme;
   readonly onClose: () => void;
 }
 

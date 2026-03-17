@@ -1,14 +1,14 @@
 .home-conversation {
-  --home-surface: #ffffff;
-  --home-subtle-surface: #f8fafc;
-  --home-soft-surface: #f4f6fb;
-  --home-border: #e4e8f0;
-  --home-border-strong: #d7dce7;
-  --home-text: #111827;
-  --home-text-muted: #5f6b7d;
-  --home-text-soft: #7a8699;
-  --home-user-bubble: #f7f7f8;
-  --home-link: #2563eb;
+  --home-surface: var(--surface-panel);
+  --home-subtle-surface: var(--surface-panel-muted);
+  --home-soft-surface: var(--surface-panel-soft);
+  --home-border: var(--border-light);
+  --home-border-strong: var(--border-strong);
+  --home-text: var(--text-main);
+  --home-text-muted: var(--text-muted);
+  --home-text-soft: var(--text-subtle);
+  --home-user-bubble: var(--surface-panel-muted);
+  --home-link: var(--accent-color);
   flex: 1;
   min-height: 0;
   display: flex;
@@ -29,11 +29,11 @@
   bottom: 16px;
   transform: translateX(-50%);
   width: min(520px, calc(100% - 32px));
-  background: rgba(15, 23, 42, 0.92);
-  color: #f8fafc;
+  background: var(--surface-overlay-strong);
+  color: var(--text-inverse);
   border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.25);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow: var(--shadow-lg);
   backdrop-filter: blur(8px);
   padding: 12px 16px;
   pointer-events: auto;
@@ -60,7 +60,7 @@
 
 .home-connection-toast-countdown {
   font-size: 12px;
-  color: #cbd5f5;
+  color: rgba(248, 250, 252, 0.8);
 }
 
 .home-connection-toast-action {
@@ -69,8 +69,8 @@
   padding: 8px 16px;
   font-size: 13px;
   font-weight: 600;
-  color: #0f172a;
-  background: #f8fafc;
+  color: var(--text-inverse);
+  background: var(--surface-canvas);
   cursor: pointer;
   transition: opacity 0.15s ease;
 }
@@ -153,7 +153,7 @@
   object-fit: cover;
   border: 1px solid var(--home-border);
   border-radius: 16px;
-  background: #f4f6fb;
+  background: var(--home-soft-surface);
 }
 
 .home-chat-attachment-chip {
@@ -198,11 +198,11 @@
 }
 
 .home-chat-thinking-label {
-  color: #94a3b8;
+  color: var(--home-text-soft);
   font-size: 13px;
   font-weight: 500;
   line-height: 1.4;
-  background-image: linear-gradient(110deg, #94a3b8 25%, #e2e8f0 50%, #94a3b8 75%);
+  background-image: linear-gradient(110deg, var(--home-text-soft) 25%, var(--home-border) 50%, var(--home-text-soft) 75%);
   background-size: 200% 100%;
   background-clip: text;
   -webkit-background-clip: text;
@@ -216,7 +216,7 @@
   max-width: 100%;
   height: 4px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #e5e7eb 20%, #f8fafc 50%, #e5e7eb 80%);
+  background: linear-gradient(90deg, var(--home-border) 20%, var(--home-subtle-surface) 50%, var(--home-border) 80%);
   background-size: 200% 100%;
   animation: home-chat-thinking-sweep 1.4s linear infinite;
 }
@@ -263,15 +263,15 @@
   max-width: 100%;
   box-sizing: border-box;
   padding: 16px 18px;
-  border: 1px solid #e3e8f4;
+  border: 1px solid var(--home-border);
   border-radius: 24px;
-  background: #f3f4f6;
-  box-shadow: 0 12px 32px rgba(17, 23, 34, 0.08);
+  background: var(--home-soft-surface);
+  box-shadow: var(--shadow-md);
 }
 
 .home-plan-draft-label {
   margin-bottom: 12px;
-  color: #475467;
+  color: var(--text-soft);
   font-size: 12px;
   font-weight: 600;
 }
@@ -358,8 +358,8 @@
 .home-chat-markdown code {
   padding: 1px 5px;
   border-radius: 7px;
-  background: #f1f3f7;
-  color: #24292f;
+  background: var(--code-inline-bg);
+  color: var(--home-text);
   font-family: Consolas, "Cascadia Code", monospace;
   font-size: 0.86em;
 }
@@ -369,7 +369,7 @@
   padding: 10px 12px;
   border: 1px solid var(--home-border);
   border-radius: 12px;
-  background: #f6f8fa;
+  background: var(--code-bg);
 }
 
 .home-chat-markdown pre code {
@@ -382,7 +382,7 @@
   padding: 28px 24px;
   border: 1px dashed var(--home-border-strong);
   border-radius: 20px;
-  background: #fbfcfe;
+  background: var(--home-subtle-surface);
 }
 
 .home-chat-placeholder-title,
@@ -391,7 +391,7 @@
 }
 
 .home-chat-placeholder-title {
-  color: #334155;
+  color: var(--text-main);
   font-size: 15px;
   font-weight: 600;
 }
@@ -417,7 +417,7 @@
 
   .home-chat-thinking-label {
     background: none;
-    color: #94a3b8;
+    color: var(--home-text-soft);
     -webkit-text-fill-color: currentColor;
   }
 }

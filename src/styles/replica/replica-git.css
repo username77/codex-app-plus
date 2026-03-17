@@ -659,3 +659,110 @@
     grid-template-columns: 1fr;
   }
 }
+
+html[data-theme="dark"] .git-dialog-backdrop {
+  background: var(--surface-overlay);
+}
+
+html[data-theme="dark"] .git-dialog,
+html[data-theme="dark"] .git-push-confirm-dialog,
+html[data-theme="dark"] .git-commit-dialog,
+html[data-theme="dark"] .git-overview-card,
+html[data-theme="dark"] .git-card,
+html[data-theme="dark"] .git-state-card,
+html[data-theme="dark"] .git-entry,
+html[data-theme="dark"] .workspace-diff-scope-menu {
+  border-color: var(--border-light);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-lg);
+}
+
+html[data-theme="dark"] .git-dialog-header,
+html[data-theme="dark"] .workspace-diff-sidebar,
+html[data-theme="dark"] .workspace-diff-sidebar-header {
+  border-color: var(--border-light);
+  background: var(--surface-panel);
+  color: var(--text-main);
+}
+
+html[data-theme="dark"] .git-push-confirm-icon-box,
+html[data-theme="dark"] .git-inline-btn,
+html[data-theme="dark"] .git-badge,
+html[data-theme="dark"] .workspace-diff-scope-trigger,
+html[data-theme="dark"] .workspace-diff-scope-count,
+html[data-theme="dark"] .workspace-diff-sidebar-close:hover,
+html[data-theme="dark"] .workspace-diff-scope-option:hover {
+  background: var(--surface-panel-soft);
+  color: var(--text-soft);
+}
+
+html[data-theme="dark"] .git-inline-btn-danger {
+  background: var(--error-bg);
+  color: var(--error-fg);
+}
+
+html[data-theme="dark"] .git-primary-btn {
+  background: var(--accent-color);
+  color: var(--text-inverse);
+}
+
+html[data-theme="dark"] .git-overview-title,
+html[data-theme="dark"] .git-card-title,
+html[data-theme="dark"] .git-state-title,
+html[data-theme="dark"] .git-push-confirm-title,
+html[data-theme="dark"] .git-push-confirm-value,
+html[data-theme="dark"] .git-entry-name,
+html[data-theme="dark"] .git-commit-dialog-label,
+html[data-theme="dark"] .workspace-diff-sidebar-title,
+html[data-theme="dark"] .workspace-diff-scope-option[aria-checked="true"] .workspace-diff-scope-option-label,
+html[data-theme="dark"] .workspace-diff-scope-check {
+  color: var(--text-main);
+}
+
+html[data-theme="dark"] .git-dialog-close,
+html[data-theme="dark"] .git-overview-subtitle,
+html[data-theme="dark"] .git-card-meta,
+html[data-theme="dark"] .git-remote-url,
+html[data-theme="dark"] .git-state-body,
+html[data-theme="dark"] .git-empty-tip,
+html[data-theme="dark"] .git-entry-meta,
+html[data-theme="dark"] .git-push-confirm-row,
+html[data-theme="dark"] .git-push-confirm-text,
+html[data-theme="dark"] .workspace-diff-sidebar-subtitle,
+html[data-theme="dark"] .workspace-diff-scope-chevron {
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .git-banner-success,
+html[data-theme="dark"] .git-badge-success {
+  background: var(--success-bg);
+  color: var(--success-fg);
+}
+
+html[data-theme="dark"] .git-banner-error {
+  background: var(--error-bg);
+  color: var(--error-fg);
+}
+
+html[data-theme="dark"] .git-badge-warning {
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+}
+
+html[data-theme="dark"] .git-entry-selected {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+html[data-theme="dark"] .git-select,
+html[data-theme="dark"] .git-input,
+html[data-theme="dark"] .git-textarea {
+  border-color: var(--border-light);
+  background: var(--surface-panel-muted);
+  color: var(--text-main);
+}
+
+html[data-theme="dark"] .git-diff-content {
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+}

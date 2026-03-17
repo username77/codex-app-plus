@@ -20,6 +20,7 @@ function renderSection(locale: Locale = "zh-CN"): void {
             setPreferences((current) => ({ ...current, embeddedTerminalShell })),
           setEmbeddedTerminalUtf8: (embeddedTerminalUtf8) =>
             setPreferences((current) => ({ ...current, embeddedTerminalUtf8 })),
+          setThemeMode: (themeMode) => setPreferences((current) => ({ ...current, themeMode })),
           setUiLanguage: (uiLanguage) => setPreferences((current) => ({ ...current, uiLanguage })),
           setThreadDetailLevel: (threadDetailLevel) =>
             setPreferences((current) => ({ ...current, threadDetailLevel })),
@@ -74,8 +75,19 @@ describe("GeneralSettingsSection", () => {
   it("shows the language note and the active thread-detail note", () => {
     renderSection();
 
+    expect(screen.getByText("默认跟随系统深浅色，也可以手动固定浅色或深色界面。")).toBeInTheDocument();
     expect(screen.getByText("默认跟随系统语言；手动切换后会保留你的选择，并立即作用于已接入 i18n 的界面。")).toBeInTheDocument();
     expect(screen.getByText("已作用于时间线；完整输出会额外显示 raw response 与调试项。")).toBeInTheDocument();
+  });
+
+  it("offers system, light, and dark theme modes", () => {
+    renderSection();
+
+    fireEvent.click(screen.getByRole("button", { name: "主题：跟随系统" }));
+
+    expect(screen.getByRole("menuitemradio", { name: /跟随系统/ })).toBeInTheDocument();
+    expect(screen.getByRole("menuitemradio", { name: "浅色" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitemradio", { name: "深色" })).toBeInTheDocument();
   });
 
   it("offers auto language detection alongside Chinese and English", () => {
@@ -102,6 +114,8 @@ describe("GeneralSettingsSection", () => {
   it("renders English copy when locale is en-US", () => {
     renderSection("en-US");
 
+    expect(screen.getByText("Theme")).toBeInTheDocument();
+    expect(screen.getByText("Defaults to the system color scheme, but you can lock the app to light or dark.")).toBeInTheDocument();
     expect(screen.getByText("Interface language")).toBeInTheDocument();
     expect(screen.getByText("Defaults to the system language, keeps your manual choice once changed, and updates migrated screens immediately.")).toBeInTheDocument();
     expect(screen.getByText("Force UTF-8 for the embedded terminal")).toBeInTheDocument();

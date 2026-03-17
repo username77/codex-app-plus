@@ -15,6 +15,8 @@ import { I18nProvider, resolveLocale, type MessageKey, type TranslationParams, t
 import { AppScreenContent, type AppScreen } from "./ui/AppScreenContent";
 import { requestWorkspaceFolder } from "./workspacePicker";
 import { useDismissStartupScreen } from "./startupScreen";
+import { useResolvedTheme } from "./useResolvedTheme";
+import { useWindowTheme } from "./useWindowTheme";
 
 const SKILLS_LEARN_MORE_URL = "https://openai.com/index/introducing-the-codex-app/";
 interface AppProps {
@@ -23,6 +25,8 @@ interface AppProps {
 
 export function App({ hostBridge }: AppProps): JSX.Element {
   const preferences = useAppPreferences();
+  const resolvedTheme = useResolvedTheme(preferences.themeMode);
+  useWindowTheme(hostBridge, resolvedTheme);
   const appState = useAppShellState();
   const controller = useAppController(hostBridge, preferences.agentEnvironment);
   const composerPicker = useComposerPicker(hostBridge, appState.configSnapshot, appState.initialized);
@@ -195,6 +199,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
         composerPicker={composerPicker}
         controller={controller}
         multiAgentState={multiAgentState}
+        resolvedTheme={resolvedTheme}
         selectedRootName={selectedRootName}
         selectedRootPath={selectedRootPath}
         settingsMenuOpen={settingsMenuOpen}

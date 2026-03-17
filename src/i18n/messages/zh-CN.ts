@@ -76,6 +76,16 @@ export const zhCN = {
         description: "在 Windows 内置终端会话里额外注入 UTF-8 locale 环境变量。",
         note: "保留现有 shell 初始化，同时补充 LANG、LC_ALL、LC_CTYPE。",
       },
+      theme: {
+        label: "主题",
+        description: "控制应用界面的明暗外观。",
+        note: "默认跟随系统深浅色，也可以手动固定浅色或深色界面。",
+        options: {
+          system: "跟随系统",
+          light: "浅色",
+          dark: "深色",
+        },
+      },
       language: {
         label: "界面语言",
         description: "应用界面显示语言。",

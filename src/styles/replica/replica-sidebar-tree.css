@@ -17,7 +17,7 @@
 
 .workspace-root-button:hover,
 .workspace-thread-button:hover {
-  background: #efefef;
+  background: var(--surface-hover);
 }
 
 .workspace-root-button {
@@ -47,8 +47,8 @@
   min-width: 20px;
   padding: 0 6px;
   border-radius: 999px;
-  background: #ececec;
-  color: #6a6a6a;
+  background: var(--surface-panel-muted);
+  color: var(--text-muted);
   font-size: 11px;
   line-height: 20px;
 }
@@ -71,14 +71,14 @@
   padding: 6px;
   box-sizing: border-box;
   border-radius: 8px;
-  color: #606060;
+  color: var(--text-soft);
   text-align: left;
   overflow: hidden;
 }
 
 .workspace-thread-button-active {
-  background: #efefef;
-  color: #2f2f2f;
+  background: var(--surface-active);
+  color: var(--text-main);
 }
 
 .workspace-thread-title-row {
@@ -105,8 +105,8 @@
   max-width: 72px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--surface-panel-muted);
+  color: var(--text-soft);
   font-size: 9px;
   line-height: 16px;
   overflow: hidden;
@@ -117,7 +117,7 @@
 .workspace-thread-meta,
 .workspace-thread-empty {
   font-size: 10px;
-  color: #8b8b8b;
+  color: var(--text-muted);
 }
 
 .workspace-thread-meta {
@@ -137,13 +137,13 @@
   padding: 4px 6px 8px;
   border: 0;
   background: transparent;
-  color: #6e6e6e;
+  color: var(--text-muted);
   font-size: 11px;
   text-align: left;
 }
 
 .workspace-thread-toggle:hover {
-  color: #2f2f2f;
+  color: var(--text-main);
 }
 
 .thread-context-menu {
@@ -151,10 +151,10 @@
   z-index: 40;
   min-width: 120px;
   padding: 6px;
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--border-light);
   border-radius: 10px;
-  background: #ffffff;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-lg);
 }
 
 .thread-context-menu-item {
@@ -163,27 +163,19 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #b42318;
+  color: var(--text-soft);
   font-size: 13px;
   text-align: left;
 }
 
 .thread-context-menu-item:hover {
-  background: #fef3f2;
-}
-
-.thread-context-menu-item {
-  color: #334155;
-}
-
-.thread-context-menu-item:hover {
-  background: #eef2ff;
+  background: var(--surface-hover);
 }
 
 .thread-context-menu-item-danger {
-  color: #b42318;
+  color: var(--error-fg);
 }
 
 .thread-context-menu-item-danger:hover {
-  background: #fef3f2;
+  background: var(--error-bg);
 }
