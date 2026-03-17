@@ -80,7 +80,6 @@ function renderSidebar(thread: ThreadSummary, options?: {
   readonly deleteCodexSession?: ReturnType<typeof vi.fn>;
   readonly request?: ReturnType<typeof vi.fn>;
   readonly initializeStore?: (dispatch: AppStoreApi["dispatch"]) => void;
-  readonly codexSessionsLoading?: boolean;
   readonly codexSessionsError?: string | null;
 }) {
   const onArchiveThread = options?.onArchiveThread ?? vi.fn().mockResolvedValue(undefined);
@@ -100,7 +99,6 @@ function renderSidebar(thread: ThreadSummary, options?: {
           hostBridge={hostBridge}
           roots={[ROOT]}
           codexSessions={[thread]}
-          codexSessionsLoading={options?.codexSessionsLoading ?? false}
           codexSessionsError={options?.codexSessionsError ?? null}
           selectedRootId={ROOT.id}
           selectedThreadId={selectedThreadId}
@@ -142,12 +140,11 @@ function DispatchRecorder(props: { readonly onReady: (dispatch: AppStoreApi["dis
 }
 
 describe("HomeSidebar", () => {
-  it("shows a full-sidebar loading overlay without visible loading text", () => {
-    renderSidebar(createThread("codexData"), { codexSessionsLoading: true });
+  it("does not render a startup loading overlay in the sidebar", () => {
+    renderSidebar(createThread("codexData"));
 
-    expect(screen.getByRole("status", { name: "正在加载会话" })).toBeInTheDocument();
-    expect(document.querySelector(".replica-sidebar")).toHaveAttribute("aria-busy", "true");
-    expect(screen.queryByText("加载会话中...")).not.toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: "正在加载会话" })).not.toBeInTheDocument();
+    expect(document.querySelector(".replica-sidebar")).not.toHaveAttribute("aria-busy");
   });
 
   it("opens the skills screen from the sidebar nav", () => {
@@ -254,7 +251,6 @@ describe("HomeSidebar", () => {
             hostBridge={{ app: { deleteCodexSession: vi.fn().mockResolvedValue(undefined) }, rpc: { request: vi.fn() } } as unknown as HostBridge}
             roots={[ROOT]}
             codexSessions={[thread]}
-            codexSessionsLoading={false}
             codexSessionsError={null}
             selectedRootId={ROOT.id}
             selectedThreadId={thread.id}

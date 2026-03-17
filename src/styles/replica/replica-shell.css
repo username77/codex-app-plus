@@ -26,6 +26,7 @@
 }
 .replica-sidebar {
   position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   padding: 8px 4px 12px;

@@ -224,7 +224,6 @@ function createHomeSidebarProps(
     hostBridge: props.hostBridge,
     roots: props.roots,
     codexSessions: props.threads,
-    codexSessionsLoading: props.busy && props.threads.length === 0,
     codexSessionsError: null,
     selectedRootId: props.selectedRootId,
     selectedThreadId: props.selectedThreadId,
