@@ -44,6 +44,9 @@ export function App({ hostBridge }: AppProps): JSX.Element {
   const openSettings = useCallback(() => {
     openSettingsSection("general");
   }, [openSettingsSection]);
+  const openApiKeySettings = useCallback(() => {
+    openSettingsSection("config");
+  }, [openSettingsSection]);
   const openSkills = useCallback(() => {
     setScreen("skills");
     setSettingsMenuOpen(false);
@@ -64,6 +67,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
         authLoginPending={bootstrapState.authLoginPending}
         onBackHome={backHome}
         onDismissSettingsMenu={() => setSettingsMenuOpen(false)}
+        onOpenApiKeySettings={openApiKeySettings}
         onOpenSettings={openSettings}
         onOpenSettingsSection={openSettingsSection}
         onOpenSkills={openSkills}

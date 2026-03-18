@@ -1,5 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import type {
+  CodexAuthModeStateOutput,
+  CodexAuthSwitchResult,
   CodexProviderApplyResult,
   CodexProviderDraft,
   CodexProviderRecord,
@@ -7,15 +9,20 @@ import type {
   DeleteCodexProviderInput,
 } from "../../../bridge/types";
 import type { WindowsSandboxSetupState } from "../../../domain/types";
-import type { WindowsSandboxSetupMode } from "../../../protocol/generated/v2/WindowsSandboxSetupMode";
 import { useI18n } from "../../../i18n";
+import type { ConfigValueWriteParams } from "../../../protocol/generated/v2/ConfigValueWriteParams";
+import type { WindowsSandboxSetupMode } from "../../../protocol/generated/v2/WindowsSandboxSetupMode";
 import {
-  createEmptyCodexProviderDraft,
   createDraftFromRecord,
+  createEmptyCodexProviderDraft,
   readCurrentCodexProviderKey,
 } from "../config/codexProviderConfig";
+import { CodexAuthModeCard } from "./CodexAuthModeCard";
 import { CodexProviderDialog } from "./CodexProviderDialog";
+import { CodexProviderDeleteDialog } from "./CodexProviderDeleteDialog";
+import { CodexProviderListCard } from "./CodexProviderListCard";
 import { WindowsSandboxSettingsCard } from "./WindowsSandboxSettingsCard";
+import { writeForcedLoginMethod } from "./configAuthMode";
 
 const LazyOpenSourceLicensesDialog = lazy(async () => {
   const module = await import("../../shared/ui/OpenSourceLicensesDialog");
@@ -25,15 +32,19 @@ const LazyOpenSourceLicensesDialog = lazy(async () => {
 interface ConfigSettingsSectionProps {
   readonly busy: boolean;
   readonly configSnapshot: unknown;
+  readonly windowsSandboxSetup: WindowsSandboxSetupState;
+  readonly startWindowsSandboxSetup: (mode: WindowsSandboxSetupMode) => Promise<unknown>;
   onOpenConfigToml: () => Promise<void>;
   refreshConfigSnapshot: () => Promise<unknown>;
   refreshAuthState: () => Promise<void>;
+  login: () => Promise<void>;
   listCodexProviders: () => Promise<CodexProviderStore>;
   upsertCodexProvider: (input: CodexProviderDraft) => Promise<CodexProviderRecord>;
   deleteCodexProvider: (input: DeleteCodexProviderInput) => Promise<CodexProviderStore>;
   applyCodexProvider: (input: { readonly id: string }) => Promise<CodexProviderApplyResult>;
-  readonly windowsSandboxSetup: WindowsSandboxSetupState;
-  readonly startWindowsSandboxSetup: (mode: WindowsSandboxSetupMode) => Promise<unknown>;
+  getCodexAuthModeState: () => Promise<CodexAuthModeStateOutput>;
+  activateCodexChatgpt: () => Promise<CodexAuthSwitchResult>;
+  writeConfigValue: (params: ConfigValueWriteParams) => Promise<unknown>;
 }
 
 function toErrorMessage(error: unknown): string {
@@ -44,7 +55,9 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
   const { t } = useI18n();
   const [licensesOpen, setLicensesOpen] = useState(false);
   const [providers, setProviders] = useState<ReadonlyArray<CodexProviderRecord>>([]);
+  const [authModeState, setAuthModeState] = useState<CodexAuthModeStateOutput | null>(null);
   const [loading, setLoading] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState<CodexProviderDraft | null>(null);
@@ -52,28 +65,56 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CodexProviderRecord | null>(null);
   const [pendingProviderId, setPendingProviderId] = useState<string | null>(null);
+  const [authActionPending, setAuthActionPending] = useState<"chatgpt" | "login" | null>(null);
 
   const currentProviderKey = useMemo(
     () => readCurrentCodexProviderKey(props.configSnapshot),
-    [props.configSnapshot]
+    [props.configSnapshot],
   );
 
   const loadProviders = useCallback(async () => {
     setLoading(true);
-    setErrorMessage(null);
     try {
       const store = await props.listCodexProviders();
       setProviders(store.providers);
-    } catch (error) {
-      setErrorMessage(toErrorMessage(error));
     } finally {
       setLoading(false);
     }
   }, [props.listCodexProviders]);
 
+  const loadAuthModeState = useCallback(async () => {
+    setAuthLoading(true);
+    try {
+      setAuthModeState(await props.getCodexAuthModeState());
+    } finally {
+      setAuthLoading(false);
+    }
+  }, [props.getCodexAuthModeState]);
+
+  const refreshSection = useCallback(async () => {
+    await Promise.all([
+      loadProviders(),
+      loadAuthModeState(),
+      props.refreshConfigSnapshot(),
+      props.refreshAuthState(),
+    ]);
+  }, [
+    loadAuthModeState,
+    loadProviders,
+    props.refreshAuthState,
+    props.refreshConfigSnapshot,
+  ]);
+
   useEffect(() => {
-    void loadProviders();
-  }, [loadProviders]);
+    void (async () => {
+      setErrorMessage(null);
+      try {
+        await Promise.all([loadProviders(), loadAuthModeState()]);
+      } catch (error) {
+        setErrorMessage(toErrorMessage(error));
+      }
+    })();
+  }, [loadAuthModeState, loadProviders]);
 
   const handleSave = async (draft: CodexProviderDraft, applyAfterSave: boolean) => {
     setSaving(true);
@@ -81,14 +122,16 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
     setNoticeMessage(null);
     try {
       const saved = await props.upsertCodexProvider(draft);
-      if (applyAfterSave) {
-        await props.applyCodexProvider({ id: saved.id });
-        await Promise.all([props.refreshConfigSnapshot(), props.refreshAuthState()]);
-        setNoticeMessage(t("settings.config.providers.appliedMessage", { name: saved.name }));
-      } else {
+      if (!applyAfterSave) {
+        await loadProviders();
         setNoticeMessage(t("settings.config.providers.savedMessage", { name: saved.name }));
+        setEditingDraft(null);
+        return;
       }
-      await loadProviders();
+      await props.applyCodexProvider({ id: saved.id });
+      await writeForcedLoginMethod(props.writeConfigValue, props.configSnapshot, "apikey");
+      await refreshSection();
+      setNoticeMessage(t("settings.config.providers.appliedMessage", { name: saved.name }));
       setEditingDraft(null);
     } catch (error) {
       setSubmitError(toErrorMessage(error));
@@ -103,12 +146,47 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
     setErrorMessage(null);
     try {
       await props.applyCodexProvider({ id: provider.id });
-      await Promise.all([props.refreshConfigSnapshot(), props.refreshAuthState()]);
+      await writeForcedLoginMethod(props.writeConfigValue, props.configSnapshot, "apikey");
+      await refreshSection();
       setNoticeMessage(t("settings.config.providers.appliedMessage", { name: provider.name }));
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
     } finally {
       setPendingProviderId(null);
+    }
+  };
+
+  const handleActivateChatgpt = async () => {
+    setAuthActionPending("chatgpt");
+    setNoticeMessage(null);
+    setErrorMessage(null);
+    try {
+      const result = await props.activateCodexChatgpt();
+      await writeForcedLoginMethod(props.writeConfigValue, props.configSnapshot, "chatgpt");
+      await refreshSection();
+      const key = result.restoredFromSnapshot
+        ? "settings.config.auth.switchedMessage"
+        : "settings.config.auth.switchedNeedsLoginMessage";
+      setNoticeMessage(t(key));
+    } catch (error) {
+      setErrorMessage(toErrorMessage(error));
+    } finally {
+      setAuthActionPending(null);
+    }
+  };
+
+  const handleChatgptLogin = async () => {
+    setAuthActionPending("login");
+    setNoticeMessage(null);
+    setErrorMessage(null);
+    try {
+      await props.login();
+      await Promise.all([props.refreshAuthState(), loadAuthModeState()]);
+      setNoticeMessage(t("settings.config.auth.loginStartedMessage"));
+    } catch (error) {
+      setErrorMessage(toErrorMessage(error));
+    } finally {
+      setAuthActionPending(null);
     }
   };
 
@@ -123,6 +201,7 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
       const store = await props.deleteCodexProvider({ id: deleteTarget.id });
       setProviders(store.providers);
       setDeleteTarget(null);
+      await loadAuthModeState();
       setNoticeMessage(t("settings.config.providers.deletedMessage", { name: deleteTarget.name }));
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
@@ -143,7 +222,11 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
             <div className="settings-row-heading">{t("settings.config.userConfig.label")}</div>
             <p className="settings-row-meta">{t("settings.config.userConfig.description")}</p>
           </div>
-          <button type="button" className="settings-action-btn" onClick={() => void props.onOpenConfigToml()}>
+          <button
+            type="button"
+            className="settings-action-btn"
+            onClick={() => void props.onOpenConfigToml()}
+          >
             {t("settings.config.userConfig.action")}
           </button>
         </div>
@@ -152,65 +235,55 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
             <div className="settings-row-heading">{t("settings.config.licenses.label")}</div>
             <p className="settings-row-meta">{t("settings.config.licenses.description")}</p>
           </div>
-          <button type="button" className="settings-action-btn" onClick={() => setLicensesOpen(true)}>
+          <button
+            type="button"
+            className="settings-action-btn"
+            onClick={() => setLicensesOpen(true)}
+          >
             {t("settings.config.licenses.action")}
           </button>
         </div>
       </section>
-      <WindowsSandboxSettingsCard busy={props.busy} configSnapshot={props.configSnapshot} setupState={props.windowsSandboxSetup} onStartSetup={props.startWindowsSandboxSetup} />
-      <section className="settings-card codex-provider-card">
-        <div className="settings-section-head">
-          <strong>{t("settings.config.providers.title")}</strong>
-          <button type="button" className="settings-head-action" onClick={() => {
-            setEditingDraft(createEmptyCodexProviderDraft());
-            setSubmitError(null);
-          }}>
-            {t("settings.config.providers.addAction")}
-          </button>
-        </div>
-        <p className="settings-note settings-note-pad">{t("settings.config.providers.description")}</p>
-        {noticeMessage ? <p className="settings-status-note settings-status-note-success">{noticeMessage}</p> : null}
-        {errorMessage ? <p className="settings-status-note settings-status-note-error">{errorMessage}</p> : null}
-        {loading ? <div className="settings-empty">{t("settings.config.providers.loading")}</div> : null}
-        {!loading && providers.length === 0 ? <div className="settings-empty">{t("settings.config.providers.empty")}</div> : null}
-        {!loading
-          ? providers.map((provider) => (
-              <div key={provider.id} className="codex-provider-row">
-                <div className="codex-provider-main">
-                  <div className="codex-provider-title-row">
-                    <strong>{provider.name}</strong>
-                    <span className="settings-chip settings-chip-sm">{provider.providerKey}</span>
-                    {provider.providerKey === currentProviderKey ? (
-                      <span className="settings-chip settings-chip-sm codex-provider-current">
-                        {t("settings.config.providers.current")}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="codex-provider-meta-row">
-                    <span>{provider.baseUrl}</span>
-                  </div>
-                </div>
-                <div className="codex-provider-actions">
-                  <button type="button" className="settings-action-btn settings-action-btn-sm" disabled={props.busy || pendingProviderId === provider.id} onClick={() => {
-                    setEditingDraft(createDraftFromRecord(provider));
-                    setSubmitError(null);
-                  }}>
-                    {t("settings.config.providers.editAction")}
-                  </button>
-                  <button type="button" className="settings-action-btn settings-action-btn-sm" disabled={props.busy || pendingProviderId === provider.id} onClick={() => setDeleteTarget(provider)}>
-                    {t("settings.config.providers.deleteAction")}
-                  </button>
-                  <button type="button" className="settings-action-btn settings-action-btn-sm settings-action-btn-primary" disabled={props.busy || pendingProviderId === provider.id} onClick={() => void handleApply(provider)}>
-                    {pendingProviderId === provider.id ? t("settings.config.providers.applying") : t("settings.config.providers.applyAction")}
-                  </button>
-                </div>
-              </div>
-            ))
-          : null}
-      </section>
+      <WindowsSandboxSettingsCard
+        busy={props.busy}
+        configSnapshot={props.configSnapshot}
+        setupState={props.windowsSandboxSetup}
+        onStartSetup={props.startWindowsSandboxSetup}
+      />
+      <CodexAuthModeCard
+        busy={props.busy}
+        authLoading={authLoading}
+        authModeState={authModeState}
+        authActionPending={authActionPending}
+        onActivateChatgpt={handleActivateChatgpt}
+        onLogin={handleChatgptLogin}
+      />
+      <CodexProviderListCard
+        busy={props.busy}
+        loading={loading}
+        providers={providers}
+        authModeState={authModeState}
+        currentProviderKey={currentProviderKey}
+        pendingProviderId={pendingProviderId}
+        noticeMessage={noticeMessage}
+        errorMessage={errorMessage}
+        onAdd={() => {
+          setEditingDraft(createEmptyCodexProviderDraft());
+          setSubmitError(null);
+        }}
+        onEdit={(provider) => {
+          setEditingDraft(createDraftFromRecord(provider));
+          setSubmitError(null);
+        }}
+        onDelete={setDeleteTarget}
+        onApply={handleApply}
+      />
       {licensesOpen ? (
         <Suspense fallback={null}>
-          <LazyOpenSourceLicensesDialog open={licensesOpen} onClose={() => setLicensesOpen(false)} />
+          <LazyOpenSourceLicensesDialog
+            open={licensesOpen}
+            onClose={() => setLicensesOpen(false)}
+          />
         </Suspense>
       ) : null}
       <CodexProviderDialog
@@ -227,23 +300,12 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
         }}
         onSave={handleSave}
       />
-      {deleteTarget !== null ? (
-        <div className="settings-dialog-backdrop" role="presentation" onClick={() => setDeleteTarget(null)}>
-          <section className="settings-dialog mcp-confirm-dialog" role="dialog" aria-modal="true" aria-label={t("settings.config.providers.deleteTitle")} onClick={(event) => event.stopPropagation()}>
-            <header className="settings-dialog-header">
-              <strong>{t("settings.config.providers.deleteTitle")}</strong>
-              <button type="button" className="settings-dialog-close" onClick={() => setDeleteTarget(null)} aria-label={t("settings.config.providers.closeAction")}>×</button>
-            </header>
-            <div className="settings-dialog-body mcp-confirm-body">
-              <p>{t("settings.config.providers.deleteDescription", { name: deleteTarget.name })}</p>
-              <div className="mcp-form-actions">
-                <button type="button" className="settings-action-btn" onClick={() => setDeleteTarget(null)} disabled={pendingProviderId === deleteTarget.id}>{t("settings.config.providers.cancelAction")}</button>
-                <button type="button" className="settings-action-btn settings-action-btn-primary" onClick={() => void handleDelete()} disabled={pendingProviderId === deleteTarget.id}>{pendingProviderId === deleteTarget.id ? t("settings.config.providers.deleting") : t("settings.config.providers.confirmDeleteAction")}</button>
-              </div>
-            </div>
-          </section>
-        </div>
-      ) : null}
+      <CodexProviderDeleteDialog
+        deleteTarget={deleteTarget}
+        pendingProviderId={pendingProviderId}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

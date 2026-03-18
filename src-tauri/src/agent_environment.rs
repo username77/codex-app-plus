@@ -11,6 +11,7 @@ const SYSTEM32_DIR: &str = "System32";
 const WSL_ROOT_ENV_VARS: [&str; 2] = ["SystemRoot", "WINDIR"];
 const WSL_INFO_SCRIPT: &str = "printf '%s\n%s' \"$WSL_DISTRO_NAME\" \"$HOME\"";
 
+#[derive(Debug, Clone)]
 pub struct AgentFsPath {
     pub display_path: String,
     pub host_path: PathBuf,

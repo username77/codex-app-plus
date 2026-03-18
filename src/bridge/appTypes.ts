@@ -121,6 +121,36 @@ export interface ApplyCodexProviderInput {
   readonly id: string;
 }
 
+export type CodexAuthMode = "chatgpt" | "apikey";
+
+export interface ActivateCodexChatgptInput {
+  readonly agentEnvironment?: AgentEnvironment;
+}
+
+export interface GetCodexAuthModeStateInput {
+  readonly agentEnvironment?: AgentEnvironment;
+}
+
+export interface CaptureCodexOauthSnapshotInput {
+  readonly agentEnvironment?: AgentEnvironment;
+}
+
+export interface CodexAuthModeStateOutput {
+  readonly activeMode: CodexAuthMode;
+  readonly activeProviderId: string | null;
+  readonly activeProviderKey: string | null;
+  readonly oauthSnapshotAvailable: boolean;
+}
+
+export interface CodexAuthSwitchResult {
+  readonly mode: CodexAuthMode;
+  readonly providerId: string | null;
+  readonly providerKey: string | null;
+  readonly authPath: string;
+  readonly configPath: string;
+  readonly restoredFromSnapshot: boolean;
+}
+
 export interface CodexProviderApplyResult {
   readonly providerId: string;
   readonly providerKey: string;

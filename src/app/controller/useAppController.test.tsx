@@ -81,6 +81,8 @@ vi.mock("../../features/settings/sandbox/windowsSandboxSetup", () => ({
 }));
 
 import {
+  ensureChatgptModeForLogin,
+  isChatgptLoginDisabledError,
   loginWithStoredTokens,
   logoutWithLocalCleanup,
   openChatgptLogin,
@@ -101,6 +103,26 @@ function createHostBridge(overrides?: Partial<HostBridge["app"]>): HostBridge {
       upsertCodexProvider: vi.fn(),
       deleteCodexProvider: vi.fn(),
       applyCodexProvider: vi.fn(),
+      getCodexAuthModeState: vi.fn().mockResolvedValue({
+        activeMode: "chatgpt",
+        activeProviderId: null,
+        activeProviderKey: null,
+        oauthSnapshotAvailable: true,
+      }),
+      activateCodexChatgpt: vi.fn().mockResolvedValue({
+        mode: "chatgpt",
+        providerId: null,
+        providerKey: null,
+        authPath: "C:/Users/Administrator/.codex/auth.json",
+        configPath: "C:/Users/Administrator/.codex/config.toml",
+        restoredFromSnapshot: true,
+      }),
+      captureCodexOauthSnapshot: vi.fn().mockResolvedValue({
+        activeMode: "chatgpt",
+        activeProviderId: null,
+        activeProviderKey: null,
+        oauthSnapshotAvailable: true,
+      }),
       readChatgptAuthTokens: vi.fn().mockResolvedValue({
         accessToken: "token-123",
         chatgptAccountId: "account-123",
@@ -151,6 +173,8 @@ function createRequestStub() {
         return { rateLimits: null };
       case "config/read":
         return { config: {}, version: 1, layers: [] };
+      case "config/value/write":
+        return { ok: true };
       case "collaborationMode/list":
         return { data: [] };
       default:
@@ -226,6 +250,58 @@ describe("useAppController auth helpers", () => {
     expect(hostBridge.app.openExternal).toHaveBeenCalledWith("https://example.com/auth");
   });
 
+  it("switches back to ChatGPT mode before login when API key mode is active", async () => {
+    const client = { request: vi.fn().mockResolvedValue({ ok: true }) };
+    const hostBridge = createHostBridge({
+      getCodexAuthModeState: vi.fn().mockResolvedValue({
+        activeMode: "apikey",
+        activeProviderId: "provider-1",
+        activeProviderKey: "right_code",
+        oauthSnapshotAvailable: false,
+      }),
+    });
+
+    await ensureChatgptModeForLogin(
+      client as never,
+      hostBridge as never,
+      DEFAULT_AGENT_ENVIRONMENT,
+    );
+
+    expect(hostBridge.app.activateCodexChatgpt).toHaveBeenCalledWith({
+      agentEnvironment: DEFAULT_AGENT_ENVIRONMENT,
+    });
+    expect(client.request).toHaveBeenCalledWith("config/read", { includeLayers: true });
+    expect(client.request).toHaveBeenCalledWith(
+      "config/value/write",
+      expect.objectContaining({
+        keyPath: "forced_login_method",
+        value: "chatgpt",
+      }),
+    );
+  });
+
+  it("does not switch mode again when ChatGPT mode is already active", async () => {
+    const client = { request: vi.fn().mockResolvedValue({ ok: true }) };
+    const hostBridge = createHostBridge();
+
+    await ensureChatgptModeForLogin(
+      client as never,
+      hostBridge as never,
+      DEFAULT_AGENT_ENVIRONMENT,
+    );
+
+    expect(hostBridge.app.activateCodexChatgpt).not.toHaveBeenCalled();
+  });
+
+  it("recognizes the protocol error for disabled ChatGPT login", () => {
+    expect(
+      isChatgptLoginDisabledError(
+        new Error("协议错误: [-32600] ChatGPT login is disabled. Use API key login instead."),
+      ),
+    ).toBe(true);
+    expect(isChatgptLoginDisabledError(new Error("boom"))).toBe(false);
+  });
+
   it("cleans local auth state during logout", async () => {
     const dispatch = vi.fn();
     const client = { request: createRequestStub() };
@@ -263,6 +339,63 @@ describe("useAppController auth helpers", () => {
 
     await waitFor(() => {
       expect(protocolState.startAppServer).toHaveBeenCalledWith({ agentEnvironment: "wsl" });
+    });
+  });
+
+  it("controller login switches ChatGPT mode before opening OAuth login", async () => {
+    const hostBridge = createHostBridge({
+      getCodexAuthModeState: vi.fn().mockResolvedValue({
+        activeMode: "apikey",
+        activeProviderId: "provider-1",
+        activeProviderKey: "right_code",
+        oauthSnapshotAvailable: false,
+      }),
+      readChatgptAuthTokens: vi.fn().mockRejectedValue(new Error("missing tokens")),
+    });
+    protocolState.request = vi.fn(async (method: string) => {
+      switch (method) {
+        case "getAuthStatus":
+          return { requiresOpenaiAuth: true, authMethod: null };
+        case "account/read":
+          return { account: null, requiresOpenaiAuth: true };
+        case "account/rateLimits/read":
+          return { rateLimits: null };
+        case "config/read":
+          return { config: {}, version: 1, layers: [] };
+        case "config/value/write":
+          return { ok: true };
+        case "collaborationMode/list":
+          return { data: [] };
+        case "account/login/start":
+          return {
+            type: "chatgpt",
+            loginId: "login-1",
+            authUrl: "https://example.com/auth",
+          };
+        default:
+          return {};
+      }
+    });
+    const { result } = renderHook(() => useControllerHarness(hostBridge), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.initialized).toBe(true);
+    });
+    protocolState.request.mockClear();
+
+    await act(async () => {
+      await result.current.controller.login();
+    });
+
+    expect(hostBridge.app.activateCodexChatgpt).toHaveBeenCalledWith({
+      agentEnvironment: DEFAULT_AGENT_ENVIRONMENT,
+    });
+    expect(protocolState.request).toHaveBeenCalledWith(
+      "config/value/write",
+      expect.objectContaining({ keyPath: "forced_login_method", value: "chatgpt" }),
+    );
+    expect(protocolState.request).toHaveBeenCalledWith("account/login/start", {
+      type: "chatgpt",
     });
   });
 });

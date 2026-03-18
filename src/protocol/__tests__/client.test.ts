@@ -58,6 +58,26 @@ function createHostBridge(): HostBridge {
         authPath: "C:/Users/Administrator/.codex/auth.json",
         configPath: "C:/Users/Administrator/.codex/config.toml"
       }),
+      getCodexAuthModeState: vi.fn().mockResolvedValue({
+        activeMode: "chatgpt",
+        activeProviderId: null,
+        activeProviderKey: null,
+        oauthSnapshotAvailable: false
+      }),
+      activateCodexChatgpt: vi.fn().mockResolvedValue({
+        mode: "chatgpt",
+        providerId: null,
+        providerKey: null,
+        authPath: "C:/Users/Administrator/.codex/auth.json",
+        configPath: "C:/Users/Administrator/.codex/config.toml",
+        restoredFromSnapshot: false
+      }),
+      captureCodexOauthSnapshot: vi.fn().mockResolvedValue({
+        activeMode: "chatgpt",
+        activeProviderId: null,
+        activeProviderKey: null,
+        oauthSnapshotAvailable: true
+      }),
       readChatgptAuthTokens: vi.fn().mockResolvedValue({
         accessToken: "token",
         chatgptAccountId: "account",

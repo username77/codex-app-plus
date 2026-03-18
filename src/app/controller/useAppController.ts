@@ -30,7 +30,14 @@ import {
 } from "./appControllerTypes";
 import { useAppControllerActions } from "./useAppControllerActions";
 
-export { loginWithStoredTokens, logoutWithLocalCleanup, openChatgptLogin, refreshAccountState } from "./appControllerAccount";
+export {
+  ensureChatgptModeForLogin,
+  isChatgptLoginDisabledError,
+  loginWithStoredTokens,
+  logoutWithLocalCleanup,
+  openChatgptLogin,
+  refreshAccountState,
+} from "./appControllerAccount";
 
 export function useAppController(hostBridge: HostBridge, agentEnvironment: AgentEnvironment): AppController {
   const dispatch = useAppDispatch();
@@ -152,7 +159,16 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
           settleThreadRequest(String((params as { requestId: string | number }).requestId));
         }
         if (method === "account/login/completed" && clientRef.current !== null && (params as { success?: boolean }).success === true) {
-          void refreshAccountState(clientRef.current, dispatch);
+          void (async () => {
+            try {
+              await refreshAccountState(clientRef.current!, dispatch);
+              await hostBridge.app.captureCodexOauthSnapshot({
+                agentEnvironment: agentEnvironmentRef.current,
+              });
+            } catch (error) {
+              console.error("同步 OAuth 快照失败", error);
+            }
+          })();
         }
         if (method === "windowsSandbox/setupCompleted" && clientRef.current !== null) {
           void refreshConfigAfterWindowsSandboxSetup(clientRef.current, dispatch, params as WindowsSandboxSetupCompletedNotification).catch((error) => dispatch({ type: "fatal/error", message: toErrorMessage(error) }));

@@ -200,6 +200,51 @@ pub struct ApplyCodexProviderInput {
     pub id: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivateCodexChatgptInput {
+    pub agent_environment: Option<AgentEnvironment>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetCodexAuthModeStateInput {
+    pub agent_environment: Option<AgentEnvironment>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CaptureCodexOauthSnapshotInput {
+    pub agent_environment: Option<AgentEnvironment>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum CodexAuthMode {
+    Chatgpt,
+    Apikey,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexAuthModeStateOutput {
+    pub active_mode: CodexAuthMode,
+    pub active_provider_id: Option<String>,
+    pub active_provider_key: Option<String>,
+    pub oauth_snapshot_available: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexAuthSwitchResult {
+    pub mode: CodexAuthMode,
+    pub provider_id: Option<String>,
+    pub provider_key: Option<String>,
+    pub auth_path: String,
+    pub config_path: String,
+    pub restored_from_snapshot: bool,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CodexProviderApplyResult {

@@ -25,6 +25,7 @@ interface AppScreenContentProps {
   readonly authLoginPending: boolean;
   readonly onBackHome: () => void;
   readonly onDismissSettingsMenu: () => void;
+  readonly onOpenApiKeySettings: () => void;
   readonly onOpenSettings: () => void;
   readonly onOpenSettingsSection: (section: SettingsSection) => void;
   readonly onOpenSkills: () => void;
@@ -71,7 +72,7 @@ function renderScreen(props: AppScreenContentProps): JSX.Element {
         busy={props.authBusy}
         loginPending={props.authLoginPending}
         onLogin={props.controller.login}
-        onUseApiKey={props.onOpenSettings}
+        onUseApiKey={props.onOpenApiKeySettings}
       />
     );
   }

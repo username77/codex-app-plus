@@ -5,6 +5,7 @@ use serde_json::Value;
 use crate::agent_environment::{
     resolve_agent_environment, resolve_codex_home_relative_path, resolve_host_path_for_agent_path,
 };
+use crate::codex_auth::clear_oauth_snapshot_auth_state_in_root;
 use crate::error::{AppError, AppResult};
 use crate::global_agent_instructions::read_global_agent_instructions_at;
 use crate::models::{
@@ -238,6 +239,7 @@ fn clear_chatgpt_auth_state_in_root(root: &Path) -> AppResult<()> {
         chatgpt_auth_logout_marker_path_for_root(root),
         b"logged-out",
     )?;
+    clear_oauth_snapshot_auth_state_in_root(root)?;
     Ok(())
 }
 

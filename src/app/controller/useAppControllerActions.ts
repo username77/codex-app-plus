@@ -16,7 +16,14 @@ import { startWindowsSandboxSetupRequest } from "../../features/settings/sandbox
 import { ProtocolClient } from "../../protocol/client";
 import { createServerRequestPayload } from "./serverRequests";
 import { listArchivedThreads as listArchivedThreadsForEnvironment } from "./appControllerBootstrap";
-import { loginWithStoredTokens, logoutWithLocalCleanup, openChatgptLogin, refreshAccountState } from "./appControllerAccount";
+import {
+  ensureChatgptModeForLogin,
+  isChatgptLoginDisabledError,
+  loginWithStoredTokens,
+  logoutWithLocalCleanup,
+  openChatgptLogin,
+  refreshAccountState,
+} from "./appControllerAccount";
 import { reportServerRequestError } from "./appControllerServerRequests";
 import type {
   AppController,
@@ -70,18 +77,31 @@ export function useAppControllerActions({
 
   const login = useCallback(async () => {
     await runBusy(async () => {
+      await ensureChatgptModeForLogin(client, hostBridge, agentEnvironment);
       const loggedInWithTokens = await loginWithStoredTokens(client, hostBridge);
       if (loggedInWithTokens) {
         dispatch({ type: "authLogin/completed", success: true, error: null });
         await refreshAccountState(client, dispatch);
+        await hostBridge.app.captureCodexOauthSnapshot({
+          agentEnvironment,
+        });
         return;
       }
-      const openedBrowser = await openChatgptLogin(client, hostBridge, dispatch);
+      let openedBrowser: boolean;
+      try {
+        openedBrowser = await openChatgptLogin(client, hostBridge, dispatch);
+      } catch (error) {
+        if (!isChatgptLoginDisabledError(error)) {
+          throw error;
+        }
+        await ensureChatgptModeForLogin(client, hostBridge, agentEnvironment);
+        openedBrowser = await openChatgptLogin(client, hostBridge, dispatch);
+      }
       if (!openedBrowser) {
         await refreshAccountState(client, dispatch);
       }
     });
-  }, [client, dispatch, hostBridge, runBusy]);
+  }, [agentEnvironment, client, dispatch, hostBridge, runBusy]);
 
   const logout = useCallback(async () => {
     await runBusy(async () => {

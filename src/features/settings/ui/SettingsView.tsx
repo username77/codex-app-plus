@@ -2,6 +2,8 @@ import type { ConfigMutationResult, McpRefreshResult } from "../config/configOpe
 import type { AppPreferencesController } from "../hooks/useAppPreferences";
 import type { WindowsSandboxSetupState } from "../../../domain/types";
 import type {
+  CodexAuthModeStateOutput,
+  CodexAuthSwitchResult,
   CodexProviderApplyResult,
   CodexProviderDraft,
   CodexProviderRecord,
@@ -53,6 +55,7 @@ export interface SettingsViewProps {
   onOpenConfigToml: () => Promise<void>;
   refreshConfigSnapshot: () => Promise<ConfigReadResponse>;
   refreshAuthState: () => Promise<void>;
+  login: () => Promise<void>;
   readGlobalAgentInstructions: () => Promise<GlobalAgentInstructionsOutput>;
   writeGlobalAgentInstructions: (
     input: UpdateGlobalAgentInstructionsInput
@@ -61,6 +64,8 @@ export interface SettingsViewProps {
   upsertCodexProvider: (input: CodexProviderDraft) => Promise<CodexProviderRecord>;
   deleteCodexProvider: (input: DeleteCodexProviderInput) => Promise<CodexProviderStore>;
   applyCodexProvider: (input: { readonly id: string }) => Promise<CodexProviderApplyResult>;
+  getCodexAuthModeState: () => Promise<CodexAuthModeStateOutput>;
+  activateCodexChatgpt: () => Promise<CodexAuthSwitchResult>;
   refreshMcpData: () => Promise<McpRefreshResult>;
   listArchivedThreads: () => Promise<ReadonlyArray<import("../../../domain/types").ThreadSummary>>;
   unarchiveThread: (threadId: string) => Promise<void>;
@@ -140,10 +145,14 @@ function SettingsContent(props: SettingsViewProps): JSX.Element {
         onOpenConfigToml={props.onOpenConfigToml}
         refreshConfigSnapshot={props.refreshConfigSnapshot}
         refreshAuthState={props.refreshAuthState}
+        login={props.login}
         listCodexProviders={props.listCodexProviders}
         upsertCodexProvider={props.upsertCodexProvider}
         deleteCodexProvider={props.deleteCodexProvider}
         applyCodexProvider={props.applyCodexProvider}
+        getCodexAuthModeState={props.getCodexAuthModeState}
+        activateCodexChatgpt={props.activateCodexChatgpt}
+        writeConfigValue={props.writeConfigValue}
         windowsSandboxSetup={props.windowsSandboxSetup}
         startWindowsSandboxSetup={props.startWindowsSandboxSetup}
       />

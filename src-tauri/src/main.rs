@@ -4,6 +4,7 @@ mod agent_environment;
 mod app_server_io;
 mod app_server_stderr;
 mod app_support;
+mod codex_auth;
 mod codex_cli;
 mod codex_data;
 mod codex_provider;
@@ -22,8 +23,9 @@ mod window_theme;
 mod windows_child_process;
 
 use commands::{
-    app_apply_codex_provider, app_clear_chatgpt_auth_state, app_control_window,
-    app_delete_codex_provider, app_delete_codex_session, app_import_official_data,
+    app_activate_codex_chatgpt, app_apply_codex_provider, app_capture_codex_oauth_snapshot,
+    app_clear_chatgpt_auth_state, app_control_window, app_delete_codex_provider,
+    app_delete_codex_session, app_get_codex_auth_mode_state, app_import_official_data,
     app_list_codex_providers, app_list_codex_sessions, app_open_codex_config_toml,
     app_open_external, app_open_workspace, app_read_chatgpt_auth_tokens, app_read_codex_session,
     app_read_global_agent_instructions, app_server_restart, app_server_start, app_server_stop,
@@ -74,6 +76,9 @@ fn main() {
             app_upsert_codex_provider,
             app_delete_codex_provider,
             app_apply_codex_provider,
+            app_get_codex_auth_mode_state,
+            app_activate_codex_chatgpt,
+            app_capture_codex_oauth_snapshot,
             app_read_chatgpt_auth_tokens,
             app_write_chatgpt_auth_tokens,
             app_clear_chatgpt_auth_state,

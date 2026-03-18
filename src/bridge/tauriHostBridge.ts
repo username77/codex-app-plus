@@ -1,13 +1,17 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
+  ActivateCodexChatgptInput,
   AppServerStartInput,
   AgentEnvironment,
   OpenCodexConfigTomlInput,
   ApplyCodexProviderInput,
   BridgeEventName,
   BridgeEventPayloadMap,
+  CaptureCodexOauthSnapshotInput,
   CodexProviderApplyResult,
+  CodexAuthModeStateOutput,
+  CodexAuthSwitchResult,
   CodexProviderDraft,
   CodexProviderRecord,
   CodexProviderStore,
@@ -25,6 +29,7 @@ import type {
   GitRepoInput,
   ChatgptAuthTokensOutput,
   GlobalAgentInstructionsOutput,
+  GetCodexAuthModeStateInput,
   GitStatusSnapshotOutput,
   GitBranchRef,
   HostBridge,
@@ -131,6 +136,18 @@ export function createTauriHostBridge(): HostBridge {
         }),
       applyCodexProvider: (input: ApplyCodexProviderInput) =>
         invoke<CodexProviderApplyResult>("app_apply_codex_provider", {
+          input
+        }),
+      getCodexAuthModeState: (input: GetCodexAuthModeStateInput) =>
+        invoke<CodexAuthModeStateOutput>("app_get_codex_auth_mode_state", {
+          input
+        }),
+      activateCodexChatgpt: (input: ActivateCodexChatgptInput) =>
+        invoke<CodexAuthSwitchResult>("app_activate_codex_chatgpt", {
+          input
+        }),
+      captureCodexOauthSnapshot: (input: CaptureCodexOauthSnapshotInput) =>
+        invoke<CodexAuthModeStateOutput>("app_capture_codex_oauth_snapshot", {
           input
         }),
       readChatgptAuthTokens: () =>

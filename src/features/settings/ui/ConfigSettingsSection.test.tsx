@@ -49,40 +49,60 @@ function renderSection(
   });
 }
 
+function createBaseProps(
+  overrides: Partial<ComponentProps<typeof ConfigSettingsSection>> = {}
+): ComponentProps<typeof ConfigSettingsSection> {
+  return {
+    busy: false,
+    configSnapshot: { config: {} },
+    onOpenConfigToml: vi.fn().mockResolvedValue(undefined),
+    refreshConfigSnapshot: vi.fn().mockResolvedValue(undefined),
+    refreshAuthState: vi.fn().mockResolvedValue(undefined),
+    login: vi.fn().mockResolvedValue(undefined),
+    listCodexProviders: vi.fn().mockResolvedValue({ version: 1, providers: [] }),
+    upsertCodexProvider: vi.fn(),
+    deleteCodexProvider: vi.fn(),
+    applyCodexProvider: vi.fn(),
+    getCodexAuthModeState: vi.fn().mockResolvedValue({
+      activeMode: "chatgpt",
+      activeProviderId: null,
+      activeProviderKey: null,
+      oauthSnapshotAvailable: false,
+    }),
+    activateCodexChatgpt: vi.fn().mockResolvedValue({
+      mode: "chatgpt",
+      providerId: null,
+      providerKey: null,
+      authPath: "C:/Users/Administrator/.codex/auth.json",
+      configPath: "C:/Users/Administrator/.codex/config.toml",
+      restoredFromSnapshot: false,
+    }),
+    writeConfigValue: vi.fn().mockResolvedValue({}),
+    windowsSandboxSetup: { pending: false, mode: null, success: null, error: null },
+    startWindowsSandboxSetup: vi.fn().mockResolvedValue({ started: true }),
+    ...overrides,
+  };
+}
+
 describe("ConfigSettingsSection", () => {
   it("renders provider rows and marks the current provider", async () => {
-    const { container } = renderSection({
-      busy: false,
+    const { container } = renderSection(createBaseProps({
       configSnapshot: { config: { model_provider: "right_code" } },
-      onOpenConfigToml: vi.fn().mockResolvedValue(undefined),
-      refreshConfigSnapshot: vi.fn().mockResolvedValue(undefined),
-      refreshAuthState: vi.fn().mockResolvedValue(undefined),
       listCodexProviders: vi.fn().mockResolvedValue({ version: 1, providers: [createProvider()] }),
-      upsertCodexProvider: vi.fn(),
-      deleteCodexProvider: vi.fn(),
-      applyCodexProvider: vi.fn(),
-      windowsSandboxSetup: { pending: false, mode: null, success: null, error: null },
-      startWindowsSandboxSetup: vi.fn().mockResolvedValue({ started: true })
-    });
+      getCodexAuthModeState: vi.fn().mockResolvedValue({
+        activeMode: "apikey",
+        activeProviderId: "provider-1",
+        activeProviderKey: "right_code",
+        oauthSnapshotAvailable: false,
+      }),
+    }));
 
     expect(await screen.findByText("Right Code")).toBeInTheDocument();
     expect(container.querySelectorAll(".codex-provider-current")).toHaveLength(1);
   });
 
   it("disables save when advanced content is invalid", async () => {
-    const { container } = renderSection({
-      busy: false,
-      configSnapshot: { config: {} },
-      onOpenConfigToml: vi.fn().mockResolvedValue(undefined),
-      refreshConfigSnapshot: vi.fn().mockResolvedValue(undefined),
-      refreshAuthState: vi.fn().mockResolvedValue(undefined),
-      listCodexProviders: vi.fn().mockResolvedValue({ version: 1, providers: [] }),
-      upsertCodexProvider: vi.fn(),
-      deleteCodexProvider: vi.fn(),
-      applyCodexProvider: vi.fn(),
-      windowsSandboxSetup: { pending: false, mode: null, success: null, error: null },
-      startWindowsSandboxSetup: vi.fn().mockResolvedValue({ started: true })
-    });
+    const { container } = renderSection(createBaseProps());
 
     openAddProviderDialog(container);
     const { nameInput, apiKeyInput, authTextarea } = getDialogInputs(container);
@@ -107,24 +127,20 @@ describe("ConfigSettingsSection", () => {
     });
     const refreshConfigSnapshot = vi.fn().mockResolvedValue(undefined);
     const refreshAuthState = vi.fn().mockResolvedValue(undefined);
+    const writeConfigValue = vi.fn().mockResolvedValue({});
     const listCodexProviders = vi
       .fn()
       .mockResolvedValueOnce({ version: 1, providers: [] })
       .mockResolvedValueOnce({ version: 1, providers: [savedProvider] });
 
-    const { container } = renderSection({
-      busy: false,
-      configSnapshot: { config: {} },
-      onOpenConfigToml: vi.fn().mockResolvedValue(undefined),
+    const { container } = renderSection(createBaseProps({
       refreshConfigSnapshot,
       refreshAuthState,
       listCodexProviders,
       upsertCodexProvider,
-      deleteCodexProvider: vi.fn(),
       applyCodexProvider,
-      windowsSandboxSetup: { pending: false, mode: null, success: null, error: null },
-      startWindowsSandboxSetup: vi.fn().mockResolvedValue({ started: true })
-    });
+      writeConfigValue,
+    }));
 
     openAddProviderDialog(container);
     const { nameInput, providerKeyInput, apiKeyInput, baseUrlInput } = getDialogInputs(container);
@@ -138,24 +154,16 @@ describe("ConfigSettingsSection", () => {
 
     await waitFor(() => expect(upsertCodexProvider).toHaveBeenCalled());
     expect(applyCodexProvider).toHaveBeenCalledWith({ id: savedProvider.id });
+    expect(writeConfigValue).toHaveBeenCalledWith(expect.objectContaining({
+      keyPath: "forced_login_method",
+      value: "api",
+    }));
     expect(refreshConfigSnapshot).toHaveBeenCalled();
     expect(refreshAuthState).toHaveBeenCalled();
   });
 
   it("does not render the model input for provider settings", async () => {
-    const { container } = renderSection({
-      busy: false,
-      configSnapshot: { config: {} },
-      onOpenConfigToml: vi.fn().mockResolvedValue(undefined),
-      refreshConfigSnapshot: vi.fn().mockResolvedValue(undefined),
-      refreshAuthState: vi.fn().mockResolvedValue(undefined),
-      listCodexProviders: vi.fn().mockResolvedValue({ version: 1, providers: [] }),
-      upsertCodexProvider: vi.fn(),
-      deleteCodexProvider: vi.fn(),
-      applyCodexProvider: vi.fn(),
-      windowsSandboxSetup: { pending: false, mode: null, success: null, error: null },
-      startWindowsSandboxSetup: vi.fn().mockResolvedValue({ started: true })
-    });
+    const { container } = renderSection(createBaseProps());
 
     openAddProviderDialog(container);
 
@@ -163,19 +171,7 @@ describe("ConfigSettingsSection", () => {
   });
 
   it("renders English copy when locale is en-US", async () => {
-    renderSection({
-      busy: false,
-      configSnapshot: { config: {} },
-      onOpenConfigToml: vi.fn().mockResolvedValue(undefined),
-      refreshConfigSnapshot: vi.fn().mockResolvedValue(undefined),
-      refreshAuthState: vi.fn().mockResolvedValue(undefined),
-      listCodexProviders: vi.fn().mockResolvedValue({ version: 1, providers: [] }),
-      upsertCodexProvider: vi.fn(),
-      deleteCodexProvider: vi.fn(),
-      applyCodexProvider: vi.fn(),
-      windowsSandboxSetup: { pending: false, mode: null, success: null, error: null },
-      startWindowsSandboxSetup: vi.fn().mockResolvedValue({ started: true })
-    }, "en-US");
+    renderSection(createBaseProps(), "en-US");
 
     expect(await screen.findByText("Config")).toBeInTheDocument();
     expect(screen.getByText("Open config file")).toBeInTheDocument();

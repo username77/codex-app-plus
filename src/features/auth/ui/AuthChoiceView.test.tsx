@@ -16,6 +16,7 @@ describe("AuthChoiceView", () => {
     );
 
     expect(screen.getByRole("heading", { name: "选择登录方式" })).toBeInTheDocument();
+    expect(screen.getByText("你可以使用官方 ChatGPT 账户登录，或进入配置页使用 API Key。选择完毕后需重启软件生效。")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "使用账户登录" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "使用 API Key" })).toBeInTheDocument();
   });
@@ -68,6 +69,7 @@ describe("AuthChoiceView", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Choose sign-in method" })).toBeInTheDocument();
+    expect(screen.getByText("Use your official ChatGPT account or open the config page to use an API key. Restart the app after choosing for the change to take effect.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Use API Key" })).toBeInTheDocument();
   });
 });

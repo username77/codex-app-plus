@@ -1,11 +1,46 @@
+import type { AgentEnvironment } from "../../bridge/types";
+import { readUserConfigWriteTarget } from "../../features/settings/config/configWriteTarget";
 import type { AppAction, AuthStatus } from "../../domain/types";
 import type { GetAuthStatusResponse } from "../../protocol/generated/GetAuthStatusResponse";
+import type { ConfigReadResponse } from "../../protocol/generated/v2/ConfigReadResponse";
 import type { GetAccountRateLimitsResponse } from "../../protocol/generated/v2/GetAccountRateLimitsResponse";
 import type { GetAccountResponse } from "../../protocol/generated/v2/GetAccountResponse";
 import type { LoginAccountResponse } from "../../protocol/generated/v2/LoginAccountResponse";
 import type { AccountRequestClient, AppHostBridge } from "./appControllerTypes";
 
 type Dispatch = (action: AppAction) => void;
+const CHATGPT_LOGIN_DISABLED_MESSAGE = "ChatGPT login is disabled. Use API key login instead.";
+
+async function writeForcedChatgptLoginMethod(client: AccountRequestClient): Promise<void> {
+  const snapshot = (await client.request("config/read", { includeLayers: true })) as ConfigReadResponse;
+  const writeTarget = readUserConfigWriteTarget(snapshot);
+  await client.request("config/value/write", {
+    keyPath: "forced_login_method",
+    value: "chatgpt",
+    mergeStrategy: "replace",
+    filePath: writeTarget.filePath,
+    expectedVersion: writeTarget.expectedVersion,
+  });
+}
+
+export function isChatgptLoginDisabledError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return error.message.includes(CHATGPT_LOGIN_DISABLED_MESSAGE);
+}
+
+export async function ensureChatgptModeForLogin(
+  client: AccountRequestClient,
+  hostBridge: AppHostBridge,
+  agentEnvironment: AgentEnvironment,
+): Promise<void> {
+  const state = await hostBridge.app.getCodexAuthModeState({ agentEnvironment });
+  if (state.activeMode !== "chatgpt") {
+    await hostBridge.app.activateCodexChatgpt({ agentEnvironment });
+  }
+  await writeForcedChatgptLoginMethod(client);
+}
 
 function mapAuthStatus(response: GetAuthStatusResponse): { status: AuthStatus; mode: string | null } {
   if (response.requiresOpenaiAuth === true && response.authMethod === null) {

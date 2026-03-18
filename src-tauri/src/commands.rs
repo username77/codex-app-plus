@@ -5,22 +5,27 @@ use crate::app_support::{
     read_chatgpt_auth_tokens, read_global_agent_instructions, write_chatgpt_auth_tokens,
     write_global_agent_instructions,
 };
-use crate::codex_data::{delete_codex_session, list_codex_sessions, read_codex_session};
-use crate::codex_provider::{
-    apply_codex_provider, delete_codex_provider, list_codex_providers, upsert_codex_provider,
+use crate::codex_auth::{
+    activate_codex_chatgpt, activate_codex_provider, capture_codex_oauth_snapshot,
+    get_codex_auth_mode_state,
 };
+use crate::codex_data::{delete_codex_session, list_codex_sessions, read_codex_session};
+use crate::codex_provider::{delete_codex_provider, list_codex_providers, upsert_codex_provider};
 use crate::error::{AppError, AppResult};
 use crate::events::{EVENT_CONTEXT_MENU_REQUESTED, EVENT_NOTIFICATION_REQUESTED};
 use crate::models::{
-    AppServerStartInput, ApplyCodexProviderInput, ChatgptAuthTokensOutput,
-    CodexProviderApplyResult, CodexProviderRecord, CodexProviderStore, CodexSessionReadInput,
-    CodexSessionReadOutput, CodexSessionSummary, DeleteCodexProviderInput, DeleteCodexSessionInput,
+    ActivateCodexChatgptInput, AppServerStartInput, ApplyCodexProviderInput,
+    CaptureCodexOauthSnapshotInput, ChatgptAuthTokensOutput, CodexAuthModeStateOutput,
+    CodexAuthSwitchResult, CodexProviderApplyResult, CodexProviderRecord, CodexProviderStore,
+    CodexSessionReadInput, CodexSessionReadOutput, CodexSessionSummary,
+    DeleteCodexProviderInput, DeleteCodexSessionInput, GetCodexAuthModeStateInput,
     GlobalAgentInstructionsOutput, ImportOfficialDataInput, ListCodexSessionsInput,
-    OpenCodexConfigTomlInput, OpenWorkspaceInput, ReadGlobalAgentInstructionsInput, RpcCancelInput,
-    RpcNotifyInput, RpcRequestInput, RpcRequestOutput, ServerRequestResolveInput,
-    ShowContextMenuInput, ShowNotificationInput, TerminalCloseInput, TerminalCreateInput,
-    TerminalCreateOutput, TerminalResizeInput, TerminalWriteInput, UpdateChatgptAuthTokensInput,
-    UpdateGlobalAgentInstructionsInput, UpsertCodexProviderInput, WindowChromeAction,
+    OpenCodexConfigTomlInput, OpenWorkspaceInput, ReadGlobalAgentInstructionsInput,
+    RpcCancelInput, RpcNotifyInput, RpcRequestInput, RpcRequestOutput,
+    ServerRequestResolveInput, ShowContextMenuInput, ShowNotificationInput,
+    TerminalCloseInput, TerminalCreateInput, TerminalCreateOutput, TerminalResizeInput,
+    TerminalWriteInput, UpdateChatgptAuthTokensInput, UpdateGlobalAgentInstructionsInput,
+    UpsertCodexProviderInput, WindowChromeAction,
 };
 use crate::process_manager::ProcessManager;
 use crate::terminal_manager::TerminalManager;
@@ -170,7 +175,28 @@ pub fn app_delete_codex_provider(
 pub fn app_apply_codex_provider(
     input: ApplyCodexProviderInput,
 ) -> Result<CodexProviderApplyResult, String> {
-    to_result(apply_codex_provider(input))
+    to_result(activate_codex_provider(input))
+}
+
+#[tauri::command]
+pub fn app_get_codex_auth_mode_state(
+    input: GetCodexAuthModeStateInput,
+) -> Result<CodexAuthModeStateOutput, String> {
+    to_result(get_codex_auth_mode_state(input))
+}
+
+#[tauri::command]
+pub fn app_activate_codex_chatgpt(
+    input: ActivateCodexChatgptInput,
+) -> Result<CodexAuthSwitchResult, String> {
+    to_result(activate_codex_chatgpt(input))
+}
+
+#[tauri::command]
+pub fn app_capture_codex_oauth_snapshot(
+    input: CaptureCodexOauthSnapshotInput,
+) -> Result<CodexAuthModeStateOutput, String> {
+    to_result(capture_codex_oauth_snapshot(input))
 }
 
 #[tauri::command]

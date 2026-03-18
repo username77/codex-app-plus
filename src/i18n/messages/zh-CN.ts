@@ -166,6 +166,23 @@ export const zhCN = {
         description: "查看当前桌面端打包的第三方许可清单。",
         action: "查看许可",
       },
+      auth: {
+        title: "鉴权模式",
+        description: "OAuth(ChatGPT) 与 API Key 可以双向切换，切换时会分别保存各自的 live 状态。",
+        currentModeLabel: "当前模式",
+        loading: "正在读取鉴权模式…",
+        modeApiKey: "当前使用 API Key 模式",
+        modeApiKeyWithProvider: "当前使用 API Key 模式 · {providerKey}",
+        modeChatgptReady: "当前使用 ChatGPT 模式，可直接恢复 OAuth 状态。",
+        modeChatgptNeedsLogin: "当前使用 ChatGPT 模式，但还需要重新登录。",
+        switchAction: "切到 ChatGPT 模式",
+        switching: "切换中…",
+        loginAction: "登录 ChatGPT",
+        loggingIn: "登录中…",
+        switchedMessage: "已切换到 ChatGPT 模式，重启软件后生效。",
+        switchedNeedsLoginMessage: "已切换到 ChatGPT 模式，请继续登录 ChatGPT，重启软件后生效。",
+        loginStartedMessage: "已开始 ChatGPT 登录流程，重启软件后生效。",
+      },
       providers: {
         title: "提供商配置",
         description: "保存到应用本地文件；“一键应用”只覆盖当前提供商相关 live 配置。",
@@ -178,7 +195,7 @@ export const zhCN = {
         applyAction: "一键应用",
         applying: "应用中…",
         savedMessage: "已保存提供商：{name}",
-        appliedMessage: "已应用提供商：{name}",
+        appliedMessage: "已应用提供商：{name}，重启软件后生效。",
         deletedMessage: "已删除提供商：{name}",
         deleteTitle: "删除提供商",
         deleteDescription:
@@ -294,7 +311,7 @@ export const zhCN = {
     choice: {
       ariaLabel: "鉴权选择",
       title: "选择登录方式",
-      subtitle: "你可以使用官方 ChatGPT 账户登录，或进入配置页使用 API Key。",
+      subtitle: "你可以使用官方 ChatGPT 账户登录，或进入配置页使用 API Key。选择完毕后需重启软件生效。",
       login: {
         action: "使用账户登录",
         pending: "正在跳转登录...",

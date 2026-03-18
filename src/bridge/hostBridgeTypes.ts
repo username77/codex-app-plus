@@ -1,7 +1,11 @@
 import type {
+  ActivateCodexChatgptInput,
   AppServerStartInput,
   ApplyCodexProviderInput,
+  CaptureCodexOauthSnapshotInput,
   ChatgptAuthTokensOutput,
+  CodexAuthModeStateOutput,
+  CodexAuthSwitchResult,
   CodexProviderApplyResult,
   CodexProviderDraft,
   CodexProviderRecord,
@@ -12,6 +16,7 @@ import type {
   DeleteCodexProviderInput,
   DeleteCodexSessionInput,
   GlobalAgentInstructionsOutput,
+  GetCodexAuthModeStateInput,
   ImportOfficialDataInput,
   ListCodexSessionsInput,
   OpenCodexConfigTomlInput,
@@ -83,6 +88,11 @@ export interface HostBridge {
     upsertCodexProvider(input: CodexProviderDraft): Promise<CodexProviderRecord>;
     deleteCodexProvider(input: DeleteCodexProviderInput): Promise<CodexProviderStore>;
     applyCodexProvider(input: ApplyCodexProviderInput): Promise<CodexProviderApplyResult>;
+    getCodexAuthModeState(input: GetCodexAuthModeStateInput): Promise<CodexAuthModeStateOutput>;
+    activateCodexChatgpt(input: ActivateCodexChatgptInput): Promise<CodexAuthSwitchResult>;
+    captureCodexOauthSnapshot(
+      input: CaptureCodexOauthSnapshotInput
+    ): Promise<CodexAuthModeStateOutput>;
     readChatgptAuthTokens(): Promise<ChatgptAuthTokensOutput>;
     writeChatgptAuthTokens(input: UpdateChatgptAuthTokensInput): Promise<ChatgptAuthTokensOutput>;
     clearChatgptAuthState(): Promise<void>;

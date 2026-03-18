@@ -65,6 +65,7 @@ export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
     onOpenConfigToml: openConfigToml,
     refreshConfigSnapshot: props.controller.refreshConfigSnapshot,
     refreshAuthState: props.controller.refreshAuthState,
+    login: props.controller.login,
     readGlobalAgentInstructions: () =>
       props.hostBridge.app.readGlobalAgentInstructions({
         agentEnvironment: props.preferences.agentEnvironment,
@@ -80,6 +81,14 @@ export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
     applyCodexProvider: (input) =>
       props.hostBridge.app.applyCodexProvider({
         ...input,
+        agentEnvironment: props.preferences.agentEnvironment,
+      }),
+    getCodexAuthModeState: () =>
+      props.hostBridge.app.getCodexAuthModeState({
+        agentEnvironment: props.preferences.agentEnvironment,
+      }),
+    activateCodexChatgpt: () =>
+      props.hostBridge.app.activateCodexChatgpt({
         agentEnvironment: props.preferences.agentEnvironment,
       }),
     refreshMcpData: props.controller.refreshMcpData,
