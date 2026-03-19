@@ -1,6 +1,6 @@
 import type { ConfigMutationResult, McpRefreshResult } from "../config/configOperations";
 import type { AppPreferencesController } from "../hooks/useAppPreferences";
-import type { WindowsSandboxSetupState } from "../../../domain/types";
+import type { AppUpdateState, WindowsSandboxSetupState } from "../../../domain/types";
 import type {
   CodexAuthModeStateOutput,
   CodexAuthSwitchResult,
@@ -43,6 +43,7 @@ export type SettingsSection =
   | "archived";
 
 export interface SettingsViewProps {
+  readonly appUpdate: AppUpdateState;
   readonly section: SettingsSection;
   readonly roots: ReadonlyArray<WorkspaceRoot>;
   readonly preferences: AppPreferencesController;
@@ -72,6 +73,8 @@ export interface SettingsViewProps {
   writeConfigValue: (params: ConfigValueWriteParams) => Promise<ConfigMutationResult>;
   batchWriteConfig: (params: ConfigBatchWriteParams) => Promise<ConfigMutationResult>;
   readonly startWindowsSandboxSetup: (mode: WindowsSandboxSetupMode) => Promise<unknown>;
+  checkForAppUpdate: () => Promise<void>;
+  installAppUpdate: () => Promise<void>;
 }
 
 interface NavItem {
@@ -135,7 +138,14 @@ function SettingsContent(props: SettingsViewProps): JSX.Element {
   const sectionTitle = createNavItems(t).find((item) => item.key === props.section)?.label ?? t("settings.nav.general");
 
   if (props.section === "general") {
-    return <GeneralSettingsSection preferences={props.preferences} />;
+    return (
+      <GeneralSettingsSection
+        appUpdate={props.appUpdate}
+        preferences={props.preferences}
+        onCheckForAppUpdate={props.checkForAppUpdate}
+        onInstallAppUpdate={props.installAppUpdate}
+      />
+    );
   }
   if (props.section === "config") {
     return (

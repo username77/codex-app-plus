@@ -4,8 +4,10 @@ import type {
 } from "../hooks/useAppPreferences";
 import type { AgentEnvironment, EmbeddedTerminalShell, WorkspaceOpener } from "../../../bridge/types";
 import type { ComposerEnterBehavior, FollowUpMode } from "../../../domain/timeline";
+import type { AppUpdateState } from "../../../domain/types";
 import type { ThemeMode } from "../../../domain/theme";
 import { createLanguageOptions, useI18n, type MessageKey } from "../../../i18n";
+import { AppUpdateCard } from "./AppUpdateCard";
 import { SettingsSelectRow, type SettingsSelectOption } from "./SettingsSelectRow";
 
 type Translator = (key: MessageKey) => string;
@@ -68,7 +70,10 @@ function createComposerEnterOptions(t: Translator): ReadonlyArray<SettingsSelect
 }
 
 interface GeneralSettingsSectionProps {
+  readonly appUpdate: AppUpdateState;
   readonly preferences: AppPreferencesController;
+  onCheckForAppUpdate: () => Promise<void>;
+  onInstallAppUpdate: () => Promise<void>;
 }
 
 function ToggleSwitch(props: {
@@ -91,7 +96,7 @@ function ToggleSwitch(props: {
 }
 
 export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.Element {
-  const { preferences } = props;
+  const { appUpdate, preferences } = props;
   const { t } = useI18n();
   const agentEnvironmentOptions = createAgentEnvironmentOptions(t);
   const workspaceOpenerOptions = createWorkspaceOpenerOptions(t);
@@ -184,6 +189,11 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
           statusNote={t("settings.general.composerEnterBehavior.note")}
         />
       </section>
+      <AppUpdateCard
+        appUpdate={appUpdate}
+        onCheckForAppUpdate={props.onCheckForAppUpdate}
+        onInstallAppUpdate={props.onInstallAppUpdate}
+      />
     </div>
   );
 }

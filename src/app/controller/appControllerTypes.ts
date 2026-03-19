@@ -1,4 +1,5 @@
 import type { HostBridge } from "../../bridge/types";
+import { APP_VERSION } from "../appVersion";
 import type { ServerRequestResolution, ThreadSummary } from "../../domain/types";
 import type { InitializeParams } from "../../protocol/generated/InitializeParams";
 import type { ConfigBatchWriteParams } from "../../protocol/generated/v2/ConfigBatchWriteParams";
@@ -33,7 +34,6 @@ export type { McpServerStatus } from "../../protocol/generated/v2/McpServerStatu
 export type { WindowsSandboxSetupMode } from "../../protocol/generated/v2/WindowsSandboxSetupMode";
 export type { WindowsSandboxSetupStartResponse } from "../../protocol/generated/v2/WindowsSandboxSetupStartResponse";
 
-export const APP_VERSION = "0.1.0";
 export const RETRY_DELAY_MS = 3_000;
 export const WINDOWS_SANDBOX_STATE_IDLE_RESET_MS = 120_000;
 
@@ -59,6 +59,8 @@ export interface AppController {
   exportRemoteSkill: (params: SkillsRemoteWriteParams) => Promise<SkillsRemoteWriteResponse>;
   setMultiAgentEnabled: (enabled: boolean) => Promise<void>;
   startWindowsSandboxSetup: (mode: WindowsSandboxSetupMode) => Promise<WindowsSandboxSetupStartResponse>;
+  checkForAppUpdate: () => Promise<void>;
+  installAppUpdate: () => Promise<void>;
   login: () => Promise<void>;
   logout: () => Promise<void>;
   resolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;

@@ -10,6 +10,7 @@ import { refreshConfigAfterWindowsSandboxSetup } from "../../features/settings/s
 import { ProtocolClient } from "../../protocol/client";
 import { useAppDispatch } from "../../state/store";
 import { useAppControllerRuntimeState } from "./appControllerState";
+import { useAppUpdater } from "./useAppUpdater";
 import {
   createAppServerStartInput,
   loadBootstrapSnapshot,
@@ -42,6 +43,7 @@ export {
 export function useAppController(hostBridge: HostBridge, agentEnvironment: AgentEnvironment): AppController {
   const dispatch = useAppDispatch();
   const runtimeState = useAppControllerRuntimeState();
+  const appUpdater = useAppUpdater();
   const clientRef = useRef<ProtocolClient | null>(null);
   const bootStartedRef = useRef(false);
   const bootingRef = useRef(false);
@@ -302,6 +304,8 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
   return {
     setInput: (text) => dispatch({ type: "input/changed", value: text }),
     retryConnection: () => bootstrap(true),
+    checkForAppUpdate: appUpdater.checkForAppUpdate,
+    installAppUpdate: appUpdater.installAppUpdate,
     ...controllerActions,
   };
 }

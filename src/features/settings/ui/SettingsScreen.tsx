@@ -53,6 +53,7 @@ export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
   }, [notifyError, props.hostBridge.app, props.preferences.agentEnvironment, state.configSnapshot]);
 
   const settingsProps: SettingsViewProps = {
+    appUpdate: state.appUpdate,
     section: props.section,
     roots: props.workspace.roots,
     preferences: props.preferences,
@@ -97,6 +98,8 @@ export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
     writeConfigValue: props.controller.writeConfigValue,
     batchWriteConfig: props.controller.batchWriteConfig,
     startWindowsSandboxSetup: props.controller.startWindowsSandboxSetup,
+    checkForAppUpdate: props.controller.checkForAppUpdate,
+    installAppUpdate: props.controller.installAppUpdate,
   };
 
   return (

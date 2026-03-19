@@ -23,6 +23,7 @@ import {
   touchConversation,
   upsertConversationItem,
 } from "../features/conversation/model/conversationState";
+import { reduceAppUpdateState } from "../features/settings/update/appUpdateReducer";
 import { flushConversationOutputDeltas, flushConversationTextDeltas } from "./conversationDeltaReducer";
 import {
   dismissBanner,
@@ -43,6 +44,10 @@ import {
 } from "./appReducerShared";
 
 export function appReducer(state: AppState, action: AppAction): AppState {
+  const nextAppUpdateState = reduceAppUpdateState(state, action);
+  if (nextAppUpdateState !== null) {
+    return nextAppUpdateState;
+  }
   switch (action.type) {
     case "connection/changed": {
       const nextState = {

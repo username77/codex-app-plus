@@ -54,7 +54,7 @@ interface UseAppControllerActionsArgs {
   readonly configSnapshot: ConfigReadResponse | null;
 }
 
-type AppControllerActions = Omit<AppController, "retryConnection" | "setInput">;
+type AppControllerActions = Omit<AppController, "retryConnection" | "setInput" | "checkForAppUpdate" | "installAppUpdate">;
 
 export function useAppControllerActions({
   agentEnvironment,

@@ -47,16 +47,21 @@ use terminal_manager::TerminalManager;
 fn main() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .manage(ProcessManager::new())
-        .manage(TerminalManager::new())
-        .manage(GitRuntimeState::new())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
+            #[cfg(desktop)]
+            app.handle()
+                .plugin(tauri_plugin_updater::Builder::new().build())
+                .map_err(|error| -> Box<dyn std::error::Error> { Box::new(error) })?;
             #[cfg(target_os = "windows")]
             if let Some(main_window) = app.get_webview_window("main") {
                 let _ = main_window.set_decorations(false);
             }
             Ok(())
         })
+        .manage(ProcessManager::new())
+        .manage(TerminalManager::new())
+        .manage(GitRuntimeState::new())
         .invoke_handler(tauri::generate_handler![
             app_server_start,
             app_server_stop,

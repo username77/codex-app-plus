@@ -21,6 +21,15 @@
   },
   "bundle": {
     "active": true,
-    "targets": "nsis"
+    "targets": "nsis",
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDI1NzYzRTA5ODdCM0NGMDIKUldRQ3o3T0hDVDUySlRqb0xNVDBZWFVQaHRxUG5sNEE2MW5ScmQ4N01xOWNHVnQrTUY1M1dMZ2oK",
+      "endpoints": [
+        "https://github.com/fraternity-z/codex-app-plus/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

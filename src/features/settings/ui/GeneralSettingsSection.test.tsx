@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
+import { INITIAL_APP_UPDATE_STATE } from "../../../domain/appUpdate";
 import { type Locale } from "../../../i18n";
 import { createI18nWrapper } from "../../../test/createI18nWrapper";
 import { DEFAULT_APP_PREFERENCES } from "../hooks/useAppPreferences";
@@ -12,6 +13,7 @@ function renderSection(locale: Locale = "zh-CN"): void {
 
     return (
       <GeneralSettingsSection
+        appUpdate={INITIAL_APP_UPDATE_STATE}
         preferences={{
           ...preferences,
           setAgentEnvironment: (agentEnvironment) => setPreferences((current) => ({ ...current, agentEnvironment })),
@@ -35,6 +37,8 @@ function renderSection(locale: Locale = "zh-CN"): void {
           setGitPushForceWithLease: (gitPushForceWithLease) =>
             setPreferences((current) => ({ ...current, gitPushForceWithLease }))
         }}
+        onCheckForAppUpdate={async () => undefined}
+        onInstallAppUpdate={async () => undefined}
       />
     );
   }

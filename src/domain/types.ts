@@ -11,6 +11,7 @@ import type { Thread } from "../protocol/generated/v2/Thread";
 import type { ThreadItem } from "../protocol/generated/v2/ThreadItem";
 import type { Turn } from "../protocol/generated/v2/Turn";
 import type { TurnPlanStep } from "../protocol/generated/v2/TurnPlanStep";
+import type { AppUpdateAction, AppUpdateState } from "./appUpdate";
 import type {
   ConversationOutputDelta,
   ConversationState,
@@ -25,6 +26,7 @@ import type {
   QueuedFollowUp,
 } from "./timeline";
 import type { ReceivedServerRequest } from "./serverRequests";
+import { INITIAL_APP_UPDATE_STATE } from "./appUpdate";
 
 export type {
   CollaborationPreset,
@@ -47,6 +49,7 @@ export type {
   ToolCallRequest,
   ToolRequestUserInputRequest,
 } from "./serverRequests";
+export type { AppUpdateState } from "./appUpdate";
 export type { ConversationState, DraftConversationState } from "./conversation";
 export type TimelineItem = import("./timeline").ConversationMessage;
 
@@ -146,9 +149,11 @@ export interface AppState {
   readonly inputText: string;
   readonly composerUi: ComposerUiState;
   readonly bootstrapBusy: boolean;
+  readonly appUpdate: AppUpdateState;
 }
 
 export type AppAction =
+  | AppUpdateAction
   | { type: "connection/changed"; status: ConnectionStatus }
   | { type: "fatal/error"; message: string }
   | { type: "view/changed"; view: WorkspaceView }
@@ -255,4 +260,5 @@ export const INITIAL_STATE: AppState = {
     draftCollaborationPreset: INITIAL_DRAFT_COLLABORATION_PRESET,
   },
   bootstrapBusy: false,
+  appUpdate: INITIAL_APP_UPDATE_STATE,
 };

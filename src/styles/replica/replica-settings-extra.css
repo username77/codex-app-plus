@@ -470,6 +470,91 @@
   font-size: 13px;
 }
 
+.app-update-card {
+  overflow: visible;
+}
+
+.app-update-head {
+  align-items: flex-start;
+}
+
+.app-update-head-copy {
+  min-width: 0;
+}
+
+.app-update-head-copy p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.app-update-version-chip {
+  min-width: auto;
+}
+
+.app-update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.app-update-progress-wrap {
+  padding: 0 32px 24px;
+}
+
+.app-update-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.app-update-progress-bar {
+  margin-top: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.app-update-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #3b82f6 0%, #0ea5e9 100%);
+  transition: width 0.2s ease;
+}
+
+.app-update-notes {
+  margin: 0 32px 24px;
+  padding: 16px 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.app-update-notes strong {
+  display: block;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.app-update-notes pre {
+  margin: 10px 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.7;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
 .settings-dialog-backdrop {
   position: fixed;
   inset: 0;
@@ -1262,6 +1347,25 @@ html[data-theme="dark"] .settings-action-btn-primary {
 html[data-theme="dark"] .settings-action-btn-primary:hover {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
+}
+
+html[data-theme="dark"] .app-update-head-copy p,
+html[data-theme="dark"] .app-update-progress-meta,
+html[data-theme="dark"] .app-update-notes pre {
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .app-update-progress-bar {
+  background: var(--surface-panel-soft);
+}
+
+html[data-theme="dark"] .app-update-notes {
+  border-color: var(--border-light);
+  background: var(--surface-panel-muted);
+}
+
+html[data-theme="dark"] .app-update-notes strong {
+  color: var(--text-main);
 }
 
 html[data-theme="dark"] .settings-dialog-backdrop {

@@ -28,6 +28,7 @@ export interface HomeScreenState {
 }
 
 export interface SettingsScreenState {
+  readonly appUpdate: AppState["appUpdate"];
   readonly bootstrapBusy: boolean;
   readonly configSnapshot: AppState["configSnapshot"];
   readonly windowsSandboxSetup: AppState["windowsSandboxSetup"];
@@ -105,6 +106,7 @@ function isHomeScreenStateEqual(left: HomeScreenState, right: HomeScreenState): 
 
 function selectSettingsScreenState(state: AppState): SettingsScreenState {
   return {
+    appUpdate: state.appUpdate,
     bootstrapBusy: state.bootstrapBusy,
     configSnapshot: state.configSnapshot,
     windowsSandboxSetup: state.windowsSandboxSetup,
@@ -112,7 +114,8 @@ function selectSettingsScreenState(state: AppState): SettingsScreenState {
 }
 
 function isSettingsScreenStateEqual(left: SettingsScreenState, right: SettingsScreenState): boolean {
-  return left.bootstrapBusy === right.bootstrapBusy
+  return Object.is(left.appUpdate, right.appUpdate)
+    && left.bootstrapBusy === right.bootstrapBusy
     && Object.is(left.configSnapshot, right.configSnapshot)
     && Object.is(left.windowsSandboxSetup, right.windowsSandboxSetup);
 }
