@@ -100,17 +100,6 @@ export function useTerminalTabs(options: UseTerminalTabsOptions) {
     setActiveTabIdByRoot((previous) => ({ ...previous, [rootKey]: terminalId }));
   }, []);
 
-  const ensureTerminal = useCallback(
-    (rootKey: string) => {
-      const activeTerminalId = activeTabIdByRoot[rootKey];
-      if (activeTerminalId) {
-        return activeTerminalId;
-      }
-      return createTerminal(rootKey);
-    },
-    [activeTabIdByRoot, createTerminal],
-  );
-
   const terminals = useMemo(() => {
     if (!hasWorkspace) {
       return [];
@@ -130,7 +119,6 @@ export function useTerminalTabs(options: UseTerminalTabsOptions) {
     activeTerminalId,
     closeTerminal,
     createTerminal,
-    ensureTerminal,
     hasWorkspace,
     setActiveTerminal,
     terminals,

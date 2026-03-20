@@ -135,7 +135,7 @@ function createReplicaAppClassName(diffSidebarOpen: boolean): string {
 export function HomeView(props: HomeViewProps): JSX.Element {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [diffSidebarOpen, setDiffSidebarOpen] = useState(false);
-  const [terminalOpen, setTerminalOpen] = useState(true);
+  const [terminalOpen, setTerminalOpen] = useState(false);
   const canShowDiffSidebar = diffSidebarOpen && props.selectedRootPath !== null;
   const gitController = useWorkspaceGit({
     diffStateEnabled: canShowDiffSidebar,
@@ -168,14 +168,21 @@ export function HomeView(props: HomeViewProps): JSX.Element {
     activeRootPath: props.selectedRootPath,
     hostBridge: props.hostBridge,
     isOpen: terminalOpen,
-    onClosePanel: () => setTerminalOpen(false),
+    onHidePanel: () => setTerminalOpen(false),
+    onShowPanel: () => setTerminalOpen(true),
     resolvedTheme: props.resolvedTheme ?? "light",
     shell: props.embeddedTerminalShell,
     enforceUtf8: props.embeddedTerminalUtf8 ?? true,
   });
 
   const toggleDiffSidebar = useCallback(() => setDiffSidebarOpen((value) => !value), []);
-  const toggleTerminal = useCallback(() => setTerminalOpen((value) => !value), []);
+  const toggleTerminal = useCallback(() => {
+    if (terminalOpen) {
+      terminalController.hidePanel();
+      return;
+    }
+    terminalController.showPanel();
+  }, [terminalController, terminalOpen]);
   const sidebarProps = createHomeSidebarProps(props, sidebarCollapsed);
   const contentProps = createHomeMainContentProps(
     props,
@@ -208,6 +215,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         isOpen={terminalOpen}
         onCloseTab={terminalController.onCloseTerminal}
         onCreateTab={terminalController.onNewTerminal}
+        onHidePanel={terminalController.hidePanel}
         onSelectTab={terminalController.onSelectTerminal}
         tabs={terminalController.terminals}
       >

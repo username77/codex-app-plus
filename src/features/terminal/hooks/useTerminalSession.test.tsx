@@ -26,22 +26,59 @@ vi.mock("@xterm/xterm", () => ({
   }
 }));
 
-function createHostBridge(): HostBridge {
+vi.stubGlobal("ResizeObserver", class ResizeObserver {
+  disconnect(): void {}
+  observe(): void {}
+});
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((nextResolve) => {
+    resolve = nextResolve;
+  });
+  return { promise, resolve };
+}
+
+function createHostBridge(overrides: Partial<HostBridge> = {}): HostBridge {
   return {
     terminal: {
       createSession: vi.fn().mockResolvedValue({
         sessionId: "session-1",
         shell: "PowerShell",
       }),
-      write: vi.fn(),
-      resize: vi.fn(),
+      write: vi.fn().mockResolvedValue(undefined),
+      resize: vi.fn().mockResolvedValue(undefined),
       closeSession: vi.fn().mockResolvedValue(undefined),
     },
     subscribe: vi.fn().mockResolvedValue(() => undefined),
+    ...overrides,
   } as unknown as HostBridge;
 }
 
 describe("useTerminalSession", () => {
+  it("does not create a session while the terminal is hidden", async () => {
+    const hostBridge = createHostBridge();
+    const { result } = renderHook(() =>
+      useTerminalSession({
+        activeRootKey: "root-1",
+        activeRootPath: "E:/code/codex-app-plus",
+        activeTerminalId: "terminal-1",
+        focusRequestVersion: 0,
+        hostBridge,
+        isVisible: false,
+        shell: "powerShell",
+        enforceUtf8: true,
+        resolvedTheme: "dark",
+      }),
+    );
+
+    await act(async () => {
+      result.current.containerRef(document.createElement("div"));
+    });
+
+    expect(hostBridge.terminal.createSession).not.toHaveBeenCalled();
+  });
+
   it("initializes the terminal after the container ref is attached", async () => {
     const hostBridge = createHostBridge();
     const { result } = renderHook(() =>
@@ -73,5 +110,116 @@ describe("useTerminalSession", () => {
         enforceUtf8: true,
       });
     });
+  });
+
+  it("creates the first session even when terminal subscriptions resolve later", async () => {
+    const outputSubscription = createDeferred<() => void>();
+    const exitSubscription = createDeferred<() => void>();
+    const hostBridge = createHostBridge({
+      subscribe: vi.fn((eventName) => {
+        if (eventName === "terminal-output") {
+          return outputSubscription.promise;
+        }
+        return exitSubscription.promise;
+      }),
+    });
+    const { result } = renderHook(() =>
+      useTerminalSession({
+        activeRootKey: "root-1",
+        activeRootPath: "E:/code/codex-app-plus",
+        activeTerminalId: "terminal-1",
+        focusRequestVersion: 0,
+        hostBridge,
+        isVisible: true,
+        shell: "powerShell",
+        enforceUtf8: true,
+        resolvedTheme: "dark",
+      }),
+    );
+
+    await act(async () => {
+      result.current.containerRef(document.createElement("div"));
+    });
+
+    await waitFor(() => {
+      expect(hostBridge.terminal.createSession).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      outputSubscription.resolve(() => undefined);
+      exitSubscription.resolve(() => undefined);
+      await Promise.resolve();
+    });
+  });
+
+  it("syncs terminal size after the first session starts", async () => {
+    const hostBridge = createHostBridge();
+    const { result } = renderHook(() =>
+      useTerminalSession({
+        activeRootKey: "root-1",
+        activeRootPath: "E:/code/codex-app-plus",
+        activeTerminalId: "terminal-1",
+        focusRequestVersion: 0,
+        hostBridge,
+        isVisible: true,
+        shell: "powerShell",
+        enforceUtf8: true,
+        resolvedTheme: "dark",
+      }),
+    );
+
+    await act(async () => {
+      result.current.containerRef(document.createElement("div"));
+    });
+
+    await waitFor(() => {
+      expect(hostBridge.terminal.resize).toHaveBeenCalledWith({
+        cols: 120,
+        rows: 32,
+        sessionId: "session-1",
+      });
+    });
+  });
+
+  it("keeps the existing session when the panel is hidden and shown again", async () => {
+    const hostBridge = createHostBridge();
+    const { result, rerender } = renderHook(
+      ({ isVisible }: { readonly isVisible: boolean }) =>
+        useTerminalSession({
+          activeRootKey: "root-1",
+          activeRootPath: "E:/code/codex-app-plus",
+          activeTerminalId: "terminal-1",
+          focusRequestVersion: 0,
+          hostBridge,
+          isVisible,
+          shell: "powerShell",
+          enforceUtf8: true,
+          resolvedTheme: "dark",
+        }),
+      {
+        initialProps: {
+          isVisible: true,
+        },
+      },
+    );
+
+    await act(async () => {
+      result.current.containerRef(document.createElement("div"));
+    });
+
+    await waitFor(() => {
+      expect(hostBridge.terminal.createSession).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(result.current.status).toBe("ready");
+    });
+
+    rerender({ isVisible: false });
+    rerender({ isVisible: true });
+
+    await waitFor(() => {
+      expect(hostBridge.terminal.createSession).toHaveBeenCalledTimes(1);
+    });
+    expect(hostBridge.terminal.closeSession).not.toHaveBeenCalled();
   });
 });

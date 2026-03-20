@@ -8,6 +8,7 @@ interface TerminalDockProps {
   readonly isOpen: boolean;
   readonly onCloseTab: (tabId: string) => void;
   readonly onCreateTab: () => void;
+  readonly onHidePanel: () => void;
   readonly onSelectTab: (tabId: string) => void;
   readonly tabs: ReadonlyArray<TerminalTab>;
 }
@@ -56,6 +57,28 @@ export function TerminalDock(props: TerminalDockProps): JSX.Element {
             title="New terminal"
           >
             +
+          </button>
+          <button
+            type="button"
+            className="terminal-close-btn"
+            onClick={props.onHidePanel}
+            aria-label="隐藏终端"
+            title="隐藏终端"
+          >
+            <svg
+              className="terminal-close-icon"
+              viewBox="0 0 16 16"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M4 4l8 8M12 4L4 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
         </div>
       </div>

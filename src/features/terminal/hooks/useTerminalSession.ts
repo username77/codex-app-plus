@@ -13,6 +13,7 @@ const PREPARING_MESSAGE = "Preparing terminal...";
 const STARTING_MESSAGE = "Starting terminal session...";
 const READY_MESSAGE = "Terminal ready.";
 const FAILURE_MESSAGE = "Failed to start terminal session.";
+const TERMINAL_EVENT_SUBSCRIPTION_FAILURE = "Failed to subscribe terminal events.";
 
 interface UseTerminalSessionOptions {
   readonly activeRootKey: string;
@@ -94,9 +95,11 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
   const fitAddonRef = useRef<FitAddon | null>(null);
   const inputDisposableRef = useRef<{ dispose: () => void } | null>(null);
   const outputBuffersRef = useRef<Map<string, string>>(new Map());
+  const pendingSessionTabKeysRef = useRef<Set<string>>(new Set());
   const sessionIdByTabKeyRef = useRef<Map<string, string>>(new Map());
   const tabKeyBySessionIdRef = useRef<Map<string, string>>(new Map());
   const orphanOutputBySessionIdRef = useRef<Map<string, string>>(new Map());
+  const onSessionExitRef = useRef(onSessionExit);
   const activeTabKeyRef = useRef<string | null>(null);
   const renderedTabKeyRef = useRef<string | null>(null);
   const pendingFocusRef = useRef(false);
@@ -166,11 +169,34 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
     });
   }, []);
 
+  const syncTerminalSize = useCallback((sessionId: string) => {
+    const terminal = terminalRef.current;
+    if (terminal === null) {
+      return;
+    }
+    void hostBridge.terminal.resize({
+      cols: terminal.cols,
+      rows: terminal.rows,
+      sessionId,
+    }).catch(() => undefined);
+  }, [hostBridge]);
+
+  const scheduleSessionLayout = useCallback((sessionId: string) => {
+    scheduleFit(() => {
+      refreshTerminal();
+      syncTerminalSize(sessionId);
+    });
+  }, [refreshTerminal, scheduleFit, syncTerminalSize]);
+
   const cleanupTerminalTab = useCallback(
     (tabKey: string) => {
       const sessionId = sessionIdByTabKeyRef.current.get(tabKey);
       outputBuffersRef.current.delete(tabKey);
+      pendingSessionTabKeysRef.current.delete(tabKey);
       sessionIdByTabKeyRef.current.delete(tabKey);
+      if (renderedTabKeyRef.current === tabKey) {
+        renderedTabKeyRef.current = null;
+      }
       if (sessionId) {
         tabKeyBySessionIdRef.current.delete(sessionId);
         orphanOutputBySessionIdRef.current.delete(sessionId);
@@ -212,7 +238,15 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
   }, [activeTabKey]);
 
   useEffect(() => {
-    const unlistenOutput = hostBridge.subscribe("terminal-output", (payload) => {
+    onSessionExitRef.current = onSessionExit;
+  }, [onSessionExit]);
+
+  useEffect(() => {
+    let disposed = false;
+    let disposeOutput: (() => void) | null = null;
+    let disposeExit: (() => void) | null = null;
+
+    const handleOutput = (payload: { readonly sessionId: string; readonly data: string }) => {
       const tabKey = tabKeyBySessionIdRef.current.get(payload.sessionId);
       if (tabKey === undefined) {
         const orphan = appendBuffer(
@@ -227,8 +261,9 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
       if (activeTabKeyRef.current === tabKey) {
         terminalRef.current?.write(payload.data);
       }
-    });
-    const unlistenExit = hostBridge.subscribe("terminal-exit", (payload) => {
+    };
+
+    const handleExit = (payload: { readonly sessionId: string }) => {
       const tabKey = tabKeyBySessionIdRef.current.get(payload.sessionId);
       if (tabKey === undefined) {
         orphanOutputBySessionIdRef.current.delete(payload.sessionId);
@@ -238,13 +273,35 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
       orphanOutputBySessionIdRef.current.delete(payload.sessionId);
       cleanupTerminalTab(tabKey);
       const parsed = parseTabKey(tabKey);
-      onSessionExit?.(parsed.rootKey, parsed.terminalId);
-    });
-    return () => {
-      void unlistenOutput.then((dispose) => dispose());
-      void unlistenExit.then((dispose) => dispose());
+      onSessionExitRef.current?.(parsed.rootKey, parsed.terminalId);
     };
-  }, [cleanupTerminalTab, hostBridge, onSessionExit]);
+
+    void Promise.all([
+      hostBridge.subscribe("terminal-output", handleOutput),
+      hostBridge.subscribe("terminal-exit", handleExit),
+    ]).then(([nextDisposeOutput, nextDisposeExit]) => {
+      if (disposed) {
+        nextDisposeOutput();
+        nextDisposeExit();
+        return;
+      }
+      disposeOutput = nextDisposeOutput;
+      disposeExit = nextDisposeExit;
+    }).catch((error) => {
+      console.error("terminal event subscription failed", error);
+      if (disposed) {
+        return;
+      }
+      setStatus("error");
+      setMessage(TERMINAL_EVENT_SUBSCRIPTION_FAILURE);
+    });
+
+    return () => {
+      disposed = true;
+      disposeOutput?.();
+      disposeExit?.();
+    };
+  }, [cleanupTerminalTab, hostBridge]);
 
   useEffect(() => {
     if (!isVisible) {
@@ -322,13 +379,18 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
       if (renderedTabKeyRef.current !== tabKey) {
         syncActiveBuffer(tabKey);
         renderedTabKeyRef.current = tabKey;
-      } else {
-        scheduleFit(refreshTerminal);
       }
+      scheduleSessionLayout(existingSessionId);
+      return;
+    }
+    if (pendingSessionTabKeysRef.current.has(tabKey)) {
+      setStatus("starting");
+      setMessage(STARTING_MESSAGE);
       return;
     }
 
     const openSession = async () => {
+      pendingSessionTabKeysRef.current.add(tabKey);
       setStatus("starting");
       setMessage(STARTING_MESSAGE);
       const terminal = terminalRef.current;
@@ -343,6 +405,10 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
         shell,
         enforceUtf8,
       });
+      if (!pendingSessionTabKeysRef.current.has(tabKey)) {
+        await hostBridge.terminal.closeSession({ sessionId: result.sessionId });
+        return;
+      }
       sessionIdByTabKeyRef.current.set(tabKey, result.sessionId);
       tabKeyBySessionIdRef.current.set(result.sessionId, tabKey);
       const orphan = orphanOutputBySessionIdRef.current.get(result.sessionId);
@@ -354,11 +420,14 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
       setMessage(READY_MESSAGE);
       syncActiveBuffer(tabKey);
       renderedTabKeyRef.current = tabKey;
+      scheduleSessionLayout(result.sessionId);
     };
 
     void openSession().catch(() => {
       setStatus("error");
       setMessage(FAILURE_MESSAGE);
+    }).finally(() => {
+      pendingSessionTabKeysRef.current.delete(tabKey);
     });
   }, [
     activeRootKey,
@@ -372,6 +441,7 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
     shell,
     syncActiveBuffer,
     containerVersion,
+    scheduleSessionLayout,
     scheduleFit,
   ]);
 

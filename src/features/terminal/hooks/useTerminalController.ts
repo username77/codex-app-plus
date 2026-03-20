@@ -1,18 +1,30 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { EmbeddedTerminalShell, HostBridge } from "../../../bridge/types";
 import type { ResolvedTheme } from "../../../domain/theme";
 import { useTerminalSession } from "./useTerminalSession";
 import { useTerminalTabs } from "./useTerminalTabs";
+import type { TerminalTab } from "./useTerminalTabs";
 
 interface UseTerminalControllerOptions {
   readonly activeRootId: string | null;
   readonly activeRootPath: string | null;
   readonly hostBridge: HostBridge;
   readonly isOpen: boolean;
-  readonly onClosePanel?: () => void;
+  readonly onHidePanel?: () => void;
+  readonly onShowPanel?: () => void;
   readonly resolvedTheme: ResolvedTheme;
   readonly shell: EmbeddedTerminalShell;
   readonly enforceUtf8: boolean;
+}
+
+function resolveTerminalToActivate(
+  activeTerminalId: string | null,
+  terminals: ReadonlyArray<TerminalTab>,
+): string | null {
+  if (activeTerminalId !== null) {
+    return activeTerminalId;
+  }
+  return terminals[terminals.length - 1]?.id ?? null;
 }
 
 export function useTerminalController(options: UseTerminalControllerOptions) {
@@ -21,7 +33,8 @@ export function useTerminalController(options: UseTerminalControllerOptions) {
     activeRootPath,
     hostBridge,
     isOpen,
-    onClosePanel,
+    onHidePanel,
+    onShowPanel,
     resolvedTheme,
     shell,
     enforceUtf8,
@@ -35,17 +48,10 @@ export function useTerminalController(options: UseTerminalControllerOptions) {
     activeTerminalId,
     closeTerminal,
     createTerminal,
-    ensureTerminal,
     hasWorkspace,
     setActiveTerminal,
     terminals,
   } = useTerminalTabs({ activeRootId, activeRootPath });
-
-  useEffect(() => {
-    if (isOpen && hasWorkspace) {
-      ensureTerminal(activeRootKey);
-    }
-  }, [activeRootKey, ensureTerminal, hasWorkspace, isOpen]);
 
   const terminalState = useTerminalSession({
     activeRootKey,
@@ -58,13 +64,43 @@ export function useTerminalController(options: UseTerminalControllerOptions) {
     enforceUtf8,
     resolvedTheme,
     onSessionExit: (rootKey, terminalId) => {
-      const shouldClosePanel = rootKey === activeRootKey && terminals.length === 1;
+      const shouldHidePanel = rootKey === activeRootKey && terminals.length === 1;
       closeTerminal(rootKey, terminalId);
-      if (shouldClosePanel) {
-        onClosePanel?.();
+      if (shouldHidePanel) {
+        onHidePanel?.();
       }
     },
   });
+
+  const showPanel = useCallback(() => {
+    const nextTerminalId = resolveTerminalToActivate(activeTerminalId, terminals);
+    onShowPanel?.();
+    if (!hasWorkspace) {
+      return;
+    }
+    requestTerminalFocus();
+    if (nextTerminalId !== null) {
+      setActiveTerminal(activeRootKey, nextTerminalId);
+      return;
+    }
+    if (!isOpen) {
+      createTerminal(activeRootKey);
+    }
+  }, [
+    activeRootKey,
+    activeTerminalId,
+    createTerminal,
+    hasWorkspace,
+    isOpen,
+    onShowPanel,
+    requestTerminalFocus,
+    setActiveTerminal,
+    terminals,
+  ]);
+
+  const hidePanel = useCallback(() => {
+    onHidePanel?.();
+  }, [onHidePanel]);
 
   const onSelectTerminal = useCallback(
     (terminalId: string) => {
@@ -87,27 +123,29 @@ export function useTerminalController(options: UseTerminalControllerOptions) {
 
   const onCloseTerminal = useCallback(
     (terminalId: string) => {
-      const shouldClosePanel = terminals.length === 1 && terminals[0]?.id === terminalId;
+      const shouldHidePanel = terminals.length === 1 && terminals[0]?.id === terminalId;
       void terminalState
         .closeTerminalSession(`${activeRootKey}:${terminalId}`)
         .catch(() => undefined)
         .finally(() => {
           closeTerminal(activeRootKey, terminalId);
-          if (shouldClosePanel) {
-            onClosePanel?.();
+          if (shouldHidePanel) {
+            onHidePanel?.();
           }
         });
     },
-    [activeRootKey, closeTerminal, onClosePanel, terminalState, terminals],
+    [activeRootKey, closeTerminal, onHidePanel, terminalState, terminals],
   );
 
   return {
     activeTerminalId,
     hasWorkspace,
+    hidePanel,
     onCloseTerminal,
     onNewTerminal,
     onSelectTerminal,
     requestTerminalFocus,
+    showPanel,
     terminalState,
     terminals,
   };

@@ -139,13 +139,15 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
     durationMs: null,
     error: null,
   });
-  mockedUseTerminalController.mockReturnValue({
+  const terminalController = {
     activeTerminalId: null,
     hasWorkspace: true,
+    hidePanel: vi.fn(),
     onCloseTerminal: vi.fn(),
     onNewTerminal: vi.fn(),
     onSelectTerminal: vi.fn(),
     requestTerminalFocus: vi.fn(),
+    showPanel: vi.fn(),
     terminalState: {
       closeTerminalSession: vi.fn().mockResolvedValue(undefined),
       containerRef: { current: null },
@@ -155,6 +157,11 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       status: "idle",
     },
     terminals: [],
+  };
+  mockedUseTerminalController.mockImplementation((options) => {
+    terminalController.hidePanel.mockImplementation(() => options.onHidePanel?.());
+    terminalController.showPanel.mockImplementation(() => options.onShowPanel?.());
+    return terminalController;
   });
   const {
     collaborationPreset: initialCollaborationPreset = "default",
@@ -270,9 +277,14 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
     );
   }
 
-  return render(
+  const renderResult = render(
     <AppStoreProvider><HomeViewHarness {...restOverrides} /></AppStoreProvider>
   );
+
+  return {
+    ...renderResult,
+    terminalController,
+  };
 }
 describe("HomeView", () => {
   it("forwards git preferences to useWorkspaceGit", () => {
@@ -289,6 +301,22 @@ describe("HomeView", () => {
       gitBranchPrefix: "feature/",
       gitPushForceWithLease: true,
     }));
+  });
+
+  it("keeps the terminal hidden until the toolbar button is clicked", () => {
+    const { terminalController } = renderHomeView();
+
+    expect(mockedUseTerminalController).toHaveBeenCalledWith(expect.objectContaining({
+      isOpen: false,
+    }));
+    fireEvent.click(screen.getByRole("button", { name: "显示终端" }));
+
+    expect(terminalController.showPanel).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "隐藏终端" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "隐藏终端" }));
+
+    expect(terminalController.hidePanel).toHaveBeenCalledTimes(1);
   });
 
   it("submits with plan mode after selecting the collaboration preset", async () => {

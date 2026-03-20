@@ -43,29 +43,6 @@ export function AppScreenContent(props: AppScreenContentProps): JSX.Element {
 }
 
 function renderScreen(props: AppScreenContentProps): JSX.Element {
-  if (props.screen === "skills") {
-    return (
-      <SkillsScreen
-        controller={props.controller}
-        workspace={props.workspace}
-        onBackHome={props.onBackHome}
-        onOpenLearnMore={props.onOpenSkillsLearnMore}
-      />
-    );
-  }
-  if (props.screen !== "home") {
-    return (
-      <SettingsScreen
-        controller={props.controller}
-        hostBridge={props.hostBridge}
-        preferences={props.preferences}
-        section={props.screen}
-        workspace={props.workspace}
-        onBackHome={props.onBackHome}
-        onSelectSection={props.onOpenSettingsSection}
-      />
-    );
-  }
   if (props.shouldShowAuthChoice) {
     return (
       <AuthChoiceView
@@ -76,6 +53,45 @@ function renderScreen(props: AppScreenContentProps): JSX.Element {
       />
     );
   }
+  const overlayScreen = renderOverlayScreen(props);
+  return (
+    <>
+      <div style={{ display: overlayScreen === null ? "contents" : "none" }}>
+        {renderHomeScreen(props)}
+      </div>
+      {overlayScreen}
+    </>
+  );
+}
+
+function renderOverlayScreen(props: AppScreenContentProps): JSX.Element | null {
+  if (props.screen === "skills") {
+    return (
+      <SkillsScreen
+        controller={props.controller}
+        workspace={props.workspace}
+        onBackHome={props.onBackHome}
+        onOpenLearnMore={props.onOpenSkillsLearnMore}
+      />
+    );
+  }
+  if (props.screen === "home") {
+    return null;
+  }
+  return (
+    <SettingsScreen
+      controller={props.controller}
+      hostBridge={props.hostBridge}
+      preferences={props.preferences}
+      section={props.screen}
+      workspace={props.workspace}
+      onBackHome={props.onBackHome}
+      onSelectSection={props.onOpenSettingsSection}
+    />
+  );
+}
+
+function renderHomeScreen(props: AppScreenContentProps): JSX.Element {
   return (
     <HomeScreen
       controller={props.controller}

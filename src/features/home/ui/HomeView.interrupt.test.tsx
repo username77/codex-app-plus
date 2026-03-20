@@ -127,10 +127,12 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
   mockedUseTerminalController.mockReturnValue({
     activeTerminalId: null,
     hasWorkspace: true,
+    hidePanel: vi.fn(),
     onCloseTerminal: vi.fn(),
     onNewTerminal: vi.fn(),
     onSelectTerminal: vi.fn(),
     requestTerminalFocus: vi.fn(),
+    showPanel: vi.fn(),
     terminalState: {
       closeTerminalSession: vi.fn().mockResolvedValue(undefined),
       containerRef: { current: null },
