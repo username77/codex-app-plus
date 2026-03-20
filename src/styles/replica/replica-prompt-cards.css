@@ -1,19 +1,43 @@
+.composer-area.home-user-input-prompt-shell {
+  gap: 0;
+  padding-bottom: 0;
+}
+
 .home-user-input-prompt {
-  border-color: #dbe4f2;
+  width: var(--conversation-column-inline-size);
+  max-width: 100%;
+}
+
+.home-user-input-prompt-header {
+  cursor: default;
+}
+
+.home-user-input-prompt-header:hover {
+  border-color: var(--border-light);
+  box-shadow: var(--shadow-lg);
+}
+
+.home-user-input-prompt-card {
+  padding: 12px 16px 14px;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+  gap: 0;
 }
 
 .home-user-input-prompt-body {
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .home-user-input-progress {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .home-user-input-progress-count {
-  color: #667085;
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -28,12 +52,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid #d0d5dd;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-light);
   border-radius: 999px;
-  background: #ffffff;
-  color: #344054;
+  background: var(--surface-panel);
+  color: var(--text-soft);
   cursor: pointer;
 }
 
@@ -54,7 +78,7 @@
 .home-user-input-question {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .home-user-input-question-header,
@@ -65,34 +89,90 @@
 
 .home-user-input-question-header,
 .home-user-input-freeform-label {
-  color: #667085;
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 700;
 }
 
 .home-user-input-question-copy {
-  color: #111827;
-  font-size: 15px;
+  color: var(--text-main);
+  font-size: 14px;
   font-weight: 600;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .home-user-input-options {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+}
+
+.home-user-input-option-row {
+  position: relative;
 }
 
 .home-user-input-option {
-  min-height: 64px;
+  min-height: 46px;
+  align-items: center;
+  padding: 9px 12px;
+  border-radius: 14px;
+}
+
+.home-user-input-option-index {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--info-bg);
+  color: var(--info-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.home-user-input-option-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.home-user-input-option-copy strong {
+  color: var(--text-main);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.home-user-input-option[data-selected="true"] .home-user-input-option-index {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.home-user-input-option-tooltip {
+  position: absolute;
+  right: 12px;
+  bottom: calc(100% + 8px);
+  max-width: min(280px, calc(100vw - 48px));
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background: var(--surface-panel);
+  color: var(--text-soft);
+  box-shadow: var(--shadow-lg);
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  z-index: 42;
 }
 
 .home-user-input-freeform {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
+.home-user-input-option-actions,
 .home-user-input-freeform-actions {
   display: flex;
   justify-content: flex-end;
@@ -101,28 +181,28 @@
 .home-user-input-input,
 .home-user-input-textarea {
   width: 100%;
-  border: 1px solid #d0d5dd;
+  border: 1px solid var(--border-light);
   border-radius: 14px;
-  background: #ffffff;
-  color: #111827;
+  background: var(--surface-panel);
+  color: var(--text-main);
   outline: none;
 }
 
 .home-user-input-input {
-  min-height: 44px;
+  min-height: 40px;
   padding: 0 14px;
 }
 
 .home-user-input-textarea {
-  min-height: 96px;
-  padding: 12px 14px;
+  min-height: 72px;
+  padding: 10px 14px;
   resize: vertical;
 }
 
 .home-user-input-submit {
-  min-width: 104px;
+  min-width: 92px;
 }
 
 .home-user-input-inline-action {
-  min-width: 104px;
+  min-width: 92px;
 }

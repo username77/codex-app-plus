@@ -102,6 +102,7 @@ describe("HomeUserInputPrompt", () => {
       />,
     );
 
+    expect(screen.queryByText("先回答这个问题，Codex 才能继续执行。")).toBeNull();
     expect(screen.getByText("1/2")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /主画布/ }));
 
@@ -184,6 +185,29 @@ describe("HomeUserInputPrompt", () => {
     fireEvent.click(screen.getByRole("button", { name: "下一题" }));
 
     expect(screen.getByDisplayValue("只改标题")).toBeInTheDocument();
+  });
+
+  it("shows option descriptions in a tooltip instead of inline copy", () => {
+    const { container } = render(
+      <HomeUserInputPrompt
+        busy={false}
+        entry={createEntry()}
+        onResolveServerRequest={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    const option = screen.getByRole("button", { name: /主画布/ });
+    expect(container.querySelector(".home-user-input-option-help")).toBeNull();
+    expect(screen.queryByText("只改主画布")).toBeNull();
+
+    fireEvent.mouseEnter(option);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("只改主画布");
+
+    fireEvent.mouseLeave(option);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+
+    fireEvent.focus(option);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("只改主画布");
   });
 
   it("shows an inline next action for free-text questions and advances after input", () => {

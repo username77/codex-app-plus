@@ -19,13 +19,22 @@
   padding: 0 2px;
 }
 
+.workspace-root-row:hover,
+.workspace-root-row:focus-within {
+  background: var(--surface-hover);
+}
+
+.workspace-root-row.thread-item-active:hover,
+.workspace-root-row.thread-item-active:focus-within {
+  background: var(--surface-active);
+}
+
 .workspace-root-button,
 .workspace-thread-button {
   border: 0;
   background: transparent;
 }
 
-.workspace-root-button:hover,
 .workspace-thread-button:hover {
   background: var(--surface-hover);
 }

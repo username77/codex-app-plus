@@ -1,3 +1,31 @@
+.composer-area {
+  --composer-focus-border: #cdbcfb;
+  --composer-focus-ring: rgba(205, 188, 251, 0.2);
+  --composer-focus-depth: rgba(181, 157, 239, 0.16);
+  --composer-button-bg: #ffffff;
+  --composer-button-bg-hover: #faf7ff;
+  --composer-button-border: rgba(203, 213, 225, 0.92);
+  --composer-button-shadow:
+    0 8px 18px -16px rgba(15, 23, 42, 0.46),
+    0 1px 2px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  --composer-button-text: #171717;
+}
+
+html[data-theme="dark"] .composer-area {
+  --composer-focus-border: #b89fff;
+  --composer-focus-ring: rgba(184, 159, 255, 0.22);
+  --composer-focus-depth: rgba(119, 90, 186, 0.26);
+  --composer-button-bg: #ffffff;
+  --composer-button-bg-hover: #f8f3ff;
+  --composer-button-border: rgba(255, 255, 255, 0.08);
+  --composer-button-shadow:
+    0 12px 28px -20px rgba(0, 0, 0, 0.8),
+    0 2px 5px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  --composer-button-text: #171717;
+}
+
 .plan-request-composer,
 .composer-queue-panel,
 .composer-card,
@@ -101,9 +129,14 @@
 }
 
 .plan-request-submit {
-  border-color: var(--accent-color);
-  background: var(--accent-color);
-  color: var(--text-inverse);
+  border: 1px solid var(--composer-button-border);
+  background: var(--composer-button-bg);
+  color: var(--composer-button-text);
+  box-shadow: var(--composer-button-shadow);
+}
+
+.plan-request-submit:hover {
+  background: var(--composer-button-bg-hover);
 }
 
 .composer-card {
@@ -111,8 +144,11 @@
 }
 
 .composer-card:focus-within {
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  border-color: var(--composer-focus-border);
+  box-shadow:
+    0 0 0 2px var(--composer-focus-ring),
+    0 10px 24px -20px var(--composer-focus-depth),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .composer-reload-overlay {
@@ -149,9 +185,10 @@
 }
 
 .composer-attachment-choice-selected {
-  border-color: var(--accent-color);
-  background: var(--accent-color);
-  color: var(--text-inverse);
+  border-color: var(--composer-focus-border);
+  background: var(--composer-button-bg);
+  color: var(--composer-button-text);
+  box-shadow: var(--composer-button-shadow);
 }
 
 .composer-attachment-toggle {
@@ -165,21 +202,29 @@
 
 .composer-attachment-toggle-on,
 .composer-attachment-mode-toggle-on {
-  background: var(--accent-color);
-  border-color: var(--accent-color);
+  background: var(--composer-focus-border);
+  border-color: var(--composer-focus-border);
 }
 
 .send-btn {
-  background: var(--surface-inverse);
-  color: var(--text-inverse);
+  border: 1px solid var(--composer-button-border);
+  background: var(--composer-button-bg);
+  color: var(--composer-button-text);
+  box-shadow: var(--composer-button-shadow);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .send-btn:hover {
-  background: var(--accent-color);
+  background: var(--composer-button-bg-hover);
 }
 
 .send-btn:disabled,
 .send-btn:disabled:hover {
+  border-color: var(--border-light);
   background: var(--surface-panel-muted);
   color: var(--text-subtle);
+  box-shadow: none;
 }

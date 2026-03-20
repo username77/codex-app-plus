@@ -6,6 +6,7 @@ import {
   type UserInputDraftMap,
 } from "../model/homeUserInputPromptModel";
 import { OfficialChevronRightIcon } from "../../shared/ui/officialIcons";
+import { HomeUserInputPromptOption } from "./HomeUserInputPromptOption";
 
 export function PromptHeaderAside(props: {
   readonly currentIndex: number;
@@ -28,14 +29,16 @@ export function PromptActions(props: {
   readonly onSubmit: () => void;
 }): JSX.Element {
   return (
-    <button
-      type="button"
-      className="plan-request-submit home-user-input-submit"
-      disabled={props.busy || props.submitDisabled}
-      onClick={props.onSubmit}
-    >
-      提交答案
-    </button>
+    <div className="home-user-input-option-actions">
+      <button
+        type="button"
+        className="plan-request-submit home-user-input-submit"
+        disabled={props.busy || props.submitDisabled}
+        onClick={props.onSubmit}
+      >
+        提交答案
+      </button>
+    </div>
   );
 }
 
@@ -153,7 +156,7 @@ function QuestionOptions(props: {
   return (
     <div className="home-user-input-options">
       {props.question.options?.map((option, index) => (
-        <OptionButton
+        <HomeUserInputPromptOption
           key={option.label}
           index={index + 1}
           label={option.label}
@@ -186,31 +189,6 @@ function applySelectedOption(
   if (props.currentIndex < props.questions.length - 1) {
     props.setCurrentIndex((index) => Math.min(props.questions.length - 1, index + 1));
   }
-}
-
-function OptionButton(props: {
-  readonly index: number;
-  readonly label: string;
-  readonly description: string;
-  readonly selected: boolean;
-  readonly disabled: boolean;
-  readonly onClick: () => void;
-}): JSX.Element {
-  return (
-    <button
-      type="button"
-      className="plan-request-option home-user-input-option"
-      data-selected={props.selected ? "true" : undefined}
-      disabled={props.disabled}
-      onClick={props.onClick}
-    >
-      <span className="plan-request-option-index">{props.index}.</span>
-      <span className="plan-request-option-copy">
-        <strong>{props.label}</strong>
-        <small>{props.description}</small>
-      </span>
-    </button>
-  );
 }
 
 function FreeTextField(props: {

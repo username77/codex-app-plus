@@ -501,6 +501,8 @@ describe("HomeView", () => {
     expect(screen.getByText("请选择下一步")).toBeInTheDocument();
     expect(screen.getByText("Queue")).toBeInTheDocument();
     expect(screen.getByText("1/1")).toBeInTheDocument();
+    expect(screen.queryByText("加入待处理队列")).toBeNull();
+    expect(screen.queryByText("先回答这个问题，Codex 才能继续执行。")).toBeNull();
     expect(screen.queryByText("Additional input required")).toBeNull();
     expect(container.querySelector(".home-user-input-prompt")).not.toBeNull();
   });

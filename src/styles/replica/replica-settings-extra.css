@@ -1269,7 +1269,7 @@ html[data-theme="dark"] .archived-thread-meta {
 }
 
 html[data-theme="dark"] .settings-row-note {
-  color: var(--warning-fg);
+  color: var(--text-main);
 }
 
 html[data-theme="dark"] .settings-status-note-success {

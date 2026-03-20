@@ -260,8 +260,14 @@
 }
 
 .branch-create-primary {
-  background: var(--accent-color);
-  color: var(--text-inverse);
+  border: 1px solid var(--composer-button-border);
+  background: var(--composer-button-bg);
+  color: var(--composer-button-text);
+  box-shadow: var(--composer-button-shadow);
+}
+
+.branch-create-primary:hover {
+  background: var(--composer-button-bg-hover);
 }
 
 .branch-create-secondary:disabled,

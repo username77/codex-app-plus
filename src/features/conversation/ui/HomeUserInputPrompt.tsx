@@ -3,7 +3,6 @@ import type { Dispatch, SetStateAction } from "react";
 import type { PendingUserInputEntry } from "../../../domain/timeline";
 import type { ServerRequestResolution } from "../../../domain/types";
 import type { ToolRequestUserInputQuestion } from "../../../protocol/generated/v2/ToolRequestUserInputQuestion";
-import { HomePromptCard } from "../../composer/ui/HomePromptCard";
 import {
   buildUserInputResolution,
   isUserInputQuestionAnswered,
@@ -85,31 +84,40 @@ function UserInputPromptCard(props: {
     void props.onResolveServerRequest(buildUserInputResolution(props.entry, props.selectedOptions, props.freeText));
 
   return (
-    <HomePromptCard
-      ariaLabel="需要补充信息"
-      className="home-user-input-prompt"
-      title="需要补充信息"
-      subtitle="先回答这个问题，Codex 才能继续执行。"
-      headerAside={<PromptHeaderAside currentIndex={props.currentIndex} questions={props.questions} setCurrentIndex={props.setCurrentIndex} />}
-      bodyClassName="home-user-input-prompt-body"
-      actions={usesFreeTextInput(props.currentQuestion)
-        ? null
-        : <PromptActions busy={props.busy} submitDisabled={props.submitDisabled} onSubmit={submitAnswers} />}
-    >
-      <PromptBody
-        busy={props.busy}
-        currentIndex={props.currentIndex}
-        question={props.currentQuestion}
-        currentQuestionAnswered={props.currentQuestionAnswered}
-        questions={props.questions}
-        selectedOptions={props.selectedOptions}
-        freeText={props.freeText}
-        setCurrentIndex={props.setCurrentIndex}
-        setFreeText={props.setFreeText}
-        setSelectedOptions={props.setSelectedOptions}
-        submitDisabled={props.submitDisabled}
-        onSubmit={submitAnswers}
-      />
-    </HomePromptCard>
+    <footer className="composer-area home-user-input-prompt-shell">
+      <section className="home-turn-plan-drawer home-user-input-prompt" aria-label="需要补充信息">
+        <div className="home-turn-plan-handle home-user-input-prompt-header" data-expanded="true">
+          <div className="home-turn-plan-handle-info">
+            <span className="home-turn-plan-title">需要补充信息</span>
+          </div>
+          <PromptHeaderAside
+            currentIndex={props.currentIndex}
+            questions={props.questions}
+            setCurrentIndex={props.setCurrentIndex}
+          />
+        </div>
+        <div className="home-turn-plan-card home-user-input-prompt-card">
+          <div className="home-user-input-prompt-body">
+            <PromptBody
+              busy={props.busy}
+              currentIndex={props.currentIndex}
+              question={props.currentQuestion}
+              currentQuestionAnswered={props.currentQuestionAnswered}
+              questions={props.questions}
+              selectedOptions={props.selectedOptions}
+              freeText={props.freeText}
+              setCurrentIndex={props.setCurrentIndex}
+              setFreeText={props.setFreeText}
+              setSelectedOptions={props.setSelectedOptions}
+              submitDisabled={props.submitDisabled}
+              onSubmit={submitAnswers}
+            />
+            {usesFreeTextInput(props.currentQuestion)
+              ? null
+              : <PromptActions busy={props.busy} submitDisabled={props.submitDisabled} onSubmit={submitAnswers} />}
+          </div>
+        </div>
+      </section>
+    </footer>
   );
 }
