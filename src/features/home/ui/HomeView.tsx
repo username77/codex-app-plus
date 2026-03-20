@@ -101,9 +101,11 @@ export interface HomeViewProps {
   readonly onSelectWorkspaceOpener: (opener: WorkspaceOpener) => void;
   readonly onSelectRoot: (rootId: string) => void;
   readonly onSelectThread: (threadId: string | null) => void;
+  readonly onSelectWorkspaceThread?: (rootId: string, threadId: string | null) => void;
   readonly onSelectCollaborationPreset: (preset: CollaborationPreset) => void;
   readonly onInputChange: (text: string) => void;
   readonly onCreateThread: () => Promise<void>;
+  readonly onCreateThreadInRoot?: (rootId: string) => Promise<void>;
   readonly onArchiveThread?: (threadId: string) => Promise<void>;
   readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
   readonly onPersistComposerSelection: (selection: ComposerSelection) => Promise<void>;
@@ -253,7 +255,9 @@ function createHomeSidebarProps(
     onLogout: props.onLogout,
     onSelectRoot: props.onSelectRoot,
     onSelectThread: props.onSelectThread,
+    onSelectWorkspaceThread: props.onSelectWorkspaceThread,
     onCreateThread: props.onCreateThread,
+    onCreateThreadInRoot: props.onCreateThreadInRoot,
     onArchiveThread: props.onArchiveThread ?? (async () => undefined),
     onAddRoot: props.onAddRoot,
     onRemoveRoot: props.onRemoveRoot,

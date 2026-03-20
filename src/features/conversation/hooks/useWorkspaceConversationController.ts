@@ -18,7 +18,7 @@ import { consumePrewarmedThread } from "../service/prewarmedThreadManager";
 import { collectDescendantThreadIds, createRpcThreadRuntimeCleanupTransport, forceCloseThreadRuntime, reportThreadCleanupError } from "../service/threadRuntimeCleanup";
 import { useThreadResourceCleanup } from "./useThreadResourceCleanup";
 import { buildInterruptedTurn, createInput, createQueuedFollowUp, resolveConversationCwd, resolveRequestedCollaborationMode, toErrorMessage } from "./workspaceConversationHelpers";
-import type { SendTurnOptions, UseWorkspaceConversationOptions, WorkspaceConversationController } from "./workspaceConversationTypes";
+import type { CreateThreadOptions, SendTurnOptions, UseWorkspaceConversationOptions, WorkspaceConversationController } from "./workspaceConversationTypes";
 
 type AppDispatch = ReturnType<typeof useAppDispatch>;
 type AppStoreApi = ReturnType<typeof useAppStoreApi>;
@@ -125,11 +125,12 @@ export function useWorkspaceConversationController({
     void ensureConversationResumed(selectedConversation.id);
   }, [ensureConversationResumed, selectedConversation]);
 
-  const createThread = useCallback(async () => {
-    if (options.selectedRootPath === null) {
+  const createThread = useCallback(async (createOptions?: CreateThreadOptions) => {
+    const workspacePath = createOptions?.workspacePath ?? options.selectedRootPath;
+    if (workspacePath === null) {
       throw new Error("请先选择工作区。");
     }
-    dispatch({ type: "conversation/draftOpened", draft: { workspacePath: options.selectedRootPath, createdAt: new Date().toISOString() } });
+    dispatch({ type: "conversation/draftOpened", draft: { workspacePath, createdAt: new Date().toISOString() } });
   }, [dispatch, options.selectedRootPath]);
 
   const startTurn = useCallback(async (conversationId: string, sendOptions: SendTurnOptions, cwdOverride: string | null) => {

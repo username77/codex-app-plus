@@ -36,6 +36,10 @@ function renderSection(
     readonly error?: string | null;
     readonly onDeleteThread?: (thread: ThreadSummary) => Promise<void>;
     readonly onArchiveThread?: (thread: ThreadSummary) => Promise<void>;
+    readonly onCreateThread?: () => Promise<void>;
+    readonly onCreateThreadInRoot?: (rootId: string) => Promise<void>;
+    readonly onRemoveRoot?: (rootId: string) => void;
+    readonly onSelectWorkspaceThread?: (rootId: string, threadId: string | null) => void;
   }
 ): void {
   function Harness(): JSX.Element {
@@ -44,6 +48,7 @@ function renderSection(
 
     return (
       <>
+        <div data-testid="selected-root">{selectedRootId ?? "none"}</div>
         <div data-testid="selected-thread">{selectedThreadId ?? "none"}</div>
         <WorkspaceSidebarSection
           roots={ROOTS}
@@ -53,10 +58,13 @@ function renderSection(
           selectedThreadId={selectedThreadId}
           onSelectRoot={setSelectedRootId}
           onSelectThread={setSelectedThreadId}
+          onSelectWorkspaceThread={options?.onSelectWorkspaceThread}
           onArchiveThread={options?.onArchiveThread ?? vi.fn().mockResolvedValue(undefined)}
           onDeleteThread={options?.onDeleteThread ?? vi.fn().mockResolvedValue(undefined)}
           onAddRoot={vi.fn()}
-          onRemoveRoot={vi.fn()}
+          onCreateThread={options?.onCreateThread ?? vi.fn().mockResolvedValue(undefined)}
+          onCreateThreadInRoot={options?.onCreateThreadInRoot}
+          onRemoveRoot={options?.onRemoveRoot ?? vi.fn()}
         />
       </>
     );
@@ -66,7 +74,7 @@ function renderSection(
 }
 
 describe("WorkspaceSidebarSection", () => {
-  it("expands the chosen workspace without auto-selecting a session", () => {
+  it("expands workspaces independently without changing the selected workspace", () => {
     const threads = [createThread(ROOTS[0]!, 1), createThread(ROOTS[1]!, 2)];
 
     renderSection(threads);
@@ -77,22 +85,27 @@ describe("WorkspaceSidebarSection", () => {
     fireEvent.click(screen.getByText("FPGA"));
     expect(screen.getByText("FPGA Thread 1")).toBeInTheDocument();
     expect(screen.queryByText("Codex Thread 2")).not.toBeInTheDocument();
+    expect(screen.getByTestId("selected-root")).toHaveTextContent("root-1");
     expect(screen.getByTestId("selected-thread")).toHaveTextContent("none");
 
     fireEvent.click(screen.getByText("Codex"));
+    expect(screen.getByText("FPGA Thread 1")).toBeInTheDocument();
     expect(screen.getByText("Codex Thread 2")).toBeInTheDocument();
-    expect(screen.queryByText("FPGA Thread 1")).not.toBeInTheDocument();
+    expect(screen.getByTestId("selected-root")).toHaveTextContent("root-1");
     expect(screen.getByTestId("selected-thread")).toHaveTextContent("none");
   });
 
-  it("toggles collapse when clicking the workspace row again", () => {
-    renderSection([createThread(ROOTS[0]!, 1)]);
+  it("collapses only the clicked workspace row", () => {
+    renderSection([createThread(ROOTS[0]!, 1), createThread(ROOTS[1]!, 2)]);
 
     fireEvent.click(screen.getByText("FPGA"));
     expect(screen.getByText("FPGA Thread 1")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Codex"));
+    expect(screen.getByText("Codex Thread 2")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("FPGA"));
     expect(screen.queryByText("FPGA Thread 1")).not.toBeInTheDocument();
+    expect(screen.getByText("Codex Thread 2")).toBeInTheDocument();
   });
 
   it("shows only the latest ten sessions until expanded", () => {
@@ -128,6 +141,49 @@ describe("WorkspaceSidebarSection", () => {
     expect(meta).not.toBeNull();
     expect(meta?.textContent?.trim().length).toBeGreaterThan(0);
     expect(within(threadButton as HTMLButtonElement).getByText("FPGA Thread 1")).toBeInTheDocument();
+  });
+
+  it("shows workspace actions in the requested order without a count badge", () => {
+    renderSection([createThread(ROOTS[0]!, 1)]);
+
+    const row = screen.getByText("FPGA").closest(".workspace-root-row");
+    expect(row).not.toBeNull();
+    expect(document.querySelector(".workspace-thread-count")).toBeNull();
+
+    const buttons = within(row as HTMLElement).getAllByRole("button");
+    expect(buttons[1]).toHaveAccessibleName("工作区更多操作 FPGA");
+    expect(buttons[2]).toHaveAccessibleName("在工作区 FPGA 中创建新会话");
+    expect(buttons[2]?.querySelector("svg.workspace-root-action-icon")).not.toBeNull();
+  });
+
+  it("forwards workspace new thread actions", async () => {
+    const onCreateThreadInRoot = vi.fn().mockResolvedValue(undefined);
+
+    renderSection([createThread(ROOTS[0]!, 1), createThread(ROOTS[1]!, 2)], { onCreateThreadInRoot });
+    fireEvent.click(screen.getByText("Codex"));
+    fireEvent.click(screen.getByRole("button", { name: "在工作区 Codex 中创建新会话" }));
+
+    await waitFor(() => expect(onCreateThreadInRoot).toHaveBeenCalledWith(ROOTS[1]!.id));
+  });
+
+  it("selects the thread workspace before selecting the thread", async () => {
+    const onSelectWorkspaceThread = vi.fn();
+
+    renderSection([createThread(ROOTS[0]!, 1), createThread(ROOTS[1]!, 2)], { onSelectWorkspaceThread });
+    fireEvent.click(screen.getByText("Codex"));
+    fireEvent.click(screen.getByRole("button", { name: /Codex Thread 2/ }));
+
+    await waitFor(() => expect(onSelectWorkspaceThread).toHaveBeenCalledWith(ROOTS[1]!.id, "thread-root-2-2"));
+  });
+
+  it("moves workspace removal into the more menu", async () => {
+    const onRemoveRoot = vi.fn();
+
+    renderSection([createThread(ROOTS[0]!, 1)], { onRemoveRoot });
+    fireEvent.click(screen.getByRole("button", { name: "工作区更多操作 FPGA" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "移除" }));
+
+    await waitFor(() => expect(onRemoveRoot).toHaveBeenCalledWith(ROOTS[0]!.id));
   });
 
   it("shows explicit errors", () => {

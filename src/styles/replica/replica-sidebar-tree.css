@@ -53,16 +53,6 @@
   transform: rotate(90deg);
 }
 
-.workspace-thread-count {
-  min-width: 20px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--surface-panel-muted);
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 20px;
-}
-
 .workspace-thread-list {
   list-style: none;
   width: 95%;
@@ -154,6 +144,27 @@
 
 .workspace-thread-toggle:hover {
   color: var(--text-main);
+}
+
+.workspace-root-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.workspace-root-action {
+  margin-left: 0;
+  flex-shrink: 0;
+}
+
+.workspace-root-action-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.workspace-root-menu {
+  width: 132px;
 }
 
 .thread-context-menu {

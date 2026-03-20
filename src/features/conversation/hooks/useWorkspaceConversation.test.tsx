@@ -168,6 +168,21 @@ describe("useWorkspaceConversation", () => {
     expect(result.current.conversation.workspaceThreads).toHaveLength(0);
   });
 
+  it("opens a local draft for an explicit workspace path override", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      throw new Error(`unexpected method: ${input.method}`);
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge, undefined, "E:/code/FPGA");
+
+    await act(async () => {
+      await result.current.conversation.createThread({ workspacePath: "E:/code/codex-app-plus" });
+    });
+
+    expect(result.current.store.state.draftConversation?.workspacePath).toBe("E:/code/codex-app-plus");
+    expect(result.current.conversation.draftActive).toBe(true);
+  });
+
   it("does not keep a selected thread from another workspace active", async () => {
     const request = vi.fn(async () => ({ requestId: "noop", result: {} }));
     const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
@@ -186,9 +201,12 @@ describe("useWorkspaceConversation", () => {
     });
 
     await waitFor(() => {
+      const visibleThreadIds = result.current.conversation.visibleThreads.map((thread) => thread.id);
       expect(result.current.conversation.selectedThreadId).toBeNull();
       expect(result.current.conversation.selectedThread).toBeNull();
       expect(result.current.conversation.activities).toEqual([]);
+      expect(visibleThreadIds).toHaveLength(2);
+      expect(visibleThreadIds).toEqual(expect.arrayContaining(["thread-local", "thread-remote"]));
       expect(result.current.conversation.workspaceThreads.map((thread) => thread.id)).toEqual(["thread-local"]);
     });
   });

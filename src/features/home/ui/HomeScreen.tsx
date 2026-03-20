@@ -1,4 +1,5 @@
-import { startTransition, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import { flushSync } from "react-dom";
 import type { HostBridge } from "../../../bridge/types";
 import type { ResolvedTheme } from "../../../domain/theme";
 import { useI18n } from "../../../i18n";
@@ -61,7 +62,7 @@ export function HomeScreen(props: HomeScreenProps): JSX.Element {
       selectedRootId={props.workspace.selectedRootId}
       selectedRootName={selectedRootName}
       selectedRootPath={selectedRootPath}
-      threads={conversation.workspaceThreads}
+      threads={conversation.visibleThreads}
       selectedThread={conversation.selectedThread}
       selectedThreadId={conversation.selectedThreadId}
       activeTurnId={conversation.activeTurnId}
@@ -107,9 +108,11 @@ export function HomeScreen(props: HomeScreenProps): JSX.Element {
       onSelectComposerPermissionLevel={props.preferences.setComposerPermissionLevel}
       onSelectRoot={actions.selectRoot}
       onSelectThread={conversation.selectThread}
+      onSelectWorkspaceThread={actions.selectWorkspaceThread}
       onSelectCollaborationPreset={conversation.selectCollaborationPreset}
       onInputChange={props.controller.setInput}
       onCreateThread={actions.createWorkspaceThread}
+      onCreateThreadInRoot={actions.createWorkspaceThreadInRoot}
       onArchiveThread={props.controller.archiveThread}
       onSendTurn={actions.sendWorkspaceTurn}
       onPersistComposerSelection={actions.persistComposerSelection}
@@ -149,7 +152,7 @@ function useHomeScreenActions(args: {
   readonly controller: AppController;
   readonly conversation: Pick<
     ReturnType<typeof useWorkspaceConversation>,
-    "createThread" | "sendTurn"
+    "createThread" | "sendTurn" | "selectThread"
   >;
   readonly workspace: WorkspaceRootController;
 }) {
@@ -172,9 +175,7 @@ function useHomeScreenActions(args: {
   }, [args.workspace, notifyError, t]);
 
   const selectRoot = useCallback((rootId: string) => {
-    startTransition(() => {
-      args.workspace.selectRoot(rootId);
-    });
+    args.workspace.selectRoot(rootId);
   }, [args.workspace]);
 
   const createWorkspaceThread = useCallback(async () => {
@@ -185,6 +186,30 @@ function useHomeScreenActions(args: {
       notifyError(t("app.alerts.createThreadFailed"), error);
     }
   }, [args.conversation, notifyError, t]);
+
+  const createWorkspaceThreadInRoot = useCallback(async (rootId: string) => {
+    const root = args.workspace.roots.find((item) => item.id === rootId);
+    if (root === undefined) {
+      throw new Error(`未找到工作区：${rootId}`);
+    }
+    try {
+      flushSync(() => {
+        args.workspace.selectRoot(rootId);
+      });
+      await args.conversation.createThread({ workspacePath: root.path });
+    } catch (error) {
+      console.error("创建工作区会话失败", error);
+      notifyError(t("app.alerts.createThreadFailed"), error);
+      throw error;
+    }
+  }, [args.conversation, args.workspace, notifyError, t]);
+
+  const selectWorkspaceThread = useCallback((rootId: string, threadId: string | null) => {
+    flushSync(() => {
+      args.workspace.selectRoot(rootId);
+    });
+    args.conversation.selectThread(threadId);
+  }, [args.conversation, args.workspace]);
 
   const sendWorkspaceTurn = useCallback(async (sendOptions: SendTurnOptions) => {
     try {
@@ -224,9 +249,11 @@ function useHomeScreenActions(args: {
   return {
     addRoot,
     createWorkspaceThread,
+    createWorkspaceThreadInRoot,
     dismissBanner,
     persistComposerSelection,
     selectRoot,
+    selectWorkspaceThread,
     sendWorkspaceTurn,
     setMultiAgentEnabled,
   };

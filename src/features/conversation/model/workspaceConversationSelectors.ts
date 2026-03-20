@@ -61,6 +61,22 @@ function collectWorkspaceConversations(
   ));
 }
 
+export function createVisibleThreadsSelector(
+  agentEnvironment: AgentEnvironment,
+): (state: AppState) => ReadonlyArray<ThreadSummary> {
+  const mapConversationSummary = createThreadSummaryMemo();
+  let previousThreads = EMPTY_THREADS;
+
+  return (state) => {
+    const nextThreads = collectVisibleConversations(state, agentEnvironment).map(mapConversationSummary);
+    if (areArraysShallowEqual(previousThreads, nextThreads)) {
+      return previousThreads;
+    }
+    previousThreads = nextThreads;
+    return nextThreads;
+  };
+}
+
 export function createThreadSummaryMemo(): (conversation: ConversationState) => ThreadSummary {
   const cache = new Map<string, ThreadSummaryCacheEntry>();
 
@@ -104,21 +120,21 @@ export function createWorkspaceThreadsSelector(
   agentEnvironment: AgentEnvironment,
   workspacePath: string | null,
 ): (state: AppState) => ReadonlyArray<ThreadSummary> {
-  const mapConversationSummary = createThreadSummaryMemo();
-  let previousSummaries = EMPTY_THREADS;
+  const selectVisibleThreads = createVisibleThreadsSelector(agentEnvironment);
+  let previousVisibleThreads = EMPTY_THREADS;
   let previousThreads = EMPTY_THREADS;
 
   return (state) => {
-    const summaries = collectVisibleConversations(state, agentEnvironment).map(mapConversationSummary);
-    if (areArraysShallowEqual(previousSummaries, summaries)) {
+    const visibleThreads = selectVisibleThreads(state);
+    if (previousVisibleThreads === visibleThreads) {
       return previousThreads;
     }
-    const nextThreads = listThreadsForWorkspace(summaries, workspacePath);
+    const nextThreads = listThreadsForWorkspace(visibleThreads, workspacePath);
     if (areArraysShallowEqual(previousThreads, nextThreads)) {
-      previousSummaries = summaries;
+      previousVisibleThreads = visibleThreads;
       return previousThreads;
     }
-    previousSummaries = summaries;
+    previousVisibleThreads = visibleThreads;
     previousThreads = nextThreads;
     return nextThreads;
   };

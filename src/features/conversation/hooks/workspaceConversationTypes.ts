@@ -14,6 +14,10 @@ export interface SendTurnOptions {
   readonly followUpOverride?: FollowUpMode | null;
 }
 
+export interface CreateThreadOptions {
+  readonly workspacePath?: string | null;
+}
+
 export interface WorkspaceConversationController {
   readonly selectedThreadId: string | null;
   readonly selectedThread: ThreadSummary | null;
@@ -22,12 +26,13 @@ export interface WorkspaceConversationController {
   readonly isResponding: boolean;
   readonly interruptPending: boolean;
   readonly collaborationPreset: CollaborationPreset;
+  readonly visibleThreads: ReadonlyArray<ThreadSummary>;
   readonly workspaceThreads: ReadonlyArray<ThreadSummary>;
   readonly activities: ReadonlyArray<TimelineEntry>;
   readonly queuedFollowUps: ReadonlyArray<QueuedFollowUp>;
   readonly draftActive: boolean;
   readonly selectedConversationLoading: boolean;
-  createThread: () => Promise<void>;
+  createThread: (options?: CreateThreadOptions) => Promise<void>;
   selectThread: (threadId: string | null) => void;
   selectCollaborationPreset: (preset: CollaborationPreset) => void;
   sendTurn: (options: SendTurnOptions) => Promise<void>;

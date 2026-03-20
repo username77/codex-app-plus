@@ -77,12 +77,15 @@ function readThreadId(params: unknown): string {
 function renderSidebar(thread: ThreadSummary, options?: {
   readonly onArchiveThread?: (threadId: string) => Promise<void>;
   readonly onOpenSkills?: () => void;
+  readonly onCreateThread?: () => Promise<void>;
+  readonly onRemoveRoot?: (rootId: string) => void;
   readonly deleteCodexSession?: ReturnType<typeof vi.fn>;
   readonly request?: ReturnType<typeof vi.fn>;
   readonly initializeStore?: (dispatch: AppStoreApi["dispatch"]) => void;
   readonly codexSessionsError?: string | null;
 }) {
   const onArchiveThread = options?.onArchiveThread ?? vi.fn().mockResolvedValue(undefined);
+  const onCreateThread = options?.onCreateThread ?? vi.fn().mockResolvedValue(undefined);
   const onOpenSkills = options?.onOpenSkills ?? vi.fn();
   const deleteCodexSession = options?.deleteCodexSession ?? vi.fn().mockResolvedValue(undefined);
   const request = options?.request ?? vi.fn().mockResolvedValue({ requestId: "noop", result: {} });
@@ -116,17 +119,17 @@ function renderSidebar(thread: ThreadSummary, options?: {
           onLogout={vi.fn().mockResolvedValue(undefined)}
           onSelectRoot={vi.fn()}
           onSelectThread={setSelectedThreadId}
-          onCreateThread={vi.fn().mockResolvedValue(undefined)}
+          onCreateThread={onCreateThread}
           onArchiveThread={onArchiveThread}
           onAddRoot={vi.fn()}
-          onRemoveRoot={vi.fn()}
+          onRemoveRoot={options?.onRemoveRoot ?? vi.fn()}
         />
       </AppStoreProvider>
     );
   }
 
   render(<Harness />);
-  return { onArchiveThread, onOpenSkills, deleteCodexSession, request };
+  return { onArchiveThread, onCreateThread, onOpenSkills, deleteCodexSession, request };
 }
 
 function DispatchRecorder(props: { readonly onReady: (dispatch: AppStoreApi["dispatch"]) => void }): null {
@@ -153,6 +156,24 @@ describe("HomeSidebar", () => {
     fireEvent.click(screen.getByRole("button", { name: "技能" }));
 
     expect(onOpenSkills).toHaveBeenCalledTimes(1);
+  });
+
+  it("forwards the workspace row new thread button", async () => {
+    const { onCreateThread } = renderSidebar(createThread("codexData"));
+
+    fireEvent.click(screen.getByRole("button", { name: "在工作区 FPGA 中创建新会话" }));
+
+    await waitFor(() => expect(onCreateThread).toHaveBeenCalledTimes(1));
+  });
+
+  it("forwards workspace removal through the more menu", async () => {
+    const onRemoveRoot = vi.fn();
+    renderSidebar(createThread("codexData"), { onRemoveRoot });
+
+    fireEvent.click(screen.getByRole("button", { name: "工作区更多操作 FPGA" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "移除" }));
+
+    await waitFor(() => expect(onRemoveRoot).toHaveBeenCalledWith(ROOT.id));
   });
 
   it("clears the current selection after archiving the selected thread", async () => {

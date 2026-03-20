@@ -5,12 +5,12 @@ import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
 import { createConversationTimelineMemo } from "../model/conversationTimelineMemo";
 import { getActiveTurnId, hasInProgressTurn } from "../model/conversationSelectors";
 import {
+  createVisibleThreadsSelector,
   createNonComposerFuzzySessionsSelector,
   createQueuedConversationIdSelector,
   createThreadSummaryMemo,
-  createWorkspaceThreadsSelector,
 } from "../model/workspaceConversationSelectors";
-import { threadBelongsToWorkspace } from "../../workspace/model/workspaceThread";
+import { listThreadsForWorkspace, threadBelongsToWorkspace } from "../../workspace/model/workspaceThread";
 import { useAppDispatch, useAppSelector, useAppStoreApi } from "../../../state/store";
 import { useWorkspaceConversationController } from "./useWorkspaceConversationController";
 import type { UseWorkspaceConversationOptions, WorkspaceConversationController } from "./workspaceConversationTypes";
@@ -24,9 +24,9 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
   const dispatch = useAppDispatch();
   const mapThreadSummary = useMemo(() => createThreadSummaryMemo(), []);
   const mapActivities = useMemo(() => createConversationTimelineMemo(), []);
-  const workspaceThreadsSelector = useMemo(
-    () => createWorkspaceThreadsSelector(options.agentEnvironment, options.selectedRootPath),
-    [options.agentEnvironment, options.selectedRootPath],
+  const visibleThreadsSelector = useMemo(
+    () => createVisibleThreadsSelector(options.agentEnvironment),
+    [options.agentEnvironment],
   );
   const fuzzySessionsSelector = useMemo(() => createNonComposerFuzzySessionsSelector(), []);
   const queuedConversationIdSelector = useMemo(
@@ -46,7 +46,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     },
     [options.agentEnvironment, options.selectedRootPath, store],
   );
-  const workspaceThreads = useAppSelector(workspaceThreadsSelector);
+  const visibleThreads = useAppSelector(visibleThreadsSelector);
   const selectedConversation = useAppSelector(selectedConversationSelector);
   const selectedConversationId = useAppSelector((currentState) => currentState.selectedConversationId);
   const selectedThread = useMemo(
@@ -92,6 +92,10 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
   const nextQueuedConversationId = useAppSelector(queuedConversationIdSelector);
   const draftActive = useAppSelector((currentState) => currentState.draftConversation !== null);
   const queuedFollowUps = selectedConversation?.queuedFollowUps ?? [];
+  const workspaceThreads = useMemo(
+    () => listThreadsForWorkspace(visibleThreads, options.selectedRootPath),
+    [options.selectedRootPath, visibleThreads],
+  );
   const turnStatuses = useMemo(() => (
     selectedConversation?.turns.reduce<Record<string, TurnStatus>>((current, turn) => {
       if (turn.turnId !== null) {
@@ -141,6 +145,7 @@ export function useWorkspaceConversation(options: UseWorkspaceConversationOption
     isResponding,
     interruptPending,
     collaborationPreset,
+    visibleThreads,
     workspaceThreads,
     activities,
     queuedFollowUps,

@@ -30,7 +30,9 @@ export interface HomeSidebarProps {
   readonly onLogout: () => Promise<void>;
   readonly onSelectRoot: (rootId: string) => void;
   readonly onSelectThread: (threadId: string | null) => void;
+  readonly onSelectWorkspaceThread?: (rootId: string, threadId: string | null) => void;
   readonly onCreateThread: () => Promise<void>;
+  readonly onCreateThreadInRoot?: (rootId: string) => Promise<void>;
   readonly onArchiveThread: (threadId: string) => Promise<void>;
   readonly onAddRoot: () => void;
   readonly onRemoveRoot: (rootId: string) => void;
@@ -114,9 +116,12 @@ function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
         selectedThreadId={props.selectedThreadId}
         onSelectRoot={props.onSelectRoot}
         onSelectThread={props.onSelectThread}
+        onSelectWorkspaceThread={props.onSelectWorkspaceThread}
         onArchiveThread={handleArchiveThread}
         onDeleteThread={handleDeleteThread}
         onAddRoot={props.onAddRoot}
+        onCreateThread={props.onCreateThread}
+        onCreateThreadInRoot={props.onCreateThreadInRoot}
         onRemoveRoot={props.onRemoveRoot}
       />
       <div className="settings-slot">
