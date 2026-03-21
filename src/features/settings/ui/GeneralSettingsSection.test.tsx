@@ -123,21 +123,6 @@ describe("GeneralSettingsSection", () => {
     expect(toggle).toHaveAttribute("aria-checked", "false");
   });
 
-  it("updates the standard approval policy after selecting on-failure", () => {
-    renderSection();
-
-    fireEvent.click(screen.getByRole("button", { name: "标准权限 · 审批策略：on-request" }));
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "on-failure" }));
-
-    expect(screen.getByRole("button", { name: "标准权限 · 审批策略：on-failure" })).toBeInTheDocument();
-  });
-
-  it("shows the app-local note for permission defaults", () => {
-    renderSection();
-
-    expect(screen.getByText("这是应用内默认行为，影响后续新建线程和后续发送，不会改写 ~/.codex/config.toml。")).toBeInTheDocument();
-  });
-
   it("renders English copy when locale is en-US", () => {
     renderSection("en-US");
 
@@ -146,6 +131,5 @@ describe("GeneralSettingsSection", () => {
     expect(screen.getByText("Interface language")).toBeInTheDocument();
     expect(screen.getByText("Defaults to the system language, keeps your manual choice once changed, and updates migrated screens immediately.")).toBeInTheDocument();
     expect(screen.getByText("Force UTF-8 for the embedded terminal")).toBeInTheDocument();
-    expect(screen.getByText("Composer permission defaults")).toBeInTheDocument();
   });
 });

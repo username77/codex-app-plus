@@ -22,6 +22,7 @@ import "../../../styles/replica/replica-settings-extra.css";
 import "../../../styles/replica/replica-settings-layout.css";
 import { useI18n, type MessageKey } from "../../../i18n";
 import { McpSettingsPanel } from "../../mcp/ui/McpSettingsPanel";
+import { ComposerPermissionDefaultsCard } from "./ComposerPermissionDefaultsCard";
 import { ConfigSettingsSection } from "./ConfigSettingsSection";
 import { GeneralSettingsSection } from "./GeneralSettingsSection";
 import { GitSettingsSection } from "./GitSettingsSection";
@@ -149,24 +150,27 @@ function SettingsContent(props: SettingsViewProps): JSX.Element {
   }
   if (props.section === "config") {
     return (
-      <ConfigSettingsSection
-        agentEnvironment={props.preferences.agentEnvironment}
-        busy={props.busy}
-        configSnapshot={props.configSnapshot}
-        onOpenConfigToml={props.onOpenConfigToml}
-        refreshConfigSnapshot={props.refreshConfigSnapshot}
-        refreshAuthState={props.refreshAuthState}
-        login={props.login}
-        listCodexProviders={props.listCodexProviders}
-        upsertCodexProvider={props.upsertCodexProvider}
-        deleteCodexProvider={props.deleteCodexProvider}
-        applyCodexProvider={props.applyCodexProvider}
-        getCodexAuthModeState={props.getCodexAuthModeState}
-        activateCodexChatgpt={props.activateCodexChatgpt}
-        writeConfigValue={props.writeConfigValue}
-        windowsSandboxSetup={props.windowsSandboxSetup}
-        startWindowsSandboxSetup={props.startWindowsSandboxSetup}
-      />
+      <>
+        <ConfigSettingsSection
+          agentEnvironment={props.preferences.agentEnvironment}
+          busy={props.busy}
+          configSnapshot={props.configSnapshot}
+          onOpenConfigToml={props.onOpenConfigToml}
+          refreshConfigSnapshot={props.refreshConfigSnapshot}
+          refreshAuthState={props.refreshAuthState}
+          login={props.login}
+          listCodexProviders={props.listCodexProviders}
+          upsertCodexProvider={props.upsertCodexProvider}
+          deleteCodexProvider={props.deleteCodexProvider}
+          applyCodexProvider={props.applyCodexProvider}
+          getCodexAuthModeState={props.getCodexAuthModeState}
+          activateCodexChatgpt={props.activateCodexChatgpt}
+          writeConfigValue={props.writeConfigValue}
+          windowsSandboxSetup={props.windowsSandboxSetup}
+          startWindowsSandboxSetup={props.startWindowsSandboxSetup}
+        />
+        <ComposerPermissionDefaultsCard preferences={props.preferences} />
+      </>
     );
   }
   if (props.section === "personalization") {
