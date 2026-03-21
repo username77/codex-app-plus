@@ -150,6 +150,7 @@ function SettingsContent(props: SettingsViewProps): JSX.Element {
   if (props.section === "config") {
     return (
       <ConfigSettingsSection
+        agentEnvironment={props.preferences.agentEnvironment}
         busy={props.busy}
         configSnapshot={props.configSnapshot}
         onOpenConfigToml={props.onOpenConfigToml}

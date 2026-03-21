@@ -34,12 +34,24 @@ export function HomeScreen(props: HomeScreenProps): JSX.Element {
   const state = useHomeScreenState();
   const { t } = useI18n();
   const { selectedRootName, selectedRootPath } = useSelectedWorkspace(props.workspace, t("home.workspaceSelector.placeholder"));
+  const permissionSettings = useMemo(() => ({
+    defaultApprovalPolicy: props.preferences.composerDefaultApprovalPolicy,
+    defaultSandboxMode: props.preferences.composerDefaultSandboxMode,
+    fullApprovalPolicy: props.preferences.composerFullApprovalPolicy,
+    fullSandboxMode: props.preferences.composerFullSandboxMode,
+  }), [
+    props.preferences.composerDefaultApprovalPolicy,
+    props.preferences.composerDefaultSandboxMode,
+    props.preferences.composerFullApprovalPolicy,
+    props.preferences.composerFullSandboxMode,
+  ]);
   const conversation = useWorkspaceConversation({
     agentEnvironment: props.preferences.agentEnvironment,
     hostBridge: props.hostBridge,
     selectedRootPath,
     collaborationModes: state.collaborationModes,
     followUpQueueMode: props.preferences.followUpQueueMode,
+    permissionSettings,
   });
   const composerPicker = useComposerPicker(props.hostBridge, state.configSnapshot, state.initialized);
   const multiAgentState = useMemo(

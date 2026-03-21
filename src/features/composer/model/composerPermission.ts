@@ -6,14 +6,28 @@ import type { ThreadStartParams } from "../../../protocol/generated/v2/ThreadSta
 import type { TurnStartParams } from "../../../protocol/generated/v2/TurnStartParams";
 
 export type ComposerPermissionLevel = "default" | "full";
+export type ComposerApprovalPolicy = Extract<AskForApproval, "untrusted" | "on-failure" | "on-request" | "never">;
+
+export interface ComposerPermissionSettings {
+  readonly defaultApprovalPolicy: ComposerApprovalPolicy;
+  readonly defaultSandboxMode: SandboxMode;
+  readonly fullApprovalPolicy: ComposerApprovalPolicy;
+  readonly fullSandboxMode: SandboxMode;
+}
 
 export const DEFAULT_COMPOSER_PERMISSION_LEVEL: ComposerPermissionLevel = "default";
+export const DEFAULT_COMPOSER_DEFAULT_APPROVAL_POLICY: ComposerApprovalPolicy = "on-request";
+export const DEFAULT_COMPOSER_DEFAULT_SANDBOX_MODE: SandboxMode = "workspace-write";
+export const DEFAULT_COMPOSER_FULL_APPROVAL_POLICY: ComposerApprovalPolicy = "never";
+export const DEFAULT_COMPOSER_FULL_SANDBOX_MODE: SandboxMode = "danger-full-access";
+export const DEFAULT_COMPOSER_PERMISSION_SETTINGS = Object.freeze<ComposerPermissionSettings>({
+  defaultApprovalPolicy: DEFAULT_COMPOSER_DEFAULT_APPROVAL_POLICY,
+  defaultSandboxMode: DEFAULT_COMPOSER_DEFAULT_SANDBOX_MODE,
+  fullApprovalPolicy: DEFAULT_COMPOSER_FULL_APPROVAL_POLICY,
+  fullSandboxMode: DEFAULT_COMPOSER_FULL_SANDBOX_MODE
+});
 
-const DEFAULT_APPROVAL_POLICY: AskForApproval = "on-request";
-const FULL_ACCESS_APPROVAL_POLICY: AskForApproval = "never";
-const DEFAULT_SANDBOX_MODE: SandboxMode = "workspace-write";
-const FULL_ACCESS_SANDBOX_MODE: SandboxMode = "danger-full-access";
-const DEFAULT_READ_ONLY_ACCESS: ReadOnlyAccess = {
+const RESTRICTED_READ_ONLY_ACCESS: ReadOnlyAccess = {
   type: "restricted",
   includePlatformDefaults: true,
   readableRoots: []
@@ -26,29 +40,69 @@ export function isComposerPermissionLevel(value: unknown): value is ComposerPerm
   return value === "default" || value === "full";
 }
 
-function createDefaultSandboxPolicy(): SandboxPolicy {
+export function isComposerApprovalPolicy(value: unknown): value is ComposerApprovalPolicy {
+  return value === "untrusted" || value === "on-failure" || value === "on-request" || value === "never";
+}
+
+function createReadOnlySandboxPolicy(): SandboxPolicy {
+  return {
+    type: "readOnly",
+    access: RESTRICTED_READ_ONLY_ACCESS,
+    networkAccess: false
+  };
+}
+
+function createWorkspaceWriteSandboxPolicy(): SandboxPolicy {
   return {
     type: "workspaceWrite",
     writableRoots: [],
-    readOnlyAccess: DEFAULT_READ_ONLY_ACCESS,
+    readOnlyAccess: RESTRICTED_READ_ONLY_ACCESS,
     networkAccess: false,
     excludeTmpdirEnvVar: false,
     excludeSlashTmp: false
   };
 }
 
-export function createThreadPermissionOverrides(level: ComposerPermissionLevel): ThreadPermissionOverrides {
-  if (level === "full") {
-    return { approvalPolicy: FULL_ACCESS_APPROVAL_POLICY, sandbox: FULL_ACCESS_SANDBOX_MODE };
+function createSandboxPolicy(mode: SandboxMode): SandboxPolicy {
+  if (mode === "read-only") {
+    return createReadOnlySandboxPolicy();
   }
-
-  return { approvalPolicy: DEFAULT_APPROVAL_POLICY, sandbox: DEFAULT_SANDBOX_MODE };
+  if (mode === "danger-full-access") {
+    return { type: "dangerFullAccess" };
+  }
+  return createWorkspaceWriteSandboxPolicy();
 }
 
-export function createTurnPermissionOverrides(level: ComposerPermissionLevel): TurnPermissionOverrides {
-  if (level === "full") {
-    return { approvalPolicy: FULL_ACCESS_APPROVAL_POLICY, sandboxPolicy: { type: "dangerFullAccess" } };
-  }
+function resolveComposerPermissionValues(
+  level: ComposerPermissionLevel,
+  settings: ComposerPermissionSettings
+): { readonly approvalPolicy: ComposerApprovalPolicy; readonly sandboxMode: SandboxMode } {
+  return level === "full"
+    ? {
+      approvalPolicy: settings.fullApprovalPolicy,
+      sandboxMode: settings.fullSandboxMode
+    }
+    : {
+      approvalPolicy: settings.defaultApprovalPolicy,
+      sandboxMode: settings.defaultSandboxMode
+    };
+}
 
-  return { approvalPolicy: DEFAULT_APPROVAL_POLICY, sandboxPolicy: createDefaultSandboxPolicy() };
+export function createThreadPermissionOverrides(
+  level: ComposerPermissionLevel,
+  settings: ComposerPermissionSettings = DEFAULT_COMPOSER_PERMISSION_SETTINGS
+): ThreadPermissionOverrides {
+  const values = resolveComposerPermissionValues(level, settings);
+  return { approvalPolicy: values.approvalPolicy, sandbox: values.sandboxMode };
+}
+
+export function createTurnPermissionOverrides(
+  level: ComposerPermissionLevel,
+  settings: ComposerPermissionSettings = DEFAULT_COMPOSER_PERMISSION_SETTINGS
+): TurnPermissionOverrides {
+  const values = resolveComposerPermissionValues(level, settings);
+  return {
+    approvalPolicy: values.approvalPolicy,
+    sandboxPolicy: createSandboxPolicy(values.sandboxMode)
+  };
 }

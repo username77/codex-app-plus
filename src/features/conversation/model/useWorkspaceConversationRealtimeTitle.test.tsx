@@ -6,6 +6,7 @@ import { AppStoreProvider, useAppStore } from "../../../state/store";
 import { applyAppServerNotification } from "../../../app/controller/appControllerNotifications";
 import { FrameTextDeltaQueue } from "./frameTextDeltaQueue";
 import { OutputDeltaQueue } from "./outputDeltaQueue";
+import { DEFAULT_COMPOSER_PERMISSION_SETTINGS } from "../../composer/model/composerPermission";
 import { useWorkspaceConversation } from "../hooks/useWorkspaceConversation";
 
 function Wrapper(props: PropsWithChildren): JSX.Element {
@@ -58,6 +59,7 @@ function renderConversation(hostBridge: HostBridge) {
         selectedRootPath: "E:/code/FPGA",
         collaborationModes: [{ name: "plan", mode: "plan", model: "gpt-5.2", reasoningEffort: "medium" }],
         followUpQueueMode: "queue",
+        permissionSettings: DEFAULT_COMPOSER_PERMISSION_SETTINGS,
       });
       return { store, conversation };
     },

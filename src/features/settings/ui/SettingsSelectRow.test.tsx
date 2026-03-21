@@ -88,6 +88,16 @@ describe("SettingsSelectRow", () => {
     });
   });
 
+  it("renders the menu through a portal attached to document.body", async () => {
+    const trigger = renderRow();
+
+    fireEvent.click(trigger);
+
+    await waitFor(() => {
+      expect(screen.getByRole("menu", { name: "回车行为" }).parentElement).toBe(document.body);
+    });
+  });
+
   it("opens upward when the nearest scroll container has no room below", async () => {
     const { trigger, scrollContainer } = renderRowInScrollContainer();
     const control = trigger.parentElement as HTMLDivElement;
@@ -100,6 +110,17 @@ describe("SettingsSelectRow", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("menu", { name: "回车行为" })).toHaveClass("settings-select-menu-up");
+    });
+  });
+
+  it("keeps the menu open when clicking inside the portal menu", async () => {
+    const trigger = renderRow();
+
+    fireEvent.click(trigger);
+    fireEvent.pointerDown(screen.getByRole("menuitemradio", { name: "多行时 Ctrl/Cmd+Enter 发送" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("menu", { name: "回车行为" })).toBeInTheDocument();
     });
   });
 });

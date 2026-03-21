@@ -1,24 +1,24 @@
 import { useMemo } from "react";
 import { readWindowsSandboxConfigView } from "../sandbox/windowsSandboxConfig";
 import type { WindowsSandboxSetupState } from "../../../domain/types";
-import type { WindowsSandboxSetupMode } from "../../../protocol/generated/v2/WindowsSandboxSetupMode";
 import { useI18n, type MessageKey } from "../../../i18n";
+import type { AgentEnvironment } from "../../../bridge/types";
 
 interface WindowsSandboxSettingsCardProps {
+  readonly agentEnvironment: AgentEnvironment;
   readonly busy: boolean;
   readonly configSnapshot: unknown;
   readonly setupState: WindowsSandboxSetupState;
-  readonly onStartSetup: (mode: WindowsSandboxSetupMode) => Promise<unknown>;
+  readonly onEnable: () => Promise<unknown>;
 }
 
-const MODE_LABEL_KEYS: Record<"disabled" | WindowsSandboxSetupMode, MessageKey> = {
+const MODE_LABEL_KEYS: Record<"disabled" | "enabled", MessageKey> = {
   disabled: "settings.windowsSandbox.disabledMode",
-  unelevated: "settings.windowsSandbox.unelevatedMode",
-  elevated: "settings.windowsSandbox.elevatedMode"
+  enabled: "settings.windowsSandbox.enabledMode"
 };
 
 function modeLabel(
-  mode: "disabled" | WindowsSandboxSetupMode,
+  mode: "disabled" | "enabled",
   t: (key: MessageKey) => string
 ): string {
   return t(MODE_LABEL_KEYS[mode]);
@@ -28,36 +28,40 @@ function resultMessage(
   state: WindowsSandboxSetupState,
   t: (key: MessageKey, params?: Record<string, string>) => string
 ): string | null {
-  if (state.pending && state.mode !== null) {
-    return t("settings.windowsSandbox.pendingMessage", { mode: modeLabel(state.mode, t) });
+  if (state.pending) {
+    return t("settings.windowsSandbox.pendingMessage");
   }
-  if (state.success === true && state.mode !== null) {
-    return t("settings.windowsSandbox.successMessage", { mode: modeLabel(state.mode, t) });
+  if (state.success === true) {
+    return t("settings.windowsSandbox.successMessage");
   }
-  if (state.success === false && state.mode !== null) {
-    return state.error ?? t("settings.windowsSandbox.failureMessage", { mode: modeLabel(state.mode, t) });
+  if (state.success === false) {
+    return state.error ?? t("settings.windowsSandbox.failureMessage");
   }
   return null;
 }
 
-function SetupAction(props: {
+function environmentMessageKey(agentEnvironment: AgentEnvironment): MessageKey {
+  return agentEnvironment === "windowsNative"
+    ? "settings.windowsSandbox.autoEnabledNote"
+    : "settings.windowsSandbox.waitingForWindowsNativeNote";
+}
+
+function EnableAction(props: {
   readonly busy: boolean;
-  readonly currentMode: WindowsSandboxSetupState["mode"];
-  readonly mode: WindowsSandboxSetupMode;
-  readonly title: string;
+  readonly running: boolean;
+  readonly label: string;
   readonly description: string;
   readonly runningLabel: string;
-  readonly primary?: boolean;
-  readonly onStartSetup: (mode: WindowsSandboxSetupMode) => Promise<unknown>;
+  readonly onEnable: () => Promise<unknown>;
 }): JSX.Element {
-  const running = props.busy && props.currentMode === props.mode;
-  const className = props.primary
-    ? "windows-sandbox-action windows-sandbox-action-primary"
-    : "windows-sandbox-action";
-
   return (
-    <button type="button" className={className} disabled={props.busy} onClick={() => void props.onStartSetup(props.mode)}>
-      <span className="windows-sandbox-action-title">{running ? props.runningLabel : props.title}</span>
+    <button
+      type="button"
+      className="windows-sandbox-action windows-sandbox-action-primary"
+      disabled={props.busy}
+      onClick={() => void props.onEnable()}
+    >
+      <span className="windows-sandbox-action-title">{props.running ? props.runningLabel : props.label}</span>
       <span className="windows-sandbox-action-copy">{props.description}</span>
     </button>
   );
@@ -67,7 +71,8 @@ export function WindowsSandboxSettingsCard(props: WindowsSandboxSettingsCardProp
   const { t } = useI18n();
   const view = useMemo(() => readWindowsSandboxConfigView(props.configSnapshot), [props.configSnapshot]);
   const result = resultMessage(props.setupState, t);
-  const actionsDisabled = props.busy || props.setupState.pending || !view.canRunSetup;
+  const actionDisabled = props.busy || props.setupState.pending || !view.canRunSetup;
+  const statusLabel = view.enabled ? modeLabel("enabled", t) : modeLabel("disabled", t);
   const resultClass = props.setupState.success === false
     ? "settings-status-note settings-status-note-error windows-sandbox-status"
     : props.setupState.pending
@@ -83,40 +88,30 @@ export function WindowsSandboxSettingsCard(props: WindowsSandboxSettingsCardProp
             {t("settings.windowsSandbox.summary")}
           </p>
         </div>
-        <span className="settings-chip settings-chip-sm windows-sandbox-chip">{modeLabel(view.mode, t)}</span>
+        <span className="settings-chip settings-chip-sm windows-sandbox-chip">{statusLabel}</span>
       </div>
 
       <div className="windows-sandbox-meta">
         <div className="windows-sandbox-meta-block">
           <span className="windows-sandbox-meta-label">{t("settings.windowsSandbox.currentStatusLabel")}</span>
-          <strong>{modeLabel(view.mode, t)}</strong>
+          <strong>{statusLabel}</strong>
           <p>{view.source ?? t("settings.windowsSandbox.noSource")}</p>
         </div>
       </div>
 
       {view.isLegacy ? <p className="settings-status-note windows-sandbox-status">{t("settings.windowsSandbox.legacyNote")}</p> : null}
+      <p className="settings-status-note windows-sandbox-status">{t(environmentMessageKey(props.agentEnvironment))}</p>
       {!view.canRunSetup ? <p className="settings-status-note settings-status-note-error windows-sandbox-status">{t("settings.windowsSandbox.unavailableNote")}</p> : null}
       {result ? <p className={resultClass}>{result}</p> : null}
 
       <div className="windows-sandbox-actions">
-        <SetupAction
-          busy={actionsDisabled}
-          currentMode={props.setupState.mode}
-          mode="unelevated"
-          title={t("settings.windowsSandbox.unelevatedTitle")}
-          description={t("settings.windowsSandbox.unelevatedDescription")}
+        <EnableAction
+          busy={actionDisabled}
+          running={props.setupState.pending}
+          label={view.enabled ? t("settings.windowsSandbox.reenableAction") : t("settings.windowsSandbox.enableAction")}
+          description={t("settings.windowsSandbox.enableDescription")}
           runningLabel={t("settings.windowsSandbox.runningAction")}
-          primary
-          onStartSetup={props.onStartSetup}
-        />
-        <SetupAction
-          busy={actionsDisabled}
-          currentMode={props.setupState.mode}
-          mode="elevated"
-          title={t("settings.windowsSandbox.elevatedTitle")}
-          description={t("settings.windowsSandbox.elevatedDescription")}
-          runningLabel={t("settings.windowsSandbox.runningAction")}
-          onStartSetup={props.onStartSetup}
+          onEnable={props.onEnable}
         />
       </div>
     </section>

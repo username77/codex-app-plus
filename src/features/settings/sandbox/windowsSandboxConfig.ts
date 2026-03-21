@@ -5,7 +5,6 @@ import type { ConfigReadResponse } from "../../../protocol/generated/v2/ConfigRe
 import type { WindowsSandboxSetupMode } from "../../../protocol/generated/v2/WindowsSandboxSetupMode";
 
 type JsonObject = Record<string, JsonValue>;
-type WindowsSandboxConfigMode = WindowsSandboxSetupMode | "disabled";
 
 interface LayerMatch {
   readonly mode: WindowsSandboxSetupMode;
@@ -14,7 +13,8 @@ interface LayerMatch {
 }
 
 export interface WindowsSandboxConfigView {
-  readonly mode: WindowsSandboxConfigMode;
+  readonly enabled: boolean;
+  readonly mode: WindowsSandboxSetupMode | null;
   readonly source: string | null;
   readonly isLegacy: boolean;
   readonly canRunSetup: boolean;
@@ -120,13 +120,14 @@ function canRunSetup(): boolean {
 
 export function readWindowsSandboxConfigView(snapshot: unknown): WindowsSandboxConfigView {
   if (!isTypedConfig(snapshot)) {
-    return { mode: "disabled", source: null, isLegacy: false, canRunSetup: canRunSetup() };
+    return { enabled: false, mode: null, source: null, isLegacy: false, canRunSetup: canRunSetup() };
   }
   const effectiveConfig = snapshot.config as Record<string, unknown>;
   const effectiveWindows = toJsonObject(effectiveConfig.windows);
   const effectiveMode = toMode(effectiveWindows?.sandbox);
   if (effectiveMode !== null) {
     return {
+      enabled: true,
       mode: effectiveMode,
       source: sourceLabelFromMetadata(snapshot.origins?.["windows.sandbox"]) ?? "windows.sandbox · 当前生效配置",
       isLegacy: false,
@@ -139,6 +140,6 @@ export function readWindowsSandboxConfigView(snapshot: unknown): WindowsSandboxC
     null,
   );
   return match === null
-    ? { mode: "disabled", source: null, isLegacy: false, canRunSetup: canRunSetup() }
-    : { ...match, canRunSetup: canRunSetup() };
+    ? { enabled: false, mode: null, source: null, isLegacy: false, canRunSetup: canRunSetup() }
+    : { enabled: true, ...match, canRunSetup: canRunSetup() };
 }

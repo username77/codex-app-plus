@@ -53,6 +53,7 @@ function createBaseProps(
   overrides: Partial<ComponentProps<typeof ConfigSettingsSection>> = {}
 ): ComponentProps<typeof ConfigSettingsSection> {
   return {
+    agentEnvironment: "windowsNative",
     busy: false,
     configSnapshot: { config: {} },
     onOpenConfigToml: vi.fn().mockResolvedValue(undefined),

@@ -10,6 +10,9 @@ import { FrameTextDeltaQueue } from "../model/frameTextDeltaQueue";
 import { OutputDeltaQueue } from "../model/outputDeltaQueue";
 import { useWorkspaceConversation } from "./useWorkspaceConversation";
 import { createComposerFuzzySessionId } from "../../composer/service/composerCommandBridge";
+import {
+  DEFAULT_COMPOSER_PERMISSION_SETTINGS,
+} from "../../composer/model/composerPermission";
 
 function createDeferred<T>() {
   let resolvePromise: (value: T | PromiseLike<T>) => void = () => undefined;
@@ -136,6 +139,7 @@ function renderConversation(
         selectedRootPath: props.rootPath,
         collaborationModes,
         followUpQueueMode: "queue",
+        permissionSettings: DEFAULT_COMPOSER_PERMISSION_SETTINGS,
       });
     return { store, conversation };
   }, { initialProps: { rootPath: selectedRootPath }, wrapper: Wrapper });
@@ -806,6 +810,57 @@ describe("useWorkspaceConversation", () => {
     });
 
     expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/start", params: expect.objectContaining({ approvalPolicy: "never", sandboxPolicy: { type: "dangerFullAccess" } }) }));
+  });
+
+  it("uses configured access-mode mappings for new threads and turns", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "thread/start") {
+        return createThreadStartResponse();
+      }
+      if (input.method === "turn/start") {
+        return { requestId: "request-2", result: { turn: createTurn() } };
+      }
+      throw new Error(`unexpected method: ${input.method}`);
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderHook(() => {
+      const store = useAppStore();
+      const conversation = useWorkspaceConversation({
+        agentEnvironment: "windowsNative",
+        hostBridge,
+        selectedRootPath: "E:/code/FPGA",
+        collaborationModes: [{ name: "default", mode: "default", model: "gpt-5.2", reasoningEffort: null }],
+        followUpQueueMode: "queue",
+        permissionSettings: {
+          defaultApprovalPolicy: "on-failure",
+          defaultSandboxMode: "read-only",
+          fullApprovalPolicy: "untrusted",
+          fullSandboxMode: "workspace-write",
+        },
+      });
+      return { store, conversation };
+    }, { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.conversation.createThread();
+      await result.current.conversation.sendTurn(createSendOptions("first turn"));
+    });
+
+    expect(request).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      method: "thread/start",
+      params: expect.objectContaining({ approvalPolicy: "on-failure", sandbox: "read-only" }),
+    }));
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      method: "turn/start",
+      params: expect.objectContaining({
+        approvalPolicy: "on-failure",
+        sandboxPolicy: {
+          type: "readOnly",
+          access: { type: "restricted", includePlatformDefaults: true, readableRoots: [] },
+          networkAccess: false,
+        },
+      }),
+    }));
   });
 
 

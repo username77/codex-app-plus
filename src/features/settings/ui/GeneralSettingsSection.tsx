@@ -3,10 +3,12 @@ import type {
   ThreadDetailLevel,
 } from "../hooks/useAppPreferences";
 import type { AgentEnvironment, EmbeddedTerminalShell, WorkspaceOpener } from "../../../bridge/types";
+import type { ComposerApprovalPolicy } from "../../composer/model/composerPermission";
 import type { ComposerEnterBehavior, FollowUpMode } from "../../../domain/timeline";
 import type { AppUpdateState } from "../../../domain/types";
 import type { ThemeMode } from "../../../domain/theme";
 import { createLanguageOptions, useI18n, type MessageKey } from "../../../i18n";
+import type { SandboxMode } from "../../../protocol/generated/v2/SandboxMode";
 import { AppUpdateCard } from "./AppUpdateCard";
 import { SettingsSelectRow, type SettingsSelectOption } from "./SettingsSelectRow";
 
@@ -69,6 +71,23 @@ function createComposerEnterOptions(t: Translator): ReadonlyArray<SettingsSelect
   ];
 }
 
+function createComposerApprovalPolicyOptions(t: Translator): ReadonlyArray<SettingsSelectOption<ComposerApprovalPolicy>> {
+  return [
+    { value: "untrusted", label: t("settings.general.approvalPolicy.options.untrusted") },
+    { value: "on-failure", label: t("settings.general.approvalPolicy.options.onFailure") },
+    { value: "on-request", label: t("settings.general.approvalPolicy.options.onRequest") },
+    { value: "never", label: t("settings.general.approvalPolicy.options.never") }
+  ];
+}
+
+function createSandboxModeOptions(t: Translator): ReadonlyArray<SettingsSelectOption<SandboxMode>> {
+  return [
+    { value: "read-only", label: t("settings.general.sandboxMode.options.readOnly") },
+    { value: "workspace-write", label: t("settings.general.sandboxMode.options.workspaceWrite") },
+    { value: "danger-full-access", label: t("settings.general.sandboxMode.options.dangerFullAccess") }
+  ];
+}
+
 interface GeneralSettingsSectionProps {
   readonly appUpdate: AppUpdateState;
   readonly preferences: AppPreferencesController;
@@ -106,6 +125,8 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
   const threadDetailOptions = createThreadDetailOptions(t);
   const followUpModeOptions = createFollowUpModeOptions(t);
   const composerEnterOptions = createComposerEnterOptions(t);
+  const composerApprovalOptions = createComposerApprovalPolicyOptions(t);
+  const sandboxModeOptions = createSandboxModeOptions(t);
 
   return (
     <div className="settings-panel-group">
@@ -187,6 +208,38 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
           options={composerEnterOptions}
           onChange={preferences.setComposerEnterBehavior}
           statusNote={t("settings.general.composerEnterBehavior.note")}
+        />
+        <div className="settings-section-head">
+          <strong>{t("settings.general.permissionSettings.title")}</strong>
+        </div>
+        <p className="settings-note">{t("settings.general.permissionSettings.note")}</p>
+        <SettingsSelectRow
+          label={t("settings.general.composerDefaultApprovalPolicy.label")}
+          description={t("settings.general.composerDefaultApprovalPolicy.description")}
+          value={preferences.composerDefaultApprovalPolicy}
+          options={composerApprovalOptions}
+          onChange={preferences.setComposerDefaultApprovalPolicy}
+        />
+        <SettingsSelectRow
+          label={t("settings.general.composerDefaultSandboxMode.label")}
+          description={t("settings.general.composerDefaultSandboxMode.description")}
+          value={preferences.composerDefaultSandboxMode}
+          options={sandboxModeOptions}
+          onChange={preferences.setComposerDefaultSandboxMode}
+        />
+        <SettingsSelectRow
+          label={t("settings.general.composerFullApprovalPolicy.label")}
+          description={t("settings.general.composerFullApprovalPolicy.description")}
+          value={preferences.composerFullApprovalPolicy}
+          options={composerApprovalOptions}
+          onChange={preferences.setComposerFullApprovalPolicy}
+        />
+        <SettingsSelectRow
+          label={t("settings.general.composerFullSandboxMode.label")}
+          description={t("settings.general.composerFullSandboxMode.description")}
+          value={preferences.composerFullSandboxMode}
+          options={sandboxModeOptions}
+          onChange={preferences.setComposerFullSandboxMode}
         />
       </section>
       <AppUpdateCard

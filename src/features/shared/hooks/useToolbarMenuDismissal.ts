@@ -4,7 +4,8 @@ import type { RefObject } from "react";
 export function useToolbarMenuDismissal(
   menuOpen: boolean,
   containerRef: RefObject<HTMLDivElement>,
-  onDismiss: () => void
+  onDismiss: () => void,
+  additionalRefs: ReadonlyArray<RefObject<HTMLElement>> = []
 ): void {
   useEffect(() => {
     if (!menuOpen) {
@@ -12,7 +13,10 @@ export function useToolbarMenuDismissal(
     }
 
     const handlePointerDown = (event: PointerEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const withinContainer = containerRef.current?.contains(target) ?? false;
+      const withinAdditionalRefs = additionalRefs.some((ref) => ref.current?.contains(target) ?? false);
+      if (!withinContainer && !withinAdditionalRefs) {
         onDismiss();
       }
     };
@@ -28,5 +32,5 @@ export function useToolbarMenuDismissal(
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [containerRef, menuOpen, onDismiss]);
+  }, [additionalRefs, containerRef, menuOpen, onDismiss]);
 }

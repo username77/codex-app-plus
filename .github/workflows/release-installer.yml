@@ -187,6 +187,10 @@ jobs:
           RELEASE_TAG: ${{ steps.meta.outputs.tag }}
           RELEASE_VERSION: ${{ steps.meta.outputs.version }}
         run: |
+          function Get-ReleaseAssetName([string]$fileName) {
+            return [regex]::Replace($fileName.Trim(), '\s+', '.')
+          }
+
           $bundleRoot = "src-tauri/target/release/bundle"
           $assetDir = "release-assets"
           Remove-Item $assetDir -Recurse -Force -ErrorAction SilentlyContinue
@@ -207,7 +211,9 @@ jobs:
 
           $signature = (Get-Content $signatureFile.FullName -Raw).Trim()
           $notes = (Get-Content release-notes.md -Raw).Trim()
-          $encodedInstallerName = [System.Uri]::EscapeDataString($installer.Name)
+          $releaseInstallerName = Get-ReleaseAssetName $installer.Name
+          $releaseSignatureName = "$releaseInstallerName.sig"
+          $encodedInstallerName = [System.Uri]::EscapeDataString($releaseInstallerName)
           $releaseUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:RELEASE_TAG/$encodedInstallerName"
           $manifest = [ordered]@{
             version = $env:RELEASE_VERSION
@@ -222,8 +228,8 @@ jobs:
           }
 
           $manifest | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $assetDir "latest.json") -Encoding utf8
-          Copy-Item $installer.FullName (Join-Path $assetDir $installer.Name)
-          Copy-Item $signatureFile.FullName (Join-Path $assetDir $signatureFile.Name)
+          Copy-Item $installer.FullName (Join-Path $assetDir $releaseInstallerName)
+          Copy-Item $signatureFile.FullName (Join-Path $assetDir $releaseSignatureName)
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2

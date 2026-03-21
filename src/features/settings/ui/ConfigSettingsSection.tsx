@@ -1,5 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import type {
+  AgentEnvironment,
   CodexAuthModeStateOutput,
   CodexAuthSwitchResult,
   CodexProviderApplyResult,
@@ -30,6 +31,7 @@ const LazyOpenSourceLicensesDialog = lazy(async () => {
 });
 
 interface ConfigSettingsSectionProps {
+  readonly agentEnvironment: AgentEnvironment;
   readonly busy: boolean;
   readonly configSnapshot: unknown;
   readonly windowsSandboxSetup: WindowsSandboxSetupState;
@@ -245,10 +247,11 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
         </div>
       </section>
       <WindowsSandboxSettingsCard
+        agentEnvironment={props.agentEnvironment}
         busy={props.busy}
         configSnapshot={props.configSnapshot}
         setupState={props.windowsSandboxSetup}
-        onStartSetup={props.startWindowsSandboxSetup}
+        onEnable={() => props.startWindowsSandboxSetup("unelevated")}
       />
       <CodexAuthModeCard
         busy={props.busy}

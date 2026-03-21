@@ -23,6 +23,10 @@ function renderSection(): void {
           setFollowUpQueueMode: () => undefined,
           setComposerEnterBehavior: () => undefined,
           setComposerPermissionLevel: () => undefined,
+          setComposerDefaultApprovalPolicy: () => undefined,
+          setComposerDefaultSandboxMode: () => undefined,
+          setComposerFullApprovalPolicy: () => undefined,
+          setComposerFullSandboxMode: () => undefined,
           setGitBranchPrefix: (gitBranchPrefix) =>
             setPreferences((current) => ({ ...current, gitBranchPrefix })),
           setGitPushForceWithLease: (gitPushForceWithLease) =>

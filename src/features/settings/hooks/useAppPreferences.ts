@@ -1,14 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import {
+  DEFAULT_COMPOSER_DEFAULT_APPROVAL_POLICY,
+  DEFAULT_COMPOSER_DEFAULT_SANDBOX_MODE,
+  DEFAULT_COMPOSER_FULL_APPROVAL_POLICY,
+  DEFAULT_COMPOSER_FULL_SANDBOX_MODE,
   DEFAULT_COMPOSER_PERMISSION_LEVEL,
+  isComposerApprovalPolicy,
   isComposerPermissionLevel,
+  type ComposerApprovalPolicy,
   type ComposerPermissionLevel,
 } from "../../composer/model/composerPermission";
 import type { AgentEnvironment, EmbeddedTerminalShell, WorkspaceOpener } from "../../../bridge/types";
 import type { ComposerEnterBehavior, FollowUpMode } from "../../../domain/timeline";
 import { DEFAULT_THEME_MODE, isThemeMode, type ThemeMode } from "../../../domain/theme";
 import type { UiLanguage } from "../../../i18n";
+import type { SandboxMode } from "../../../protocol/generated/v2/SandboxMode";
 export type ThreadDetailLevel = "compact" | "commands" | "full";
 
 export interface AppPreferences {
@@ -22,6 +29,10 @@ export interface AppPreferences {
   readonly followUpQueueMode: FollowUpMode;
   readonly composerEnterBehavior: ComposerEnterBehavior;
   readonly composerPermissionLevel: ComposerPermissionLevel;
+  readonly composerDefaultApprovalPolicy: ComposerApprovalPolicy;
+  readonly composerDefaultSandboxMode: SandboxMode;
+  readonly composerFullApprovalPolicy: ComposerApprovalPolicy;
+  readonly composerFullSandboxMode: SandboxMode;
   readonly gitBranchPrefix: string;
   readonly gitPushForceWithLease: boolean;
 }
@@ -37,6 +48,10 @@ export interface AppPreferencesController extends AppPreferences {
   setFollowUpQueueMode: (mode: FollowUpMode) => void;
   setComposerEnterBehavior: (behavior: ComposerEnterBehavior) => void;
   setComposerPermissionLevel: (level: ComposerPermissionLevel) => void;
+  setComposerDefaultApprovalPolicy: (policy: ComposerApprovalPolicy) => void;
+  setComposerDefaultSandboxMode: (mode: SandboxMode) => void;
+  setComposerFullApprovalPolicy: (policy: ComposerApprovalPolicy) => void;
+  setComposerFullSandboxMode: (mode: SandboxMode) => void;
   setGitBranchPrefix: (prefix: string) => void;
   setGitPushForceWithLease: (enabled: boolean) => void;
 }
@@ -66,6 +81,7 @@ const UI_LANGUAGES: ReadonlyArray<UiLanguage> = ["auto", "zh-CN", "en-US"];
 const THREAD_DETAIL_LEVELS: ReadonlyArray<ThreadDetailLevel> = ["compact", "commands", "full"];
 const FOLLOW_UP_QUEUE_MODES: ReadonlyArray<FollowUpMode> = ["queue", "steer", "interrupt"];
 const COMPOSER_ENTER_BEHAVIORS: ReadonlyArray<ComposerEnterBehavior> = ["enter", "cmdIfMultiline"];
+const SANDBOX_MODES: ReadonlyArray<SandboxMode> = ["read-only", "workspace-write", "danger-full-access"];
 
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   agentEnvironment: "windowsNative",
@@ -78,9 +94,15 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   followUpQueueMode: "queue",
   composerEnterBehavior: "enter",
   composerPermissionLevel: DEFAULT_COMPOSER_PERMISSION_LEVEL,
+  composerDefaultApprovalPolicy: DEFAULT_COMPOSER_DEFAULT_APPROVAL_POLICY,
+  composerDefaultSandboxMode: DEFAULT_COMPOSER_DEFAULT_SANDBOX_MODE,
+  composerFullApprovalPolicy: DEFAULT_COMPOSER_FULL_APPROVAL_POLICY,
+  composerFullSandboxMode: DEFAULT_COMPOSER_FULL_SANDBOX_MODE,
   gitBranchPrefix: DEFAULT_GIT_BRANCH_PREFIX,
   gitPushForceWithLease: false
 };
+
+type LegacyComposerAccessMode = "read-only" | "current" | "full-access";
 
 function isPreferenceValue<T extends string>(allowedValues: ReadonlyArray<T>, value: unknown): value is T {
   return typeof value === "string" && allowedValues.includes(value as T);
@@ -111,11 +133,69 @@ function readStoredUiLanguage(record: Record<string, unknown>): UiLanguage {
   return DEFAULT_APP_PREFERENCES.uiLanguage;
 }
 
+function isLegacyComposerAccessMode(value: unknown): value is LegacyComposerAccessMode {
+  return value === "read-only" || value === "current" || value === "full-access";
+}
+
+function migrateLegacyComposerAccessMode(
+  mode: LegacyComposerAccessMode | null,
+  fallbackPolicy: ComposerApprovalPolicy,
+  fallbackSandboxMode: SandboxMode
+): { readonly approvalPolicy: ComposerApprovalPolicy; readonly sandboxMode: SandboxMode } {
+  if (mode === "read-only") {
+    return { approvalPolicy: "on-request", sandboxMode: "read-only" };
+  }
+  if (mode === "current") {
+    return { approvalPolicy: "on-request", sandboxMode: "workspace-write" };
+  }
+  if (mode === "full-access") {
+    return { approvalPolicy: "never", sandboxMode: "danger-full-access" };
+  }
+  return { approvalPolicy: fallbackPolicy, sandboxMode: fallbackSandboxMode };
+}
+
+function readStoredComposerPermissionSettings(
+  record: Record<string, unknown>
+): Pick<
+  AppPreferences,
+  | "composerDefaultApprovalPolicy"
+  | "composerDefaultSandboxMode"
+  | "composerFullApprovalPolicy"
+  | "composerFullSandboxMode"
+> {
+  const defaultFallback = migrateLegacyComposerAccessMode(
+    isLegacyComposerAccessMode(record.composerDefaultAccessMode) ? record.composerDefaultAccessMode : null,
+    DEFAULT_APP_PREFERENCES.composerDefaultApprovalPolicy,
+    DEFAULT_APP_PREFERENCES.composerDefaultSandboxMode
+  );
+  const fullFallback = migrateLegacyComposerAccessMode(
+    isLegacyComposerAccessMode(record.composerFullAccessMode) ? record.composerFullAccessMode : null,
+    DEFAULT_APP_PREFERENCES.composerFullApprovalPolicy,
+    DEFAULT_APP_PREFERENCES.composerFullSandboxMode
+  );
+
+  return {
+    composerDefaultApprovalPolicy: isComposerApprovalPolicy(record.composerDefaultApprovalPolicy)
+      ? record.composerDefaultApprovalPolicy
+      : defaultFallback.approvalPolicy,
+    composerDefaultSandboxMode: isPreferenceValue(SANDBOX_MODES, record.composerDefaultSandboxMode)
+      ? record.composerDefaultSandboxMode
+      : defaultFallback.sandboxMode,
+    composerFullApprovalPolicy: isComposerApprovalPolicy(record.composerFullApprovalPolicy)
+      ? record.composerFullApprovalPolicy
+      : fullFallback.approvalPolicy,
+    composerFullSandboxMode: isPreferenceValue(SANDBOX_MODES, record.composerFullSandboxMode)
+      ? record.composerFullSandboxMode
+      : fullFallback.sandboxMode
+  };
+}
+
 function sanitizeStoredPreferences(value: unknown): AppPreferences {
   if (typeof value !== "object" || value === null) {
     return DEFAULT_APP_PREFERENCES;
   }
   const record = value as Record<string, unknown>;
+  const permissionSettings = readStoredComposerPermissionSettings(record);
   return {
     agentEnvironment: isPreferenceValue(AGENT_ENVIRONMENTS, record.agentEnvironment)
       ? record.agentEnvironment
@@ -145,6 +225,7 @@ function sanitizeStoredPreferences(value: unknown): AppPreferences {
     composerPermissionLevel: isComposerPermissionLevel(record.composerPermissionLevel)
       ? record.composerPermissionLevel
       : DEFAULT_APP_PREFERENCES.composerPermissionLevel,
+    ...permissionSettings,
     gitBranchPrefix: sanitizeGitBranchPrefix(record.gitBranchPrefix),
     gitPushForceWithLease: typeof record.gitPushForceWithLease === "boolean"
       ? record.gitPushForceWithLease
@@ -211,6 +292,10 @@ export function useAppPreferences(): AppPreferencesController {
   const setFollowUpQueueMode = usePreferenceSetter(setPreferences, "followUpQueueMode");
   const setComposerEnterBehavior = usePreferenceSetter(setPreferences, "composerEnterBehavior");
   const setComposerPermissionLevel = usePreferenceSetter(setPreferences, "composerPermissionLevel");
+  const setComposerDefaultApprovalPolicy = usePreferenceSetter(setPreferences, "composerDefaultApprovalPolicy");
+  const setComposerDefaultSandboxMode = usePreferenceSetter(setPreferences, "composerDefaultSandboxMode");
+  const setComposerFullApprovalPolicy = usePreferenceSetter(setPreferences, "composerFullApprovalPolicy");
+  const setComposerFullSandboxMode = usePreferenceSetter(setPreferences, "composerFullSandboxMode");
   const setGitBranchPrefix = usePreferenceSetter(setPreferences, "gitBranchPrefix", sanitizeGitBranchPrefix);
   const setGitPushForceWithLease = usePreferenceSetter(setPreferences, "gitPushForceWithLease");
 
@@ -227,6 +312,10 @@ export function useAppPreferences(): AppPreferencesController {
       setFollowUpQueueMode,
       setComposerEnterBehavior,
       setComposerPermissionLevel,
+      setComposerDefaultApprovalPolicy,
+      setComposerDefaultSandboxMode,
+      setComposerFullApprovalPolicy,
+      setComposerFullSandboxMode,
       setGitBranchPrefix,
       setGitPushForceWithLease
     }),
@@ -238,6 +327,10 @@ export function useAppPreferences(): AppPreferencesController {
       setEmbeddedTerminalShell,
       setEmbeddedTerminalUtf8,
       setFollowUpQueueMode,
+      setComposerDefaultApprovalPolicy,
+      setComposerDefaultSandboxMode,
+      setComposerFullApprovalPolicy,
+      setComposerFullSandboxMode,
       setGitBranchPrefix,
       setGitPushForceWithLease,
       setThemeMode,

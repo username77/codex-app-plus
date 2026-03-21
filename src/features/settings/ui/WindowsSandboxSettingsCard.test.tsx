@@ -19,64 +19,78 @@ function renderCard(
 describe("WindowsSandboxSettingsCard", () => {
   it("renders the current configured mode", () => {
     renderCard({
+      agentEnvironment: "windowsNative",
       busy: false,
       configSnapshot: { config: { profile: null }, origins: {}, layers: [{ name: { type: "user", file: "C:/Users/Administrator/.codex/config.toml" }, version: "1", config: { windows: { sandbox: "unelevated" } }, disabledReason: null }] },
       setupState: IDLE_STATE,
-      onStartSetup: vi.fn().mockResolvedValue({ started: true })
+      onEnable: vi.fn().mockResolvedValue({ started: true })
     });
 
-    expect(screen.getAllByText("标准模式").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("已启用").length).toBeGreaterThan(0);
     expect(screen.getByText(/windows\.sandbox/i)).toBeInTheDocument();
   });
 
-  it("starts the requested setup mode from either action button", () => {
-    const onStartSetup = vi.fn().mockResolvedValue({ started: true });
+  it("starts setup from the single enable action", () => {
+    const onEnable = vi.fn().mockResolvedValue({ started: true });
     renderCard({
+      agentEnvironment: "windowsNative",
       busy: false,
       configSnapshot: { config: { profile: null }, origins: {}, layers: [] },
       setupState: IDLE_STATE,
-      onStartSetup
+      onEnable
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /标准模式（无需管理员）/i }));
-    fireEvent.click(screen.getByRole("button", { name: /增强模式（管理员）/i }));
+    fireEvent.click(screen.getByRole("button", { name: /启用 Windows 沙盒/i }));
 
-    expect(onStartSetup).toHaveBeenNthCalledWith(1, "unelevated");
-    expect(onStartSetup).toHaveBeenNthCalledWith(2, "elevated");
+    expect(onEnable).toHaveBeenCalledTimes(1);
   });
 
-  it("disables actions while setup is pending", () => {
+  it("disables the enable action while setup is pending", () => {
     renderCard({
+      agentEnvironment: "windowsNative",
       busy: false,
       configSnapshot: { config: { profile: null }, origins: {}, layers: [] },
       setupState: { pending: true, mode: "unelevated", success: null, error: null },
-      onStartSetup: vi.fn().mockResolvedValue({ started: true })
+      onEnable: vi.fn().mockResolvedValue({ started: true })
     });
 
-    expect(screen.getByRole("button", { name: /配置进行中/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /增强模式（管理员）/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /启用中/i })).toBeDisabled();
   });
 
   it("shows the latest failure message", () => {
     renderCard({
+      agentEnvironment: "windowsNative",
       busy: false,
       configSnapshot: { config: { profile: null }, origins: {}, layers: [] },
       setupState: { pending: false, mode: "elevated", success: false, error: "setup failed" },
-      onStartSetup: vi.fn().mockResolvedValue({ started: true })
+      onEnable: vi.fn().mockResolvedValue({ started: true })
     });
 
     expect(screen.getByText("setup failed")).toBeInTheDocument();
   });
 
-  it("renders English copy when locale is en-US", () => {
+  it("shows that sandbox will wait for the Windows native agent environment", () => {
     renderCard({
+      agentEnvironment: "wsl",
       busy: false,
       configSnapshot: { config: { profile: null }, origins: {}, layers: [] },
       setupState: IDLE_STATE,
-      onStartSetup: vi.fn().mockResolvedValue({ started: true })
+      onEnable: vi.fn().mockResolvedValue({ started: true })
+    });
+
+    expect(screen.getByText("当前 Agent 运行环境不是 Windows 原生；启用后会在切回 Windows 原生时自动生效。")).toBeInTheDocument();
+  });
+
+  it("renders English copy when locale is en-US", () => {
+    renderCard({
+      agentEnvironment: "windowsNative",
+      busy: false,
+      configSnapshot: { config: { profile: null }, origins: {}, layers: [] },
+      setupState: IDLE_STATE,
+      onEnable: vi.fn().mockResolvedValue({ started: true })
     }, "en-US");
 
     expect(screen.getByText("Windows Sandbox")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Standard mode \(no admin\)/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Enable Windows Sandbox/i })).toBeInTheDocument();
   });
 });

@@ -3,6 +3,7 @@ import type { PropsWithChildren } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { HostBridge } from "../../../bridge/types";
 import { AppStoreProvider } from "../../../state/store";
+import { DEFAULT_COMPOSER_PERMISSION_SETTINGS } from "../../composer/model/composerPermission";
 import { useWorkspaceConversation } from "./useWorkspaceConversation";
 
 function Wrapper(props: PropsWithChildren): JSX.Element {
@@ -58,7 +59,8 @@ describe("useWorkspaceConversation WSL cwd", () => {
         hostBridge,
         selectedRootPath: "E:/code/FPGA",
         collaborationModes: [{ name: "plan", mode: "plan", model: "gpt-5.2", reasoningEffort: "medium" }],
-        followUpQueueMode: "queue"
+        followUpQueueMode: "queue",
+        permissionSettings: DEFAULT_COMPOSER_PERMISSION_SETTINGS,
       }),
       { wrapper: Wrapper }
     );

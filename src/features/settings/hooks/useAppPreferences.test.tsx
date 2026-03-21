@@ -22,6 +22,10 @@ describe("useAppPreferences", () => {
     expect(result.current.uiLanguage).toBe(DEFAULT_APP_PREFERENCES.uiLanguage);
     expect(result.current.threadDetailLevel).toBe(DEFAULT_APP_PREFERENCES.threadDetailLevel);
     expect(result.current.composerPermissionLevel).toBe(DEFAULT_APP_PREFERENCES.composerPermissionLevel);
+    expect(result.current.composerDefaultApprovalPolicy).toBe(DEFAULT_APP_PREFERENCES.composerDefaultApprovalPolicy);
+    expect(result.current.composerDefaultSandboxMode).toBe(DEFAULT_APP_PREFERENCES.composerDefaultSandboxMode);
+    expect(result.current.composerFullApprovalPolicy).toBe(DEFAULT_APP_PREFERENCES.composerFullApprovalPolicy);
+    expect(result.current.composerFullSandboxMode).toBe(DEFAULT_APP_PREFERENCES.composerFullSandboxMode);
     expect(result.current.gitBranchPrefix).toBe(DEFAULT_APP_PREFERENCES.gitBranchPrefix);
     expect(result.current.gitPushForceWithLease).toBe(DEFAULT_APP_PREFERENCES.gitPushForceWithLease);
   });
@@ -38,6 +42,10 @@ describe("useAppPreferences", () => {
       first.result.current.setUiLanguage("en-US");
       first.result.current.setThreadDetailLevel("full");
       first.result.current.setComposerPermissionLevel("full");
+      first.result.current.setComposerDefaultApprovalPolicy("on-failure");
+      first.result.current.setComposerDefaultSandboxMode("read-only");
+      first.result.current.setComposerFullApprovalPolicy("untrusted");
+      first.result.current.setComposerFullSandboxMode("workspace-write");
       first.result.current.setGitBranchPrefix("feature/");
       first.result.current.setGitPushForceWithLease(true);
     });
@@ -58,6 +66,10 @@ describe("useAppPreferences", () => {
     expect(second.result.current.uiLanguage).toBe("en-US");
     expect(second.result.current.threadDetailLevel).toBe("full");
     expect(second.result.current.composerPermissionLevel).toBe("full");
+    expect(second.result.current.composerDefaultApprovalPolicy).toBe("on-failure");
+    expect(second.result.current.composerDefaultSandboxMode).toBe("read-only");
+    expect(second.result.current.composerFullApprovalPolicy).toBe("untrusted");
+    expect(second.result.current.composerFullSandboxMode).toBe("workspace-write");
     expect(second.result.current.gitBranchPrefix).toBe("feature/");
     expect(second.result.current.gitPushForceWithLease).toBe(true);
   });
@@ -103,6 +115,10 @@ describe("useAppPreferences", () => {
         uiLanguage: "fr-FR",
         threadDetailLevel: "verbose",
         composerPermissionLevel: "admin",
+        composerDefaultApprovalPolicy: "reject-all",
+        composerDefaultSandboxMode: "sandboxed",
+        composerFullApprovalPolicy: "allow",
+        composerFullSandboxMode: "danger",
         gitBranchPrefix: 123,
         gitPushForceWithLease: "yes"
       })
@@ -118,7 +134,40 @@ describe("useAppPreferences", () => {
     expect(result.current.uiLanguage).toBe(DEFAULT_APP_PREFERENCES.uiLanguage);
     expect(result.current.threadDetailLevel).toBe(DEFAULT_APP_PREFERENCES.threadDetailLevel);
     expect(result.current.composerPermissionLevel).toBe(DEFAULT_APP_PREFERENCES.composerPermissionLevel);
+    expect(result.current.composerDefaultApprovalPolicy).toBe(DEFAULT_APP_PREFERENCES.composerDefaultApprovalPolicy);
+    expect(result.current.composerDefaultSandboxMode).toBe(DEFAULT_APP_PREFERENCES.composerDefaultSandboxMode);
+    expect(result.current.composerFullApprovalPolicy).toBe(DEFAULT_APP_PREFERENCES.composerFullApprovalPolicy);
+    expect(result.current.composerFullSandboxMode).toBe(DEFAULT_APP_PREFERENCES.composerFullSandboxMode);
     expect(result.current.gitBranchPrefix).toBe(DEFAULT_APP_PREFERENCES.gitBranchPrefix);
     expect(result.current.gitPushForceWithLease).toBe(DEFAULT_APP_PREFERENCES.gitPushForceWithLease);
+  });
+
+  it("migrates legacy access-mode fields into approval and sandbox settings", () => {
+    window.localStorage.setItem(
+      APP_PREFERENCES_STORAGE_KEY,
+      JSON.stringify({
+        agentEnvironment: DEFAULT_APP_PREFERENCES.agentEnvironment,
+        workspaceOpener: DEFAULT_APP_PREFERENCES.workspaceOpener,
+        embeddedTerminalShell: DEFAULT_APP_PREFERENCES.embeddedTerminalShell,
+        embeddedTerminalUtf8: DEFAULT_APP_PREFERENCES.embeddedTerminalUtf8,
+        themeMode: DEFAULT_APP_PREFERENCES.themeMode,
+        uiLanguage: DEFAULT_APP_PREFERENCES.uiLanguage,
+        threadDetailLevel: DEFAULT_APP_PREFERENCES.threadDetailLevel,
+        followUpQueueMode: DEFAULT_APP_PREFERENCES.followUpQueueMode,
+        composerEnterBehavior: DEFAULT_APP_PREFERENCES.composerEnterBehavior,
+        composerPermissionLevel: DEFAULT_APP_PREFERENCES.composerPermissionLevel,
+        gitBranchPrefix: DEFAULT_APP_PREFERENCES.gitBranchPrefix,
+        gitPushForceWithLease: DEFAULT_APP_PREFERENCES.gitPushForceWithLease,
+        composerDefaultAccessMode: "read-only",
+        composerFullAccessMode: "current"
+      })
+    );
+
+    const { result } = renderHook(() => useAppPreferences());
+
+    expect(result.current.composerDefaultApprovalPolicy).toBe("on-request");
+    expect(result.current.composerDefaultSandboxMode).toBe("read-only");
+    expect(result.current.composerFullApprovalPolicy).toBe("on-request");
+    expect(result.current.composerFullSandboxMode).toBe("workspace-write");
   });
 });

@@ -9,7 +9,10 @@ import type { TurnStartParams } from "../../../protocol/generated/v2/TurnStartPa
 import type { TurnStartResponse } from "../../../protocol/generated/v2/TurnStartResponse";
 import type { TurnSteerParams } from "../../../protocol/generated/v2/TurnSteerParams";
 import { useAppDispatch, useAppStoreApi } from "../../../state/store";
-import { createThreadPermissionOverrides, createTurnPermissionOverrides } from "../../composer/model/composerPermission";
+import {
+  createThreadPermissionOverrides,
+  createTurnPermissionOverrides,
+} from "../../composer/model/composerPermission";
 import { resolveAgentWorkspacePath } from "../../workspace/model/workspacePath";
 import { createConversationFromThread } from "../model/conversationState";
 import { deriveConversationPreviewTitle, pickConversationTitle } from "../model/conversationTitle";
@@ -157,12 +160,12 @@ export function useWorkspaceConversationController({
       cwd: resolvedCwd ?? undefined,
       input,
       collaborationMode,
-      ...createTurnPermissionOverrides(sendOptions.permissionLevel),
+      ...createTurnPermissionOverrides(sendOptions.permissionLevel, options.permissionSettings),
     };
     const response = (await options.hostBridge.rpc.request({ method: "turn/start", params })).result as TurnStartResponse;
     dispatch({ type: "conversation/turnStarted", conversationId, turn: response.turn });
     dispatch({ type: "conversation/touched", conversationId, updatedAt: new Date().toISOString() });
-  }, [dispatch, options.agentEnvironment, options.collaborationModes, options.hostBridge.rpc]);
+  }, [dispatch, options.agentEnvironment, options.collaborationModes, options.hostBridge.rpc, options.permissionSettings]);
 
   const startNewConversation = useCallback(async (sendOptions: SendTurnOptions) => {
     const workspacePath = options.selectedRootPath ?? store.getState().draftConversation?.workspacePath ?? null;
@@ -179,7 +182,7 @@ export function useWorkspaceConversationController({
         cwd: agentWorkspacePath,
         experimentalRawEvents: false,
         persistExtendedHistory: true,
-        ...createThreadPermissionOverrides(sendOptions.permissionLevel),
+        ...createThreadPermissionOverrides(sendOptions.permissionLevel, options.permissionSettings),
       },
     })).result as ThreadStartResponse;
     const conversation = createConversationFromThread(response.thread, { hidden: false, resumeState: "resumed", agentEnvironment: options.agentEnvironment });
@@ -191,7 +194,7 @@ export function useWorkspaceConversationController({
     dispatch({ type: "composer/draftCollaborationPresetTransferred", conversationId: conversation.id });
     dispatch({ type: "conversation/selected", conversationId: conversation.id });
     await startTurn(conversation.id, sendOptions, response.thread.cwd || response.cwd || agentWorkspacePath);
-  }, [dispatch, options.agentEnvironment, options.hostBridge.rpc, options.selectedRootPath, startTurn, store]);
+  }, [dispatch, options.agentEnvironment, options.hostBridge.rpc, options.permissionSettings, options.selectedRootPath, startTurn, store]);
 
   const steerTurn = useCallback(async (conversationId: string, turnId: string, sendOptions: SendTurnOptions) => {
     const input = createInput(sendOptions.text, sendOptions.attachments);
