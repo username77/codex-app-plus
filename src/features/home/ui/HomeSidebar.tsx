@@ -63,24 +63,53 @@ function SidebarNav(props: {
 }
 
 function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
+  const {
+    appServerClient,
+    authBusy,
+    authLoginPending,
+    authMode,
+    authStatus,
+    codexSessions,
+    codexSessionsError,
+    collapsed,
+    hostBridge,
+    onAddRoot,
+    onArchiveThread,
+    onCreateThread,
+    onCreateThreadInRoot,
+    onDismissSettingsMenu,
+    onLogin,
+    onLogout,
+    onOpenSettings,
+    onOpenSkills,
+    onRemoveRoot,
+    onSelectRoot,
+    onSelectThread,
+    onSelectWorkspaceThread,
+    onToggleSettingsMenu,
+    roots,
+    selectedRootId,
+    selectedThreadId,
+    settingsMenuOpen,
+  } = props;
   const dispatch = useAppDispatch();
   const store = useAppStoreApi();
-  const sidebarClassName = props.collapsed ? "replica-sidebar sidebar-collapsed" : "replica-sidebar";
+  const sidebarClassName = collapsed ? "replica-sidebar sidebar-collapsed" : "replica-sidebar";
   const cleanupTransport = useMemo(
-    () => createRpcThreadRuntimeCleanupTransport(props.appServerClient),
-    [props.appServerClient],
+    () => createRpcThreadRuntimeCleanupTransport(appServerClient),
+    [appServerClient],
   );
 
   const clearSelectedThread = useCallback((threadId: string) => {
-    if (threadId === props.selectedThreadId) {
-      props.onSelectThread(null);
+    if (threadId === selectedThreadId) {
+      onSelectThread(null);
     }
-  }, [props]);
+  }, [onSelectThread, selectedThreadId]);
 
   const handleArchiveThread = useCallback(async (thread: ThreadSummary) => {
-    await props.onArchiveThread(thread.id);
+    await onArchiveThread(thread.id);
     clearSelectedThread(thread.id);
-  }, [clearSelectedThread, props]);
+  }, [clearSelectedThread, onArchiveThread]);
 
   const handleDeleteThread = useCallback(async (thread: ThreadSummary) => {
     const { conversationsById } = store.getState();
@@ -103,45 +132,45 @@ function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
       dispatch({ type: "conversation/resumeStateChanged", conversationId: thread.id, resumeState: "needs_resume" });
     }
 
-    await props.hostBridge.app.deleteCodexSession({ threadId: thread.id, agentEnvironment: thread.agentEnvironment });
+    await hostBridge.app.deleteCodexSession({ threadId: thread.id, agentEnvironment: thread.agentEnvironment });
     dispatch({ type: "conversation/hiddenChanged", conversationId: thread.id, hidden: true });
     clearSelectedThread(thread.id);
-  }, [cleanupTransport, clearSelectedThread, dispatch, props, store]);
+  }, [cleanupTransport, clearSelectedThread, dispatch, hostBridge, store]);
 
   return (
     <aside className={sidebarClassName}>
-      {props.settingsMenuOpen ? <button type="button" className="settings-backdrop" onClick={props.onDismissSettingsMenu} aria-label="关闭菜单" /> : null}
+      {settingsMenuOpen ? <button type="button" className="settings-backdrop" onClick={onDismissSettingsMenu} aria-label="关闭菜单" /> : null}
       <div className="sidebar-header" aria-hidden="true" />
-      <SidebarNav onCreateThread={props.onCreateThread} onOpenSkills={props.onOpenSkills} />
+      <SidebarNav onCreateThread={onCreateThread} onOpenSkills={onOpenSkills} />
       <WorkspaceSidebarSection
-        roots={props.roots}
-        codexSessions={props.codexSessions}
-        error={props.codexSessionsError}
-        selectedRootId={props.selectedRootId}
-        selectedThreadId={props.selectedThreadId}
-        onSelectRoot={props.onSelectRoot}
-        onSelectThread={props.onSelectThread}
-        onSelectWorkspaceThread={props.onSelectWorkspaceThread}
+        roots={roots}
+        codexSessions={codexSessions}
+        error={codexSessionsError}
+        selectedRootId={selectedRootId}
+        selectedThreadId={selectedThreadId}
+        onSelectRoot={onSelectRoot}
+        onSelectThread={onSelectThread}
+        onSelectWorkspaceThread={onSelectWorkspaceThread}
         onArchiveThread={handleArchiveThread}
         onDeleteThread={handleDeleteThread}
-        onAddRoot={props.onAddRoot}
-        onCreateThread={props.onCreateThread}
-        onCreateThreadInRoot={props.onCreateThreadInRoot}
-        onRemoveRoot={props.onRemoveRoot}
+        onAddRoot={onAddRoot}
+        onCreateThread={onCreateThread}
+        onCreateThreadInRoot={onCreateThreadInRoot}
+        onRemoveRoot={onRemoveRoot}
       />
       <div className="settings-slot">
-        {props.settingsMenuOpen ? (
+        {settingsMenuOpen ? (
           <SettingsPopover
-            authStatus={props.authStatus}
-            authMode={props.authMode}
-            authBusy={props.authBusy}
-            authLoginPending={props.authLoginPending}
-            onOpenSettings={props.onOpenSettings}
-            onLogin={props.onLogin}
-            onLogout={props.onLogout}
+            authStatus={authStatus}
+            authMode={authMode}
+            authBusy={authBusy}
+            authLoginPending={authLoginPending}
+            onOpenSettings={onOpenSettings}
+            onLogin={onLogin}
+            onLogout={onLogout}
           />
         ) : null}
-        <button type="button" className="sidebar-settings" onClick={props.onToggleSettingsMenu}>
+        <button type="button" className="sidebar-settings" onClick={onToggleSettingsMenu}>
           <OfficialSettingsGearIcon className="settings-gear" />
           <span>设置</span>
         </button>

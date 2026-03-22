@@ -5,16 +5,19 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import type { EmbeddedTerminalShell, HostBridge } from "../../../bridge/types";
 import type { ResolvedTheme } from "../../../domain/theme";
-import { readTerminalFontSettingsFromDocument } from "../../settings/model/fontCssVars";
 import type { TerminalStatus } from "../model/terminalRuntime";
-
-const MAX_BUFFER_CHARS = 200_000;
-const EMPTY_MESSAGE = "Open a terminal to start a session.";
-const PREPARING_MESSAGE = "Preparing terminal...";
-const STARTING_MESSAGE = "Starting terminal session...";
-const READY_MESSAGE = "Terminal ready.";
-const FAILURE_MESSAGE = "Failed to start terminal session.";
-const TERMINAL_EVENT_SUBSCRIPTION_FAILURE = "Failed to subscribe terminal events.";
+import {
+  buildTabKey,
+  EMPTY_MESSAGE,
+  FAILURE_MESSAGE,
+  PREPARING_MESSAGE,
+  READY_MESSAGE,
+  STARTING_MESSAGE,
+} from "./terminalSessionModel";
+import {
+  useTerminalEventSubscriptions,
+  useTerminalInstance,
+} from "./useTerminalSessionServices";
 
 interface UseTerminalSessionOptions {
   readonly activeRootKey: string;
@@ -36,46 +39,6 @@ export interface TerminalSessionState {
   readonly restartSession: () => Promise<void>;
   readonly status: TerminalStatus;
   readonly closeTerminalSession: (tabKey: string) => Promise<void>;
-}
-
-function buildTabKey(rootKey: string, terminalId: string): string {
-  return `${rootKey}:${terminalId}`;
-}
-
-function parseTabKey(tabKey: string): { readonly rootKey: string; readonly terminalId: string } {
-  const separatorIndex = tabKey.lastIndexOf(":");
-  if (separatorIndex === -1) {
-    return { rootKey: "", terminalId: tabKey };
-  }
-  return {
-    rootKey: tabKey.slice(0, separatorIndex),
-    terminalId: tabKey.slice(separatorIndex + 1),
-  };
-}
-
-function appendBuffer(existing: string | undefined, data: string): string {
-  const next = `${existing ?? ""}${data}`;
-  if (next.length <= MAX_BUFFER_CHARS) {
-    return next;
-  }
-  return next.slice(next.length - MAX_BUFFER_CHARS);
-}
-
-function createTerminalAppearance(theme: ResolvedTheme) {
-  if (theme === "dark") {
-    return {
-      background: "#181818",
-      foreground: "#f3f3f3",
-      cursor: "#f1f1f1",
-      selectionBackground: "#3a3a3a",
-    };
-  }
-  return {
-    background: "#ffffff",
-    foreground: "#24292f",
-    cursor: "#1f1f1f",
-    selectionBackground: "#dbeafe",
-  };
 }
 
 export function useTerminalSession(options: UseTerminalSessionOptions): TerminalSessionState {
@@ -242,111 +205,34 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
     onSessionExitRef.current = onSessionExit;
   }, [onSessionExit]);
 
-  useEffect(() => {
-    let disposed = false;
-    let disposeOutput: (() => void) | null = null;
-    let disposeExit: (() => void) | null = null;
+  useTerminalEventSubscriptions({
+    activeTabKeyRef,
+    cleanupTerminalTab,
+    hostBridge,
+    onSessionExitRef,
+    orphanOutputBySessionIdRef,
+    outputBuffersRef,
+    setMessage,
+    setStatus,
+    tabKeyBySessionIdRef,
+    terminalRef,
+  });
 
-    const handleOutput = (payload: { readonly sessionId: string; readonly data: string }) => {
-      const tabKey = tabKeyBySessionIdRef.current.get(payload.sessionId);
-      if (tabKey === undefined) {
-        const orphan = appendBuffer(
-          orphanOutputBySessionIdRef.current.get(payload.sessionId),
-          payload.data,
-        );
-        orphanOutputBySessionIdRef.current.set(payload.sessionId, orphan);
-        return;
-      }
-      const next = appendBuffer(outputBuffersRef.current.get(tabKey), payload.data);
-      outputBuffersRef.current.set(tabKey, next);
-      if (activeTabKeyRef.current === tabKey) {
-        terminalRef.current?.write(payload.data);
-      }
-    };
-
-    const handleExit = (payload: { readonly sessionId: string }) => {
-      const tabKey = tabKeyBySessionIdRef.current.get(payload.sessionId);
-      if (tabKey === undefined) {
-        orphanOutputBySessionIdRef.current.delete(payload.sessionId);
-        return;
-      }
-      tabKeyBySessionIdRef.current.delete(payload.sessionId);
-      orphanOutputBySessionIdRef.current.delete(payload.sessionId);
-      cleanupTerminalTab(tabKey);
-      const parsed = parseTabKey(tabKey);
-      onSessionExitRef.current?.(parsed.rootKey, parsed.terminalId);
-    };
-
-    void Promise.all([
-      hostBridge.subscribe("terminal-output", handleOutput),
-      hostBridge.subscribe("terminal-exit", handleExit),
-    ]).then(([nextDisposeOutput, nextDisposeExit]) => {
-      if (disposed) {
-        nextDisposeOutput();
-        nextDisposeExit();
-        return;
-      }
-      disposeOutput = nextDisposeOutput;
-      disposeExit = nextDisposeExit;
-    }).catch((error) => {
-      console.error("terminal event subscription failed", error);
-      if (disposed) {
-        return;
-      }
-      setStatus("error");
-      setMessage(TERMINAL_EVENT_SUBSCRIPTION_FAILURE);
-    });
-
-    return () => {
-      disposed = true;
-      disposeOutput?.();
-      disposeExit?.();
-    };
-  }, [cleanupTerminalTab, hostBridge]);
-
-  useEffect(() => {
-    if (!isVisible) {
-      inputDisposableRef.current?.dispose();
-      inputDisposableRef.current = null;
-      terminalRef.current?.dispose();
-      terminalRef.current = null;
-      fitAddonRef.current = null;
-      renderedTabKeyRef.current = null;
-      return;
-    }
-    if (terminalRef.current !== null || containerElementRef.current === null) {
-      return;
-    }
-    const terminalFonts = readTerminalFontSettingsFromDocument();
-    const terminal = new Terminal({
-      cursorBlink: true,
-      fontSize: terminalFonts.fontSize,
-      fontFamily: terminalFonts.fontFamily,
-      allowTransparency: false,
-      theme: createTerminalAppearance(resolvedTheme),
-      scrollback: 5000,
-    });
-    const fitAddon = new FitAddon();
-    terminal.loadAddon(fitAddon);
-    terminal.open(containerElementRef.current);
-    terminalRef.current = terminal;
-    fitAddonRef.current = fitAddon;
-    scheduleFit();
-    setContainerVersion((previous) => previous + 1);
-    inputDisposableRef.current = terminal.onData((data) => {
-      const key = activeTabKeyRef.current;
-      if (key === null) {
-        return;
-      }
-      const sessionId = sessionIdByTabKeyRef.current.get(key);
-      if (sessionId === undefined) {
-        return;
-      }
-      void hostBridge.terminal.write({ data, sessionId }).catch(() => {
-        sessionIdByTabKeyRef.current.delete(key);
-      });
-    });
-  }, [containerVersion, hostBridge, isVisible, resolvedTheme, scheduleFit]);
+  useTerminalInstance({
+    activeTabKeyRef,
+    containerElementRef,
+    containerVersion,
+    fitAddonRef,
+    hostBridge,
+    inputDisposableRef,
+    isVisible,
+    renderedTabKeyRef,
+    resolvedTheme,
+    scheduleFit,
+    sessionIdByTabKeyRef,
+    setContainerVersion,
+    terminalRef,
+  });
 
   useEffect(() => {
     return () => {

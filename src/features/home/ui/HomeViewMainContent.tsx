@@ -31,10 +31,11 @@ import { createComposerCommandBridge } from "../../composer/service/composerComm
 import type { WorkspaceGitController } from "../../git/model/types";
 import { GitCommitDialog } from "../../git/ui/GitCommitDialog";
 import { extractConnectionRetryInfo } from "../model/homeConnectionRetry";
-import { removeTurnPlanEntries, selectLatestTurnPlan } from "../../conversation/model/homeTurnPlanModel";
-import { selectLatestPendingUserInput } from "../../conversation/model/homeUserInputPromptModel";
-import { selectLatestPlanModePrompt } from "../../composer/model/planModePrompt";
-import { HomeBannerStack, selectVisibleHomeBanners } from "./HomeBannerStack";
+import {
+  createTurnPlanChangeKey,
+  deriveHomeViewMainContentState,
+} from "../model/homeViewMainContentModel";
+import { HomeBannerStack } from "./HomeBannerStack";
 import { HomeWorkspaceEmptyState } from "./HomeWorkspaceEmptyState";
 import type { WorkspaceRoot } from "../../workspace/hooks/useWorkspaceRoots";
 
@@ -111,60 +112,41 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
     () => createComposerCommandBridge(props.appServerClient),
     [props.appServerClient],
   );
-  const renderableActivities = useMemo(
-    () => removeTurnPlanEntries(props.activities),
-    [props.activities],
-  );
-  const currentTurnPlan = useMemo(
-    () => selectLatestTurnPlan(props.activities),
-    [props.activities],
-  );
-  const latestPlanPrompt = useMemo(
-    () => selectLatestPlanModePrompt(props.activities),
-    [props.activities],
-  );
-  const pendingUserInput = useMemo(
-    () => selectLatestPendingUserInput(props.activities),
-    [props.activities],
-  );
-  const visibleBanners = useMemo(
-    () => selectVisibleHomeBanners(props.banners),
-    [props.banners],
+  const derivedState = useMemo(
+    () => deriveHomeViewMainContentState({
+      activities: props.activities,
+      banners: props.banners,
+      selectedConversationLoading: props.selectedConversationLoading,
+      selectedThread: props.selectedThread,
+    }),
+    [props.activities, props.banners, props.selectedConversationLoading, props.selectedThread],
   );
   const [planDrawerCollapsed, setPlanDrawerCollapsed] = useState(true);
   const [dismissedPlanPromptId, setDismissedPlanPromptId] = useState<string | null>(null);
   const planSnapshotKeyRef = useRef<string | null>(null);
 
-  const conversationActive = props.selectedConversationLoading
-    || props.selectedThread !== null
-    || props.activities.length > 0;
   const workspaceSwitching = props.workspaceSwitch.phase === "switching";
-  const placeholder = props.selectedConversationLoading
-    ? { title: "Loading thread", body: "Historical turns and items are being restored." }
-    : props.selectedThread !== null
-      ? { title: "Thread opened", body: "New plans, tools, approvals, realtime updates, and file changes appear here." }
-      : null;
 
   useEffect(() => {
-    if (currentTurnPlan === null) {
+    if (derivedState.currentTurnPlan === null) {
       setPlanDrawerCollapsed(true);
       planSnapshotKeyRef.current = null;
       return;
     }
 
-    const nextKey = createTurnPlanChangeKey(currentTurnPlan);
+    const nextKey = createTurnPlanChangeKey(derivedState.currentTurnPlan);
     if (nextKey !== planSnapshotKeyRef.current) {
       setPlanDrawerCollapsed(true);
       planSnapshotKeyRef.current = nextKey;
     }
-  }, [currentTurnPlan]);
+  }, [derivedState.currentTurnPlan]);
 
-  const showPlanPrompt = latestPlanPrompt !== null
+  const showPlanPrompt = derivedState.latestPlanPrompt !== null
     && !props.isResponding
-    && dismissedPlanPromptId !== latestPlanPrompt.entryId;
+    && dismissedPlanPromptId !== derivedState.latestPlanPrompt.entryId;
 
   const sendPlanPromptTurn = useCallback(async (options: PlanPromptTurnOptions) => {
-    setDismissedPlanPromptId(latestPlanPrompt?.entryId ?? null);
+    setDismissedPlanPromptId(derivedState.latestPlanPrompt?.entryId ?? null);
     await props.onSendTurn({
       text: options.text,
       attachments: [],
@@ -178,7 +160,7 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
       collaborationModeOverridePreset: options.collaborationModeOverridePreset,
     });
   }, [
-    latestPlanPrompt,
+    derivedState.latestPlanPrompt,
     props.composerPermissionLevel,
     props.defaultEffort,
     props.defaultModel,
@@ -187,14 +169,14 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
   ]);
 
   const dismissPlanPrompt = useCallback(() => {
-    setDismissedPlanPromptId(latestPlanPrompt?.entryId ?? null);
-  }, [latestPlanPrompt]);
+    setDismissedPlanPromptId(derivedState.latestPlanPrompt?.entryId ?? null);
+  }, [derivedState.latestPlanPrompt]);
 
   return (
     <div className="replica-main">
       <HomeMainToolbar
         hostBridge={props.hostBridge}
-        conversationActive={conversationActive}
+        conversationActive={derivedState.conversationActive}
         gitController={props.gitController}
         workspaceOpener={props.workspaceOpener}
         selectedRootName={props.selectedRootName}
@@ -208,18 +190,18 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
         onToggleTerminal={props.onToggleTerminal}
       />
       <HomeBannerStack
-        banners={visibleBanners}
+        banners={derivedState.visibleBanners}
         onDismissBanner={props.onDismissBanner}
       />
       <GitCommitDialog controller={props.gitController} />
-      {conversationActive ? (
+      {derivedState.conversationActive ? (
         <HomeConversationCanvas
-          activities={renderableActivities}
+          activities={derivedState.renderableActivities}
           selectedThread={props.selectedThread}
           activeTurnId={props.activeTurnId}
           turnStatuses={props.turnStatuses}
           threadDetailLevel={props.threadDetailLevel}
-          placeholder={placeholder}
+          placeholder={derivedState.placeholder}
           onResolveServerRequest={props.onResolveServerRequest}
           connectionStatus={props.connectionStatus}
           connectionRetryInfo={props.connectionRetryInfo}
@@ -239,18 +221,18 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
         />
       )}
       <HomeTurnPlanDrawer
-        plan={currentTurnPlan}
+        plan={derivedState.currentTurnPlan}
         collapsed={planDrawerCollapsed}
         onToggle={() => setPlanDrawerCollapsed((value) => !value)}
       />
-      {pendingUserInput !== null ? (
+      {derivedState.pendingUserInput !== null ? (
         <HomeUserInputPrompt
           busy={props.busy}
-          entry={pendingUserInput}
+          entry={derivedState.pendingUserInput}
           onResolveServerRequest={props.onResolveServerRequest}
         />
       ) : null}
-      {showPlanPrompt && pendingUserInput === null ? (
+      {showPlanPrompt && derivedState.pendingUserInput === null ? (
         <HomePlanRequestComposer
           busy={props.busy || props.appServerReady === false}
           onDismiss={dismissPlanPrompt}
@@ -301,8 +283,4 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
       )}
     </div>
   );
-}
-
-function createTurnPlanChangeKey(plan: { readonly entry: { readonly id: string }; readonly totalSteps: number; readonly completedSteps: number }): string {
-  return `${plan.entry.id}:${plan.totalSteps}:${plan.completedSteps}`;
 }

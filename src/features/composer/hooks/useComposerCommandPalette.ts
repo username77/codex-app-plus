@@ -12,9 +12,9 @@ import {
 import type { ServiceTier } from "../../../protocol/generated/ServiceTier";
 import type { ConfigReadResponse } from "../../../protocol/generated/v2/ConfigReadResponse";
 import type { CollaborationPreset } from "../../../domain/timeline";
+import type { AppState } from "../../../domain/types";
 import type { ComposerPermissionLevel } from "../model/composerPermission";
 import type { ComposerModelOption } from "../model/composerPreferences";
-import type { AppState } from "../../../domain/types";
 import type { AppStoreApi } from "../../../state/store";
 import { useAppDispatch, useAppSelector } from "../../../state/store";
 import type { ComposerCommandPaletteItem } from "../ui/ComposerCommandPalette";
@@ -31,6 +31,11 @@ import {
   type SlashExecutionContext,
   type SlashExecutionDependencies,
 } from "../service/composerSlashCommandExecutor";
+import {
+  useSelectedConversation,
+  useSlashCollections,
+  useSlashRuntimeState,
+} from "./composerCommandPaletteState";
 
 type ManualPaletteMode = "slash-model" | "slash-permissions" | "slash-collab" | "slash-resume" | null;
 
@@ -54,6 +59,8 @@ interface UseComposerCommandPaletteOptions {
   readonly onSelectCollaborationPreset: (preset: CollaborationPreset) => void;
   readonly onLogout: () => Promise<void>;
 }
+
+export type { UseComposerCommandPaletteOptions };
 
 interface UseComposerCommandPaletteState {
   readonly textareaRef: RefObject<HTMLTextAreaElement>;
@@ -165,29 +172,6 @@ function usePaletteTrigger(inputText: string) {
     },
     syncFromTextareaSelection: () => setCaret(readTextareaCaret(textareaRef.current, inputText.length)),
   };
-}
-
-function useSelectedConversation(selectedThreadId: string | null) {
-  return useAppSelector(useMemo(() => (state: AppState) => selectedThreadId === null ? null : state.conversationsById[selectedThreadId] ?? null, [selectedThreadId]));
-}
-
-function useSlashRuntimeState(selectedThreadId: string | null) {
-  return useAppSelector(useMemo(() => (state: AppState) => ({
-    configSnapshot: state.configSnapshot,
-    account: state.account,
-    rateLimits: state.rateLimits,
-    connectionStatus: state.connectionStatus,
-    collaborationModes: state.collaborationModes,
-    realtimeState: selectedThreadId === null ? null : state.realtimeByThreadId[selectedThreadId] ?? null,
-  }), [selectedThreadId]));
-}
-
-function useSlashCollections(options: UseComposerCommandPaletteOptions, realtimeState: SlashExecutionContext["realtimeState"]) {
-  return useAppSelector(useMemo(() => (state: AppState) => ({
-    slashContext: { hasThread: options.selectedThreadId !== null, hasWorkspace: options.selectedRootPath !== null, realtimeActive: realtimeState !== null && realtimeState.sessionId !== null && !realtimeState.closed },
-    collaborationItems: state.collaborationModes.filter((mode) => mode.mode !== null).map((mode) => ({ key: mode.mode!, label: mode.name, description: `${mode.model ?? "Use current model"} · ${mode.reasoningEffort ?? "default effort"}`, disabled: false, meta: options.collaborationPreset === mode.mode ? "Current" : null })),
-    resumeItems: state.orderedConversationIds.map((threadId) => state.conversationsById[threadId]).filter((conversation): conversation is NonNullable<typeof conversation> => conversation !== undefined && !conversation.hidden && conversation.id !== options.selectedThreadId).map((conversation) => ({ key: conversation.id, label: conversation.title ?? conversation.id, description: conversation.cwd ?? "No workspace", disabled: false, meta: conversation.resumeState === "resumed" ? "Loaded" : "Needs resume" })),
-  }), [options.collaborationPreset, options.selectedRootPath, options.selectedThreadId, realtimeState]));
 }
 
 function useMentionPalette(options: UseComposerCommandPaletteOptions, dispatch: AppStoreApi["dispatch"], mode: PaletteMode, activeTrigger: ComposerActiveTrigger | null) {

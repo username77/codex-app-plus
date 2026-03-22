@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import type { ComposerPermissionLevel } from "../../composer/model/composerPermission";
 import type {
   ComposerModelOption,
@@ -32,22 +32,21 @@ import type { ResolvedTheme } from "../../../domain/theme";
 import type { AppServerClient } from "../../../protocol/appServerClient";
 import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
 import { useWorkspaceGit } from "../../git/hooks/useWorkspaceGit";
-import type { WorkspaceGitController } from "../../git/model/types";
 import { useWorkspaceSwitchTracker } from "../hooks/useWorkspaceSwitchTracker";
-import { OfficialSidebarToggleIcon } from "../../shared/ui/officialIcons";
 import { useTerminalController } from "../../terminal/hooks/useTerminalController";
 import { TerminalDock } from "../../terminal/ui/TerminalDock";
 import { TerminalPanel } from "../../terminal/ui/TerminalPanel";
 import { WorkspaceDiffSidebarHost } from "../../workspace/ui/WorkspaceDiffSidebarHost";
 import { extractConnectionRetryInfo } from "../model/homeConnectionRetry";
+import { HomeSidebar } from "./HomeSidebar";
+import { HomeViewMainContent } from "./HomeViewMainContent";
 import {
-  HomeSidebar,
-  type HomeSidebarProps,
-} from "./HomeSidebar";
-import {
-  HomeViewMainContent,
-  type HomeViewMainContentProps,
-} from "./HomeViewMainContent";
+  createHomeMainContentProps,
+  createHomeSidebarProps,
+  createReplicaAppClassName,
+  SidebarCollapseButton,
+  useHomeViewUiState,
+} from "./homeViewLayout";
 
 export interface HomeViewProps {
   readonly appServerReady?: boolean;
@@ -131,20 +130,13 @@ export interface HomeViewProps {
   readonly onDismissBanner: (bannerId: string) => void;
 }
 
-function createReplicaAppClassName(diffSidebarOpen: boolean): string {
-  return diffSidebarOpen ? "replica-app replica-app-with-diff-sidebar" : "replica-app";
-}
-
 export function HomeView(props: HomeViewProps): JSX.Element {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [diffSidebarOpen, setDiffSidebarOpen] = useState(false);
-  const [terminalOpen, setTerminalOpen] = useState(false);
-  const canShowDiffSidebar = diffSidebarOpen && props.selectedRootPath !== null;
+  const uiState = useHomeViewUiState(props.selectedRootPath);
   const gitController = useWorkspaceGit({
-    diffStateEnabled: canShowDiffSidebar,
+    diffStateEnabled: uiState.canShowDiffSidebar,
     hostBridge: props.hostBridge,
     selectedRootPath: props.selectedRootPath,
-    autoRefreshEnabled: canShowDiffSidebar,
+    autoRefreshEnabled: uiState.canShowDiffSidebar,
     gitBranchPrefix: props.gitBranchPrefix,
     gitPushForceWithLease: props.gitPushForceWithLease,
   });
@@ -160,62 +152,54 @@ export function HomeView(props: HomeViewProps): JSX.Element {
     [props.activities],
   );
 
-  useEffect(() => {
-    if (props.selectedRootPath === null) {
-      setDiffSidebarOpen(false);
-    }
-  }, [props.selectedRootPath]);
-
   const terminalController = useTerminalController({
     activeRootId: props.selectedRootId,
     activeRootPath: props.selectedRootPath,
     hostBridge: props.hostBridge,
-    isOpen: terminalOpen,
-    onHidePanel: () => setTerminalOpen(false),
-    onShowPanel: () => setTerminalOpen(true),
+    isOpen: uiState.openTerminal,
+    onHidePanel: uiState.hideTerminalPanel,
+    onShowPanel: uiState.showTerminalPanel,
     resolvedTheme: props.resolvedTheme ?? "light",
     shell: props.embeddedTerminalShell,
     enforceUtf8: props.embeddedTerminalUtf8 ?? true,
   });
 
-  const toggleDiffSidebar = useCallback(() => setDiffSidebarOpen((value) => !value), []);
   const toggleTerminal = useCallback(() => {
-    if (terminalOpen) {
+    if (uiState.openTerminal) {
       terminalController.hidePanel();
       return;
     }
     terminalController.showPanel();
-  }, [terminalController, terminalOpen]);
-  const sidebarProps = createHomeSidebarProps(props, sidebarCollapsed);
+  }, [terminalController, uiState.openTerminal]);
+  const sidebarProps = createHomeSidebarProps(props, uiState.sidebarCollapsed);
   const contentProps = createHomeMainContentProps(
     props,
     gitController,
     filteredActivities,
     retryInfo,
-    terminalOpen,
-    canShowDiffSidebar,
-    props.workspaceSwitch,
+    uiState.openTerminal,
+    uiState.canShowDiffSidebar,
     toggleTerminal,
-    toggleDiffSidebar,
+    uiState.toggleDiffSidebar,
   );
 
   return (
-    <div className={createReplicaAppClassName(canShowDiffSidebar)}>
+    <div className={createReplicaAppClassName(uiState.canShowDiffSidebar)}>
       <HomeSidebar {...sidebarProps} />
       <HomeViewMainContent {...contentProps} />
-      {canShowDiffSidebar ? (
+      {uiState.canShowDiffSidebar ? (
         <WorkspaceDiffSidebarHost
           hostBridge={props.hostBridge}
           controller={gitController}
           selectedRootName={props.selectedRootName}
           selectedRootPath={props.selectedRootPath}
-          onClose={() => setDiffSidebarOpen(false)}
+          onClose={uiState.closeDiffSidebar}
         />
       ) : null}
       <TerminalDock
         activeTabId={terminalController.activeTerminalId}
         hasWorkspace={terminalController.hasWorkspace}
-        isOpen={terminalOpen}
+        isOpen={uiState.openTerminal}
         onCloseTab={terminalController.onCloseTerminal}
         onCreateTab={terminalController.onNewTerminal}
         onHidePanel={terminalController.hidePanel}
@@ -234,134 +218,9 @@ export function HomeView(props: HomeViewProps): JSX.Element {
         ) : null}
       </TerminalDock>
       <SidebarCollapseButton
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed((value) => !value)}
+        collapsed={uiState.sidebarCollapsed}
+        onToggle={uiState.toggleSidebarCollapsed}
       />
     </div>
-  );
-}
-
-function createHomeSidebarProps(
-  props: HomeViewProps,
-  collapsed: boolean,
-): HomeSidebarProps {
-  return {
-    appServerClient: props.appServerClient,
-    hostBridge: props.hostBridge,
-    roots: props.roots,
-    codexSessions: props.threads,
-    codexSessionsError: null,
-    selectedRootId: props.selectedRootId,
-    selectedThreadId: props.selectedThreadId,
-    authStatus: props.authStatus,
-    authMode: props.authMode,
-    authBusy: props.authBusy,
-    authLoginPending: props.authLoginPending,
-    settingsMenuOpen: props.settingsMenuOpen,
-    collapsed,
-    onToggleSettingsMenu: props.onToggleSettingsMenu,
-    onDismissSettingsMenu: props.onDismissSettingsMenu,
-    onOpenSettings: props.onOpenSettings,
-    onOpenSkills: props.onOpenSkills,
-    onLogin: props.onLogin,
-    onLogout: props.onLogout,
-    onSelectRoot: props.onSelectRoot,
-    onSelectThread: props.onSelectThread,
-    onSelectWorkspaceThread: props.onSelectWorkspaceThread,
-    onCreateThread: props.onCreateThread,
-    onCreateThreadInRoot: props.onCreateThreadInRoot,
-    onArchiveThread: props.onArchiveThread ?? (async () => undefined),
-    onAddRoot: props.onAddRoot,
-    onRemoveRoot: props.onRemoveRoot,
-  };
-}
-
-function createHomeMainContentProps(
-  props: HomeViewProps,
-  gitController: WorkspaceGitController,
-  activities: ReadonlyArray<TimelineEntry>,
-  retryInfo: ReturnType<typeof extractConnectionRetryInfo>["retryInfo"],
-  terminalOpen: boolean,
-  diffOpen: boolean,
-  workspaceSwitch: WorkspaceSwitchState,
-  onToggleTerminal: () => void,
-  onToggleDiff: () => void,
-): HomeViewMainContentProps {
-  return {
-    appServerReady: props.appServerReady,
-    busy: props.busy,
-    appServerClient: props.appServerClient,
-    hostBridge: props.hostBridge,
-    gitController,
-    inputText: props.inputText,
-    activities,
-    banners: props.banners,
-    account: props.account,
-    rateLimitSummary: props.rateLimitSummary,
-    queuedFollowUps: props.queuedFollowUps,
-    models: props.models,
-    collaborationPreset: props.collaborationPreset,
-    defaultModel: props.defaultModel,
-    defaultEffort: props.defaultEffort,
-    defaultServiceTier: props.defaultServiceTier ?? null,
-    workspaceOpener: props.workspaceOpener,
-    roots: props.roots,
-    selectedRootId: props.selectedRootId,
-    selectedRootName: props.selectedRootName,
-    selectedRootPath: props.selectedRootPath,
-    selectedThread: props.selectedThread,
-    activeTurnId: props.activeTurnId,
-    turnStatuses: props.turnStatuses,
-    threadDetailLevel: props.threadDetailLevel,
-    isResponding: props.isResponding,
-    interruptPending: props.interruptPending,
-    selectedConversationLoading: props.selectedConversationLoading,
-    workspaceSwitch,
-    terminalOpen,
-    diffOpen,
-    followUpQueueMode: props.followUpQueueMode,
-    composerEnterBehavior: props.composerEnterBehavior,
-    composerPermissionLevel: props.composerPermissionLevel,
-    connectionStatus: props.connectionStatus,
-    connectionRetryInfo: retryInfo,
-    fatalError: props.fatalError,
-    retryScheduledAt: props.retryScheduledAt,
-    onSelectWorkspaceOpener: props.onSelectWorkspaceOpener,
-    onSelectRoot: props.onSelectRoot,
-    onSelectCollaborationPreset: props.onSelectCollaborationPreset,
-    onInputChange: props.onInputChange,
-    onSendTurn: props.onSendTurn,
-    onPersistComposerSelection: props.onPersistComposerSelection,
-    multiAgentAvailable: props.multiAgentAvailable ?? false,
-    multiAgentEnabled: props.multiAgentEnabled ?? false,
-    onSetMultiAgentEnabled: props.onSetMultiAgentEnabled,
-    onSelectComposerPermissionLevel: props.onSelectComposerPermissionLevel,
-    onUpdateThreadBranch: props.onUpdateThreadBranch,
-    onInterruptTurn: props.onInterruptTurn,
-    onLogout: props.onLogout,
-    onResolveServerRequest: props.onResolveServerRequest,
-    onRemoveQueuedFollowUp: props.onRemoveQueuedFollowUp,
-    onClearQueuedFollowUps: props.onClearQueuedFollowUps,
-    onCreateThread: props.onCreateThread,
-    onToggleDiff,
-    onToggleTerminal,
-    onRetryConnection: props.onRetryConnection,
-    onDismissBanner: props.onDismissBanner,
-  };
-}
-
-function SidebarCollapseButton(props: {
-  readonly collapsed: boolean;
-  readonly onToggle: () => void;
-}): JSX.Element {
-  return (
-    <button
-      type="button"
-      className="sidebar-collapse-toggle"
-      onClick={props.onToggle}
-      aria-label={props.collapsed ? "展开侧边栏" : "折叠侧边栏"}
-    >
-      <OfficialSidebarToggleIcon className="sidebar-collapse-icon" />
-    </button>
   );
 }
