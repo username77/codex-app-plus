@@ -10,8 +10,6 @@ use crate::windows_child_process::configure_background_tokio_command;
 mod windows;
 mod wsl;
 
-const WSL_PROGRAM: &str = "wsl.exe";
-
 pub struct SpawnedAppServer {
     pub child: Child,
     pub stdin: ChildStdin,
@@ -24,7 +22,6 @@ pub struct CodexCli {
     pub(crate) program: String,
     pub(crate) prefix_args: Vec<String>,
     pub(crate) display_path: String,
-    is_wsl: bool,
 }
 
 impl CodexCli {
@@ -41,10 +38,9 @@ impl CodexCli {
             return parse_version_output(&output.stdout);
         }
 
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
         Err(AppError::Protocol(self.format_launch_error(
             "version check failed",
-            &stderr,
+            &command_failure_detail(&output.stderr, &output.stdout, output.status.to_string()),
             output.status.to_string(),
         )))
     }
@@ -103,12 +99,6 @@ impl CodexCli {
         } else {
             detail.to_string()
         };
-        if self.is_wsl {
-            return format!(
-                "{} {}. The interactive WSL shell and `wsl.exe --exec` do not share the same environment. {}",
-                self.display_path, action, suffix
-            );
-        }
         if suffix.is_empty() {
             format!("{} {}", self.display_path, action)
         } else {
@@ -127,6 +117,18 @@ fn parse_version_output(stdout: &[u8]) -> AppResult<String> {
     Ok(version)
 }
 
+fn command_failure_detail(stderr: &[u8], stdout: &[u8], fallback_status: String) -> String {
+    let stderr_text = String::from_utf8_lossy(stderr).trim().to_string();
+    if !stderr_text.is_empty() {
+        return stderr_text;
+    }
+    let stdout_text = String::from_utf8_lossy(stdout).trim().to_string();
+    if !stdout_text.is_empty() {
+        return stdout_text;
+    }
+    fallback_status
+}
+
 #[cfg(test)]
 mod tests {
     use std::env;
@@ -137,6 +139,7 @@ mod tests {
 
     use super::CodexCli;
     use crate::models::AppServerStartInput;
+    use tokio::process::Command;
 
     fn env_lock() -> std::sync::MutexGuard<'static, ()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -209,5 +212,44 @@ mod tests {
         }
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn wsl_commands_reuse_the_same_prefix_for_version_and_app_server() {
+        let cli = CodexCli {
+            program: "wsl.exe".to_string(),
+            prefix_args: vec![
+                "--distribution".to_string(),
+                "Ubuntu".to_string(),
+                "--cd".to_string(),
+                "/home/me".to_string(),
+                "--exec".to_string(),
+                "bash".to_string(),
+                "-ic".to_string(),
+                "exec \"$@\"".to_string(),
+                "codex-app-plus".to_string(),
+                "/root/.nvm/versions/node/v24.14.0/bin/codex".to_string(),
+            ],
+            display_path: "wsl.exe --distribution Ubuntu --cd /home/me --exec /root/.nvm/versions/node/v24.14.0/bin/codex".to_string(),
+        };
+
+        let version_args = collect_args(cli.command_for_args(&["--version"]));
+        let app_server_args = collect_args(cli.command_for_args(&[
+            "app-server",
+            "--analytics-default-enabled",
+            "--listen",
+            "stdio://",
+        ]));
+
+        assert_eq!(version_args[..cli.prefix_args.len()], cli.prefix_args);
+        assert_eq!(app_server_args[..cli.prefix_args.len()], cli.prefix_args);
+    }
+
+    fn collect_args(command: Command) -> Vec<String> {
+        command
+            .as_std()
+            .get_args()
+            .map(|value| value.to_string_lossy().to_string())
+            .collect()
     }
 }

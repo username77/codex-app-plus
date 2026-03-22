@@ -3,6 +3,7 @@ import type { ThreadSummary } from "../../../domain/types";
 import { useI18n, type Locale } from "../../../i18n";
 
 interface ArchivedThreadsSettingsSectionProps {
+  readonly ready?: boolean;
   listArchivedThreads: () => Promise<ReadonlyArray<ThreadSummary>>;
   unarchiveThread: (threadId: string) => Promise<void>;
 }
@@ -61,13 +62,16 @@ function ArchivedThreadRow(props: ArchivedThreadRowProps): JSX.Element {
 
 function useArchivedThreadsState(props: ArchivedThreadsSettingsSectionProps) {
   const [threads, setThreads] = useState<ReadonlyArray<ThreadSummary>>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(props.ready !== false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pendingThreadIds, setPendingThreadIds] = useState<ReadonlyArray<string>>([]);
   const [rowErrors, setRowErrors] = useState<Readonly<Record<string, string>>>({});
   const pendingThreadIdsSet = useMemo(() => new Set(pendingThreadIds), [pendingThreadIds]);
 
   const loadThreads = useCallback(async () => {
+    if (props.ready === false) {
+      return;
+    }
     setLoading(true);
     setErrorMessage(null);
     setRowErrors({});
@@ -78,11 +82,16 @@ function useArchivedThreadsState(props: ArchivedThreadsSettingsSectionProps) {
     } finally {
       setLoading(false);
     }
-  }, [props.listArchivedThreads]);
+  }, [props.listArchivedThreads, props.ready]);
 
   useEffect(() => {
+    if (props.ready === false) {
+      setLoading(true);
+      setErrorMessage(null);
+      return;
+    }
     void loadThreads();
-  }, [loadThreads]);
+  }, [loadThreads, props.ready]);
 
   const handleUnarchive = useCallback(async (threadId: string) => {
     setPendingThreadIds((current) => (current.includes(threadId) ? current : [...current, threadId]));
@@ -103,6 +112,7 @@ function useArchivedThreadsState(props: ArchivedThreadsSettingsSectionProps) {
 export function ArchivedThreadsSettingsSection(props: ArchivedThreadsSettingsSectionProps): JSX.Element {
   const { t } = useI18n();
   const state = useArchivedThreadsState(props);
+  const ready = props.ready !== false;
 
   return (
     <div className="settings-panel-group">
@@ -113,7 +123,7 @@ export function ArchivedThreadsSettingsSection(props: ArchivedThreadsSettingsSec
       <section className="settings-card">
         <div className="settings-section-head">
           <strong>{t("settings.archived.listTitle")}</strong>
-          <button type="button" className="settings-head-action" onClick={() => void state.loadThreads()} disabled={state.loading}>
+          <button type="button" className="settings-head-action" onClick={() => void state.loadThreads()} disabled={!ready || state.loading}>
             {t("settings.archived.refreshAction")}
           </button>
         </div>

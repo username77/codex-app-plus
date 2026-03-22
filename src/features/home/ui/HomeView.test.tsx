@@ -5,6 +5,7 @@ import type { ComposerModelOption } from "../../composer/model/composerPreferenc
 import type { HostBridge } from "../../../bridge/types";
 import type { CollaborationPreset, TurnPlanSnapshotEntry } from "../../../domain/timeline";
 import type { ThreadSummary, TimelineEntry } from "../../../domain/types";
+import type { AppServerClient } from "../../../protocol/appServerClient";
 import { AppStoreProvider } from "../../../state/store";
 import type { WorkspaceGitController } from "../../git/model/types";
 import { HomeView } from "./HomeView";
@@ -111,6 +112,10 @@ function createHostBridge(): HostBridge {
   } as unknown as HostBridge;
 }
 
+function createAppServerClient(): AppServerClient {
+  return { request: vi.fn() } as AppServerClient;
+}
+
 function createTurnPlanActivity(overrides?: Partial<TurnPlanSnapshotEntry>): TurnPlanSnapshotEntry {
   return {
     id: "plan-1",
@@ -164,6 +169,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
     return terminalController;
   });
   const {
+    appServerClient = createAppServerClient(),
     collaborationPreset: initialCollaborationPreset = "default",
     onSelectCollaborationPreset,
     roots = [{ id: "root-1", name: "FPGA", path: "E:/code/FPGA" }],
@@ -198,6 +204,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
 
     return (
       <HomeView
+        appServerClient={appServerClient}
         hostBridge={createHostBridge()}
         busy={false}
         inputText="请分析当前工作区"
@@ -370,6 +377,12 @@ describe("HomeView", () => {
         selection: expect.objectContaining({ model: "gpt-5.2", effort: "xhigh", serviceTier: "fast" })
       })
     ));
+  });
+
+  it("disables send while the app server is not ready", () => {
+    renderHomeView({ appServerReady: false });
+
+    expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
   });
 
   it("does not render MCP shortcuts in the attachment menu", () => {
@@ -561,6 +574,7 @@ describe("HomeView", () => {
 
     rerender(
       <AppStoreProvider><HomeView
+        appServerClient={createAppServerClient()}
         hostBridge={createHostBridge()}
         busy={false}
         inputText="请分析当前工作区"

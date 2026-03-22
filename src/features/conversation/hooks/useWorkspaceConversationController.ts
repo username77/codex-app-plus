@@ -22,6 +22,7 @@ import { collectDescendantThreadIds, createRpcThreadRuntimeCleanupTransport, for
 import { useThreadResourceCleanup } from "./useThreadResourceCleanup";
 import { buildInterruptedTurn, createInput, createQueuedFollowUp, resolveConversationCwd, resolveRequestedCollaborationMode, toErrorMessage } from "./workspaceConversationHelpers";
 import type { CreateThreadOptions, SendTurnOptions, UseWorkspaceConversationOptions, WorkspaceConversationController } from "./workspaceConversationTypes";
+import { createHostBridgeAppServerClient } from "../../../protocol/appServerClient";
 
 type AppDispatch = ReturnType<typeof useAppDispatch>;
 type AppStoreApi = ReturnType<typeof useAppStoreApi>;
@@ -47,6 +48,12 @@ type WorkspaceConversationActions = Pick<
   | "updateThreadBranch"
 >;
 
+const APP_SERVER_NOT_READY_MESSAGE = "Codex 正在启动或未连接，请等待连接完成后再发送。";
+
+function createAppServerNotReadyError(): Error {
+  return new Error(APP_SERVER_NOT_READY_MESSAGE);
+}
+
 export function useWorkspaceConversationController({
   options,
   dispatch,
@@ -59,15 +66,23 @@ export function useWorkspaceConversationController({
   const drainingConversationIds = useRef(new Set<string>());
   const interruptRequestKeys = useRef(new Set<string>());
   const deferredResumeConversationIds = useRef(new Set<string>());
+  const appServerClient = useMemo(
+    () => options.appServerClient ?? createHostBridgeAppServerClient(options.hostBridge),
+    [options.appServerClient, options.hostBridge],
+  );
+  const appServerReady = options.appServerReady !== false;
 
-  useThreadResourceCleanup({ hostBridge: options.hostBridge, store, dispatch });
+  useThreadResourceCleanup({ appServerClient, store, dispatch });
 
   const getConversation = useCallback((conversationId: string) => {
     const conversation = store.getState().conversationsById[conversationId] ?? null;
     return conversation?.agentEnvironment === options.agentEnvironment ? conversation : null;
   }, [options.agentEnvironment, store]);
 
-  const cleanupTransport = useMemo(() => createRpcThreadRuntimeCleanupTransport(options.hostBridge), [options.hostBridge]);
+  const cleanupTransport = useMemo(
+    () => createRpcThreadRuntimeCleanupTransport(appServerClient),
+    [appServerClient],
+  );
   const interruptPending = activeTurnId !== null && selectedConversation?.interruptRequestedTurnId === activeTurnId;
 
   useEffect(() => {
@@ -84,6 +99,9 @@ export function useWorkspaceConversationController({
   }, [activeTurnId, interruptPending, selectedConversation]);
 
   const ensureConversationResumed = useCallback(async (conversationId: string) => {
+    if (!appServerReady) {
+      return;
+    }
     deferredResumeConversationIds.current.delete(conversationId);
     const conversation = getConversation(conversationId);
     if (
@@ -97,10 +115,10 @@ export function useWorkspaceConversationController({
     resumingConversationIds.current.add(conversationId);
     dispatch({ type: "conversation/resumeStateChanged", conversationId, resumeState: "resuming" });
     try {
-      const response = (await options.hostBridge.rpc.request({
-        method: "thread/resume",
-        params: { threadId: conversationId, persistExtendedHistory: true },
-      })).result as ThreadResumeResponse;
+      const response = await appServerClient.request("thread/resume", {
+        threadId: conversationId,
+        persistExtendedHistory: true,
+      }) as ThreadResumeResponse;
       dispatch({ type: "conversation/loaded", conversationId, thread: response.thread });
     } catch (error) {
       dispatch({ type: "conversation/resumeStateChanged", conversationId, resumeState: "resume_failed" });
@@ -116,9 +134,12 @@ export function useWorkspaceConversationController({
     } finally {
       resumingConversationIds.current.delete(conversationId);
     }
-  }, [dispatch, getConversation, options.hostBridge.rpc]);
+  }, [appServerClient, appServerReady, dispatch, getConversation]);
 
   useEffect(() => {
+    if (!appServerReady) {
+      return;
+    }
     if (selectedConversation === null || selectedConversation.resumeState !== "needs_resume") {
       return;
     }
@@ -126,7 +147,7 @@ export function useWorkspaceConversationController({
       return;
     }
     void ensureConversationResumed(selectedConversation.id);
-  }, [ensureConversationResumed, selectedConversation]);
+  }, [appServerReady, ensureConversationResumed, selectedConversation]);
 
   const createThread = useCallback(async (createOptions?: CreateThreadOptions) => {
     const workspacePath = createOptions?.workspacePath ?? options.selectedRootPath;
@@ -137,6 +158,9 @@ export function useWorkspaceConversationController({
   }, [dispatch, options.selectedRootPath]);
 
   const startTurn = useCallback(async (conversationId: string, sendOptions: SendTurnOptions, cwdOverride: string | null) => {
+    if (!appServerReady) {
+      throw createAppServerNotReadyError();
+    }
     const collaborationMode = resolveRequestedCollaborationMode(options.collaborationModes, sendOptions);
     const input = createInput(sendOptions.text, sendOptions.attachments);
     const resolvedCwd = resolveConversationCwd(cwdOverride, options.agentEnvironment);
@@ -162,29 +186,31 @@ export function useWorkspaceConversationController({
       collaborationMode,
       ...createTurnPermissionOverrides(sendOptions.permissionLevel, options.permissionSettings),
     };
-    const response = (await options.hostBridge.rpc.request({ method: "turn/start", params })).result as TurnStartResponse;
+    const response = await appServerClient.request("turn/start", params) as TurnStartResponse;
     dispatch({ type: "conversation/turnStarted", conversationId, turn: response.turn });
     dispatch({ type: "conversation/touched", conversationId, updatedAt: new Date().toISOString() });
-  }, [dispatch, options.agentEnvironment, options.collaborationModes, options.hostBridge.rpc, options.permissionSettings]);
+  }, [appServerClient, appServerReady, dispatch, options.agentEnvironment, options.collaborationModes, options.permissionSettings]);
 
   const startNewConversation = useCallback(async (sendOptions: SendTurnOptions) => {
+    if (!appServerReady) {
+      throw createAppServerNotReadyError();
+    }
     const workspacePath = options.selectedRootPath ?? store.getState().draftConversation?.workspacePath ?? null;
     if (workspacePath === null) {
       throw new Error("请先选择工作区。");
     }
     const agentWorkspacePath = resolveAgentWorkspacePath(workspacePath, options.agentEnvironment);
     const prewarmedResponse = await consumePrewarmedThread(workspacePath);
-    const response = prewarmedResponse ?? (await options.hostBridge.rpc.request({
-      method: "thread/start",
-      params: {
+    const response = prewarmedResponse ?? (
+      await appServerClient.request("thread/start", {
         model: sendOptions.selection.model ?? undefined,
         serviceTier: sendOptions.selection.serviceTier ?? null,
         cwd: agentWorkspacePath,
         experimentalRawEvents: false,
         persistExtendedHistory: true,
         ...createThreadPermissionOverrides(sendOptions.permissionLevel, options.permissionSettings),
-      },
-    })).result as ThreadStartResponse;
+      }) as ThreadStartResponse
+    );
     const conversation = createConversationFromThread(response.thread, { hidden: false, resumeState: "resumed", agentEnvironment: options.agentEnvironment });
     const localPreviewTitle = pickConversationTitle(conversation.title, deriveConversationPreviewTitle(createInput(sendOptions.text, sendOptions.attachments)));
     dispatch({ type: "conversation/upserted", conversation });
@@ -194,16 +220,22 @@ export function useWorkspaceConversationController({
     dispatch({ type: "composer/draftCollaborationPresetTransferred", conversationId: conversation.id });
     dispatch({ type: "conversation/selected", conversationId: conversation.id });
     await startTurn(conversation.id, sendOptions, response.thread.cwd || response.cwd || agentWorkspacePath);
-  }, [dispatch, options.agentEnvironment, options.hostBridge.rpc, options.permissionSettings, options.selectedRootPath, startTurn, store]);
+  }, [appServerClient, appServerReady, dispatch, options.agentEnvironment, options.permissionSettings, options.selectedRootPath, startTurn, store]);
 
   const steerTurn = useCallback(async (conversationId: string, turnId: string, sendOptions: SendTurnOptions) => {
+    if (!appServerReady) {
+      throw createAppServerNotReadyError();
+    }
     const input = createInput(sendOptions.text, sendOptions.attachments);
     const params: TurnSteerParams = { threadId: conversationId, input, expectedTurnId: turnId };
-    await options.hostBridge.rpc.request({ method: "turn/steer", params });
+    await appServerClient.request("turn/steer", params);
     dispatch({ type: "conversation/itemCompleted", conversationId, turnId, item: { type: "userMessage", id: `steer-${Date.now()}`, content: input } });
-  }, [dispatch, options.hostBridge.rpc]);
+  }, [appServerClient, appServerReady, dispatch]);
 
   const interruptTurn = useCallback(async (conversationId: string, turnId: string) => {
+    if (!appServerReady) {
+      throw createAppServerNotReadyError();
+    }
     const requestKey = `${conversationId}:${turnId}`;
     if (interruptRequestKeys.current.has(requestKey)) {
       return;
@@ -211,13 +243,13 @@ export function useWorkspaceConversationController({
     interruptRequestKeys.current.add(requestKey);
     const params: TurnInterruptParams = { threadId: conversationId, turnId };
     try {
-      await options.hostBridge.rpc.request({ method: "turn/interrupt", params });
+      await appServerClient.request("turn/interrupt", params);
       dispatch({ type: "turn/interruptRequested", conversationId, turnId });
     } catch (error) {
       interruptRequestKeys.current.delete(requestKey);
       throw error;
     }
-  }, [dispatch, options.hostBridge.rpc]);
+  }, [appServerClient, appServerReady, dispatch]);
 
   const interruptAndUnloadConversation = useCallback(async (conversationId: string, turnId: string) => {
     const descendantThreadIds = collectDescendantThreadIds(conversationId, store.getState().conversationsById);
@@ -241,6 +273,9 @@ export function useWorkspaceConversationController({
   }, [cleanupTransport, dispatch, getConversation, store]);
 
   const processQueuedFollowUp = useCallback(async (conversationId: string) => {
+    if (!appServerReady) {
+      return;
+    }
     if (drainingConversationIds.current.has(conversationId)) {
       return;
     }
@@ -264,7 +299,7 @@ export function useWorkspaceConversationController({
     } finally {
       drainingConversationIds.current.delete(conversationId);
     }
-  }, [dispatch, ensureConversationResumed, getConversation, options.selectedRootPath, startTurn]);
+  }, [appServerReady, dispatch, ensureConversationResumed, getConversation, options.selectedRootPath, startTurn]);
 
   useEffect(() => {
     if (nextQueuedConversationId !== null) {
@@ -326,10 +361,16 @@ export function useWorkspaceConversationController({
   }, [dispatch, selectedConversation]);
 
   const updateThreadBranch = useCallback(async (branch: string) => {
+    if (!appServerReady) {
+      throw createAppServerNotReadyError();
+    }
     if (selectedConversation === null) {
       return;
     }
-    const response = (await options.hostBridge.rpc.request({ method: "thread/metadata/update", params: { threadId: selectedConversation.id, gitInfo: { branch } } })).result as ThreadMetadataUpdateResponse;
+    const response = await appServerClient.request("thread/metadata/update", {
+      threadId: selectedConversation.id,
+      gitInfo: { branch },
+    }) as ThreadMetadataUpdateResponse;
     dispatch({
       type: "conversation/upserted",
       conversation: createConversationFromThread(response.thread, {
@@ -338,7 +379,7 @@ export function useWorkspaceConversationController({
         agentEnvironment: options.agentEnvironment,
       }),
     });
-  }, [dispatch, options.agentEnvironment, options.hostBridge.rpc, selectedConversation]);
+  }, [appServerClient, appServerReady, dispatch, options.agentEnvironment, selectedConversation]);
 
   const removeQueuedFollowUp = useCallback((followUpId: string) => {
     if (selectedConversation !== null) {

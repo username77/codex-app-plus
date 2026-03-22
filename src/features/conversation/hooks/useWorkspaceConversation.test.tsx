@@ -130,19 +130,21 @@ function renderConversation(
     { name: "plan", mode: "plan", model: "gpt-5.2", reasoningEffort: "medium" },
   ] as const,
   selectedRootPath = "E:/code/FPGA",
+  initialAppServerReady = true,
 ) {
-  return renderHook((props: { readonly rootPath: string | null }) => {
+  return renderHook((props: { readonly rootPath: string | null; readonly appServerReady: boolean }) => {
       const store = useAppStore();
       const conversation = useWorkspaceConversation({
         agentEnvironment: "windowsNative",
         hostBridge,
+        appServerReady: props.appServerReady,
         selectedRootPath: props.rootPath,
         collaborationModes,
         followUpQueueMode: "queue",
         permissionSettings: DEFAULT_COMPOSER_PERMISSION_SETTINGS,
       });
     return { store, conversation };
-  }, { initialProps: { rootPath: selectedRootPath }, wrapper: Wrapper });
+  }, { initialProps: { rootPath: selectedRootPath, appServerReady: initialAppServerReady }, wrapper: Wrapper });
 }
 
 function createNotificationContext(dispatch: ReturnType<typeof useAppStore>["dispatch"]) {
@@ -302,7 +304,7 @@ describe("useWorkspaceConversation", () => {
 
     expect(result.current.conversation.selectedThreadId).toBe("thread-1");
 
-    rerender({ rootPath: "E:/code/another-workspace" });
+    rerender({ rootPath: "E:/code/another-workspace", appServerReady: true });
 
     expect(result.current.conversation.selectedThreadId).toBeNull();
     expect(result.current.conversation.selectedThread).toBeNull();
@@ -787,6 +789,34 @@ describe("useWorkspaceConversation", () => {
     expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ method: "thread/backgroundTerminals/clean" }));
     expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe" }));
     expect(result.current.conversation.queuedFollowUps).toHaveLength(1);
+  });
+
+  it("waits for the app server to become ready before resuming a selected thread", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "thread/resume") {
+        return { requestId: "request-1", result: { thread: createThread() } };
+      }
+      throw new Error(`unexpected method: ${input.method}`);
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result, rerender } = renderConversation(hostBridge, undefined, "E:/code/FPGA", false);
+
+    act(() => {
+      result.current.store.dispatch({
+        type: "conversation/upserted",
+        conversation: createConversationFromThread(createThread(), { resumeState: "needs_resume" }),
+      });
+      result.current.conversation.selectThread("thread-1");
+    });
+
+    expect(request).not.toHaveBeenCalled();
+
+    rerender({ rootPath: "E:/code/FPGA", appServerReady: true });
+
+    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({
+      method: "thread/resume",
+      params: { threadId: "thread-1", persistExtendedHistory: true },
+    })));
   });
 
   it("overrides an existing thread to full access on the next turn", async () => {

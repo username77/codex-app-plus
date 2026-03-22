@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ComposerModelOption } from "../../composer/model/composerPreferences";
 import type { HostBridge } from "../../../bridge/types";
 import type { ThreadSummary } from "../../../domain/types";
+import type { AppServerClient } from "../../../protocol/appServerClient";
 import { AppStoreProvider } from "../../../state/store";
 import type { WorkspaceGitController } from "../../git/model/types";
 import { HomeView } from "./HomeView";
@@ -112,6 +113,10 @@ function createHostBridge(): HostBridge {
   } as unknown as HostBridge;
 }
 
+function createAppServerClient(): AppServerClient {
+  return { request: vi.fn() } as AppServerClient;
+}
+
 function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
   mockedUseWorkspaceGit.mockReturnValue(createController());
   mockedUseWorkspaceSwitchTracker.mockReturnValue({
@@ -148,6 +153,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
 
   return render(
     <AppStoreProvider><HomeView
+      appServerClient={createAppServerClient()}
       hostBridge={createHostBridge()}
       busy={false}
       inputText="继续分析"

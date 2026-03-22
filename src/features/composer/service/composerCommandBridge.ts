@@ -1,4 +1,4 @@
-import type { HostBridge } from "../../../bridge/types";
+import type { AppServerClient } from "../../../protocol/appServerClient";
 import type { ClientRequest } from "../../../protocol/generated/ClientRequest";
 import type { FuzzyFileSearchSessionStartParams } from "../../../protocol/generated/FuzzyFileSearchSessionStartParams";
 import type { FuzzyFileSearchSessionStopParams } from "../../../protocol/generated/FuzzyFileSearchSessionStopParams";
@@ -20,21 +20,18 @@ export interface ComposerCommandBridge {
 
 export const COMPOSER_FUZZY_SESSION_PREFIX = "composer:";
 
-export function createComposerCommandBridge(hostBridge: HostBridge): ComposerCommandBridge {
+export function createComposerCommandBridge(appServerClient: AppServerClient): ComposerCommandBridge {
   return {
     startFuzzySession: async (params) => {
-      await hostBridge.rpc.request({ method: "fuzzyFileSearch/sessionStart", params });
+      await appServerClient.request("fuzzyFileSearch/sessionStart", params);
     },
     updateFuzzySession: async (params) => {
-      await hostBridge.rpc.request({ method: "fuzzyFileSearch/sessionUpdate", params });
+      await appServerClient.request("fuzzyFileSearch/sessionUpdate", params);
     },
     stopFuzzySession: async (params) => {
-      await hostBridge.rpc.request({ method: "fuzzyFileSearch/sessionStop", params });
+      await appServerClient.request("fuzzyFileSearch/sessionStop", params);
     },
-    request: async (method, params) => {
-      const response = await hostBridge.rpc.request({ method, params });
-      return response.result;
-    },
+    request: (method, params) => appServerClient.request(method, params),
   };
 }
 

@@ -29,6 +29,7 @@ import type {
   QueuedFollowUp,
 } from "../../../domain/timeline";
 import type { ResolvedTheme } from "../../../domain/theme";
+import type { AppServerClient } from "../../../protocol/appServerClient";
 import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
 import { useWorkspaceGit } from "../../git/hooks/useWorkspaceGit";
 import type { WorkspaceGitController } from "../../git/model/types";
@@ -49,6 +50,8 @@ import {
 } from "./HomeViewMainContent";
 
 export interface HomeViewProps {
+  readonly appServerReady?: boolean;
+  readonly appServerClient: AppServerClient;
   readonly hostBridge: HostBridge;
   readonly busy: boolean;
   readonly inputText: string;
@@ -243,6 +246,7 @@ function createHomeSidebarProps(
   collapsed: boolean,
 ): HomeSidebarProps {
   return {
+    appServerClient: props.appServerClient,
     hostBridge: props.hostBridge,
     roots: props.roots,
     codexSessions: props.threads,
@@ -284,7 +288,9 @@ function createHomeMainContentProps(
   onToggleDiff: () => void,
 ): HomeViewMainContentProps {
   return {
+    appServerReady: props.appServerReady,
     busy: props.busy,
+    appServerClient: props.appServerClient,
     hostBridge: props.hostBridge,
     gitController,
     inputText: props.inputText,

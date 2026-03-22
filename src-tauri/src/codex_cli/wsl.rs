@@ -1,257 +1,180 @@
-use std::process::Command;
+use std::path::Path;
 
 use crate::error::{AppError, AppResult};
 use crate::models::AppServerStartInput;
-use crate::windows_child_process::configure_background_std_command;
+use crate::wsl_support::{
+    ensure_wsl_command_available, is_windows_path_like, resolve_default_wsl_context,
+    resolve_wsl_command_path, WslContext,
+};
 
-use super::{CodexCli, WSL_PROGRAM};
+use super::CodexCli;
 
 const DEFAULT_WSL_CODEX_COMMAND: &str = "codex";
-const DISCOVERY_BASH: &str = "bash";
-const DISCOVERY_MARKER: &str = "CODEX_WSL_DISCOVERY::";
-const DISCOVERY_STATUS_FALLBACK: &str = "WSL login shell discovery returned no details";
-const MAX_DIAGNOSTIC_LENGTH: usize = 240;
-const DISCOVERY_SCRIPT: &str = r#"
-candidate="$1"
-if [ -z "$candidate" ]; then
-  printf '%s\n' 'CODEX_WSL_DISCOVERY::error=empty-codex-command'
-  exit 10
-fi
-
-resolved=""
-if [ -x "$candidate" ]; then
-  resolved="$candidate"
-else
-  resolved="$(command -v -- "$candidate" 2>/dev/null || true)"
-fi
-
-if [ -z "$resolved" ]; then
-  printf '%s\n' 'CODEX_WSL_DISCOVERY::error=codex-not-found'
-  exit 11
-fi
-
-resolved="$(readlink -f -- "$resolved" 2>/dev/null || printf '%s' "$resolved")"
-printf 'CODEX_WSL_DISCOVERY::codex=%s\n' "$resolved"
-
-case "$resolved" in
-  *.js)
-    node_path="$(command -v -- node 2>/dev/null || true)"
-    if [ -z "$node_path" ]; then
-      printf '%s\n' 'CODEX_WSL_DISCOVERY::error=node-not-found'
-      exit 12
-    fi
-    node_path="$(readlink -f -- "$node_path" 2>/dev/null || printf '%s' "$node_path")"
-    printf 'CODEX_WSL_DISCOVERY::node=%s\n' "$node_path"
-    printf '%s\n' 'CODEX_WSL_DISCOVERY::mode=node-js'
-    ;;
-  *)
-    printf '%s\n' 'CODEX_WSL_DISCOVERY::mode=native'
-    ;;
-esac
-"#;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum WslLaunchMode {
-    Native {
-        codex_path: String,
-    },
-    NodeJs {
-        node_path: String,
-        codex_js_path: String,
-    },
-}
+const WSL_LOGIN_SHELL: &str = "bash";
+const WSL_LOGIN_EXEC_FLAG: &str = "-ic";
+const WSL_LOGIN_EXEC_SCRIPT: &str = "exec \"$@\"";
+const WSL_LOGIN_ARG0: &str = "codex-app-plus";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct WslLaunchSpec {
-    launch_mode: WslLaunchMode,
     display_path: String,
-}
-
-#[derive(Debug, Default)]
-struct DiscoveryReport {
-    codex_path: Option<String>,
-    node_path: Option<String>,
-    mode: Option<String>,
-    error: Option<String>,
+    prefix_args: Vec<String>,
+    wsl_program: String,
 }
 
 pub(super) fn resolve_wsl_cli(input: &AppServerStartInput) -> AppResult<CodexCli> {
-    resolve_wsl_cli_with_discovery(input, discover_launch_spec)
+    let wsl_program = resolve_wsl_command_path();
+    let context = resolve_default_wsl_context()?;
+    let program = resolve_wsl_codex_program(input.codex_path.as_deref())?;
+    let resolved_program = ensure_wsl_command_available(&context, &program)?;
+    let spec = build_launch_spec(&wsl_program, &context, &resolved_program)?;
+    Ok(CodexCli {
+        program: spec.wsl_program,
+        prefix_args: spec.prefix_args,
+        display_path: spec.display_path,
+    })
 }
 
-fn resolve_wsl_cli_with_discovery<F>(
-    input: &AppServerStartInput,
-    discover: F,
-) -> AppResult<CodexCli>
-where
-    F: FnOnce(&str) -> AppResult<WslLaunchSpec>,
-{
-    let candidate = resolve_wsl_candidate(input)?;
-    let spec = discover(&candidate)?;
-    Ok(build_wsl_cli(spec))
+fn build_launch_spec(
+    wsl_program: &Path,
+    context: &WslContext,
+    program: &str,
+) -> AppResult<WslLaunchSpec> {
+    let prefix_args = build_wsl_exec_prefix(context, &program);
+    let wsl_program_text = wsl_program.to_string_lossy().to_string();
+    Ok(WslLaunchSpec {
+        display_path: build_display_path(&wsl_program_text, &prefix_args),
+        prefix_args,
+        wsl_program: wsl_program_text,
+    })
 }
 
-fn resolve_wsl_candidate(input: &AppServerStartInput) -> AppResult<String> {
-    let candidate = input
-        .codex_path
-        .as_deref()
+fn resolve_wsl_codex_program(codex_path: Option<&str>) -> AppResult<String> {
+    let candidate = codex_path
         .map(str::trim)
+        .filter(|value| !value.is_empty())
         .unwrap_or(DEFAULT_WSL_CODEX_COMMAND);
-    if candidate.is_empty() {
+    if is_windows_path_like(candidate) {
         return Err(AppError::InvalidInput(
-            "codexPath cannot be empty in WSL mode; provide a WSL command name or absolute path."
+            "WSL 模式不能使用 Windows Codex 路径；请清空 codexPath 或填写 Linux 命令/绝对路径。"
                 .to_string(),
         ));
     }
     Ok(candidate.to_string())
 }
 
-fn discover_launch_spec(candidate: &str) -> AppResult<WslLaunchSpec> {
-    let mut command = Command::new(WSL_PROGRAM);
-    configure_background_std_command(&mut command);
-    let output = command
-        .args([
-            "-e",
-            DISCOVERY_BASH,
-            "-lic",
-            DISCOVERY_SCRIPT,
-            "codex-app-plus-wsl-discovery",
-            candidate,
-        ])
-        .output()?;
-    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
-    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
-    let status = output.status.to_string();
-
-    build_launch_spec(
-        candidate,
-        output.status.success(),
-        &stdout,
-        &stderr,
-        &status,
-    )
+fn build_wsl_exec_prefix(context: &WslContext, program: &str) -> Vec<String> {
+    vec![
+        "--distribution".to_string(),
+        context.distro_name.clone(),
+        "--cd".to_string(),
+        context.home_path.clone(),
+        "--exec".to_string(),
+        WSL_LOGIN_SHELL.to_string(),
+        WSL_LOGIN_EXEC_FLAG.to_string(),
+        WSL_LOGIN_EXEC_SCRIPT.to_string(),
+        WSL_LOGIN_ARG0.to_string(),
+        program.to_string(),
+    ]
 }
 
-fn build_launch_spec(
-    candidate: &str,
-    succeeded: bool,
-    stdout: &str,
-    stderr: &str,
-    status: &str,
-) -> AppResult<WslLaunchSpec> {
-    let report = parse_discovery_report(stdout);
-    if let Some(code) = report.error.as_deref() {
-        return Err(match code {
-            "codex-not-found" => AppError::Protocol(format!(
-                "Unable to resolve WSL Codex command `{candidate}` from a login shell. The interactive WSL shell and `wsl.exe --exec` do not share the same PATH."
-            )),
-            "node-not-found" => AppError::Protocol(format!(
-                "WSL login shell resolved `{candidate}` to JavaScript entry `{}`, but could not resolve `node`. The interactive WSL shell and `wsl.exe --exec` do not share the same PATH.",
-                report.codex_path.clone().unwrap_or_else(|| candidate.to_string())
-            )),
-            _ => AppError::Protocol(format!(
-                "Failed to resolve WSL Codex command `{candidate}`: {code}."
-            )),
-        });
-    }
-
-    if let Some(spec) = build_launch_spec_from_report(report) {
-        return Ok(spec);
-    }
-
-    let detail = format_discovery_detail(stdout, stderr, status, succeeded);
-    Err(AppError::Protocol(format!(
-        "Failed to resolve WSL Codex command `{candidate}` from a login shell. The interactive WSL shell and `wsl.exe --exec` do not share the same environment. {detail}"
-    )))
-}
-
-fn parse_discovery_report(stdout: &str) -> DiscoveryReport {
-    let mut report = DiscoveryReport::default();
-    for line in stdout.lines() {
-        let Some(payload) = line.strip_prefix(DISCOVERY_MARKER) else {
-            continue;
-        };
-        let Some((key, value)) = payload.split_once('=') else {
-            continue;
-        };
-        match key {
-            "codex" => report.codex_path = Some(value.to_string()),
-            "node" => report.node_path = Some(value.to_string()),
-            "mode" => report.mode = Some(value.to_string()),
-            "error" => report.error = Some(value.to_string()),
-            _ => {}
-        }
-    }
-    report
-}
-
-fn build_launch_spec_from_report(report: DiscoveryReport) -> Option<WslLaunchSpec> {
-    match report.mode.as_deref() {
-        Some("native") => {
-            let codex_path = report.codex_path?;
-            Some(WslLaunchSpec {
-                display_path: format!("WSL:{codex_path}"),
-                launch_mode: WslLaunchMode::Native { codex_path },
-            })
-        }
-        Some("node-js") => {
-            let codex_js_path = report.codex_path?;
-            let node_path = report.node_path?;
-            Some(WslLaunchSpec {
-                display_path: format!("WSL:{node_path} {codex_js_path}"),
-                launch_mode: WslLaunchMode::NodeJs {
-                    node_path,
-                    codex_js_path,
-                },
-            })
-        }
-        _ => None,
-    }
-}
-
-fn build_wsl_cli(spec: WslLaunchSpec) -> CodexCli {
-    let prefix_args = match spec.launch_mode {
-        WslLaunchMode::Native { codex_path } => vec!["--exec".to_string(), codex_path],
-        WslLaunchMode::NodeJs {
-            node_path,
-            codex_js_path,
-        } => vec!["--exec".to_string(), node_path, codex_js_path],
-    };
-
-    CodexCli {
-        program: WSL_PROGRAM.to_string(),
-        prefix_args,
-        display_path: spec.display_path,
-        is_wsl: true,
-    }
-}
-
-fn format_discovery_detail(stdout: &str, stderr: &str, status: &str, succeeded: bool) -> String {
-    let stdout_text = trim_diagnostic(stdout);
-    let stderr_text = trim_diagnostic(stderr);
-    if !stderr_text.is_empty() {
-        return format!("Stderr: {stderr_text}");
-    }
-    if !stdout_text.is_empty() {
-        return format!("Stdout: {stdout_text}");
-    }
-    if succeeded {
-        DISCOVERY_STATUS_FALLBACK.to_string()
+fn build_display_path(program: &str, args: &[String]) -> String {
+    let display_args = if args.len() >= 10 {
+        vec![
+            args[0].clone(),
+            args[1].clone(),
+            args[2].clone(),
+            args[3].clone(),
+            args[4].clone(),
+            args[9].clone(),
+        ]
     } else {
-        format!("Discovery exit status: {status}")
-    }
+        args.to_vec()
+    };
+    std::iter::once(program.to_string())
+        .chain(display_args.iter().map(|value| format_display_arg(value)))
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
-fn trim_diagnostic(text: &str) -> String {
-    let trimmed = text.trim();
-    if trimmed.len() <= MAX_DIAGNOSTIC_LENGTH {
-        return trimmed.to_string();
+fn format_display_arg(value: &str) -> String {
+    if value.chars().any(char::is_whitespace) {
+        format!("{value:?}")
+    } else {
+        value.to_string()
     }
-    let mut shortened = trimmed[..MAX_DIAGNOSTIC_LENGTH].to_string();
-    shortened.push_str("...");
-    shortened
 }
 
 #[cfg(test)]
-#[path = "wsl_tests.rs"]
-mod tests;
+mod tests {
+    use std::path::Path;
+
+    use crate::wsl_support::WslContext;
+
+    use super::{build_launch_spec, resolve_wsl_codex_program};
+
+    fn wsl_context() -> WslContext {
+        WslContext {
+            distro_name: "Ubuntu".to_string(),
+            home_path: "/home/me".to_string(),
+        }
+    }
+
+    #[test]
+    fn uses_default_codex_command_when_path_is_blank() {
+        let program = resolve_wsl_codex_program(Some("   ")).expect("default program");
+
+        assert_eq!(program, "codex");
+    }
+
+    #[test]
+    fn preserves_linux_absolute_codex_path() {
+        let spec = build_launch_spec(
+            Path::new(r"C:\Windows\System32\wsl.exe"),
+            &wsl_context(),
+            "/usr/local/bin/codex",
+        )
+        .expect("launch spec");
+
+        assert_eq!(
+            spec.prefix_args,
+            vec![
+                "--distribution",
+                "Ubuntu",
+                "--cd",
+                "/home/me",
+                "--exec",
+                "bash",
+                "-ic",
+                "exec \"$@\"",
+                "codex-app-plus",
+                "/usr/local/bin/codex",
+            ]
+        );
+    }
+
+    #[test]
+    fn rejects_windows_codex_path_in_wsl_mode() {
+        let error = resolve_wsl_codex_program(Some(r"C:\Users\dev\AppData\Roaming\npm\codex.cmd"))
+            .expect_err("windows path should be rejected");
+
+        assert!(error
+            .to_string()
+            .contains("WSL 模式不能使用 Windows Codex 路径"));
+    }
+
+    #[test]
+    fn includes_distribution_and_home_in_display_path() {
+        let spec = build_launch_spec(
+            Path::new("wsl.exe"),
+            &wsl_context(),
+            "/root/.nvm/versions/node/v24.14.0/bin/codex",
+        )
+            .expect("launch spec");
+
+        assert_eq!(
+            spec.display_path,
+            "wsl.exe --distribution Ubuntu --cd /home/me --exec /root/.nvm/versions/node/v24.14.0/bin/codex"
+        );
+    }
+}

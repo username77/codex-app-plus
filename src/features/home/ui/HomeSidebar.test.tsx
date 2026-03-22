@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest";
 import type { HostBridge } from "../../../bridge/types";
 import type { ThreadSummary } from "../../../domain/types";
+import type { AppServerClient } from "../../../protocol/appServerClient";
 import type { AppStoreApi } from "../../../state/store";
 import { AppStoreProvider, useAppDispatch } from "../../../state/store";
 import { createConversationFromThread } from "../../conversation/model/conversationState";
@@ -88,7 +89,8 @@ function renderSidebar(thread: ThreadSummary, options?: {
   const onCreateThread = options?.onCreateThread ?? vi.fn().mockResolvedValue(undefined);
   const onOpenSkills = options?.onOpenSkills ?? vi.fn();
   const deleteCodexSession = options?.deleteCodexSession ?? vi.fn().mockResolvedValue(undefined);
-  const request = options?.request ?? vi.fn().mockResolvedValue({ requestId: "noop", result: {} });
+  const request = options?.request ?? vi.fn().mockResolvedValue({});
+  const appServerClient = { request } as AppServerClient;
   const hostBridge = { app: { deleteCodexSession }, rpc: { request } } as unknown as HostBridge;
 
   function Harness(): JSX.Element {
@@ -99,6 +101,7 @@ function renderSidebar(thread: ThreadSummary, options?: {
         {options?.initializeStore ? <DispatchRecorder onReady={options.initializeStore} /> : null}
         <div data-testid="selected-thread">{selectedThreadId ?? "none"}</div>
         <HomeSidebar
+          appServerClient={appServerClient}
           hostBridge={hostBridge}
           roots={[ROOT]}
           codexSessions={[thread]}
@@ -203,17 +206,17 @@ describe("HomeSidebar", () => {
   it("force-cleans descendants before deleting an rpc thread", async () => {
     const thread = createThread("rpc");
     const deleteCodexSession = vi.fn().mockResolvedValue(undefined);
-    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
-      if (input.method === "turn/interrupt") {
-        return { requestId: `interrupt-${String((input.params as { threadId: string }).threadId)}`, result: {} };
+    const request = vi.fn(async (method: string, params: unknown) => {
+      if (method === "turn/interrupt") {
+        return { requestId: `interrupt-${String((params as { threadId: string }).threadId)}`, result: {} };
       }
-      if (input.method === "thread/backgroundTerminals/clean") {
-        return { requestId: `clean-${String((input.params as { threadId: string }).threadId)}`, result: {} };
+      if (method === "thread/backgroundTerminals/clean") {
+        return { requestId: `clean-${String((params as { threadId: string }).threadId)}`, result: {} };
       }
-      if (input.method === "thread/unsubscribe") {
-        return { requestId: `unsubscribe-${String((input.params as { threadId: string }).threadId)}`, result: { status: "unsubscribed" } };
+      if (method === "thread/unsubscribe") {
+        return { status: "unsubscribed" };
       }
-      throw new Error(`unexpected method: ${input.method}`);
+      throw new Error(`unexpected method: ${method}`);
     });
     renderSidebar(thread, {
       deleteCodexSession,
@@ -243,11 +246,11 @@ describe("HomeSidebar", () => {
     fireEvent.contextMenu(screen.getByRole("button", { name: /线程 rpc/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "删除会话" }));
 
-    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/interrupt", params: { threadId: "thread-child", turnId: "turn-1" } })));
-    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe", params: { threadId: "thread-rpc" } })));
+    await waitFor(() => expect(request).toHaveBeenCalledWith("turn/interrupt", { threadId: "thread-child", turnId: "turn-1" }));
+    await waitFor(() => expect(request).toHaveBeenCalledWith("thread/unsubscribe", { threadId: "thread-rpc" }));
     await waitFor(() => expect(deleteCodexSession).toHaveBeenCalledWith({ threadId: thread.id, agentEnvironment: "windowsNative" }));
-    const childUnsubscribeCall = request.mock.calls.findIndex(([input]) => input.method === "thread/unsubscribe" && readThreadId(input.params) === "thread-child");
-    const rootUnsubscribeCall = request.mock.calls.findIndex(([input]) => input.method === "thread/unsubscribe" && readThreadId(input.params) === "thread-rpc");
+    const childUnsubscribeCall = request.mock.calls.findIndex(([method, params]) => method === "thread/unsubscribe" && readThreadId(params) === "thread-child");
+    const rootUnsubscribeCall = request.mock.calls.findIndex(([method, params]) => method === "thread/unsubscribe" && readThreadId(params) === "thread-rpc");
     const childCallOrder = request.mock.invocationCallOrder[childUnsubscribeCall];
     const rootCallOrder = request.mock.invocationCallOrder[rootUnsubscribeCall];
     const deleteCall = deleteCodexSession.mock.invocationCallOrder[0];
@@ -269,6 +272,7 @@ describe("HomeSidebar", () => {
         }} />
         <Profiler id="home-sidebar" onRender={onRender}>
           <HomeSidebar
+            appServerClient={{ request: vi.fn() } as AppServerClient}
             hostBridge={{ app: { deleteCodexSession: vi.fn().mockResolvedValue(undefined) }, rpc: { request: vi.fn() } } as unknown as HostBridge}
             roots={[ROOT]}
             codexSessions={[thread]}

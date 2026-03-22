@@ -52,6 +52,7 @@ export interface SettingsViewProps {
   readonly preferences: AppPreferencesController;
   readonly configSnapshot: unknown;
   readonly busy: boolean;
+  readonly ready: boolean;
   readonly windowsSandboxSetup: WindowsSandboxSetupState;
   onBackHome: () => void;
   onSelectSection: (section: SettingsSection) => void;
@@ -184,6 +185,7 @@ function SettingsContent(props: SettingsViewProps): JSX.Element {
       <McpSettingsPanel
         busy={props.busy}
         configSnapshot={props.configSnapshot}
+        ready={props.ready}
         refreshMcpData={props.refreshMcpData}
         writeConfigValue={props.writeConfigValue}
         batchWriteConfig={props.batchWriteConfig}
@@ -191,7 +193,7 @@ function SettingsContent(props: SettingsViewProps): JSX.Element {
     );
   }
   if (props.section === "archived") {
-    return <ArchivedThreadsSettingsSection listArchivedThreads={props.listArchivedThreads} unarchiveThread={props.unarchiveThread} />;
+    return <ArchivedThreadsSettingsSection ready={props.ready} listArchivedThreads={props.listArchivedThreads} unarchiveThread={props.unarchiveThread} />;
   }
   if (props.section === "about") {
     return (

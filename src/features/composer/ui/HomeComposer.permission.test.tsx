@@ -78,12 +78,14 @@ function createCommandBridge(): ComposerCommandBridge {
 function ComposerHarness(props: {
   readonly initialPermissionLevel: ComposerPermissionLevel;
   readonly onSendTurn: ReturnType<typeof vi.fn>;
+  readonly appServerReady?: boolean;
 }): JSX.Element {
   const [permissionLevel, setPermissionLevel] = useState<ComposerPermissionLevel>(props.initialPermissionLevel);
 
   return (
     <AppStoreProvider>
       <HomeComposer
+        appServerReady={props.appServerReady}
         busy={false}
         inputText="检查权限链路"
         collaborationPreset="default"
@@ -143,5 +145,17 @@ describe("HomeComposer permission", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     await waitFor(() => expect(onSendTurn).toHaveBeenCalledWith(expect.objectContaining({ permissionLevel: "default" })));
+  });
+
+  it("blocks send while the app server is not ready", () => {
+    const onSendTurn = vi.fn().mockResolvedValue(undefined);
+    render(<ComposerHarness initialPermissionLevel="default" onSendTurn={onSendTurn} appServerReady={false} />);
+
+    const sendButton = screen.getByRole("button", { name: "Send message" });
+    expect(sendButton).toBeDisabled();
+
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
+
+    expect(onSendTurn).not.toHaveBeenCalled();
   });
 });

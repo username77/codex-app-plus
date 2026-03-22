@@ -63,7 +63,6 @@ fn build_windows_cli(path: PathBuf) -> CodexCli {
             program: "cmd.exe".to_string(),
             prefix_args: vec!["/C".to_string(), path_text],
             display_path,
-            is_wsl: false,
         };
     }
 
@@ -72,7 +71,6 @@ fn build_windows_cli(path: PathBuf) -> CodexCli {
             program: "powershell.exe".to_string(),
             prefix_args: vec!["-File".to_string(), path_text],
             display_path,
-            is_wsl: false,
         };
     }
 
@@ -80,7 +78,6 @@ fn build_windows_cli(path: PathBuf) -> CodexCli {
         program: path_text,
         prefix_args: Vec::new(),
         display_path,
-        is_wsl: false,
     }
 }
 

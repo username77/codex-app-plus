@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { flushSync } from "react-dom";
 import type { HostBridge } from "../../../bridge/types";
 import type { ResolvedTheme } from "../../../domain/theme";
-import { useI18n } from "../../../i18n";
+import { useI18n, type MessageKey } from "../../../i18n";
 import { useComposerPicker } from "../../composer/hooks/useComposerPicker";
 import type { ComposerSelection } from "../../composer/model/composerPreferences";
 import { useWorkspaceConversation } from "../../conversation/hooks/useWorkspaceConversation";
@@ -15,6 +15,7 @@ import type { WorkspaceRootController } from "../../workspace/hooks/useWorkspace
 import { requestWorkspaceFolder } from "../../../app/workspacePicker";
 import { useHomeScreenState } from "../../../app/controller/appControllerState";
 import type { AppController } from "../../../app/controller/appControllerTypes";
+import { createHostBridgeAppServerClient } from "../../../protocol/appServerClient";
 import { HomeView } from "./HomeView";
 
 interface HomeScreenProps {
@@ -33,6 +34,14 @@ interface HomeScreenProps {
 export function HomeScreen(props: HomeScreenProps): JSX.Element {
   const state = useHomeScreenState();
   const { t } = useI18n();
+  const appServerReady = state.connectionStatus === "connected"
+    && state.initialized
+    && state.fatalError === null
+    && !state.bootstrapBusy;
+  const appServerClient = useMemo(
+    () => createHostBridgeAppServerClient(props.hostBridge),
+    [props.hostBridge],
+  );
   const { selectedRootName, selectedRootPath } = useSelectedWorkspace(props.workspace, t("home.workspaceSelector.placeholder"));
   const permissionSettings = useMemo(() => ({
     defaultApprovalPolicy: props.preferences.composerDefaultApprovalPolicy,
@@ -47,13 +56,15 @@ export function HomeScreen(props: HomeScreenProps): JSX.Element {
   ]);
   const conversation = useWorkspaceConversation({
     agentEnvironment: props.preferences.agentEnvironment,
+    appServerClient,
+    appServerReady,
     hostBridge: props.hostBridge,
     selectedRootPath,
     collaborationModes: state.collaborationModes,
     followUpQueueMode: props.preferences.followUpQueueMode,
     permissionSettings,
   });
-  const composerPicker = useComposerPicker(props.hostBridge, state.configSnapshot, state.initialized);
+  const composerPicker = useComposerPicker(appServerClient, state.configSnapshot, state.initialized);
   const multiAgentState = useMemo(
     () => selectMultiAgentFeatureState(state.experimentalFeatures, state.configSnapshot),
     [state.configSnapshot, state.experimentalFeatures],
@@ -67,6 +78,8 @@ export function HomeScreen(props: HomeScreenProps): JSX.Element {
 
   return (
     <HomeView
+      appServerReady={appServerReady}
+      appServerClient={appServerClient}
       hostBridge={props.hostBridge}
       busy={state.bootstrapBusy}
       inputText={state.inputText}
@@ -169,7 +182,15 @@ function useHomeScreenActions(args: {
   readonly workspace: WorkspaceRootController;
 }) {
   const { t } = useI18n();
-  const { dismissBanner, notifyError } = useUiBannerNotifications("home-screen");
+  const { dismissBanner, pushBanner } = useUiBannerNotifications("home-screen");
+  const notifyAlertError = useCallback((key: MessageKey, error: unknown) => {
+    const detail = error instanceof Error ? error.message : String(error);
+    pushBanner({
+      level: "error",
+      title: t(key, { error: detail }),
+      detail: null,
+    });
+  }, [pushBanner, t]);
 
   const addRoot = useCallback(async () => {
     try {
@@ -182,9 +203,9 @@ function useHomeScreenActions(args: {
       }
     } catch (error) {
       console.error("选择工作区文件夹失败", error);
-      notifyError(t("app.alerts.selectWorkspaceFailed"), error);
+      notifyAlertError("app.alerts.selectWorkspaceFailed", error);
     }
-  }, [args.workspace, notifyError, t]);
+  }, [args.workspace, notifyAlertError, t]);
 
   const selectRoot = useCallback((rootId: string) => {
     args.workspace.selectRoot(rootId);
@@ -195,9 +216,9 @@ function useHomeScreenActions(args: {
       await args.conversation.createThread();
     } catch (error) {
       console.error("创建工作区会话失败", error);
-      notifyError(t("app.alerts.createThreadFailed"), error);
+      notifyAlertError("app.alerts.createThreadFailed", error);
     }
-  }, [args.conversation, notifyError, t]);
+  }, [args.conversation, notifyAlertError, t]);
 
   const createWorkspaceThreadInRoot = useCallback(async (rootId: string) => {
     const root = args.workspace.roots.find((item) => item.id === rootId);
@@ -211,10 +232,10 @@ function useHomeScreenActions(args: {
       await args.conversation.createThread({ workspacePath: root.path });
     } catch (error) {
       console.error("创建工作区会话失败", error);
-      notifyError(t("app.alerts.createThreadFailed"), error);
+      notifyAlertError("app.alerts.createThreadFailed", error);
       throw error;
     }
-  }, [args.conversation, args.workspace, notifyError, t]);
+  }, [args.conversation, args.workspace, notifyAlertError, t]);
 
   const selectWorkspaceThread = useCallback((rootId: string, threadId: string | null) => {
     flushSync(() => {
@@ -228,9 +249,9 @@ function useHomeScreenActions(args: {
       await args.conversation.sendTurn(sendOptions);
     } catch (error) {
       console.error("发送工作区消息失败", error);
-      notifyError(t("app.alerts.sendTurnFailed"), error);
+      notifyAlertError("app.alerts.sendTurnFailed", error);
     }
-  }, [args.conversation, notifyError, t]);
+  }, [args.conversation, notifyAlertError, t]);
 
   const persistComposerSelection = useCallback(async (selection: ComposerSelection) => {
     if (selection.model === null || selection.effort === null) {
@@ -253,10 +274,10 @@ function useHomeScreenActions(args: {
       await args.controller.setMultiAgentEnabled(enabled);
     } catch (error) {
       console.error("切换多代理失败", error);
-      notifyError(t("app.alerts.setMultiAgentFailed"), error);
+      notifyAlertError("app.alerts.setMultiAgentFailed", error);
       throw error;
     }
-  }, [args.controller, notifyError, t]);
+  }, [args.controller, notifyAlertError, t]);
 
   return {
     addRoot,

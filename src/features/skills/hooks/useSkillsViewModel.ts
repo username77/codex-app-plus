@@ -35,6 +35,7 @@ interface AsyncState<T> {
 interface SkillsViewModelOptions {
   readonly authStatus: "unknown" | "authenticated" | "needs_login";
   readonly authMode: AuthMode | null;
+  readonly ready?: boolean;
   readonly selectedRootPath: string | null;
   readonly notifications: ReadonlyArray<ReceivedNotification>;
   readonly listSkills: (params: SkillsListParams) => Promise<SkillsListResponse>;
@@ -69,6 +70,7 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
   const {
     authStatus,
     authMode,
+    ready,
     selectedRootPath,
     notifications,
     listSkills,
@@ -94,6 +96,10 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
   );
 
   const refreshInstalled = useCallback(async (forceReload: boolean) => {
+    if (ready === false) {
+      setInstalledState((current) => ({ ...current, loading: true, error: null }));
+      return;
+    }
     setInstalledState((current) => ({ ...current, loading: true, error: null }));
     try {
       const response = await listSkills(createSkillsListParams(selectedRootPath, forceReload));
@@ -101,9 +107,13 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
     } catch (error) {
       setInstalledState((current) => ({ ...current, loading: false, error: toErrorMessage(error) }));
     }
-  }, [listSkills, selectedRootPath]);
+  }, [listSkills, ready, selectedRootPath]);
 
   const refreshRecommended = useCallback(async () => {
+    if (ready === false) {
+      setRecommendedState((current) => ({ ...current, loading: true, error: null }));
+      return;
+    }
     if (recommendedUnavailableReason !== null) {
       setRecommendedState({
         data: EMPTY_REMOTE_SKILLS,
@@ -119,7 +129,7 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
     } catch (error) {
       setRecommendedState((current) => ({ ...current, loading: false, error: toErrorMessage(error) }));
     }
-  }, [listRemoteSkills, recommendedUnavailableReason]);
+  }, [listRemoteSkills, ready, recommendedUnavailableReason]);
 
   const refresh = useCallback(async () => {
     await Promise.all([refreshInstalled(true), refreshRecommended()]);

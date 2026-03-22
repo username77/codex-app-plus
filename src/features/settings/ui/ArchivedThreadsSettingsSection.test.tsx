@@ -107,4 +107,27 @@ describe("ArchivedThreadsSettingsSection", () => {
     expect(screen.getByText("Archive list")).toBeInTheDocument();
     expect(screen.getByText("No archived threads.")).toBeInTheDocument();
   });
+
+  it("does not request archived threads before the app server is ready", async () => {
+    const listArchivedThreads = vi.fn().mockResolvedValue([createThread()]);
+
+    const { rerender } = renderSection({
+      ready: false,
+      listArchivedThreads,
+      unarchiveThread: vi.fn().mockResolvedValue(undefined)
+    });
+
+    expect(listArchivedThreads).not.toHaveBeenCalled();
+    expect(screen.getByText("正在加载已归档线程...")).toBeInTheDocument();
+
+    rerender(
+      <ArchivedThreadsSettingsSection
+        ready
+        listArchivedThreads={listArchivedThreads}
+        unarchiveThread={vi.fn().mockResolvedValue(undefined)}
+      />
+    );
+
+    await waitFor(() => expect(listArchivedThreads).toHaveBeenCalledTimes(1));
+  });
 });

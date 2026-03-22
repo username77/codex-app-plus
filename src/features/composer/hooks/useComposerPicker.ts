@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { HostBridge } from "../../../bridge/types";
+import type { AppServerClient } from "../../../protocol/appServerClient";
 import { useUiBannerNotifications } from "../../shared/hooks/useUiBannerNotifications";
 import type { ReasoningEffort } from "../../../protocol/generated/ReasoningEffort";
 import type { ServiceTier } from "../../../protocol/generated/ServiceTier";
@@ -17,7 +17,7 @@ interface ComposerPickerState {
 }
 
 export function useComposerPicker(
-  hostBridge: HostBridge,
+  appServerClient: AppServerClient,
   configSnapshot: unknown,
   ready: boolean
 ): ComposerPickerState {
@@ -34,7 +34,7 @@ export function useComposerPicker(
 
     const loadModels = async () => {
       try {
-        const nextModels = await listComposerModels(hostBridge);
+        const nextModels = await listComposerModels(appServerClient);
         if (!cancelled) {
           setModels(nextModels);
         }
@@ -48,7 +48,7 @@ export function useComposerPicker(
     return () => {
       cancelled = true;
     };
-  }, [hostBridge, notifyError, ready]);
+  }, [appServerClient, notifyError, ready]);
 
   return {
     models,

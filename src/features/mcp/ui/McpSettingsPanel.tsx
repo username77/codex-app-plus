@@ -12,6 +12,7 @@ import { McpServerDialog } from "./McpServerDialog";
 interface McpSettingsPanelProps {
   readonly busy: boolean;
   readonly configSnapshot: unknown;
+  readonly ready?: boolean;
   refreshMcpData: () => Promise<McpRefreshResult>;
   writeConfigValue: (params: ConfigValueWriteParams) => Promise<ConfigMutationResult>;
   batchWriteConfig: (params: ConfigBatchWriteParams) => Promise<ConfigMutationResult>;
@@ -193,7 +194,7 @@ function RecommendedServersSection(props: {
 export function McpSettingsPanel(props: McpSettingsPanelProps): JSX.Element {
   const { t } = useI18n();
   const [statuses, setStatuses] = useState<ReadonlyArray<McpServerStatus>>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(props.ready === false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [dialogServer, setDialogServer] = useState<McpConfigServerView | null | undefined>(undefined);
   const [deleteServer, setDeleteServer] = useState<McpConfigServerView | null>(null);
@@ -207,6 +208,9 @@ export function McpSettingsPanel(props: McpSettingsPanelProps): JSX.Element {
   }, []);
 
   const handleRefresh = useCallback(async () => {
+    if (props.ready === false) {
+      return;
+    }
     setLoading(true);
     try {
       const result = await props.refreshMcpData();
@@ -216,11 +220,16 @@ export function McpSettingsPanel(props: McpSettingsPanelProps): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [props.refreshMcpData, syncStatuses]);
+  }, [props.ready, props.refreshMcpData, syncStatuses]);
 
   useEffect(() => {
+    if (props.ready === false) {
+      setLoading(true);
+      setErrorMessage(null);
+      return;
+    }
     void handleRefresh();
-  }, [handleRefresh]);
+  }, [handleRefresh, props.ready]);
 
   const runMutation = useCallback(async (key: string, runner: () => Promise<ConfigMutationResult>) => {
     setPendingKey(key);

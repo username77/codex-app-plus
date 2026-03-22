@@ -16,6 +16,7 @@ import { SkillAvatar } from "./SkillAvatar";
 export interface SkillsViewProps {
   readonly authStatus: "unknown" | "authenticated" | "needs_login";
   readonly authMode: AuthMode | null;
+  readonly ready?: boolean;
   readonly selectedRootPath: string | null;
   readonly notifications: ReadonlyArray<ReceivedNotification>;
   readonly onBackHome: () => void;
@@ -30,6 +31,7 @@ export function SkillsView(props: SkillsViewProps): JSX.Element {
   const model = useSkillsViewModel({
     authStatus: props.authStatus,
     authMode: props.authMode,
+    ready: props.ready,
     selectedRootPath: props.selectedRootPath,
     notifications: props.notifications,
     listSkills: props.listSkills,
@@ -43,6 +45,7 @@ export function SkillsView(props: SkillsViewProps): JSX.Element {
       <SkillsToolbar
         query={model.query}
         refreshPending={model.refreshPending}
+        ready={props.ready !== false}
         onBackHome={props.onBackHome}
         onOpenLearnMore={props.onOpenLearnMore}
         onRefresh={model.refresh}
@@ -73,6 +76,7 @@ export function SkillsView(props: SkillsViewProps): JSX.Element {
 function SkillsToolbar(props: {
   readonly query: string;
   readonly refreshPending: boolean;
+  readonly ready: boolean;
   readonly onBackHome: () => void;
   readonly onOpenLearnMore: () => Promise<void>;
   readonly onRefresh: () => Promise<void>;
@@ -84,7 +88,7 @@ function SkillsToolbar(props: {
         ← 返回应用
       </button>
       <div className="skills-toolbar-actions">
-        <button type="button" className="skills-ghost-button" onClick={() => void props.onRefresh()} disabled={props.refreshPending}>
+        <button type="button" className="skills-ghost-button" onClick={() => void props.onRefresh()} disabled={!props.ready || props.refreshPending}>
           <RefreshIcon />
           <span>{props.refreshPending ? "刷新中" : "刷新"}</span>
         </button>

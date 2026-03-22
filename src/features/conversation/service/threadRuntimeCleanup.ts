@@ -1,6 +1,6 @@
-import type { HostBridge } from "../../../bridge/types";
 import type { ConversationState } from "../../../domain/conversation";
 import type { AppAction } from "../../../domain/types";
+import type { AppServerClient } from "../../../protocol/appServerClient";
 import type { ThreadUnsubscribeResponse } from "../../../protocol/generated/v2/ThreadUnsubscribeResponse";
 import { getActiveTurnId } from "../model/conversationSelectors";
 
@@ -45,18 +45,17 @@ export interface ThreadRuntimeCleanupTransport {
 }
 
 export function createRpcThreadRuntimeCleanupTransport(
-  hostBridge: Pick<HostBridge, "rpc">,
+  appServerClient: AppServerClient,
 ): ThreadRuntimeCleanupTransport {
   return {
     interruptTurn: async (threadId, turnId) => {
-      await hostBridge.rpc.request({ method: "turn/interrupt", params: { threadId, turnId } });
+      await appServerClient.request("turn/interrupt", { threadId, turnId });
     },
     cleanBackgroundTerminals: async (threadId) => {
-      await hostBridge.rpc.request({ method: "thread/backgroundTerminals/clean", params: { threadId } });
+      await appServerClient.request("thread/backgroundTerminals/clean", { threadId });
     },
     unsubscribeThread: async (threadId) => {
-      const response = await hostBridge.rpc.request({ method: "thread/unsubscribe", params: { threadId } });
-      return response.result as ThreadUnsubscribeResponse;
+      return appServerClient.request("thread/unsubscribe", { threadId }) as Promise<ThreadUnsubscribeResponse>;
     },
   };
 }

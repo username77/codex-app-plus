@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import type { HostBridge } from "../../../bridge/types";
 import type { ConversationState } from "../../../domain/conversation";
 import type { AppAction, AppState } from "../../../domain/types";
+import type { AppServerClient } from "../../../protocol/appServerClient";
 import type { AppStoreApi } from "../../../state/store";
 import type { SessionSource } from "../../../protocol/generated/v2/SessionSource";
 import type { CollabAgentStatus } from "../../../protocol/generated/v2/CollabAgentStatus";
@@ -14,7 +14,7 @@ import {
 } from "../service/threadRuntimeCleanup";
 
 interface UseThreadResourceCleanupOptions {
-  readonly hostBridge: Pick<HostBridge, "rpc">;
+  readonly appServerClient: AppServerClient;
   readonly store: Pick<AppStoreApi, "getState" | "subscribe">;
   readonly dispatch: (action: AppAction) => void;
 }
@@ -130,14 +130,17 @@ function collectFinalSubagentIds(
 }
 
 export function useThreadResourceCleanup(options: UseThreadResourceCleanupOptions): void {
-  const { dispatch, hostBridge, store } = options;
+  const { appServerClient, dispatch, store } = options;
   const cleanupInFlightIds = useRef(new Set<string>());
   const cleanedThreadIds = useRef(new Set<string>());
   const cleanupScheduledRef = useRef(false);
   const conversationsByIdRef = useRef(store.getState().conversationsById);
   const pendingRequestsByConversationIdRef = useRef(store.getState().pendingRequestsByConversationId);
   const selectedConversationIdRef = useRef(store.getState().selectedConversationId);
-  const transport = useMemo(() => createRpcThreadRuntimeCleanupTransport(hostBridge), [hostBridge]);
+  const transport = useMemo(
+    () => createRpcThreadRuntimeCleanupTransport(appServerClient),
+    [appServerClient],
+  );
 
   const cleanupThread = useCallback(async (threadId: string) => {
     if (cleanupInFlightIds.current.has(threadId) || cleanedThreadIds.current.has(threadId)) {

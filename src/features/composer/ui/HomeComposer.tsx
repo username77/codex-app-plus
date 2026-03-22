@@ -25,6 +25,7 @@ const MIN_TRIMMED_MESSAGE_LENGTH = 1;
 const MAX_COMPOSER_INPUT_EXTRA_ROWS = 3;
 
 export interface HomeComposerProps {
+  readonly appServerReady?: boolean;
   readonly busy: boolean;
   readonly inputText: string;
   readonly collaborationPreset: CollaborationPreset;
@@ -93,9 +94,14 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
     onSelectCollaborationPreset: props.onSelectCollaborationPreset,
     onLogout: logout,
   });
+  const appServerReady = props.appServerReady !== false;
   const interactionDisabled = props.busy || multiAgentPending;
-  const canSend = !interactionDisabled && (props.inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH || attachments.length > 0);
-  const buttonDisabled = interactionDisabled || (props.isResponding ? props.interruptPending : !canSend);
+  const canSend = appServerReady
+    && !interactionDisabled
+    && (props.inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH || attachments.length > 0);
+  const buttonDisabled = interactionDisabled
+    || !appServerReady
+    || (props.isResponding ? props.interruptPending : !canSend);
   const buttonLabel = props.isResponding ? "Pause response" : "Send message";
 
   useComposerTextareaAutosize({ textareaRef: commandPalette.textareaRef, value: props.inputText, maxExtraRows: MAX_COMPOSER_INPUT_EXTRA_ROWS });

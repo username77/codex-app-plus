@@ -29,6 +29,7 @@ export function SkillsScreen(props: SkillsScreenProps): JSX.Element {
     authMode: state.authMode === "apikey" || state.authMode === "chatgpt" || state.authMode === "chatgptAuthTokens"
       ? state.authMode
       : null,
+    ready: state.initialized,
     selectedRootPath,
     notifications: state.notifications,
     onBackHome: props.onBackHome,

@@ -59,6 +59,7 @@ export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
     preferences: props.preferences,
     configSnapshot: state.configSnapshot,
     busy: state.bootstrapBusy,
+    ready: state.initialized,
     windowsSandboxSetup: state.windowsSandboxSetup,
     onBackHome: props.onBackHome,
     onSelectSection: props.onSelectSection,

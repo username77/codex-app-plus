@@ -3,6 +3,7 @@ import type { WorkspaceRoot } from "../../workspace/hooks/useWorkspaceRoots";
 import { collectDescendantThreadIds, createRpcThreadRuntimeCleanupTransport, forceCloseThreadRuntime, reportThreadCleanupError } from "../../conversation/service/threadRuntimeCleanup";
 import type { HostBridge } from "../../../bridge/types";
 import type { AuthStatus, ThreadSummary } from "../../../domain/types";
+import type { AppServerClient } from "../../../protocol/appServerClient";
 import { useAppDispatch, useAppStoreApi } from "../../../state/store";
 import { SidebarIcon } from "../../shared/ui/icons";
 import { OfficialSettingsGearIcon } from "../../shared/ui/officialIcons";
@@ -10,6 +11,7 @@ import { SettingsPopover } from "./SettingsPopover";
 import { WorkspaceSidebarSection } from "../../workspace/ui/WorkspaceSidebarSection";
 
 export interface HomeSidebarProps {
+  readonly appServerClient: AppServerClient;
   readonly hostBridge: HostBridge;
   readonly roots: ReadonlyArray<WorkspaceRoot>;
   readonly codexSessions: ReadonlyArray<ThreadSummary>;
@@ -64,7 +66,10 @@ function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
   const dispatch = useAppDispatch();
   const store = useAppStoreApi();
   const sidebarClassName = props.collapsed ? "replica-sidebar sidebar-collapsed" : "replica-sidebar";
-  const cleanupTransport = useMemo(() => createRpcThreadRuntimeCleanupTransport(props.hostBridge), [props.hostBridge]);
+  const cleanupTransport = useMemo(
+    () => createRpcThreadRuntimeCleanupTransport(props.appServerClient),
+    [props.appServerClient],
+  );
 
   const clearSelectedThread = useCallback((threadId: string) => {
     if (threadId === props.selectedThreadId) {

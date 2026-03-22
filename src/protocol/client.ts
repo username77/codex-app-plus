@@ -5,6 +5,7 @@ import type { InitializeParams } from "./generated/InitializeParams";
 import type { RequestId } from "./generated/RequestId";
 import type { ThreadBackgroundTerminalsCleanResponse } from "./generated/v2/ThreadBackgroundTerminalsCleanResponse";
 import type { ThreadUnsubscribeResponse } from "./generated/v2/ThreadUnsubscribeResponse";
+import { createAppServerInitializationError } from "./appServerClient";
 
 type ClientMethod = ClientRequest["method"];
 type ParamsByMethod<M extends ClientMethod> = Extract<ClientRequest, { method: M }> extends {
@@ -87,7 +88,7 @@ export class ProtocolClient {
 
   async request<M extends ClientMethod>(method: M, params: ParamsByMethod<M>): Promise<unknown> {
     if (!this.#initialized) {
-      throw new Error(`Codex app-server 尚未完成 initialize/initialized 握手，无法调用 ${method}`);
+      throw createAppServerInitializationError(method);
     }
     return this.requestRaw(method, params);
   }

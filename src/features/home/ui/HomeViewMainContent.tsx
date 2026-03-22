@@ -19,6 +19,7 @@ import type {
   FollowUpMode,
   QueuedFollowUp,
 } from "../../../domain/timeline";
+import type { AppServerClient } from "../../../protocol/appServerClient";
 import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
 import { HomeConversationCanvas } from "../../conversation/ui/HomeConversationCanvas";
 import { HomeComposer } from "../../composer/ui/HomeComposer";
@@ -44,7 +45,9 @@ interface PlanPromptTurnOptions {
 }
 
 export interface HomeViewMainContentProps {
+  readonly appServerReady?: boolean;
   readonly busy: boolean;
+  readonly appServerClient: AppServerClient;
   readonly hostBridge: HostBridge;
   readonly gitController: WorkspaceGitController;
   readonly inputText: string;
@@ -105,8 +108,8 @@ export interface HomeViewMainContentProps {
 
 export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Element {
   const composerCommandBridge = useMemo(
-    () => createComposerCommandBridge(props.hostBridge),
-    [props.hostBridge],
+    () => createComposerCommandBridge(props.appServerClient),
+    [props.appServerClient],
   );
   const renderableActivities = useMemo(
     () => removeTurnPlanEntries(props.activities),
@@ -249,7 +252,7 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
       ) : null}
       {showPlanPrompt && pendingUserInput === null ? (
         <HomePlanRequestComposer
-          busy={props.busy}
+          busy={props.busy || props.appServerReady === false}
           onDismiss={dismissPlanPrompt}
           onImplement={() => sendPlanPromptTurn({
             text: "Implement the plan.",
@@ -260,6 +263,7 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
         />
       ) : (
         <HomeComposer
+          appServerReady={props.appServerReady}
           busy={props.busy}
           inputText={props.inputText}
           collaborationPreset={props.collaborationPreset}

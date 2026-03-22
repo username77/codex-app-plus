@@ -1,4 +1,4 @@
-import type { HostBridge } from "../../../bridge/types";
+import type { AppServerClient } from "../../../protocol/appServerClient";
 import type { ReasoningEffort } from "../../../protocol/generated/ReasoningEffort";
 import type { ServiceTier } from "../../../protocol/generated/ServiceTier";
 import type { Model } from "../../../protocol/generated/v2/Model";
@@ -195,15 +195,16 @@ export function getComposerModelLabel(models: ReadonlyArray<ComposerModelOption>
   return matched?.label ?? value ?? DEFAULT_COMPOSER_MODEL_LABEL;
 }
 
-export async function listComposerModels(hostBridge: HostBridge): Promise<ReadonlyArray<ComposerModelOption>> {
+export async function listComposerModels(client: AppServerClient): Promise<ReadonlyArray<ComposerModelOption>> {
   const models: Array<ComposerModelOption> = [];
   let cursor: string | null = null;
 
   do {
-    const response = (await hostBridge.rpc.request({
-      method: "model/list",
-      params: { cursor, includeHidden: true, limit: MODEL_PAGE_SIZE }
-    })).result as ModelListResponse;
+    const response = await client.request("model/list", {
+      cursor,
+      includeHidden: true,
+      limit: MODEL_PAGE_SIZE,
+    }) as ModelListResponse;
 
     models.push(...response.data.map(toComposerModelOption));
     cursor = response.nextCursor;

@@ -46,6 +46,7 @@ function createBaseProps(
     preferences: createPreferencesController(),
     configSnapshot: { config: {} },
     busy: false,
+    ready: true,
     windowsSandboxSetup: { pending: false, mode: null, success: null, error: null },
     onBackHome: vi.fn(),
     onSelectSection: vi.fn(),

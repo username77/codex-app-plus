@@ -32,12 +32,14 @@ export interface SettingsScreenState {
   readonly appUpdate: AppState["appUpdate"];
   readonly bootstrapBusy: boolean;
   readonly configSnapshot: AppState["configSnapshot"];
+  readonly initialized: boolean;
   readonly windowsSandboxSetup: AppState["windowsSandboxSetup"];
 }
 
 export interface SkillsScreenState {
   readonly authMode: AppState["authMode"];
   readonly authStatus: AppState["authStatus"];
+  readonly initialized: boolean;
   readonly notifications: AppState["notifications"];
 }
 
@@ -112,6 +114,7 @@ function selectSettingsScreenState(state: AppState): SettingsScreenState {
     appUpdate: state.appUpdate,
     bootstrapBusy: state.bootstrapBusy,
     configSnapshot: state.configSnapshot,
+    initialized: state.initialized,
     windowsSandboxSetup: state.windowsSandboxSetup,
   };
 }
@@ -120,6 +123,7 @@ function isSettingsScreenStateEqual(left: SettingsScreenState, right: SettingsSc
   return Object.is(left.appUpdate, right.appUpdate)
     && left.bootstrapBusy === right.bootstrapBusy
     && Object.is(left.configSnapshot, right.configSnapshot)
+    && left.initialized === right.initialized
     && Object.is(left.windowsSandboxSetup, right.windowsSandboxSetup);
 }
 
@@ -127,6 +131,7 @@ function selectSkillsScreenState(state: AppState): SkillsScreenState {
   return {
     authMode: state.authMode,
     authStatus: state.authStatus,
+    initialized: state.initialized,
     notifications: state.notifications,
   };
 }
@@ -134,6 +139,7 @@ function selectSkillsScreenState(state: AppState): SkillsScreenState {
 function isSkillsScreenStateEqual(left: SkillsScreenState, right: SkillsScreenState): boolean {
   return left.authMode === right.authMode
     && left.authStatus === right.authStatus
+    && left.initialized === right.initialized
     && Object.is(left.notifications, right.notifications);
 }
 
