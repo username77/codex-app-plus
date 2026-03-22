@@ -112,9 +112,9 @@ describe("WorkspaceOpenButton", () => {
   });
 
   it("opens the selected workspace in VS Code by default", async () => {
-    const openExternal = vi.fn().mockResolvedValue(undefined);
+    const openWorkspace = vi.fn().mockResolvedValue(undefined);
     renderControlledButton({
-      hostBridge: createHostBridge({ openExternal }),
+      hostBridge: createHostBridge({ openWorkspace }),
       selectedRootPath: "E:/code/My Project",
     });
 
@@ -123,9 +123,10 @@ describe("WorkspaceOpenButton", () => {
     );
 
     await waitFor(() => {
-      expect(openExternal).toHaveBeenCalledWith(
-        "vscode://file/E:/code/My%20Project",
-      );
+      expect(openWorkspace).toHaveBeenCalledWith({
+        path: "E:/code/My Project",
+        opener: "vscode",
+      });
     });
   });
 

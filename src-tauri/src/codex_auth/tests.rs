@@ -6,8 +6,8 @@ use serde_json::{Map as JsonMap, Value as JsonValue};
 use toml::Table;
 
 use super::live::{
-    build_oauth_snapshot_from_api_key_live, sanitize_auth_for_chatgpt,
-    sanitize_config_for_chatgpt, LiveFiles,
+    build_oauth_snapshot_from_api_key_live, sanitize_auth_for_chatgpt, sanitize_config_for_chatgpt,
+    LiveFiles,
 };
 use super::live_io::write_live_files;
 

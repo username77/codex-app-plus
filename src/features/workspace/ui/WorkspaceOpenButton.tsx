@@ -14,7 +14,6 @@ const OPEN_TEXT = "\u6253\u5f00";
 const OPEN_METHODS_TEXT = "\u6253\u5f00\u65b9\u5f0f";
 const SELECT_OPEN_METHOD_TEXT = "\u9009\u62e9\u6253\u5f00\u65b9\u5f0f";
 const CURRENT_WORKSPACE_TEXT = "\u5f53\u524d\u5de5\u4f5c\u533a";
-const WINDOWS_DRIVE_SEGMENT_PATTERN = /^[A-Za-z]:$/;
 
 interface WorkspaceOpenButtonProps {
   readonly hostBridge: HostBridge;
@@ -76,24 +75,6 @@ function assertSelectedRootPath(selectedRootPath: string | null): string {
   return selectedRootPath;
 }
 
-function encodeFileUrlPath(path: string): string {
-  return path
-    .replace(/\\+/g, "/")
-    .split("/")
-    .filter((segment) => segment.length > 0)
-    .map((segment, index) => {
-      if (index === 0 && WINDOWS_DRIVE_SEGMENT_PATTERN.test(segment)) {
-        return segment;
-      }
-      return encodeURIComponent(segment);
-    })
-    .join("/");
-}
-
-function createVsCodeWorkspaceUrl(path: string): string {
-  return `vscode://file/${encodeFileUrlPath(path)}`;
-}
-
 function findWorkspaceOpenerOption(opener: WorkspaceOpener): WorkspaceOpenerOption {
   return WORKSPACE_OPENER_OPTIONS.find((option) => option.id === opener) ?? WORKSPACE_OPENER_OPTIONS[0];
 }
@@ -144,7 +125,10 @@ export function WorkspaceOpenButton(props: WorkspaceOpenButtonProps): JSX.Elemen
 
     try {
       if (props.selectedOpener === "vscode") {
-        await props.hostBridge.app.openExternal(createVsCodeWorkspaceUrl(selectedRootPath));
+        await props.hostBridge.app.openWorkspace({
+          path: selectedRootPath,
+          opener: props.selectedOpener
+        });
         return;
       }
       if (props.selectedOpener === "explorer") {

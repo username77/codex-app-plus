@@ -126,7 +126,13 @@ fn ensure_wsl_command_available_with(
             ))
         })?;
 
-    parse_wsl_command_probe_output(context, program, &output.stdout, &output.stderr, output.status)
+    parse_wsl_command_probe_output(
+        context,
+        program,
+        &output.stdout,
+        &output.stderr,
+        output.status,
+    )
 }
 
 fn parse_wsl_command_probe_output(
@@ -310,11 +316,7 @@ mod tests {
     #[test]
     fn probes_wsl_command_with_login_shell() {
         let script = std::env::temp_dir().join("wsl-probe-test.cmd");
-        std::fs::write(
-            &script,
-            "@echo off\r\necho /home/me/.local/bin/codex\r\n",
-        )
-        .unwrap();
+        std::fs::write(&script, "@echo off\r\necho /home/me/.local/bin/codex\r\n").unwrap();
 
         let resolved =
             ensure_wsl_command_available_with(&script, &wsl_context(), "codex").expect("resolved");
@@ -325,8 +327,7 @@ mod tests {
 
     #[test]
     fn reports_distro_home_and_command_when_probe_fails() {
-        let message =
-            format_wsl_command_probe_error(&wsl_context(), "codex", "command not found");
+        let message = format_wsl_command_probe_error(&wsl_context(), "codex", "command not found");
 
         assert!(message.contains("Ubuntu"));
         assert!(message.contains("HOME=/root"));

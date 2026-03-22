@@ -42,10 +42,7 @@ pub(crate) fn read_oauth_snapshot_at(root: &Path) -> AppResult<Option<CodexOauth
     read_json_file(root.join(OAUTH_SNAPSHOT_FILE_NAME))
 }
 
-pub(crate) fn write_oauth_snapshot_at(
-    root: &Path,
-    snapshot: &CodexOauthSnapshot,
-) -> AppResult<()> {
+pub(crate) fn write_oauth_snapshot_at(root: &Path, snapshot: &CodexOauthSnapshot) -> AppResult<()> {
     write_json_file(root.join(OAUTH_SNAPSHOT_FILE_NAME), snapshot)
 }
 

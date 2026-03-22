@@ -21,6 +21,7 @@ mod rpc_transport;
 mod terminal_manager;
 mod window_theme;
 mod windows_child_process;
+mod workspace_launcher;
 mod wsl_support;
 
 use commands::{

@@ -18,9 +18,9 @@ use crate::models::{
 };
 
 use live::{
-    build_oauth_snapshot_from_api_key_live, build_provider_input_from_live, build_snapshot_from_live,
-    clear_oauth_snapshot_auth, detect_active_context, read_live_files, write_snapshot_to_live,
-    LiveFiles,
+    build_oauth_snapshot_from_api_key_live, build_provider_input_from_live,
+    build_snapshot_from_live, clear_oauth_snapshot_auth, detect_active_context, read_live_files,
+    write_snapshot_to_live, LiveFiles,
 };
 use storage::{
     persist_mode_state, read_oauth_snapshot, read_oauth_snapshot_at, read_persisted_mode_state,
@@ -38,12 +38,16 @@ pub fn get_codex_auth_mode_state(
     let snapshot = read_oauth_snapshot()?;
     Ok(CodexAuthModeStateOutput {
         active_mode: current.mode,
-        active_provider_id: current
-            .provider_id
-            .or_else(|| persisted.as_ref().and_then(|entry| entry.active_provider_id.clone())),
-        active_provider_key: current
-            .provider_key
-            .or_else(|| persisted.as_ref().and_then(|entry| entry.active_provider_key.clone())),
+        active_provider_id: current.provider_id.or_else(|| {
+            persisted
+                .as_ref()
+                .and_then(|entry| entry.active_provider_id.clone())
+        }),
+        active_provider_key: current.provider_key.or_else(|| {
+            persisted
+                .as_ref()
+                .and_then(|entry| entry.active_provider_key.clone())
+        }),
         oauth_snapshot_available: snapshot.is_some(),
     })
 }
@@ -155,7 +159,10 @@ fn resolve_current_provider(
         }
     }
     if let Some(provider_key) = current.provider_key.as_ref() {
-        if let Some(provider) = providers.iter().find(|entry| entry.provider_key == *provider_key) {
+        if let Some(provider) = providers
+            .iter()
+            .find(|entry| entry.provider_key == *provider_key)
+        {
             return Ok(provider.clone());
         }
     }

@@ -170,7 +170,7 @@ mod tests {
             &wsl_context(),
             "/root/.nvm/versions/node/v24.14.0/bin/codex",
         )
-            .expect("launch spec");
+        .expect("launch spec");
 
         assert_eq!(
             spec.display_path,

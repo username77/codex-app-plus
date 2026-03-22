@@ -1,18 +1,17 @@
-use std::fs::{self, File};
-use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
-use std::path::{Path, PathBuf};
-use std::time::Instant;
-use serde_json::Value;
-use tauri::AppHandle;
 use crate::agent_environment::resolve_codex_home_relative_path;
 use crate::codex_session_text::summarize_user_message;
 use crate::error::{AppError, AppResult};
 use crate::events::emit_codex_session_index_updated;
 use crate::models::{
-    AgentEnvironment, CodexSessionIndexUpdatedPayload, CodexSessionMessage,
-    CodexSessionReadInput, CodexSessionReadOutput, CodexSessionSummary,
-    DeleteCodexSessionInput,
+    AgentEnvironment, CodexSessionIndexUpdatedPayload, CodexSessionMessage, CodexSessionReadInput,
+    CodexSessionReadOutput, CodexSessionSummary, DeleteCodexSessionInput,
 };
+use serde_json::Value;
+use std::fs::{self, File};
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
+use std::path::{Path, PathBuf};
+use std::time::Instant;
+use tauri::AppHandle;
 
 mod index;
 #[cfg(test)]
@@ -25,7 +24,10 @@ struct SessionHeader {
     title: Option<String>,
 }
 
-pub fn list_codex_sessions(app: AppHandle, agent_environment: AgentEnvironment) -> AppResult<Vec<CodexSessionSummary>> {
+pub fn list_codex_sessions(
+    app: AppHandle,
+    agent_environment: AgentEnvironment,
+) -> AppResult<Vec<CodexSessionSummary>> {
     let root = codex_sessions_root(agent_environment)?;
     let sessions = index::list_cached_session_summaries(&root, agent_environment)?;
     if index::session_index_needs_refresh(&root, agent_environment)? {

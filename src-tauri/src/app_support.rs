@@ -10,8 +10,8 @@ use crate::error::{AppError, AppResult};
 use crate::global_agent_instructions::read_global_agent_instructions_at;
 use crate::models::{
     ChatgptAuthTokensOutput, GlobalAgentInstructionsOutput, ImportOfficialDataInput,
-    OpenCodexConfigTomlInput, OpenWorkspaceInput, ReadGlobalAgentInstructionsInput,
-    UpdateChatgptAuthTokensInput, UpdateGlobalAgentInstructionsInput, WorkspaceOpener,
+    OpenCodexConfigTomlInput, ReadGlobalAgentInstructionsInput, UpdateChatgptAuthTokensInput,
+    UpdateGlobalAgentInstructionsInput,
 };
 
 const CHATGPT_AUTH_DIR: &str = "auth";
@@ -83,52 +83,6 @@ pub fn write_global_agent_instructions(
         path: path.display_path,
         content: input.content,
     })
-}
-
-pub fn open_workspace(input: OpenWorkspaceInput) -> AppResult<()> {
-    if input.path.trim().is_empty() {
-        return Err(AppError::InvalidInput("path 不能为空".to_string()));
-    }
-
-    let path = PathBuf::from(&input.path);
-    if !path.exists() {
-        return Err(AppError::InvalidInput(format!(
-            "path 不存在: {}",
-            path.display()
-        )));
-    }
-
-    match input.opener {
-        WorkspaceOpener::Explorer | WorkspaceOpener::Vscode => {
-            open::that_detached(path).map_err(|error| AppError::Io(error.to_string()))?
-        }
-        WorkspaceOpener::Terminal => {
-            std::process::Command::new("cmd.exe")
-                .args(["/K", "cd", "/d", &input.path])
-                .spawn()
-                .map_err(|error| AppError::Io(error.to_string()))?;
-        }
-        WorkspaceOpener::VisualStudio => {
-            std::process::Command::new("devenv.exe")
-                .arg(&input.path)
-                .spawn()
-                .map_err(|error| AppError::Io(error.to_string()))?;
-        }
-        WorkspaceOpener::GithubDesktop => {
-            let uri = format!(
-                "github-desktop://openRepo/{}",
-                input.path.replace('\\', "/")
-            );
-            open::that_detached(uri).map_err(|error| AppError::Io(error.to_string()))?;
-        }
-        WorkspaceOpener::GitBash => {
-            std::process::Command::new("C:\\Program Files\\Git\\git-bash.exe")
-                .arg(format!("--cd={}", input.path))
-                .spawn()
-                .map_err(|error| AppError::Io(error.to_string()))?;
-        }
-    }
-    Ok(())
 }
 
 fn app_data_root() -> AppResult<PathBuf> {

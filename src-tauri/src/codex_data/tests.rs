@@ -170,8 +170,10 @@ fn cached_session_summaries_return_immediately_before_refresh() {
 
     assert_eq!(cached.len(), 1);
     assert_eq!(cached[0].title, "Cached title");
-    assert!(index::session_index_needs_refresh(&root, AgentEnvironment::WindowsNative)
-        .expect("detect stale session index"));
+    assert!(
+        index::session_index_needs_refresh(&root, AgentEnvironment::WindowsNative)
+            .expect("detect stale session index")
+    );
 
     fs::remove_dir_all(root).expect("remove temp session root");
 }

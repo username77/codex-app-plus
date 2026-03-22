@@ -6,7 +6,9 @@ use toml::Table;
 
 use crate::agent_environment::{resolve_codex_home_relative_path, AgentFsPath};
 use crate::error::{AppError, AppResult};
-use crate::models::{AgentEnvironment, CodexAuthMode, CodexProviderRecord, UpsertCodexProviderInput};
+use crate::models::{
+    AgentEnvironment, CodexAuthMode, CodexProviderRecord, UpsertCodexProviderInput,
+};
 
 use super::live_io::write_live_files;
 use super::storage::now_unix_ms;
@@ -46,7 +48,11 @@ pub(crate) fn detect_active_context(
     let config_key = read_model_provider_key(&live.config_table);
     let live_provider = config_key
         .as_ref()
-        .and_then(|key| providers.iter().find(|provider| provider.provider_key == *key))
+        .and_then(|key| {
+            providers
+                .iter()
+                .find(|provider| provider.provider_key == *key)
+        })
         .cloned();
     if let Some(provider) = live_provider {
         if auth_contains_api_key(&live.auth_map) {
@@ -124,7 +130,9 @@ pub(crate) fn build_oauth_snapshot_from_api_key_live(
     })
 }
 
-pub(crate) fn clear_oauth_snapshot_auth(snapshot: &CodexOauthSnapshot) -> AppResult<CodexOauthSnapshot> {
+pub(crate) fn clear_oauth_snapshot_auth(
+    snapshot: &CodexOauthSnapshot,
+) -> AppResult<CodexOauthSnapshot> {
     let auth_map = sanitize_auth_for_chatgpt(parse_auth_map(&snapshot.auth_json_text)?);
     Ok(CodexOauthSnapshot {
         auth_json_text: serialize_auth_map(&auth_map)?,
@@ -256,7 +264,9 @@ fn live_api_key(auth_map: &JsonMap<String, JsonValue>) -> AppResult<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(ToString::to_string)
-        .ok_or_else(|| AppError::InvalidInput("当前 live auth.json 缺少 OPENAI_API_KEY".to_string()))
+        .ok_or_else(|| {
+            AppError::InvalidInput("当前 live auth.json 缺少 OPENAI_API_KEY".to_string())
+        })
 }
 
 fn auth_contains_api_key(auth_map: &JsonMap<String, JsonValue>) -> bool {

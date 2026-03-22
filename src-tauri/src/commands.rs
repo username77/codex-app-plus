@@ -1,7 +1,7 @@
 use tauri::{AppHandle, Emitter, State};
 
 use crate::app_support::{
-    clear_chatgpt_auth_state, import_official_data, open_codex_config_toml, open_workspace,
+    clear_chatgpt_auth_state, import_official_data, open_codex_config_toml,
     read_chatgpt_auth_tokens, read_global_agent_instructions, write_chatgpt_auth_tokens,
     write_global_agent_instructions,
 };
@@ -17,12 +17,11 @@ use crate::models::{
     ActivateCodexChatgptInput, AppServerStartInput, ApplyCodexProviderInput,
     CaptureCodexOauthSnapshotInput, ChatgptAuthTokensOutput, CodexAuthModeStateOutput,
     CodexAuthSwitchResult, CodexProviderApplyResult, CodexProviderRecord, CodexProviderStore,
-    CodexSessionReadInput, CodexSessionReadOutput, CodexSessionSummary,
-    DeleteCodexProviderInput, DeleteCodexSessionInput, GetCodexAuthModeStateInput,
-    GlobalAgentInstructionsOutput, ImportOfficialDataInput, ListCodexSessionsInput,
-    OpenCodexConfigTomlInput, OpenWorkspaceInput, ReadGlobalAgentInstructionsInput,
-    RpcCancelInput, RpcNotifyInput, RpcRequestInput, RpcRequestOutput,
-    ServerRequestResolveInput, ShowContextMenuInput, ShowNotificationInput,
+    CodexSessionReadInput, CodexSessionReadOutput, CodexSessionSummary, DeleteCodexProviderInput,
+    DeleteCodexSessionInput, GetCodexAuthModeStateInput, GlobalAgentInstructionsOutput,
+    ImportOfficialDataInput, ListCodexSessionsInput, OpenCodexConfigTomlInput, OpenWorkspaceInput,
+    ReadGlobalAgentInstructionsInput, RpcCancelInput, RpcNotifyInput, RpcRequestInput,
+    RpcRequestOutput, ServerRequestResolveInput, ShowContextMenuInput, ShowNotificationInput,
     TerminalCloseInput, TerminalCreateInput, TerminalCreateOutput, TerminalResizeInput,
     TerminalWriteInput, UpdateChatgptAuthTokensInput, UpdateGlobalAgentInstructionsInput,
     UpsertCodexProviderInput, WindowChromeAction,
@@ -30,6 +29,7 @@ use crate::models::{
 use crate::process_manager::ProcessManager;
 use crate::terminal_manager::TerminalManager;
 use crate::window_theme::{apply_window_theme, WindowTheme};
+use crate::workspace_launcher::open_workspace;
 
 fn to_result<T>(result: AppResult<T>) -> Result<T, String> {
     result.map_err(|error| error.to_string())
