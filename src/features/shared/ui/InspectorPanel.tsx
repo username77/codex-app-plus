@@ -1,4 +1,9 @@
-import type { ReceivedNotification, ReceivedServerRequest, WorkspaceView } from "../../../domain/types";
+import type {
+  ReceivedNotification,
+  ReceivedServerRequest,
+  WorkspaceView,
+} from "../../../domain/types";
+import { createRequestActions } from "../utils/requestApprovalActions";
 
 interface InspectorPanelProps {
   readonly activeView: WorkspaceView;
@@ -6,8 +11,7 @@ interface InspectorPanelProps {
   readonly pendingRequests: ReadonlyArray<ReceivedServerRequest>;
   readonly models: ReadonlyArray<string>;
   readonly configSnapshot: unknown;
-  readonly onApproveRequest: (requestId: string) => Promise<void>;
-  readonly onRejectRequest: (requestId: string) => Promise<void>;
+  readonly onResolveServerRequest: (resolution: import("../../../domain/types").ServerRequestResolution) => Promise<void>;
 }
 
 function renderViewLabel(view: WorkspaceView): string {
@@ -18,7 +22,7 @@ function renderViewLabel(view: WorkspaceView): string {
 }
 
 export function InspectorPanel(props: InspectorPanelProps): JSX.Element {
-  const { activeView, notifications, pendingRequests, models, configSnapshot, onApproveRequest, onRejectRequest } =
+  const { activeView, notifications, pendingRequests, models, configSnapshot, onResolveServerRequest } =
     props;
 
   return (
@@ -27,16 +31,24 @@ export function InspectorPanel(props: InspectorPanelProps): JSX.Element {
       <section>
         <h3>待审批请求</h3>
         {pendingRequests.length === 0 ? <p className="empty-text">无待审批请求</p> : null}
-        {pendingRequests.map((request) => (
-          <article className="request-item" key={request.id}>
-            <strong>{request.method}</strong>
-            <pre>{JSON.stringify(request.params, null, 2)}</pre>
-            <div className="request-actions">
-              <button onClick={() => void onApproveRequest(request.id)}>Approve</button>
-              <button onClick={() => void onRejectRequest(request.id)}>Reject</button>
-            </div>
-          </article>
-        ))}
+        {pendingRequests.map((request) => {
+          const actions = createRequestActions(request);
+          return (
+            <article className="request-item" key={request.id}>
+              <strong>{request.method}</strong>
+              <pre>{JSON.stringify(request.params, null, 2)}</pre>
+              {actions.length === 0 ? null : (
+                <div className="request-actions">
+                  {actions.map((action) => (
+                    <button key={action.key} type="button" onClick={() => void onResolveServerRequest(action.resolution)}>
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </article>
+          );
+        })}
       </section>
       <section>
         <h3>Models</h3>

@@ -519,6 +519,102 @@ describe("useAppController server request lifecycle", () => {
     }));
   });
 
+  it("submits acceptForSession for file approvals", async () => {
+    const hostBridge = createHostBridge();
+    const { result } = renderHook(() => useControllerHarness(hostBridge), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.initialized).toBe(true);
+    });
+    protocolState.request.mockClear();
+
+    act(() => {
+      protocolState.handlers?.onServerRequest("8", "item/fileChange/requestApproval", {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        itemId: "item-1",
+        reason: "Review diff",
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.pendingRequestsById["8"]).toBeDefined();
+      expect(protocolState.request).toHaveBeenCalledWith("thread/increment_elicitation", { threadId: "thread-1" });
+    });
+
+    await act(async () => {
+      await result.current.controller.resolveServerRequest({
+        kind: "fileApproval",
+        requestId: "8",
+        decision: "acceptForSession",
+      });
+    });
+
+    expect(protocolState.resolveServerRequest).toHaveBeenCalledWith("8", {
+      decision: "acceptForSession",
+    });
+    expect(result.current.pendingRequestsById["8"]).toBeDefined();
+
+    act(() => {
+      protocolState.handlers?.onNotification("serverRequest/resolved", { threadId: "thread-1", requestId: "8" });
+    });
+
+    await waitFor(() => {
+      expect(result.current.pendingRequestsById["8"]).toBeUndefined();
+      expect(protocolState.request).toHaveBeenCalledWith("thread/decrement_elicitation", { threadId: "thread-1" });
+    });
+  });
+
+  it("passes through execpolicy amendments for command approvals", async () => {
+    const hostBridge = createHostBridge();
+    const { result } = renderHook(() => useControllerHarness(hostBridge), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.initialized).toBe(true);
+    });
+    protocolState.request.mockClear();
+
+    act(() => {
+      protocolState.handlers?.onServerRequest("9", "item/commandExecution/requestApproval", {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        itemId: "item-1",
+        command: "Get-Content src/state/appReducer.ts",
+        availableDecisions: [{
+          acceptWithExecpolicyAmendment: {
+            execpolicy_amendment: ["allow read-only scans"],
+          },
+        }, "decline"],
+        proposedExecpolicyAmendment: ["allow read-only scans"],
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.pendingRequestsById["9"]).toBeDefined();
+      expect(protocolState.request).toHaveBeenCalledWith("thread/increment_elicitation", { threadId: "thread-1" });
+    });
+
+    await act(async () => {
+      await result.current.controller.resolveServerRequest({
+        kind: "commandApproval",
+        requestId: "9",
+        decision: {
+          acceptWithExecpolicyAmendment: {
+            execpolicy_amendment: ["allow read-only scans"],
+          },
+        },
+      });
+    });
+
+    expect(protocolState.resolveServerRequest).toHaveBeenCalledWith("9", {
+      decision: {
+        acceptWithExecpolicyAmendment: {
+          execpolicy_amendment: ["allow read-only scans"],
+        },
+      },
+    });
+  });
+
   it("clears stale pending requests and token refresh state after disconnect", async () => {
     const hostBridge = createHostBridge();
     const { result } = renderHook(() => useControllerHarness(hostBridge), { wrapper });

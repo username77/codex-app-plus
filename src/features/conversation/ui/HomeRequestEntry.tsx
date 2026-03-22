@@ -1,11 +1,11 @@
 import { useState } from "react";
-import type { ReviewDecision } from "../../../protocol/generated/ReviewDecision";
 import type { ServerRequestResolution } from "../../../domain/types";
 import type {
   PendingApprovalEntry,
   PendingTokenRefreshEntry,
   PendingToolCallEntry,
 } from "../../../domain/timeline";
+import { createRequestActions } from "../../shared/utils/requestApprovalActions";
 import { HomeEntryCard } from "./HomeEntryCard";
 
 interface HomeRequestEntryProps {
@@ -21,7 +21,8 @@ export function HomeRequestEntry(props: HomeRequestEntryProps): JSX.Element {
 
 function ApprovalRequest(props: { readonly entry: PendingApprovalEntry; readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void> }): JSX.Element {
   const request = props.entry.request;
-  return <HomeEntryCard className="home-request-card" title={createApprovalTitle(request.kind)} status="Pending" meta={request.method}>{renderApprovalBody(props.entry)}<div className="home-request-actions">{createApprovalButtons(props.entry).map((button) => <button key={button.label} type="button" className={button.primary ? "home-request-button home-request-button-primary" : "home-request-button"} onClick={() => void props.onResolveServerRequest(button.resolution)}>{button.label}</button>)}</div></HomeEntryCard>;
+  const buttons = createRequestActions(request);
+  return <HomeEntryCard className="home-request-card" title={createApprovalTitle(request.kind)} status="Pending" meta={request.method}>{renderApprovalBody(props.entry)}<div className="home-request-actions">{buttons.map((button) => <button key={button.key} type="button" className={button.primary ? "home-request-button home-request-button-primary" : "home-request-button"} onClick={() => void props.onResolveServerRequest(button.resolution)}>{button.label}</button>)}</div></HomeEntryCard>;
 }
 
 function renderApprovalBody(entry: PendingApprovalEntry): JSX.Element {
@@ -36,30 +37,6 @@ function renderApprovalBody(entry: PendingApprovalEntry): JSX.Element {
     return <><pre className="home-request-code">{request.params.command.join(" ")}</pre><p className="home-request-copy">{request.params.cwd}</p>{request.params.reason ? <p className="home-request-copy">{request.params.reason}</p> : null}</>;
   }
   return <><p className="home-request-copy">{request.params.reason ?? "Review the patch before allowing it to be applied."}</p>{request.params.grantRoot ? <p className="home-request-copy">{`Grant root: ${request.params.grantRoot}`}</p> : null}<pre className="home-request-code">{Object.keys(request.params.fileChanges).join("\n")}</pre></>;
-}
-
-function createApprovalButtons(entry: PendingApprovalEntry): ReadonlyArray<{ readonly label: string; readonly primary?: boolean; readonly resolution: ServerRequestResolution }> {
-  const request = entry.request;
-  if (request.kind === "commandApproval") {
-    return [
-      { label: "Allow", primary: true, resolution: { kind: "commandApproval", requestId: entry.requestId, decision: "accept" } },
-      { label: "Allow for session", primary: true, resolution: { kind: "commandApproval", requestId: entry.requestId, decision: "acceptForSession" } },
-      { label: "Decline", resolution: { kind: "commandApproval", requestId: entry.requestId, decision: "decline" } },
-      { label: "Cancel", resolution: { kind: "commandApproval", requestId: entry.requestId, decision: "cancel" } },
-    ];
-  }
-  if (request.kind === "fileApproval") {
-    return [
-      { label: "Apply", primary: true, resolution: { kind: "fileApproval", requestId: entry.requestId, decision: "accept" } },
-      { label: "Decline", resolution: { kind: "fileApproval", requestId: entry.requestId, decision: "decline" } },
-    ];
-  }
-  return [
-    { label: "Approve", primary: true, resolution: { kind: "legacyApproval", requestId: entry.requestId, decision: "approved" satisfies ReviewDecision } },
-    { label: "Approve for session", primary: true, resolution: { kind: "legacyApproval", requestId: entry.requestId, decision: "approved_for_session" satisfies ReviewDecision } },
-    { label: "Deny", resolution: { kind: "legacyApproval", requestId: entry.requestId, decision: "denied" satisfies ReviewDecision } },
-    { label: "Abort", resolution: { kind: "legacyApproval", requestId: entry.requestId, decision: "abort" satisfies ReviewDecision } },
-  ];
 }
 
 function ToolCallRequestCard(props: { readonly entry: PendingToolCallEntry; readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void> }): JSX.Element {

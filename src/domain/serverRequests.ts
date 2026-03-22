@@ -7,6 +7,7 @@ import type { ChatgptAuthTokensRefreshParams } from "../protocol/generated/v2/Ch
 import type { ChatgptAuthTokensRefreshResponse } from "../protocol/generated/v2/ChatgptAuthTokensRefreshResponse";
 import type { CommandExecutionRequestApprovalParams } from "../protocol/generated/v2/CommandExecutionRequestApprovalParams";
 import type { DynamicToolCallParams } from "../protocol/generated/v2/DynamicToolCallParams";
+import type { FileChangeApprovalDecision } from "../protocol/generated/v2/FileChangeApprovalDecision";
 import type { FileChangeRequestApprovalParams } from "../protocol/generated/v2/FileChangeRequestApprovalParams";
 import type { ToolRequestUserInputParams } from "../protocol/generated/v2/ToolRequestUserInputParams";
 import type { ToolRequestUserInputQuestion } from "../protocol/generated/v2/ToolRequestUserInputQuestion";
@@ -110,7 +111,7 @@ export interface ServerRequestApprovalResolution {
 export interface ServerRequestFileResolution {
   readonly kind: "fileApproval";
   readonly requestId: string;
-  readonly decision: "accept" | "decline";
+  readonly decision: FileChangeApprovalDecision;
 }
 
 export interface ServerRequestLegacyApprovalResolution {
