@@ -8,6 +8,7 @@ import type { AppController } from "../../../app/controller/appControllerTypes";
 import { useSettingsScreenState } from "../../../app/controller/appControllerState";
 import { useUiBannerNotifications } from "../../shared/hooks/useUiBannerNotifications";
 import { SettingsLoadingFallback } from "../../../app/ui/SettingsLoadingFallback";
+import type { ResolvedTheme } from "../../../domain/theme";
 import type { SettingsSection, SettingsViewProps } from "./SettingsView";
 
 const LazySettingsView = lazy(async () => {
@@ -19,6 +20,7 @@ interface SettingsScreenProps {
   readonly controller: AppController;
   readonly hostBridge: HostBridge;
   readonly preferences: AppPreferencesController;
+  readonly resolvedTheme: ResolvedTheme;
   readonly section: SettingsSection;
   readonly workspace: WorkspaceRootController;
   readonly onBackHome: () => void;
@@ -57,6 +59,7 @@ export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
     section: props.section,
     roots: props.workspace.roots,
     preferences: props.preferences,
+    resolvedTheme: props.resolvedTheme,
     configSnapshot: state.configSnapshot,
     busy: state.bootstrapBusy,
     ready: state.initialized,

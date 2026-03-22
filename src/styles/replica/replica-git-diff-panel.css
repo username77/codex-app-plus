@@ -267,7 +267,7 @@
 
 .workspace-diff-code-row,
 .workspace-diff-raw-content {
-  color: #1f2328;
+  color: var(--app-code-style-text);
   font-family: var(--replica-code-font-family);
   font-size: var(--replica-code-font-size);
   line-height: 1.8;
@@ -280,7 +280,7 @@
 .workspace-diff-raw-content .hljs-comment,
 .workspace-diff-code-content .hljs-quote,
 .workspace-diff-raw-content .hljs-quote {
-  color: #8b949e;
+  color: var(--app-code-style-comment);
   font-style: italic;
 }
 
@@ -290,7 +290,7 @@
 .workspace-diff-raw-content .hljs-selector-tag,
 .workspace-diff-code-content .hljs-literal,
 .workspace-diff-raw-content .hljs-literal {
-  color: #cf222e;
+  color: var(--app-code-style-keyword);
 }
 
 .workspace-diff-code-content .hljs-string,
@@ -299,7 +299,7 @@
 .workspace-diff-raw-content .hljs-regexp,
 .workspace-diff-code-content .hljs-attribute,
 .workspace-diff-raw-content .hljs-attribute {
-  color: #0550ae;
+  color: var(--app-code-style-string);
 }
 
 .workspace-diff-code-content .hljs-number,
@@ -310,7 +310,7 @@
 .workspace-diff-raw-content .hljs-variable,
 .workspace-diff-code-content .hljs-template-variable,
 .workspace-diff-raw-content .hljs-template-variable {
-  color: #953800;
+  color: var(--app-code-style-number);
 }
 
 .workspace-diff-code-content .hljs-title,
@@ -323,7 +323,7 @@
 .workspace-diff-raw-content .hljs-property,
 .workspace-diff-code-content .hljs-title.class_,
 .workspace-diff-raw-content .hljs-title.class_ {
-  color: #8250df;
+  color: var(--app-code-style-title);
 }
 
 .workspace-diff-code-content .hljs-tag,
@@ -334,16 +334,16 @@
 .workspace-diff-raw-content .hljs-selector-class,
 .workspace-diff-code-content .hljs-selector-id,
 .workspace-diff-raw-content .hljs-selector-id {
-  color: #cf222e;
+  color: var(--app-code-style-keyword);
 }
 
 .workspace-diff-code-content .hljs-punctuation,
 .workspace-diff-raw-content .hljs-punctuation {
-  color: #57606a;
+  color: var(--app-code-style-punctuation);
 }
 
 .workspace-diff-line-number {
-  background: rgba(255, 255, 255, 0.76);
+  background: var(--app-code-style-gutter);
 }
 
 .workspace-diff-code-content,
@@ -424,70 +424,6 @@ html[data-theme="dark"] .workspace-diff-preview-header {
   border-bottom-color: var(--border-light);
 }
 
-html[data-theme="dark"] .workspace-diff-preview-title,
-html[data-theme="dark"] .workspace-diff-code-row,
-html[data-theme="dark"] .workspace-diff-raw-content {
+html[data-theme="dark"] .workspace-diff-preview-title {
   color: var(--text-main);
-}
-
-html[data-theme="dark"] .workspace-diff-code-content .hljs-comment,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-comment,
-html[data-theme="dark"] .workspace-diff-code-content .hljs-quote,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-quote {
-  color: #94a3b8;
-}
-
-html[data-theme="dark"] .workspace-diff-code-content .hljs-keyword,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-keyword,
-html[data-theme="dark"] .workspace-diff-code-content .hljs-selector-tag,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-selector-tag,
-html[data-theme="dark"] .workspace-diff-code-content .hljs-literal,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-literal,
-html[data-theme="dark"] .workspace-diff-code-content .hljs-tag,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-tag,
-html[data-theme="dark"] .workspace-diff-code-content .hljs-name,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-name {
-  color: #fda4af;
-}
-
-html[data-theme="dark"] .workspace-diff-code-content .hljs-string,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-string,
-html[data-theme="dark"] .workspace-diff-code-content .hljs-regexp,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-regexp,
-html[data-theme="dark"] .workspace-diff-code-content .hljs-attribute,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-attribute {
-  color: #7dd3fc;
-}
-
-html[data-theme="dark"] .workspace-diff-code-content .hljs-number,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-number,
-html[data-theme="dark"] .workspace-diff-code-content .hljs-attr,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-attr,
-html[data-theme="dark"] .workspace-diff-code-content .hljs-variable,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-variable,
-html[data-theme="dark"] .workspace-diff-code-content .hljs-template-variable,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-template-variable {
-  color: #fdba74;
-}
-
-html[data-theme="dark"] .workspace-diff-code-content .hljs-title,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-title,
-html[data-theme="dark"] .workspace-diff-code-content .hljs-title.function_,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-title.function_,
-html[data-theme="dark"] .workspace-diff-code-content .hljs-built_in,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-built_in,
-html[data-theme="dark"] .workspace-diff-code-content .hljs-property,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-property,
-html[data-theme="dark"] .workspace-diff-code-content .hljs-title.class_,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-title.class_ {
-  color: #c4b5fd;
-}
-
-html[data-theme="dark"] .workspace-diff-code-content .hljs-punctuation,
-html[data-theme="dark"] .workspace-diff-raw-content .hljs-punctuation {
-  color: #94a3b8;
-}
-
-html[data-theme="dark"] .workspace-diff-line-number {
-  background: rgba(15, 23, 42, 0.68);
 }

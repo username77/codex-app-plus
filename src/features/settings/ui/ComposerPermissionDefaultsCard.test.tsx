@@ -40,6 +40,9 @@ function createPreferencesController(
     setCodeFontSize: vi.fn(),
     setGitBranchPrefix: vi.fn(),
     setGitPushForceWithLease: vi.fn(),
+    setContrast: vi.fn(),
+    setAppearanceThemeColors: vi.fn(),
+    setCodeStyle: vi.fn(),
   };
 }
 

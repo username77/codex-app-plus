@@ -2,6 +2,17 @@
   padding: 48px 60px 80px;
 }
 
+.settings-layout {
+  font-family: var(--app-ui-font-family);
+}
+
+.settings-layout button,
+.settings-layout input,
+.settings-layout textarea,
+.settings-layout select {
+  font-family: inherit;
+}
+
 .settings-panel-group {
   width: min(100%, 880px);
 }
@@ -11,7 +22,7 @@
 }
 
 .settings-page-title {
-  font-size: 32px;
+  font-size: var(--app-ui-font-size-display);
   line-height: 1.2;
   font-weight: 700;
   letter-spacing: -0.025em;
@@ -20,7 +31,7 @@
 
 .settings-subtitle {
   margin-top: 10px;
-  font-size: 15px;
+  font-size: var(--app-ui-font-size-md);
   line-height: 1.6;
   color: var(--text-muted);
 }
@@ -58,7 +69,7 @@
 
 .settings-row strong {
   display: block;
-  font-size: 16px;
+  font-size: var(--app-ui-font-size-lg);
   line-height: 1.5;
   font-weight: 600;
   color: var(--text-main);
@@ -66,7 +77,7 @@
 
 .settings-row p {
   margin-top: 6px;
-  font-size: 14px;
+  font-size: var(--app-ui-font-size-md);
   line-height: 1.6;
   color: var(--text-muted);
   max-width: 60ch;
@@ -85,7 +96,7 @@
 .settings-row-note {
   margin-top: 12px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--app-ui-font-size-compact);
   line-height: 1.6;
   background: var(--surface-panel-muted);
   padding: 8px 12px;
@@ -102,7 +113,7 @@
   border-radius: 14px;
   background: var(--surface-panel-muted);
   color: var(--text-main);
-  font-size: 15px;
+  font-size: var(--app-ui-font-size-base);
   box-shadow: var(--shadow-sm);
 }
 
@@ -120,7 +131,7 @@
 }
 
 .settings-select-menu .toolbar-menu-title {
-  font-size: 13px;
+  font-size: var(--app-ui-font-size-compact);
 }
 
 .settings-select-menu .toolbar-menu-list {

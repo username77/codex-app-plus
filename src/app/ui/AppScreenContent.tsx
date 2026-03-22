@@ -83,6 +83,7 @@ function renderOverlayScreen(props: AppScreenContentProps): JSX.Element | null {
       controller={props.controller}
       hostBridge={props.hostBridge}
       preferences={props.preferences}
+      resolvedTheme={props.resolvedTheme}
       section={props.screen}
       workspace={props.workspace}
       onBackHome={props.onBackHome}

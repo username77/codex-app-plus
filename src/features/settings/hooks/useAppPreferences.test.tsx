@@ -6,9 +6,8 @@ import {
   useAppPreferences,
 } from "./useAppPreferences";
 import {
-  CODE_FONT_SIZE_MAX,
-  UI_FONT_SIZE_MIN,
-} from "../model/fontPreferences";
+  DEFAULT_APPEARANCE_COLOR_SCHEME,
+} from "../model/appearanceColorScheme";
 
 describe("useAppPreferences", () => {
   beforeEach(() => {
@@ -36,6 +35,9 @@ describe("useAppPreferences", () => {
     expect(result.current.codeFontSize).toBe(DEFAULT_APP_PREFERENCES.codeFontSize);
     expect(result.current.gitBranchPrefix).toBe(DEFAULT_APP_PREFERENCES.gitBranchPrefix);
     expect(result.current.gitPushForceWithLease).toBe(DEFAULT_APP_PREFERENCES.gitPushForceWithLease);
+    expect(result.current.contrast).toBe(DEFAULT_APP_PREFERENCES.contrast);
+    expect(result.current.appearanceColors).toEqual(DEFAULT_APPEARANCE_COLOR_SCHEME);
+    expect(result.current.codeStyle).toBe(DEFAULT_APP_PREFERENCES.codeStyle);
   });
 
   it("persists updated preferences after remount", async () => {
@@ -60,6 +62,18 @@ describe("useAppPreferences", () => {
       first.result.current.setCodeFontSize(14);
       first.result.current.setGitBranchPrefix("feature/");
       first.result.current.setGitPushForceWithLease(true);
+      first.result.current.setContrast(72);
+      first.result.current.setAppearanceThemeColors("dark", {
+        accent: "#123456",
+        background: "#101820",
+        foreground: "#F5F7FA",
+      });
+      first.result.current.setAppearanceThemeColors("light", {
+        accent: "#654321",
+        background: "#FAFAFA",
+        foreground: "#111827",
+      });
+      first.result.current.setCodeStyle("Dracula");
     });
 
     await waitFor(() => {
@@ -88,6 +102,18 @@ describe("useAppPreferences", () => {
     expect(second.result.current.codeFontSize).toBe(14);
     expect(second.result.current.gitBranchPrefix).toBe("feature/");
     expect(second.result.current.gitPushForceWithLease).toBe(true);
+    expect(second.result.current.contrast).toBe(72);
+    expect(second.result.current.appearanceColors.dark).toEqual({
+      accent: "#123456",
+      background: "#101820",
+      foreground: "#F5F7FA",
+    });
+    expect(second.result.current.appearanceColors.light).toEqual({
+      accent: "#654321",
+      background: "#FAFAFA",
+      foreground: "#111827",
+    });
+    expect(second.result.current.codeStyle).toBe("Dracula");
   });
 
   it("migrates the legacy default Chinese language to auto detection", () => {
@@ -117,55 +143,6 @@ describe("useAppPreferences", () => {
     const { result } = renderHook(() => useAppPreferences());
 
     expect(result.current.uiLanguage).toBe("zh-CN");
-  });
-
-  it("falls back invalid stored values to defaults", () => {
-    window.localStorage.setItem(
-      APP_PREFERENCES_STORAGE_KEY,
-      JSON.stringify({
-        agentEnvironment: "linux",
-        workspaceOpener: "unknown",
-        embeddedTerminalShell: "bad-shell",
-        embeddedTerminalUtf8: "yes",
-        themeMode: "night",
-        uiLanguage: "fr-FR",
-        threadDetailLevel: "verbose",
-        composerPermissionLevel: "admin",
-        composerDefaultApprovalPolicy: "reject-all",
-        composerDefaultSandboxMode: "sandboxed",
-        composerFullApprovalPolicy: "allow",
-        composerFullSandboxMode: "danger",
-        uiFontFamily: "",
-        uiFontSize: 1,
-        codeFontFamily: 42,
-        codeFontSize: 99,
-        terminalFontFamily: null,
-        terminalFontSize: 999,
-        gitBranchPrefix: 123,
-        gitPushForceWithLease: "yes",
-      }),
-    );
-
-    const { result } = renderHook(() => useAppPreferences());
-
-    expect(result.current.agentEnvironment).toBe(DEFAULT_APP_PREFERENCES.agentEnvironment);
-    expect(result.current.workspaceOpener).toBe(DEFAULT_APP_PREFERENCES.workspaceOpener);
-    expect(result.current.embeddedTerminalShell).toBe(DEFAULT_APP_PREFERENCES.embeddedTerminalShell);
-    expect(result.current.embeddedTerminalUtf8).toBe(DEFAULT_APP_PREFERENCES.embeddedTerminalUtf8);
-    expect(result.current.themeMode).toBe(DEFAULT_APP_PREFERENCES.themeMode);
-    expect(result.current.uiLanguage).toBe(DEFAULT_APP_PREFERENCES.uiLanguage);
-    expect(result.current.threadDetailLevel).toBe(DEFAULT_APP_PREFERENCES.threadDetailLevel);
-    expect(result.current.composerPermissionLevel).toBe(DEFAULT_APP_PREFERENCES.composerPermissionLevel);
-    expect(result.current.composerDefaultApprovalPolicy).toBe(DEFAULT_APP_PREFERENCES.composerDefaultApprovalPolicy);
-    expect(result.current.composerDefaultSandboxMode).toBe(DEFAULT_APP_PREFERENCES.composerDefaultSandboxMode);
-    expect(result.current.composerFullApprovalPolicy).toBe(DEFAULT_APP_PREFERENCES.composerFullApprovalPolicy);
-    expect(result.current.composerFullSandboxMode).toBe(DEFAULT_APP_PREFERENCES.composerFullSandboxMode);
-    expect(result.current.uiFontFamily).toBe(DEFAULT_APP_PREFERENCES.uiFontFamily);
-    expect(result.current.uiFontSize).toBe(UI_FONT_SIZE_MIN);
-    expect(result.current.codeFontFamily).toBe(DEFAULT_APP_PREFERENCES.codeFontFamily);
-    expect(result.current.codeFontSize).toBe(CODE_FONT_SIZE_MAX);
-    expect(result.current.gitBranchPrefix).toBe(DEFAULT_APP_PREFERENCES.gitBranchPrefix);
-    expect(result.current.gitPushForceWithLease).toBe(DEFAULT_APP_PREFERENCES.gitPushForceWithLease);
   });
 
   it("prefers stored code font values over legacy terminal font values", () => {

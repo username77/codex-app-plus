@@ -34,7 +34,10 @@ function renderSection(): void {
           setGitBranchPrefix: (gitBranchPrefix) =>
             setPreferences((current) => ({ ...current, gitBranchPrefix })),
           setGitPushForceWithLease: (gitPushForceWithLease) =>
-            setPreferences((current) => ({ ...current, gitPushForceWithLease }))
+            setPreferences((current) => ({ ...current, gitPushForceWithLease })),
+          setContrast: () => undefined,
+          setAppearanceThemeColors: () => undefined,
+          setCodeStyle: () => undefined,
         }}
       />
     );

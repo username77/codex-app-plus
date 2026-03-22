@@ -13,6 +13,16 @@ import type { ComposerEnterBehavior, FollowUpMode } from "../../../domain/timeli
 import type { ThemeMode } from "../../../domain/theme";
 import type { UiLanguage } from "../../../i18n";
 import type { SandboxMode } from "../../../protocol/generated/v2/SandboxMode";
+import type { CodeStyleId } from "../model/codeStyleCatalog";
+import {
+  type AppearanceColorScheme,
+  type AppearanceTheme,
+  type AppearanceThemeColors,
+  updateAppearanceColorScheme,
+} from "../model/appearanceColorScheme";
+import {
+  clampContrast,
+} from "../model/appearancePreferences";
 import {
   clampCodeFontSize,
   clampUiFontSize,
@@ -50,6 +60,9 @@ export interface AppPreferences {
   readonly codeFontSize: number;
   readonly gitBranchPrefix: string;
   readonly gitPushForceWithLease: boolean;
+  readonly contrast: number;
+  readonly appearanceColors: AppearanceColorScheme;
+  readonly codeStyle: CodeStyleId;
 }
 
 export interface AppPreferencesController extends AppPreferences {
@@ -73,6 +86,12 @@ export interface AppPreferencesController extends AppPreferences {
   setCodeFontSize: (fontSize: number) => void;
   setGitBranchPrefix: (prefix: string) => void;
   setGitPushForceWithLease: (enabled: boolean) => void;
+  setContrast: (contrast: number) => void;
+  setAppearanceThemeColors: (
+    theme: AppearanceTheme,
+    colors: Partial<AppearanceThemeColors>,
+  ) => void;
+  setCodeStyle: (style: CodeStyleId) => void;
 }
 type PreferencesStateSetter = Dispatch<SetStateAction<AppPreferences>>;
 
@@ -86,11 +105,19 @@ function updatePreferences(
 function usePreferenceSetter<K extends keyof AppPreferences>(
   setPreferences: PreferencesStateSetter,
   key: K,
-  normalize?: (value: AppPreferences[K]) => AppPreferences[K]
+  normalize?: (
+    value: AppPreferences[K],
+    current: AppPreferences[K],
+  ) => AppPreferences[K],
 ): (value: AppPreferences[K]) => void {
   return useCallback((value: AppPreferences[K]) => {
-    const nextValue = normalize ? normalize(value) : value;
-    setPreferences((current) => updatePreferences(current, { [key]: nextValue } as Pick<AppPreferences, K>));
+    setPreferences((current) => {
+      const nextValue = normalize ? normalize(value, current[key]) : value;
+      return updatePreferences(
+        current,
+        { [key]: nextValue } as Pick<AppPreferences, K>,
+      );
+    });
   }, [key, normalize, setPreferences]);
 }
 
@@ -124,9 +151,29 @@ export function useAppPreferences(): AppPreferencesController {
   const setGitBranchPrefix = usePreferenceSetter(
     setPreferences,
     "gitBranchPrefix",
-    normalizeGitBranchPrefix,
+    (value) => normalizeGitBranchPrefix(value),
   );
   const setGitPushForceWithLease = usePreferenceSetter(setPreferences, "gitPushForceWithLease");
+  const setContrast = usePreferenceSetter(
+    setPreferences,
+    "contrast",
+    (value) => clampContrast(value),
+  );
+  const setAppearanceThemeColors = useCallback(
+    (theme: AppearanceTheme, colors: Partial<AppearanceThemeColors>) => {
+      setPreferences((current) =>
+        updatePreferences(current, {
+          appearanceColors: updateAppearanceColorScheme(
+            current.appearanceColors,
+            theme,
+            colors,
+          ),
+        }),
+      );
+    },
+    [setPreferences],
+  );
+  const setCodeStyle = usePreferenceSetter(setPreferences, "codeStyle");
 
   return useMemo(
     () => ({
@@ -150,7 +197,10 @@ export function useAppPreferences(): AppPreferencesController {
       setCodeFontFamily,
       setCodeFontSize,
       setGitBranchPrefix,
-      setGitPushForceWithLease
+      setGitPushForceWithLease,
+      setContrast,
+      setAppearanceThemeColors,
+      setCodeStyle,
     }),
     [
       preferences,
@@ -173,7 +223,10 @@ export function useAppPreferences(): AppPreferencesController {
       setThemeMode,
       setThreadDetailLevel,
       setUiLanguage,
-      setWorkspaceOpener
+      setWorkspaceOpener,
+      setContrast,
+      setAppearanceThemeColors,
+      setCodeStyle,
     ]
   );
 }

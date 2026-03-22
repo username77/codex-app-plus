@@ -18,6 +18,18 @@ import { DEFAULT_THEME_MODE, isThemeMode } from "../../../domain/theme";
 import type { UiLanguage } from "../../../i18n";
 import type { SandboxMode } from "../../../protocol/generated/v2/SandboxMode";
 import {
+  DEFAULT_CODE_STYLE,
+  isCodeStyleId,
+} from "../model/codeStyleCatalog";
+import {
+  DEFAULT_APPEARANCE_COLOR_SCHEME,
+  readStoredAppearanceColorScheme,
+} from "../model/appearanceColorScheme";
+import {
+  APP_CONTRAST_DEFAULT,
+  clampContrast,
+} from "../model/appearancePreferences";
+import {
   clampCodeFontSize,
   clampUiFontSize,
   CODE_FONT_SIZE_DEFAULT,
@@ -32,43 +44,14 @@ import type { AppPreferences, ThreadDetailLevel } from "./useAppPreferences";
 export const APP_PREFERENCES_STORAGE_KEY = "codex-app-plus.app-preferences";
 export const DEFAULT_GIT_BRANCH_PREFIX = "codex/";
 
-const AGENT_ENVIRONMENTS: ReadonlyArray<AgentEnvironment> = [
-  "windowsNative",
-  "wsl",
-];
-const WORKSPACE_OPENERS: ReadonlyArray<WorkspaceOpener> = [
-  "vscode",
-  "visualStudio",
-  "githubDesktop",
-  "explorer",
-  "terminal",
-  "gitBash",
-];
-const EMBEDDED_TERMINAL_SHELLS: ReadonlyArray<EmbeddedTerminalShell> = [
-  "powerShell",
-  "commandPrompt",
-  "gitBash",
-];
+const AGENT_ENVIRONMENTS: ReadonlyArray<AgentEnvironment> = ["windowsNative", "wsl"];
+const WORKSPACE_OPENERS: ReadonlyArray<WorkspaceOpener> = ["vscode", "visualStudio", "githubDesktop", "explorer", "terminal", "gitBash"];
+const EMBEDDED_TERMINAL_SHELLS: ReadonlyArray<EmbeddedTerminalShell> = ["powerShell", "commandPrompt", "gitBash"];
 const UI_LANGUAGES: ReadonlyArray<UiLanguage> = ["auto", "zh-CN", "en-US"];
-const THREAD_DETAIL_LEVELS: ReadonlyArray<ThreadDetailLevel> = [
-  "compact",
-  "commands",
-  "full",
-];
-const FOLLOW_UP_QUEUE_MODES: ReadonlyArray<FollowUpMode> = [
-  "queue",
-  "steer",
-  "interrupt",
-];
-const COMPOSER_ENTER_BEHAVIORS: ReadonlyArray<ComposerEnterBehavior> = [
-  "enter",
-  "cmdIfMultiline",
-];
-const SANDBOX_MODES: ReadonlyArray<SandboxMode> = [
-  "read-only",
-  "workspace-write",
-  "danger-full-access",
-];
+const THREAD_DETAIL_LEVELS: ReadonlyArray<ThreadDetailLevel> = ["compact", "commands", "full"];
+const FOLLOW_UP_QUEUE_MODES: ReadonlyArray<FollowUpMode> = ["queue", "steer", "interrupt"];
+const COMPOSER_ENTER_BEHAVIORS: ReadonlyArray<ComposerEnterBehavior> = ["enter", "cmdIfMultiline"];
+const SANDBOX_MODES: ReadonlyArray<SandboxMode> = ["read-only", "workspace-write", "danger-full-access"];
 
 type LegacyComposerAccessMode = "read-only" | "current" | "full-access";
 
@@ -93,6 +76,9 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   codeFontSize: CODE_FONT_SIZE_DEFAULT,
   gitBranchPrefix: DEFAULT_GIT_BRANCH_PREFIX,
   gitPushForceWithLease: false,
+  contrast: APP_CONTRAST_DEFAULT,
+  appearanceColors: DEFAULT_APPEARANCE_COLOR_SCHEME,
+  codeStyle: DEFAULT_CODE_STYLE,
 };
 
 function isPreferenceValue<T extends string>(
@@ -267,6 +253,15 @@ function sanitizeStoredPreferences(value: unknown): AppPreferences {
       typeof record.gitPushForceWithLease === "boolean"
         ? record.gitPushForceWithLease
         : DEFAULT_APP_PREFERENCES.gitPushForceWithLease,
+    contrast: clampContrast(
+      typeof record.contrast === "number"
+        ? record.contrast
+        : DEFAULT_APP_PREFERENCES.contrast,
+    ),
+    appearanceColors: readStoredAppearanceColorScheme(record),
+    codeStyle: isCodeStyleId(record.codeStyle)
+      ? record.codeStyle
+      : DEFAULT_APP_PREFERENCES.codeStyle,
   };
 }
 

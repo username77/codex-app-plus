@@ -4,6 +4,8 @@ import { useAppBootstrapState } from "./controller/appControllerState";
 import { useAppController } from "./controller/useAppController";
 import { AppScreenContent, type AppScreen } from "./ui/AppScreenContent";
 import { useDismissStartupScreen } from "./startupScreen";
+import { useAppCodeStyleVariables } from "./useAppCodeStyleVariables";
+import { useAppAppearanceVariables } from "./useAppAppearanceVariables";
 import { useResolvedTheme } from "./useResolvedTheme";
 import { useWindowTheme } from "./useWindowTheme";
 import { useAppFontVariables } from "./useAppFontVariables";
@@ -30,6 +32,8 @@ export function App({ hostBridge }: AppProps): JSX.Element {
   const shouldShowAuthChoice = bootstrapState.authStatus === "needs_login" && screen === "home";
 
   useAppFontVariables(preferences);
+  useAppAppearanceVariables(preferences, resolvedTheme);
+  useAppCodeStyleVariables(preferences, resolvedTheme);
   useWindowTheme(hostBridge, resolvedTheme);
   useDismissStartupScreen(
     bootstrapState.fatalError !== null || (bootstrapState.initialized && !bootstrapState.bootstrapBusy),

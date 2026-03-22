@@ -1,6 +1,7 @@
 import type { ConfigMutationResult, McpRefreshResult } from "../config/configOperations";
 import type { AppPreferencesController } from "../hooks/useAppPreferences";
 import type { AppUpdateState, WindowsSandboxSetupState } from "../../../domain/types";
+import type { ResolvedTheme } from "../../../domain/theme";
 import type {
   CodexAuthModeStateOutput,
   CodexAuthSwitchResult,
@@ -52,6 +53,7 @@ export interface SettingsViewProps {
   readonly section: SettingsSection;
   readonly roots: ReadonlyArray<WorkspaceRoot>;
   readonly preferences: AppPreferencesController;
+  readonly resolvedTheme: ResolvedTheme;
   readonly configSnapshot: unknown;
   readonly busy: boolean;
   readonly ready: boolean;
@@ -149,7 +151,12 @@ function SettingsContent(props: SettingsViewProps): JSX.Element {
     return <GeneralSettingsSection preferences={props.preferences} />;
   }
   if (props.section === "appearance") {
-    return <AppearanceSettingsSection preferences={props.preferences} />;
+    return (
+      <AppearanceSettingsSection
+        preferences={props.preferences}
+        resolvedTheme={props.resolvedTheme}
+      />
+    );
   }
   if (props.section === "config") {
     return (

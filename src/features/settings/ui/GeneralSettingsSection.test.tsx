@@ -54,6 +54,11 @@ function renderSection(locale: Locale = "zh-CN"): void {
             setPreferences((current) => ({ ...current, gitBranchPrefix })),
           setGitPushForceWithLease: (gitPushForceWithLease) =>
             setPreferences((current) => ({ ...current, gitPushForceWithLease })),
+          setContrast: (contrast) =>
+            setPreferences((current) => ({ ...current, contrast })),
+          setAppearanceThemeColors: () => undefined,
+          setCodeStyle: (codeStyle) =>
+            setPreferences((current) => ({ ...current, codeStyle })),
         }}
       />
     );

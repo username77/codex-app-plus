@@ -31,6 +31,9 @@ function createPreferencesController(): AppPreferencesController {
     setCodeFontSize: vi.fn(),
     setGitBranchPrefix: vi.fn(),
     setGitPushForceWithLease: vi.fn(),
+    setContrast: vi.fn(),
+    setAppearanceThemeColors: vi.fn(),
+    setCodeStyle: vi.fn(),
   };
 }
 
@@ -42,6 +45,7 @@ function createBaseProps(
     section: "general",
     roots: [],
     preferences: createPreferencesController(),
+    resolvedTheme: "light",
     configSnapshot: { config: {} },
     busy: false,
     ready: true,
@@ -92,7 +96,8 @@ describe("SettingsView", () => {
     });
 
     expect(screen.getByRole("heading", { name: "外观" })).toBeInTheDocument();
-    expect(screen.getByText("字体")).toBeInTheDocument();
+    expect(screen.getByText("主题")).toBeInTheDocument();
+    expect(screen.getByText("代码风格")).toBeInTheDocument();
   });
 
   it("does not render composer permission defaults in the general section", () => {

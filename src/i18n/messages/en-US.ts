@@ -45,6 +45,39 @@ export const enUS = {
     },
     appearance: {
       title: "Appearance",
+      theme: {
+        title: "Theme",
+        description: "Use light, dark, or match system settings",
+        options: {
+          light: "Light",
+          dark: "Dark",
+          system: "System",
+        },
+      },
+      codeStyle: {
+        label: "Code style",
+        import: "Import",
+        copy: "Copy theme",
+      },
+      colors: {
+        accent: "Accent",
+        background: "Background",
+        foreground: "Foreground",
+        picker: "color picker",
+        editingLight: "You're editing the light theme colors.",
+        editingDark: "You're editing the dark theme colors.",
+      },
+      fonts: {
+        uiFont: "UI font",
+        codeFont: "Code font",
+        uiFontSize: "UI font size",
+        uiFontSizeDesc: "Adjust the base size used for the Codex UI",
+        codeFontSize: "Code font size",
+        codeFontSizeDesc: "Adjust the base size used for code across chats and diffs",
+      },
+      contrast: {
+        label: "Contrast",
+      },
     },
     general: {
       title: "General",

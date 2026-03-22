@@ -44,6 +44,39 @@ export const zhCN = {
     },
     appearance: {
       title: "外观",
+      theme: {
+        title: "主题",
+        description: "使用浅色、深色、或匹配系统设置",
+        options: {
+          light: "浅色",
+          dark: "深色",
+          system: "系统",
+        },
+      },
+      codeStyle: {
+        label: "代码风格",
+        import: "导入",
+        copy: "复制主题",
+      },
+      colors: {
+        accent: "强调色",
+        background: "背景色",
+        foreground: "前景色",
+        picker: "调色盘",
+        editingLight: "当前正在编辑浅色主题颜色。",
+        editingDark: "当前正在编辑深色主题颜色。",
+      },
+      fonts: {
+        uiFont: "界面字体",
+        codeFont: "代码字体",
+        uiFontSize: "界面字号",
+        uiFontSizeDesc: "调整 Codex 界面的基础字号",
+        codeFontSize: "代码字号",
+        codeFontSizeDesc: "调整对话与差异视图中的代码字号",
+      },
+      contrast: {
+        label: "对比度",
+      },
     },
     general: {
       title: "常规",

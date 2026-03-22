@@ -1,34 +1,11 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useMemo, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { OfficialChevronRightIcon } from "../../shared/ui/officialIcons";
 import { useToolbarMenuDismissal } from "../../shared/hooks/useToolbarMenuDismissal";
-
-type MenuPlacement = "down" | "up";
-
-interface MenuLayout {
-  readonly placement: MenuPlacement;
-  readonly maxHeight: number;
-  readonly left: number;
-  readonly top: number;
-  readonly width: number;
-}
-
-const MENU_GAP_PX = 8;
-const MENU_VIEWPORT_PADDING_PX = 12;
-const MENU_MIN_WIDTH_PX = 240;
-const MENU_MAX_WIDTH_PX = 320;
-const MENU_ROW_HEIGHT_PX = 40;
-const MENU_HEADER_HEIGHT_PX = 36;
-const MENU_VERTICAL_PADDING_PX = 18;
-const MENU_MIN_HEIGHT_PX = 120;
-const MENU_MAX_HEIGHT_PX = 320;
-const DEFAULT_MENU_LAYOUT: MenuLayout = {
-  placement: "down",
-  maxHeight: MENU_MAX_HEIGHT_PX,
-  left: MENU_VIEWPORT_PADDING_PX,
-  top: MENU_VIEWPORT_PADDING_PX,
-  width: MENU_MIN_WIDTH_PX
-};
+import {
+  type MenuLayout,
+  useSettingsSelectMenuLayout,
+} from "./settingsSelectMenuLayout";
 
 export interface SettingsSelectOption<T extends string> {
   readonly value: T;
@@ -49,99 +26,6 @@ function findSelectedOption<T extends string>(
   value: T
 ): SettingsSelectOption<T> {
   return options.find((option) => option.value === value) ?? options[0]!;
-}
-
-function isScrollableElement(element: HTMLElement): boolean {
-  const styles = window.getComputedStyle(element);
-  return [styles.overflowY, styles.overflow].some((value) => value === "auto" || value === "scroll" || value === "overlay");
-}
-
-function getMenuViewportBounds(container: HTMLDivElement): { readonly top: number; readonly bottom: number } {
-  let current = container.parentElement;
-
-  while (current !== null) {
-    if (isScrollableElement(current)) {
-      const bounds = current.getBoundingClientRect();
-      return { top: bounds.top, bottom: bounds.bottom };
-    }
-    current = current.parentElement;
-  }
-
-  return { top: 0, bottom: window.innerHeight };
-}
-
-function clamp(value: number, minimum: number, maximum: number): number {
-  return Math.min(Math.max(value, minimum), maximum);
-}
-
-function measureMenuWidth(bounds: DOMRect): number {
-  const maxViewportWidth = Math.max(window.innerWidth - MENU_VIEWPORT_PADDING_PX * 2, MENU_MIN_WIDTH_PX);
-  return clamp(bounds.width, MENU_MIN_WIDTH_PX, Math.min(MENU_MAX_WIDTH_PX, maxViewportWidth));
-}
-
-function measureMenuLeft(bounds: DOMRect, width: number): number {
-  const maxLeft = Math.max(window.innerWidth - MENU_VIEWPORT_PADDING_PX - width, MENU_VIEWPORT_PADDING_PX);
-  return clamp(bounds.right - width, MENU_VIEWPORT_PADDING_PX, maxLeft);
-}
-
-function measureMenuTop(
-  bounds: DOMRect,
-  viewportBounds: { readonly top: number; readonly bottom: number },
-  placement: MenuPlacement,
-  maxHeight: number
-): number {
-  if (placement === "up") {
-    return Math.max(viewportBounds.top + MENU_VIEWPORT_PADDING_PX, bounds.top - maxHeight - MENU_GAP_PX);
-  }
-
-  return Math.min(bounds.bottom + MENU_GAP_PX, viewportBounds.bottom - MENU_VIEWPORT_PADDING_PX - maxHeight);
-}
-
-function measureMenuLayout(container: HTMLDivElement, optionCount: number): MenuLayout {
-  const bounds = container.getBoundingClientRect();
-  const viewportBounds = getMenuViewportBounds(container);
-  const estimatedHeight = MENU_HEADER_HEIGHT_PX + MENU_VERTICAL_PADDING_PX + optionCount * MENU_ROW_HEIGHT_PX;
-  const availableBelow = Math.max(viewportBounds.bottom - bounds.bottom - MENU_VIEWPORT_PADDING_PX, MENU_MIN_HEIGHT_PX);
-  const availableAbove = Math.max(bounds.top - viewportBounds.top - MENU_VIEWPORT_PADDING_PX, MENU_MIN_HEIGHT_PX);
-  const shouldOpenUp = availableBelow < estimatedHeight && availableAbove >= availableBelow;
-  const availableHeight = shouldOpenUp ? availableAbove : availableBelow;
-  const placement = shouldOpenUp ? "up" : "down";
-  const maxHeight = Math.max(Math.min(availableHeight - MENU_GAP_PX, MENU_MAX_HEIGHT_PX), MENU_MIN_HEIGHT_PX);
-  const width = measureMenuWidth(bounds);
-
-  return {
-    placement,
-    maxHeight,
-    left: measureMenuLeft(bounds, width),
-    top: measureMenuTop(bounds, viewportBounds, placement, maxHeight),
-    width,
-  };
-}
-
-function useSettingsSelectMenuLayout(optionCount: number, menuOpen: boolean) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [menuLayout, setMenuLayout] = useState<MenuLayout>(DEFAULT_MENU_LAYOUT);
-  const updateMenuLayout = useCallback(() => {
-    const container = containerRef.current;
-    if (container !== null) {
-      setMenuLayout(measureMenuLayout(container, optionCount));
-    }
-  }, [optionCount]);
-
-  useLayoutEffect(() => {
-    if (!menuOpen) {
-      return undefined;
-    }
-    updateMenuLayout();
-    window.addEventListener("resize", updateMenuLayout);
-    window.addEventListener("scroll", updateMenuLayout, true);
-    return () => {
-      window.removeEventListener("resize", updateMenuLayout);
-      window.removeEventListener("scroll", updateMenuLayout, true);
-    };
-  }, [menuOpen, updateMenuLayout]);
-
-  return { containerRef, menuLayout, updateMenuLayout };
 }
 
 function SettingsSelectMenu<T extends string>(props: {
@@ -187,7 +71,11 @@ function SettingsSelectMenu<T extends string>(props: {
 
 export function SettingsSelectRow<T extends string>(props: SettingsSelectRowProps<T>): JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { containerRef, menuLayout, updateMenuLayout } = useSettingsSelectMenuLayout(props.options.length, menuOpen);
+  const { containerRef, menuLayout, updateMenuLayout } =
+    useSettingsSelectMenuLayout({
+      menuOpen,
+      optionCount: props.options.length,
+    });
   const menuRef = useRef<HTMLDivElement>(null);
   const selectedOption = findSelectedOption(props.options, props.value);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
