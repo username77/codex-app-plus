@@ -13,10 +13,12 @@ const {
   mockedUseWorkspaceGit,
   mockedUseTerminalController,
   mockedUseWorkspaceSwitchTracker,
+  mockedUseVirtualizer,
 } = vi.hoisted(() => ({
   mockedUseWorkspaceGit: vi.fn(),
   mockedUseTerminalController: vi.fn(),
   mockedUseWorkspaceSwitchTracker: vi.fn(),
+  mockedUseVirtualizer: vi.fn(),
 }));
 vi.mock("../../terminal/ui/TerminalDock", () => ({ TerminalDock: () => null }));
 vi.mock("../../terminal/ui/TerminalPanel", () => ({ TerminalPanel: () => null }));
@@ -26,6 +28,19 @@ vi.mock("../../terminal/hooks/useTerminalController", () => ({
 vi.mock("../../git/hooks/useWorkspaceGit", () => ({ useWorkspaceGit: mockedUseWorkspaceGit }));
 vi.mock("../hooks/useWorkspaceSwitchTracker", () => ({
   useWorkspaceSwitchTracker: mockedUseWorkspaceSwitchTracker,
+}));
+vi.mock("@tanstack/react-virtual", () => ({
+  useVirtualizer: mockedUseVirtualizer,
+}));
+
+mockedUseVirtualizer.mockImplementation(({ count }: { readonly count: number }) => ({
+  getTotalSize: () => count * 280,
+  getVirtualItems: () => Array.from({ length: count }, (_, index) => ({
+    index,
+    start: index * 280,
+  })),
+  measureElement: () => undefined,
+  scrollToIndex: () => undefined,
 }));
 
 const DEFAULT_GIT_BRANCH_PREFIX = "codex/";

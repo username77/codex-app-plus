@@ -55,7 +55,7 @@ export interface HomeViewProps {
   readonly appServerClient: AppServerClient;
   readonly hostBridge: HostBridge;
   readonly busy: boolean;
-  readonly inputText: string;
+  readonly inputText?: string;
   readonly roots: ReadonlyArray<WorkspaceRoot>;
   readonly selectedRootId: string | null;
   readonly selectedRootName: string;
@@ -71,7 +71,7 @@ export interface HomeViewProps {
   readonly isResponding: boolean;
   readonly interruptPending: boolean;
   readonly activities: ReadonlyArray<TimelineEntry>;
-  readonly banners: ReadonlyArray<UiBanner>;
+  readonly banners?: ReadonlyArray<UiBanner>;
   readonly account: AccountSummary | null;
   readonly rateLimitSummary: string | null;
   readonly queuedFollowUps: ReadonlyArray<QueuedFollowUp>;

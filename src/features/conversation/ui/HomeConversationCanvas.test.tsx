@@ -11,6 +11,24 @@ import type { Turn } from "../../../protocol/generated/v2/Turn";
 import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
 import { HomeConversationCanvas } from "./HomeConversationCanvas";
 
+const { mockedUseVirtualizer } = vi.hoisted(() => ({
+  mockedUseVirtualizer: vi.fn(),
+}));
+
+vi.mock("@tanstack/react-virtual", () => ({
+  useVirtualizer: mockedUseVirtualizer,
+}));
+
+mockedUseVirtualizer.mockImplementation(({ count }: { readonly count: number }) => ({
+  getTotalSize: () => count * 280,
+  getVirtualItems: () => Array.from({ length: count }, (_, index) => ({
+    index,
+    start: index * 280,
+  })),
+  measureElement: () => undefined,
+  scrollToIndex: () => undefined,
+}));
+
 const TOKEN_USAGE: ThreadTokenUsage = {
   total: { totalTokens: 14996, inputTokens: 14791, cachedInputTokens: 0, outputTokens: 205, reasoningOutputTokens: 0 },
   last: { totalTokens: 205, inputTokens: 0, cachedInputTokens: 0, outputTokens: 205, reasoningOutputTokens: 0 },

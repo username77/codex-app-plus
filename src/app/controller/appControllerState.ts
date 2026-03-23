@@ -14,7 +14,6 @@ export interface HomeScreenState {
   readonly authLoginPending: boolean;
   readonly authMode: AppState["authMode"];
   readonly authStatus: AppState["authStatus"];
-  readonly banners: AppState["banners"];
   readonly bootstrapBusy: boolean;
   readonly collaborationModes: AppState["collaborationModes"];
   readonly configSnapshot: AppState["configSnapshot"];
@@ -22,7 +21,6 @@ export interface HomeScreenState {
   readonly experimentalFeatures: AppState["experimentalFeatures"];
   readonly fatalError: AppState["fatalError"];
   readonly initialized: boolean;
-  readonly inputText: AppState["inputText"];
   readonly rateLimits: AppState["rateLimits"];
   readonly retryScheduledAt: AppState["retryScheduledAt"];
   readonly workspaceSwitch: AppState["workspaceSwitch"];
@@ -76,7 +74,6 @@ function selectHomeScreenState(state: AppState): HomeScreenState {
     authLoginPending: state.authLogin.pending,
     authMode: state.authMode,
     authStatus: state.authStatus,
-    banners: state.banners,
     bootstrapBusy: state.bootstrapBusy,
     collaborationModes: state.collaborationModes,
     configSnapshot: state.configSnapshot,
@@ -84,7 +81,6 @@ function selectHomeScreenState(state: AppState): HomeScreenState {
     experimentalFeatures: state.experimentalFeatures,
     fatalError: state.fatalError,
     initialized: state.initialized,
-    inputText: state.inputText,
     rateLimits: state.rateLimits,
     retryScheduledAt: state.retryScheduledAt,
     workspaceSwitch: state.workspaceSwitch,
@@ -96,7 +92,6 @@ function isHomeScreenStateEqual(left: HomeScreenState, right: HomeScreenState): 
     && left.authLoginPending === right.authLoginPending
     && left.authMode === right.authMode
     && left.authStatus === right.authStatus
-    && Object.is(left.banners, right.banners)
     && left.bootstrapBusy === right.bootstrapBusy
     && Object.is(left.collaborationModes, right.collaborationModes)
     && Object.is(left.configSnapshot, right.configSnapshot)
@@ -104,7 +99,6 @@ function isHomeScreenStateEqual(left: HomeScreenState, right: HomeScreenState): 
     && Object.is(left.experimentalFeatures, right.experimentalFeatures)
     && left.fatalError === right.fatalError
     && left.initialized === right.initialized
-    && left.inputText === right.inputText
     && Object.is(left.rateLimits, right.rateLimits)
     && left.retryScheduledAt === right.retryScheduledAt
     && Object.is(left.workspaceSwitch, right.workspaceSwitch);

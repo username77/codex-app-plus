@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComposerPermissionLevel } from "../../composer/model/composerPermission";
 import type { ComposerModelOption, ComposerSelection } from "../../composer/model/composerPreferences";
 import type { ThreadDetailLevel } from "../../settings/hooks/useAppPreferences";
@@ -6,6 +6,7 @@ import type { SendTurnOptions } from "../../conversation/hooks/useWorkspaceConve
 import type { HostBridge, WorkspaceOpener } from "../../../bridge/types";
 import type {
   AccountSummary,
+  AppState,
   ConnectionStatus,
   ServerRequestResolution,
   ThreadSummary,
@@ -21,24 +22,27 @@ import type {
 } from "../../../domain/timeline";
 import type { AppServerClient } from "../../../protocol/appServerClient";
 import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
+import { useAppSelector } from "../../../state/store";
 import { HomeConversationCanvas } from "../../conversation/ui/HomeConversationCanvas";
-import { HomeComposer } from "../../composer/ui/HomeComposer";
-import { HomeMainToolbar } from "./HomeMainToolbar";
-import { HomePlanRequestComposer } from "../../composer/ui/HomePlanRequestComposer";
 import { HomeTurnPlanDrawer } from "../../conversation/ui/HomeTurnPlanDrawer";
 import { HomeUserInputPrompt } from "../../conversation/ui/HomeUserInputPrompt";
+import { HomeComposer } from "../../composer/ui/HomeComposer";
+import { HomePlanRequestComposer } from "../../composer/ui/HomePlanRequestComposer";
 import { createComposerCommandBridge } from "../../composer/service/composerCommandBridge";
-import type { WorkspaceLaunchScriptsState } from "../hooks/useWorkspaceLaunchScripts";
-import type { WorkspaceGitController } from "../../git/model/types";
 import { GitCommitDialog } from "../../git/ui/GitCommitDialog";
+import type { WorkspaceGitController } from "../../git/model/types";
+import type { WorkspaceRoot } from "../../workspace/hooks/useWorkspaceRoots";
+import type { WorkspaceLaunchScriptsState } from "../hooks/useWorkspaceLaunchScripts";
 import { extractConnectionRetryInfo } from "../model/homeConnectionRetry";
 import {
   createTurnPlanChangeKey,
   deriveHomeViewMainContentState,
 } from "../model/homeViewMainContentModel";
-import { HomeBannerStack } from "./HomeBannerStack";
+import { HomeBannerStack, selectVisibleHomeBanners } from "./HomeBannerStack";
+import { HomeMainToolbar } from "./HomeMainToolbar";
 import { HomeWorkspaceEmptyState } from "./HomeWorkspaceEmptyState";
-import type { WorkspaceRoot } from "../../workspace/hooks/useWorkspaceRoots";
+
+const EMPTY_BANNERS: ReadonlyArray<UiBanner> = [];
 
 interface PlanPromptTurnOptions {
   readonly text: string;
@@ -52,9 +56,9 @@ export interface HomeViewMainContentProps {
   readonly appServerClient: AppServerClient;
   readonly hostBridge: HostBridge;
   readonly gitController: WorkspaceGitController;
-  readonly inputText: string;
+  readonly inputText?: string;
   readonly activities: ReadonlyArray<TimelineEntry>;
-  readonly banners: ReadonlyArray<UiBanner>;
+  readonly banners?: ReadonlyArray<UiBanner>;
   readonly account: AccountSummary | null;
   readonly rateLimitSummary: string | null;
   readonly queuedFollowUps: ReadonlyArray<QueuedFollowUp>;
@@ -110,25 +114,259 @@ export interface HomeViewMainContentProps {
   readonly onDismissBanner: (bannerId: string) => void;
 }
 
-export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Element {
+function alwaysEqual<T>(_left: T, _right: T): boolean {
+  return true;
+}
+
+function createVisibleBannerSelector() {
+  let previousBanners: ReadonlyArray<UiBanner> | null = null;
+  let previousVisibleBanners = EMPTY_BANNERS;
+  return (state: AppState): ReadonlyArray<UiBanner> => {
+    if (state.banners === previousBanners) {
+      return previousVisibleBanners;
+    }
+    previousBanners = state.banners;
+    previousVisibleBanners = selectVisibleHomeBanners(state.banners);
+    return previousVisibleBanners;
+  };
+}
+
+function useHomeComposerInputText(inputText?: string): string {
+  const selectedInputText = useAppSelector(
+    (state) => state.inputText,
+    inputText === undefined ? Object.is : alwaysEqual,
+  );
+  return inputText ?? selectedInputText;
+}
+
+function useHomeVisibleBanners(
+  banners?: ReadonlyArray<UiBanner>,
+): ReadonlyArray<UiBanner> {
+  const selector = useMemo(createVisibleBannerSelector, []);
+  const selectedBanners = useAppSelector(
+    selector,
+    banners === undefined ? Object.is : alwaysEqual,
+  );
+  return banners === undefined ? selectedBanners : selectVisibleHomeBanners(banners);
+}
+
+interface HomeToolbarSectionProps {
+  readonly conversationActive: boolean;
+  readonly diffOpen: boolean;
+  readonly gitController: WorkspaceGitController;
+  readonly hostBridge: HostBridge;
+  readonly launchState: WorkspaceLaunchScriptsState | null;
+  readonly onSelectWorkspaceOpener: (opener: WorkspaceOpener) => void;
+  readonly onToggleDiff: () => void;
+  readonly onToggleTerminal: () => void;
+  readonly selectedRootName: string;
+  readonly selectedRootPath: string | null;
+  readonly selectedThreadTitle: string | null;
+  readonly terminalOpen: boolean;
+  readonly workspaceOpener: WorkspaceOpener;
+  readonly workspaceSwitch: WorkspaceSwitchState;
+}
+
+const HomeToolbarSection = memo(function HomeToolbarSection(
+  props: HomeToolbarSectionProps,
+): JSX.Element {
+  return (
+    <>
+      <HomeMainToolbar
+        hostBridge={props.hostBridge}
+        conversationActive={props.conversationActive}
+        gitController={props.gitController}
+        launchState={props.launchState}
+        workspaceOpener={props.workspaceOpener}
+        selectedRootName={props.selectedRootName}
+        selectedRootPath={props.selectedRootPath}
+        selectedThreadTitle={props.selectedThreadTitle}
+        terminalOpen={props.terminalOpen}
+        diffOpen={props.diffOpen}
+        workspaceSwitching={props.workspaceSwitch.phase === "switching"}
+        onSelectWorkspaceOpener={props.onSelectWorkspaceOpener}
+        onToggleDiff={props.onToggleDiff}
+        onToggleTerminal={props.onToggleTerminal}
+      />
+      <GitCommitDialog controller={props.gitController} />
+    </>
+  );
+});
+
+interface HomeBannerSectionProps {
+  readonly banners?: ReadonlyArray<UiBanner>;
+  readonly onDismissBanner: (bannerId: string) => void;
+}
+
+const HomeBannerSection = memo(function HomeBannerSection(
+  props: HomeBannerSectionProps,
+): JSX.Element | null {
+  const banners = useHomeVisibleBanners(props.banners);
+  return (
+    <HomeBannerStack
+      banners={banners}
+      onDismissBanner={props.onDismissBanner}
+    />
+  );
+});
+
+interface HomeConversationSectionProps {
+  readonly activities: ReadonlyArray<TimelineEntry>;
+  readonly activeTurnId: string | null;
+  readonly busy: boolean;
+  readonly connectionRetryInfo: ReturnType<typeof extractConnectionRetryInfo>["retryInfo"];
+  readonly connectionStatus: ConnectionStatus;
+  readonly conversationActive: boolean;
+  readonly fatalError: string | null;
+  readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
+  readonly onRetryConnection: () => Promise<void>;
+  readonly onSelectRoot: (rootId: string) => void;
+  readonly placeholder: { readonly title: string; readonly body: string } | null;
+  readonly retryScheduledAt: number | null;
+  readonly roots: ReadonlyArray<WorkspaceRoot>;
+  readonly selectedRootId: string | null;
+  readonly selectedRootName: string;
+  readonly selectedRootPath: string | null;
+  readonly selectedThread: ThreadSummary | null;
+  readonly threadDetailLevel: ThreadDetailLevel;
+  readonly turnStatuses?: Readonly<Record<string, TurnStatus>>;
+  readonly workspaceSwitch: WorkspaceSwitchState;
+}
+
+const HomeConversationSection = memo(function HomeConversationSection(
+  props: HomeConversationSectionProps,
+): JSX.Element {
+  if (!props.conversationActive) {
+    return (
+      <HomeWorkspaceEmptyState
+        roots={props.roots}
+        selectedRootId={props.selectedRootId}
+        selectedRootName={props.selectedRootName}
+        selectedRootPath={props.selectedRootPath}
+        switchState={props.workspaceSwitch}
+        onSelectRoot={props.onSelectRoot}
+      />
+    );
+  }
+
+  return (
+    <HomeConversationCanvas
+      activities={props.activities}
+      selectedThread={props.selectedThread}
+      activeTurnId={props.activeTurnId}
+      turnStatuses={props.turnStatuses}
+      threadDetailLevel={props.threadDetailLevel}
+      placeholder={props.placeholder}
+      onResolveServerRequest={props.onResolveServerRequest}
+      connectionStatus={props.connectionStatus}
+      connectionRetryInfo={props.connectionRetryInfo}
+      fatalError={props.fatalError}
+      retryScheduledAt={props.retryScheduledAt}
+      busy={props.busy}
+      onRetryConnection={props.onRetryConnection}
+    />
+  );
+});
+
+interface HomeComposerSectionProps {
+  readonly appServerClient: AppServerClient;
+  readonly appServerReady?: boolean;
+  readonly busy: boolean;
+  readonly collaborationPreset: CollaborationPreset;
+  readonly composerEnterBehavior: ComposerEnterBehavior;
+  readonly composerPermissionLevel: ComposerPermissionLevel;
+  readonly defaultEffort: ComposerSelection["effort"];
+  readonly defaultModel: string | null;
+  readonly defaultServiceTier?: ComposerSelection["serviceTier"];
+  readonly followUpQueueMode: FollowUpMode;
+  readonly gitController: WorkspaceGitController;
+  readonly inputText?: string;
+  readonly interruptPending: boolean;
+  readonly isResponding: boolean;
+  readonly models: ReadonlyArray<ComposerModelOption>;
+  readonly multiAgentAvailable?: boolean;
+  readonly multiAgentEnabled?: boolean;
+  readonly onClearQueuedFollowUps: () => void;
+  readonly onCreateThread: () => Promise<void>;
+  readonly onInputChange: (text: string) => void;
+  readonly onInterruptTurn: () => Promise<void>;
+  readonly onLogout: () => Promise<void>;
+  readonly onPersistComposerSelection: (selection: ComposerSelection) => Promise<void>;
+  readonly onPromoteQueuedFollowUp: (followUpId: string) => Promise<void>;
+  readonly onRemoveQueuedFollowUp: (followUpId: string) => void;
+  readonly onSelectCollaborationPreset: (preset: CollaborationPreset) => void;
+  readonly onSelectComposerPermissionLevel: (level: ComposerPermissionLevel) => void;
+  readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
+  readonly onSetMultiAgentEnabled?: (enabled: boolean) => Promise<void>;
+  readonly onToggleDiff: () => void;
+  readonly onUpdateThreadBranch: (branch: string) => Promise<void>;
+  readonly queuedFollowUps: ReadonlyArray<QueuedFollowUp>;
+  readonly selectedRootPath: string | null;
+  readonly selectedThread: ThreadSummary | null;
+}
+
+const HomeComposerSection = memo(function HomeComposerSection(
+  props: HomeComposerSectionProps,
+): JSX.Element {
   const composerCommandBridge = useMemo(
     () => createComposerCommandBridge(props.appServerClient),
     [props.appServerClient],
   );
+  const inputText = useHomeComposerInputText(props.inputText);
+
+  return (
+    <HomeComposer
+      appServerReady={props.appServerReady}
+      busy={props.busy}
+      inputText={inputText}
+      collaborationPreset={props.collaborationPreset}
+      models={props.models}
+      defaultModel={props.defaultModel}
+      defaultEffort={props.defaultEffort}
+      defaultServiceTier={props.defaultServiceTier ?? null}
+      selectedRootPath={props.selectedRootPath}
+      queuedFollowUps={props.queuedFollowUps}
+      followUpQueueMode={props.followUpQueueMode}
+      composerEnterBehavior={props.composerEnterBehavior}
+      permissionLevel={props.composerPermissionLevel}
+      gitController={props.gitController}
+      selectedThreadId={props.selectedThread?.id ?? null}
+      selectedThreadBranch={props.selectedThread?.branch ?? null}
+      isResponding={props.isResponding}
+      interruptPending={props.interruptPending}
+      composerCommandBridge={composerCommandBridge}
+      onSelectCollaborationPreset={props.onSelectCollaborationPreset}
+      onInputChange={props.onInputChange}
+      onCreateThread={props.onCreateThread}
+      onSendTurn={props.onSendTurn}
+      onPersistComposerSelection={props.onPersistComposerSelection}
+      multiAgentAvailable={props.multiAgentAvailable ?? false}
+      multiAgentEnabled={props.multiAgentEnabled ?? false}
+      onSetMultiAgentEnabled={props.onSetMultiAgentEnabled}
+      onSelectPermissionLevel={props.onSelectComposerPermissionLevel}
+      onToggleDiff={props.onToggleDiff}
+      onUpdateThreadBranch={props.onUpdateThreadBranch}
+      onInterruptTurn={props.onInterruptTurn}
+      onLogout={props.onLogout}
+      onPromoteQueuedFollowUp={props.onPromoteQueuedFollowUp}
+      onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
+      onClearQueuedFollowUps={props.onClearQueuedFollowUps}
+    />
+  );
+});
+
+export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Element {
   const derivedState = useMemo(
     () => deriveHomeViewMainContentState({
       activities: props.activities,
-      banners: props.banners,
       selectedConversationLoading: props.selectedConversationLoading,
       selectedThread: props.selectedThread,
     }),
-    [props.activities, props.banners, props.selectedConversationLoading, props.selectedThread],
+    [props.activities, props.selectedConversationLoading, props.selectedThread],
   );
   const [planDrawerCollapsed, setPlanDrawerCollapsed] = useState(true);
   const [dismissedPlanPromptId, setDismissedPlanPromptId] = useState<string | null>(null);
   const planSnapshotKeyRef = useRef<string | null>(null);
-
-  const workspaceSwitching = props.workspaceSwitch.phase === "switching";
 
   useEffect(() => {
     if (derivedState.currentTurnPlan === null) {
@@ -177,7 +415,7 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
 
   return (
     <div className="replica-main">
-      <HomeMainToolbar
+      <HomeToolbarSection
         hostBridge={props.hostBridge}
         conversationActive={derivedState.conversationActive}
         gitController={props.gitController}
@@ -188,42 +426,37 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
         selectedThreadTitle={props.selectedThread?.title ?? null}
         terminalOpen={props.terminalOpen}
         diffOpen={props.diffOpen}
-        workspaceSwitching={workspaceSwitching}
+        workspaceSwitch={props.workspaceSwitch}
         onSelectWorkspaceOpener={props.onSelectWorkspaceOpener}
         onToggleDiff={props.onToggleDiff}
         onToggleTerminal={props.onToggleTerminal}
       />
-      <HomeBannerStack
-        banners={derivedState.visibleBanners}
+      <HomeBannerSection
+        banners={props.banners}
         onDismissBanner={props.onDismissBanner}
       />
-      <GitCommitDialog controller={props.gitController} />
-      {derivedState.conversationActive ? (
-        <HomeConversationCanvas
-          activities={derivedState.renderableActivities}
-          selectedThread={props.selectedThread}
-          activeTurnId={props.activeTurnId}
-          turnStatuses={props.turnStatuses}
-          threadDetailLevel={props.threadDetailLevel}
-          placeholder={derivedState.placeholder}
-          onResolveServerRequest={props.onResolveServerRequest}
-          connectionStatus={props.connectionStatus}
-          connectionRetryInfo={props.connectionRetryInfo}
-          fatalError={props.fatalError}
-          retryScheduledAt={props.retryScheduledAt}
-          busy={props.busy}
-          onRetryConnection={props.onRetryConnection}
-        />
-      ) : (
-        <HomeWorkspaceEmptyState
-          roots={props.roots}
-          selectedRootId={props.selectedRootId}
-          selectedRootName={props.selectedRootName}
-          selectedRootPath={props.selectedRootPath}
-          switchState={props.workspaceSwitch}
-          onSelectRoot={props.onSelectRoot}
-        />
-      )}
+      <HomeConversationSection
+        activities={derivedState.renderableActivities}
+        activeTurnId={props.activeTurnId}
+        busy={props.busy}
+        connectionRetryInfo={props.connectionRetryInfo}
+        connectionStatus={props.connectionStatus}
+        conversationActive={derivedState.conversationActive}
+        fatalError={props.fatalError}
+        onResolveServerRequest={props.onResolveServerRequest}
+        onRetryConnection={props.onRetryConnection}
+        onSelectRoot={props.onSelectRoot}
+        placeholder={derivedState.placeholder}
+        retryScheduledAt={props.retryScheduledAt}
+        roots={props.roots}
+        selectedRootId={props.selectedRootId}
+        selectedRootName={props.selectedRootName}
+        selectedRootPath={props.selectedRootPath}
+        selectedThread={props.selectedThread}
+        threadDetailLevel={props.threadDetailLevel}
+        turnStatuses={props.turnStatuses}
+        workspaceSwitch={props.workspaceSwitch}
+      />
       <HomeTurnPlanDrawer
         plan={derivedState.currentTurnPlan}
         collapsed={planDrawerCollapsed}
@@ -245,45 +478,47 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
             collaborationPreset: "default",
             collaborationModeOverridePreset: "default",
           })}
-          onRefine={(notes) => sendPlanPromptTurn({ text: notes, collaborationPreset: "plan" })}
+          onRefine={(notes) => sendPlanPromptTurn({
+            text: notes,
+            collaborationPreset: "plan",
+          })}
         />
       ) : (
-        <HomeComposer
+        <HomeComposerSection
+          appServerClient={props.appServerClient}
           appServerReady={props.appServerReady}
           busy={props.busy}
-          inputText={props.inputText}
           collaborationPreset={props.collaborationPreset}
-          models={props.models}
-          defaultModel={props.defaultModel}
-          defaultEffort={props.defaultEffort}
-          defaultServiceTier={props.defaultServiceTier ?? null}
-          selectedRootPath={props.selectedRootPath}
-          queuedFollowUps={props.queuedFollowUps}
-          followUpQueueMode={props.followUpQueueMode}
           composerEnterBehavior={props.composerEnterBehavior}
-          permissionLevel={props.composerPermissionLevel}
+          composerPermissionLevel={props.composerPermissionLevel}
+          defaultEffort={props.defaultEffort}
+          defaultModel={props.defaultModel}
+          defaultServiceTier={props.defaultServiceTier ?? null}
+          followUpQueueMode={props.followUpQueueMode}
           gitController={props.gitController}
-          selectedThreadId={props.selectedThread?.id ?? null}
-          selectedThreadBranch={props.selectedThread?.branch ?? null}
-          isResponding={props.isResponding}
+          inputText={props.inputText}
           interruptPending={props.interruptPending}
-          composerCommandBridge={composerCommandBridge}
-          onSelectCollaborationPreset={props.onSelectCollaborationPreset}
-          onInputChange={props.onInputChange}
-          onCreateThread={props.onCreateThread}
-          onSendTurn={props.onSendTurn}
-          onPersistComposerSelection={props.onPersistComposerSelection}
+          isResponding={props.isResponding}
+          models={props.models}
           multiAgentAvailable={props.multiAgentAvailable ?? false}
           multiAgentEnabled={props.multiAgentEnabled ?? false}
-          onSetMultiAgentEnabled={props.onSetMultiAgentEnabled}
-          onSelectPermissionLevel={props.onSelectComposerPermissionLevel}
-          onToggleDiff={props.onToggleDiff}
-          onUpdateThreadBranch={props.onUpdateThreadBranch}
+          onClearQueuedFollowUps={props.onClearQueuedFollowUps}
+          onCreateThread={props.onCreateThread}
+          onInputChange={props.onInputChange}
           onInterruptTurn={props.onInterruptTurn}
           onLogout={props.onLogout}
+          onPersistComposerSelection={props.onPersistComposerSelection}
           onPromoteQueuedFollowUp={props.onPromoteQueuedFollowUp}
           onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
-          onClearQueuedFollowUps={props.onClearQueuedFollowUps}
+          onSelectCollaborationPreset={props.onSelectCollaborationPreset}
+          onSelectComposerPermissionLevel={props.onSelectComposerPermissionLevel}
+          onSendTurn={props.onSendTurn}
+          onSetMultiAgentEnabled={props.onSetMultiAgentEnabled}
+          onToggleDiff={props.onToggleDiff}
+          onUpdateThreadBranch={props.onUpdateThreadBranch}
+          queuedFollowUps={props.queuedFollowUps}
+          selectedRootPath={props.selectedRootPath}
+          selectedThread={props.selectedThread}
         />
       )}
     </div>

@@ -90,7 +90,6 @@ export function HomeScreen(props: HomeScreenProps): JSX.Element {
       appServerClient={appServerClient}
       hostBridge={props.hostBridge}
       busy={state.bootstrapBusy}
-      inputText={state.inputText}
       roots={props.workspace.roots}
       selectedRootId={props.workspace.selectedRootId}
       selectedRootName={selectedRootName}
@@ -104,7 +103,6 @@ export function HomeScreen(props: HomeScreenProps): JSX.Element {
       isResponding={conversation.isResponding}
       interruptPending={conversation.interruptPending}
       activities={conversation.activities}
-      banners={state.banners}
       account={state.account}
       rateLimitSummary={createRateLimitSummary(state.rateLimits)}
       queuedFollowUps={conversation.queuedFollowUps}

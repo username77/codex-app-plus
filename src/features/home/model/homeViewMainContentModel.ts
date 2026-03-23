@@ -1,5 +1,5 @@
 import type { PendingUserInputEntry, TimelineEntry } from "../../../domain/timeline";
-import type { ThreadSummary, UiBanner } from "../../../domain/types";
+import type { ThreadSummary } from "../../../domain/types";
 import {
   createTurnPlanModel,
   type TurnPlanModel,
@@ -9,8 +9,6 @@ import {
   selectLatestPlanModePrompt,
   type PlanModePromptModel,
 } from "../../composer/model/planModePrompt";
-import { selectVisibleHomeBanners } from "../ui/HomeBannerStack";
-
 interface HomeConversationPlaceholder {
   readonly title: string;
   readonly body: string;
@@ -18,7 +16,6 @@ interface HomeConversationPlaceholder {
 
 interface DeriveHomeViewMainContentStateOptions {
   readonly activities: ReadonlyArray<TimelineEntry>;
-  readonly banners: ReadonlyArray<UiBanner>;
   readonly selectedConversationLoading: boolean;
   readonly selectedThread: ThreadSummary | null;
 }
@@ -30,7 +27,6 @@ export interface HomeViewMainContentState {
   readonly pendingUserInput: PendingUserInputEntry | null;
   readonly placeholder: HomeConversationPlaceholder | null;
   readonly renderableActivities: ReadonlyArray<TimelineEntry>;
-  readonly visibleBanners: ReadonlyArray<UiBanner>;
 }
 
 const LOADING_PLACEHOLDER: HomeConversationPlaceholder = {
@@ -46,7 +42,7 @@ const OPEN_THREAD_PLACEHOLDER: HomeConversationPlaceholder = {
 export function deriveHomeViewMainContentState(
   options: DeriveHomeViewMainContentStateOptions,
 ): HomeViewMainContentState {
-  const { activities, banners, selectedConversationLoading, selectedThread } = options;
+  const { activities, selectedConversationLoading, selectedThread } = options;
   const renderableActivities: TimelineEntry[] = [];
   let currentTurnPlan: TurnPlanModel | null = null;
 
@@ -75,7 +71,6 @@ export function deriveHomeViewMainContentState(
         ? OPEN_THREAD_PLACEHOLDER
         : null,
     renderableActivities,
-    visibleBanners: selectVisibleHomeBanners(banners),
   };
 }
 

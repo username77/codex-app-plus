@@ -1,12 +1,25 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type { ThreadDetailLevel } from "../../settings/hooks/useAppPreferences";
-import type { ConnectionStatus, ServerRequestResolution, ThreadSummary, TimelineEntry } from "../../../domain/types";
+import type {
+  ConnectionStatus,
+  ServerRequestResolution,
+  ThreadSummary,
+  TimelineEntry,
+} from "../../../domain/types";
 import type { TurnStatus } from "../../../protocol/generated/v2/TurnStatus";
+import type { ConnectionRetryInfo } from "../../home/model/homeConnectionRetry";
+import {
+  flattenConversationRenderGroup,
+  splitActivitiesIntoRenderGroups,
+} from "../model/localConversationGroups";
+import { HomeConnectionStatusToast } from "../../home/ui/HomeConnectionStatusToast";
 import { HomeTimelineEntry } from "./HomeTimelineEntry";
 import { HomeTurnThinkingIndicator } from "./HomeTurnThinkingIndicator";
-import { HomeConnectionStatusToast } from "../../home/ui/HomeConnectionStatusToast";
-import type { ConnectionRetryInfo } from "../../home/model/homeConnectionRetry";
-import { flattenConversationRenderGroup, splitActivitiesIntoRenderGroups } from "../model/localConversationGroups";
+
+const INITIAL_VIEWPORT_HEIGHT = 720;
+const GROUP_ESTIMATED_HEIGHT = 260;
+const GROUP_OVERSCAN = 6;
 
 interface HomeConversationCanvasProps {
   readonly activities: ReadonlyArray<TimelineEntry>;
@@ -15,7 +28,9 @@ interface HomeConversationCanvasProps {
   readonly turnStatuses?: Readonly<Record<string, TurnStatus>>;
   readonly threadDetailLevel: ThreadDetailLevel;
   readonly placeholder: { readonly title: string; readonly body: string } | null;
-  readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
+  readonly onResolveServerRequest: (
+    resolution: ServerRequestResolution,
+  ) => Promise<void>;
   readonly connectionStatus: ConnectionStatus;
   readonly connectionRetryInfo: ConnectionRetryInfo | null;
   readonly fatalError: string | null;
@@ -31,40 +46,119 @@ interface RenderGroup {
   readonly turnStatus: TurnStatus | null;
 }
 
-export function HomeConversationCanvas(props: HomeConversationCanvasProps): JSX.Element {
+function useMeasuredRenderGroups(groups: ReadonlyArray<RenderGroup>) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const nodeByKeyRef = useRef(new Map<string, HTMLDivElement>());
+  const observerByKeyRef = useRef(new Map<string, ResizeObserver>());
+  const rowVirtualizer = useVirtualizer({
+    count: groups.length,
+    getItemKey: (index) => groups[index]?.key ?? String(index),
+    getScrollElement: () => scrollRef.current,
+    initialRect: { width: 0, height: INITIAL_VIEWPORT_HEIGHT },
+    estimateSize: () => GROUP_ESTIMATED_HEIGHT,
+    overscan: GROUP_OVERSCAN,
+  });
+
+  const setGroupRef = useCallback((key: string, node: HTMLDivElement | null) => {
+    const previousNode = nodeByKeyRef.current.get(key) ?? null;
+    if (previousNode !== null && previousNode !== node) {
+      observerByKeyRef.current.get(key)?.disconnect();
+      observerByKeyRef.current.delete(key);
+      nodeByKeyRef.current.delete(key);
+    }
+    if (node === null) {
+      return;
+    }
+    nodeByKeyRef.current.set(key, node);
+    rowVirtualizer.measureElement(node);
+    if (observerByKeyRef.current.has(key)) {
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      rowVirtualizer.measureElement(node);
+    });
+    observer.observe(node);
+    observerByKeyRef.current.set(key, observer);
+  }, [rowVirtualizer]);
+
+  useEffect(() => () => {
+    for (const observer of observerByKeyRef.current.values()) {
+      observer.disconnect();
+    }
+    observerByKeyRef.current.clear();
+    nodeByKeyRef.current.clear();
+  }, []);
+
+  return { rowVirtualizer, scrollRef, setGroupRef };
+}
+
+export function HomeConversationCanvas(
+  props: HomeConversationCanvasProps,
+): JSX.Element {
   const renderGroups = useMemo(
-    () => createRenderGroups(props.activities, props.activeTurnId, props.turnStatuses ?? {}, props.threadDetailLevel),
-    [props.activities, props.activeTurnId, props.turnStatuses, props.threadDetailLevel]
+    () => createRenderGroups(
+      props.activities,
+      props.activeTurnId,
+      props.turnStatuses ?? {},
+      props.threadDetailLevel,
+    ),
+    [props.activities, props.activeTurnId, props.turnStatuses, props.threadDetailLevel],
   );
   const scrollKey = useMemo(() => createScrollKey(renderGroups), [renderGroups]);
+  const { rowVirtualizer, scrollRef, setGroupRef } = useMeasuredRenderGroups(
+    renderGroups,
+  );
 
   useEffect(() => {
     const element = scrollRef.current;
-    if (element !== null) {
-      element.scrollTop = element.scrollHeight;
+    if (element === null || renderGroups.length === 0) {
+      return;
     }
-  }, [scrollKey]);
+    rowVirtualizer.scrollToIndex(renderGroups.length - 1, { align: "end" });
+    element.scrollTop = element.scrollHeight;
+  }, [renderGroups.length, rowVirtualizer, scrollKey]);
 
   return (
     <main className="home-conversation" aria-label="会话内容">
       <div ref={scrollRef} className="home-conversation-scroll">
-        <div className="home-conversation-thread">
-          {renderGroups.length === 0 ? <ConversationPlaceholder placeholder={props.placeholder} /> : null}
-          {renderGroups.map((group) => (
-            <section key={group.key} className="home-turn-group">
-              {group.nodes.map((node) => (
-                <HomeTimelineEntry
-                  key={node.key}
-                  node={node}
-                  turnStatus={group.turnStatus}
-                  onResolveServerRequest={props.onResolveServerRequest}
-                />
-              ))}
-              {group.showThinkingIndicator ? <HomeTurnThinkingIndicator /> : null}
-            </section>
-          ))}
-        </div>
+        {renderGroups.length === 0 ? (
+          <div className="home-conversation-thread">
+            <ConversationPlaceholder placeholder={props.placeholder} />
+          </div>
+        ) : (
+          <div
+            className="home-conversation-thread home-conversation-thread-virtual"
+            style={{ height: rowVirtualizer.getTotalSize() }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const group = renderGroups[virtualRow.index];
+              if (group === undefined) {
+                return null;
+              }
+              return (
+                <div
+                  key={group.key}
+                  className="home-conversation-row"
+                  data-index={virtualRow.index}
+                  ref={(node) => setGroupRef(group.key, node)}
+                  style={{ transform: `translate3d(0, ${virtualRow.start}px, 0)` }}
+                >
+                  <section className="home-turn-group">
+                    {group.nodes.map((node) => (
+                      <HomeTimelineEntry
+                        key={node.key}
+                        node={node}
+                        turnStatus={group.turnStatus}
+                        onResolveServerRequest={props.onResolveServerRequest}
+                      />
+                    ))}
+                    {group.showThinkingIndicator ? <HomeTurnThinkingIndicator /> : null}
+                  </section>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
       <HomeConnectionStatusToast
         connectionStatus={props.connectionStatus}
@@ -103,7 +197,9 @@ function createScrollKey(groups: ReadonlyArray<RenderGroup>): string {
   return `${createLastNodeScrollKey(lastGroup.nodes)}:${lastGroup.showThinkingIndicator ? "thinking" : "idle"}`;
 }
 
-function createLastNodeScrollKey(nodes: ReadonlyArray<RenderGroup["nodes"][number]>): string {
+function createLastNodeScrollKey(
+  nodes: ReadonlyArray<RenderGroup["nodes"][number]>,
+): string {
   const lastNode = nodes[nodes.length - 1];
   if (!lastNode) {
     return "empty";
@@ -124,7 +220,9 @@ function createLastNodeScrollKey(nodes: ReadonlyArray<RenderGroup["nodes"][numbe
   return lastNode.key;
 }
 
-function createTraceScrollKey(node: Extract<RenderGroup["nodes"][number], { kind: "traceItem" }>): string {
+function createTraceScrollKey(
+  node: Extract<RenderGroup["nodes"][number], { kind: "traceItem" }>,
+): string {
   if (node.item.kind === "commandExecution") {
     return `${node.key}:${node.item.status}:${node.item.output.length}`;
   }
@@ -146,7 +244,9 @@ function createTraceScrollKey(node: Extract<RenderGroup["nodes"][number], { kind
   return `${node.key}:${node.item.path}`;
 }
 
-function ConversationPlaceholder(props: { readonly placeholder: HomeConversationCanvasProps["placeholder"] }): JSX.Element {
+function ConversationPlaceholder(props: {
+  readonly placeholder: HomeConversationCanvasProps["placeholder"];
+}): JSX.Element {
   if (props.placeholder !== null) {
     return (
       <div className="home-chat-placeholder">
@@ -159,7 +259,9 @@ function ConversationPlaceholder(props: { readonly placeholder: HomeConversation
   return (
     <div className="home-chat-placeholder">
       <p className="home-chat-placeholder-title">Thread ready</p>
-      <p className="home-chat-placeholder-body">Your turns, tools, approvals, plans, realtime events, and file changes appear here.</p>
+      <p className="home-chat-placeholder-body">
+        Your turns, tools, approvals, plans, realtime events, and file changes appear here.
+      </p>
     </div>
   );
 }

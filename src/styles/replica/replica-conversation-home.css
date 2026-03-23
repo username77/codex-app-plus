@@ -93,6 +93,28 @@
   gap: 16px;
 }
 
+.home-conversation-thread-virtual {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  display: block;
+}
+
+.home-conversation-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding-bottom: 16px;
+}
+
+.home-conversation-row > .home-turn-group {
+  width: var(--conversation-column-inline-size);
+  max-width: 100%;
+}
+
 .home-turn-group {
   display: flex;
   flex-direction: column;
