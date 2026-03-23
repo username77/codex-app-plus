@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { ReceivedNotification } from "../../../domain/types";
+import type { PluginInstallResponse } from "../../../protocol/generated/v2/PluginInstallResponse";
+import type { PluginListResponse } from "../../../protocol/generated/v2/PluginListResponse";
 import type { SkillsListResponse } from "../../../protocol/generated/v2/SkillsListResponse";
-import type { SkillsRemoteReadResponse } from "../../../protocol/generated/v2/SkillsRemoteReadResponse";
 import { SkillsView } from "./SkillsView";
 
 function createInstalledSkillsResponse(enabled = true): SkillsListResponse {
@@ -27,14 +28,44 @@ function createInstalledSkillsResponse(enabled = true): SkillsListResponse {
   };
 }
 
-function createRemoteSkillsResponse(): SkillsRemoteReadResponse {
+function createMarketplacePluginsResponse(): PluginListResponse {
   return {
-    data: [{
-      id: "openai/figma",
-      name: "Figma",
-      description: "Use Figma MCP for design-to-code work",
+    marketplaces: [{
+      name: "official",
+      path: "C:/Users/Administrator/.codex/plugins/marketplaces/official",
+      interface: { displayName: "Official" },
+      plugins: [{
+        id: "openai/figma",
+        name: "figma",
+        source: { type: "local", path: "C:/Users/Administrator/.codex/plugins/official/figma" },
+        installed: false,
+        enabled: false,
+        installPolicy: "AVAILABLE",
+        authPolicy: "ON_USE",
+        interface: {
+          displayName: "Figma",
+          shortDescription: "Use Figma MCP for design-to-code work",
+          longDescription: null,
+          developerName: null,
+          category: null,
+          capabilities: [],
+          websiteUrl: null,
+          privacyPolicyUrl: null,
+          termsOfServiceUrl: null,
+          defaultPrompt: null,
+          brandColor: "#0ea5e9",
+          composerIcon: null,
+          logo: null,
+          screenshots: [],
+        },
+      }],
     }],
+    remoteSyncError: null,
   };
+}
+
+function createPluginInstallResponse(): PluginInstallResponse {
+  return { authPolicy: "ON_USE", appsNeedingAuth: [] };
 }
 
 function renderSkillsView(overrides?: {
@@ -42,17 +73,14 @@ function renderSkillsView(overrides?: {
   readonly authMode?: "apikey" | "chatgpt" | "chatgptAuthTokens" | null;
   readonly notifications?: ReadonlyArray<ReceivedNotification>;
   readonly listSkills?: ReturnType<typeof vi.fn>;
-  readonly listRemoteSkills?: ReturnType<typeof vi.fn>;
+  readonly listMarketplacePlugins?: ReturnType<typeof vi.fn>;
   readonly writeSkillConfig?: ReturnType<typeof vi.fn>;
-  readonly exportRemoteSkill?: ReturnType<typeof vi.fn>;
+  readonly installMarketplacePlugin?: ReturnType<typeof vi.fn>;
 }) {
   const listSkills = overrides?.listSkills ?? vi.fn().mockResolvedValue(createInstalledSkillsResponse());
-  const listRemoteSkills = overrides?.listRemoteSkills ?? vi.fn().mockResolvedValue(createRemoteSkillsResponse());
+  const listMarketplacePlugins = overrides?.listMarketplacePlugins ?? vi.fn().mockResolvedValue(createMarketplacePluginsResponse());
   const writeSkillConfig = overrides?.writeSkillConfig ?? vi.fn().mockResolvedValue({ effectiveEnabled: false });
-  const exportRemoteSkill = overrides?.exportRemoteSkill ?? vi.fn().mockResolvedValue({
-    id: "openai/figma",
-    path: "C:/Users/Administrator/.codex/skills/figma",
-  });
+  const installMarketplacePlugin = overrides?.installMarketplacePlugin ?? vi.fn().mockResolvedValue(createPluginInstallResponse());
 
   const view = render(
     <SkillsView
@@ -63,13 +91,13 @@ function renderSkillsView(overrides?: {
       onBackHome={vi.fn()}
       onOpenLearnMore={vi.fn().mockResolvedValue(undefined)}
       listSkills={listSkills}
-      listRemoteSkills={listRemoteSkills}
+      listMarketplacePlugins={listMarketplacePlugins}
       writeSkillConfig={writeSkillConfig}
-      exportRemoteSkill={exportRemoteSkill}
+      installMarketplacePlugin={installMarketplacePlugin}
     />,
   );
 
-  return { ...view, listSkills, listRemoteSkills, writeSkillConfig, exportRemoteSkill };
+  return { ...view, listSkills, listMarketplacePlugins, writeSkillConfig, installMarketplacePlugin };
 }
 
 describe("SkillsView", () => {
@@ -93,39 +121,40 @@ describe("SkillsView", () => {
     await waitFor(() => expect(screen.getByRole("switch", { name: "Word Docs已禁用" })).toHaveAttribute("aria-checked", "false"));
   });
 
-  it("installs a remote skill and refreshes the installed list", async () => {
+  it("installs a marketplace plugin and refreshes the installed list", async () => {
     const listSkills = vi.fn()
       .mockResolvedValueOnce({ data: [{ cwd: "E:/code/codex-app-plus", errors: [], skills: [] }] })
       .mockResolvedValueOnce(createInstalledSkillsResponse());
-    const exportRemoteSkill = vi.fn().mockResolvedValue({
-      id: "openai/figma",
-      path: "C:/Users/Administrator/.codex/skills/figma",
-    });
-    renderSkillsView({ listSkills, exportRemoteSkill });
+    const installMarketplacePlugin = vi.fn().mockResolvedValue(createPluginInstallResponse());
+    renderSkillsView({ listSkills, installMarketplacePlugin });
 
     fireEvent.click(await screen.findByRole("button", { name: "安装" }));
 
-    await waitFor(() => expect(exportRemoteSkill).toHaveBeenCalledWith({ hazelnutId: "openai/figma" }));
+    await waitFor(() => expect(installMarketplacePlugin).toHaveBeenCalledWith({
+      marketplacePath: "C:/Users/Administrator/.codex/plugins/marketplaces/official",
+      pluginName: "figma",
+      forceRemoteSync: true,
+    }));
     expect(await screen.findByText("Word Docs")).toBeInTheDocument();
   });
 
-  it("shows remote loading errors explicitly", async () => {
+  it("shows marketplace loading errors explicitly", async () => {
     renderSkillsView({
-      listRemoteSkills: vi.fn().mockRejectedValue(new Error("git fetch failed: git process timed out after 30000ms")),
+      listMarketplacePlugins: vi.fn().mockRejectedValue(new Error("git fetch failed: git process timed out after 30000ms")),
     });
 
     expect(await screen.findByText("git fetch failed: git process timed out after 30000ms")).toBeInTheDocument();
   });
 
-  it("does not call remote skills when authenticated with api key", async () => {
-    const listRemoteSkills = vi.fn();
+  it("does not call marketplace plugins when authenticated with api key", async () => {
+    const listMarketplacePlugins = vi.fn();
     renderSkillsView({
       authMode: "apikey",
-      listRemoteSkills,
+      listMarketplacePlugins,
     });
 
-    expect(await screen.findByText("推荐技能仅支持 ChatGPT 登录；当前是 API Key 认证，官方远程技能链路不可用。")).toBeInTheDocument();
-    expect(listRemoteSkills).not.toHaveBeenCalled();
+    expect(await screen.findByText("推荐插件仅支持 ChatGPT 登录；当前是 API Key 认证，官方插件市场链路不可用。")).toBeInTheDocument();
+    expect(listMarketplacePlugins).not.toHaveBeenCalled();
   });
 
   it("forces reload on manual refresh and skills changed notifications", async () => {
@@ -148,9 +177,9 @@ describe("SkillsView", () => {
         onBackHome={vi.fn()}
         onOpenLearnMore={vi.fn().mockResolvedValue(undefined)}
         listSkills={listSkills}
-        listRemoteSkills={vi.fn().mockResolvedValue(createRemoteSkillsResponse())}
+        listMarketplacePlugins={vi.fn().mockResolvedValue(createMarketplacePluginsResponse())}
         writeSkillConfig={vi.fn().mockResolvedValue({ effectiveEnabled: false })}
-        exportRemoteSkill={vi.fn().mockResolvedValue({ id: "openai/figma", path: "x" })}
+        installMarketplacePlugin={vi.fn().mockResolvedValue(createPluginInstallResponse())}
       />,
     );
 

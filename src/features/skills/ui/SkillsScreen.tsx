@@ -35,9 +35,9 @@ export function SkillsScreen(props: SkillsScreenProps): JSX.Element {
     onBackHome: props.onBackHome,
     onOpenLearnMore: props.onOpenLearnMore,
     listSkills: props.controller.listSkills,
-    listRemoteSkills: props.controller.listRemoteSkills,
+    listMarketplacePlugins: props.controller.listMarketplacePlugins,
     writeSkillConfig: props.controller.writeSkillConfig,
-    exportRemoteSkill: props.controller.exportRemoteSkill,
+    installMarketplacePlugin: props.controller.installMarketplacePlugin,
   };
 
   return (

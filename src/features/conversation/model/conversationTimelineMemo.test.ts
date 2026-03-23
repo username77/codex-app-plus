@@ -58,7 +58,7 @@ describe("conversationTimelineMemo", () => {
     const mapTimeline = createConversationTimelineMemo();
     const firstTurn = createTurn("turn-1");
     const secondTurn = createTurn("turn-2", {
-      items: [{ item: { type: "agentMessage", id: "assistant-1", text: "before", phase: null }, approvalRequestId: null, outputText: "", terminalInteractions: [], rawResponse: null, progressMessages: [] }],
+      items: [{ item: { type: "agentMessage", id: "assistant-1", text: "before", phase: null, memoryCitation: null }, approvalRequestId: null, outputText: "", terminalInteractions: [], rawResponse: null, progressMessages: [] }],
     });
 
     const initialTimeline = mapTimeline(createConversation([firstTurn, secondTurn]), []);
@@ -66,7 +66,7 @@ describe("conversationTimelineMemo", () => {
       firstTurn,
       {
         ...secondTurn,
-        items: [{ item: { type: "agentMessage", id: "assistant-1", text: "after", phase: null }, approvalRequestId: null, outputText: "", terminalInteractions: [], rawResponse: null, progressMessages: [] }],
+        items: [{ item: { type: "agentMessage", id: "assistant-1", text: "after", phase: null, memoryCitation: null }, approvalRequestId: null, outputText: "", terminalInteractions: [], rawResponse: null, progressMessages: [] }],
       },
     ]), []);
 

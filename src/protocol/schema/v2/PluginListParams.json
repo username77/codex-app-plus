@@ -12,6 +12,10 @@
       "items": {
         "$ref": "#/definitions/AbsolutePathBuf"
       }
+    },
+    "forceRemoteSync": {
+      "description": "When true, reconcile the official curated marketplace against the remote plugin state before listing marketplaces.",
+      "type": "boolean"
     }
   },
   "definitions": {

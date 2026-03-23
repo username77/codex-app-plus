@@ -1,4 +1,4 @@
-import type { RemoteSkillSummary } from "../../../protocol/generated/v2/RemoteSkillSummary";
+import type { PluginListResponse } from "../../../protocol/generated/v2/PluginListResponse";
 import type { SkillErrorInfo } from "../../../protocol/generated/v2/SkillErrorInfo";
 import type { SkillMetadata } from "../../../protocol/generated/v2/SkillMetadata";
 import type { SkillScope } from "../../../protocol/generated/v2/SkillScope";
@@ -14,10 +14,14 @@ export interface InstalledSkillCard {
   readonly brandColor: string | null;
 }
 
-export interface RemoteSkillCard {
+export interface MarketplacePluginCard {
   readonly id: string;
   readonly name: string;
   readonly description: string;
+  readonly pluginName: string;
+  readonly marketplacePath: string;
+  readonly icon: string | null;
+  readonly brandColor: string | null;
 }
 
 export interface InstalledSkillsCatalog {
@@ -41,14 +45,21 @@ export function createInstalledSkillsCatalog(
   };
 }
 
-export function createRemoteSkillCards(
-  items: ReadonlyArray<RemoteSkillSummary>,
-): ReadonlyArray<RemoteSkillCard> {
-  return items.map((item) => ({
-    id: item.id,
-    name: item.name.trim(),
-    description: item.description.trim(),
-  })).sort(compareNamedItems);
+export function createMarketplacePluginCards(
+  response: PluginListResponse,
+): ReadonlyArray<MarketplacePluginCard> {
+  const cards = response.marketplaces.flatMap((marketplace) => marketplace.plugins
+    .filter((plugin) => !plugin.installed && plugin.installPolicy !== "NOT_AVAILABLE")
+    .map((plugin) => ({
+      id: plugin.id,
+      name: resolvePluginName(plugin.name, plugin.interface?.displayName ?? null),
+      description: resolvePluginDescription(plugin.interface?.shortDescription ?? null, plugin.name),
+      pluginName: plugin.name,
+      marketplacePath: marketplace.path,
+      icon: plugin.interface?.logo ?? plugin.interface?.composerIcon ?? null,
+      brandColor: plugin.interface?.brandColor ?? null,
+    })));
+  return cards.sort(compareNamedItems);
 }
 
 export function filterInstalledSkillCards(
@@ -58,10 +69,10 @@ export function filterInstalledSkillCards(
   return skills.filter((skill) => matchesSkillQuery(skill.name, skill.description, query));
 }
 
-export function filterRemoteSkillCards(
-  skills: ReadonlyArray<RemoteSkillCard>,
+export function filterMarketplacePluginCards(
+  skills: ReadonlyArray<MarketplacePluginCard>,
   query: string,
-): ReadonlyArray<RemoteSkillCard> {
+): ReadonlyArray<MarketplacePluginCard> {
   return skills.filter((skill) => matchesSkillQuery(skill.name, skill.description, query));
 }
 
@@ -103,6 +114,16 @@ function resolveSkillDescription(skill: SkillMetadata): string {
     return shortDescription;
   }
   return skill.description.trim();
+}
+
+function resolvePluginDescription(shortDescription: string | null, fallbackName: string): string {
+  const normalized = shortDescription?.trim() ?? "";
+  return normalized.length > 0 ? normalized : fallbackName.trim();
+}
+
+function resolvePluginName(name: string, displayName: string | null): string {
+  const normalizedDisplayName = displayName?.trim() ?? "";
+  return normalizedDisplayName.length > 0 ? normalizedDisplayName : name.trim();
 }
 
 function matchesSkillQuery(name: string, description: string, query: string): boolean {

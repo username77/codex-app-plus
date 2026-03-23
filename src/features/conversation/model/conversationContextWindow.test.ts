@@ -77,6 +77,7 @@ function createConfigSnapshot(overrides: Partial<ConfigReadResponse["config"]> =
       model_auto_compact_token_limit: null,
       model_provider: null,
       approval_policy: null,
+      approvals_reviewer: null,
       sandbox_mode: null,
       sandbox_workspace_write: null,
       forced_chatgpt_workspace_id: null,
@@ -111,7 +112,7 @@ describe("selectConversationContextWindowUsage", () => {
 
     const result = selectConversationContextWindowUsage(
       conversation,
-      createConfigSnapshot({ model_auto_compact_token_limit: 120000 as never }),
+      createConfigSnapshot({ model_auto_compact_token_limit: 120000n as never }),
     );
 
     expect(result).toEqual({

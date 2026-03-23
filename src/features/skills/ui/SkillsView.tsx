@@ -1,16 +1,16 @@
 import type { ReceivedNotification } from "../../../domain/types";
 import type { AuthMode } from "../../../protocol/generated/AuthMode";
+import type { PluginInstallParams } from "../../../protocol/generated/v2/PluginInstallParams";
+import type { PluginInstallResponse } from "../../../protocol/generated/v2/PluginInstallResponse";
+import type { PluginListParams } from "../../../protocol/generated/v2/PluginListParams";
+import type { PluginListResponse } from "../../../protocol/generated/v2/PluginListResponse";
 import type { SkillsConfigWriteParams } from "../../../protocol/generated/v2/SkillsConfigWriteParams";
 import type { SkillsConfigWriteResponse } from "../../../protocol/generated/v2/SkillsConfigWriteResponse";
 import type { SkillsListParams } from "../../../protocol/generated/v2/SkillsListParams";
 import type { SkillsListResponse } from "../../../protocol/generated/v2/SkillsListResponse";
-import type { SkillsRemoteReadParams } from "../../../protocol/generated/v2/SkillsRemoteReadParams";
-import type { SkillsRemoteReadResponse } from "../../../protocol/generated/v2/SkillsRemoteReadResponse";
-import type { SkillsRemoteWriteParams } from "../../../protocol/generated/v2/SkillsRemoteWriteParams";
-import type { SkillsRemoteWriteResponse } from "../../../protocol/generated/v2/SkillsRemoteWriteResponse";
 import "../../../styles/replica/replica-skills.css";
 import { useSkillsViewModel } from "../hooks/useSkillsViewModel";
-import type { InstalledSkillCard, RemoteSkillCard } from "../model/skillCatalog";
+import type { InstalledSkillCard, MarketplacePluginCard } from "../model/skillCatalog";
 import { SkillAvatar } from "./SkillAvatar";
 
 export interface SkillsViewProps {
@@ -22,9 +22,9 @@ export interface SkillsViewProps {
   readonly onBackHome: () => void;
   readonly onOpenLearnMore: () => Promise<void>;
   readonly listSkills: (params: SkillsListParams) => Promise<SkillsListResponse>;
-  readonly listRemoteSkills: (params: SkillsRemoteReadParams) => Promise<SkillsRemoteReadResponse>;
+  readonly listMarketplacePlugins: (params: PluginListParams) => Promise<PluginListResponse>;
   readonly writeSkillConfig: (params: SkillsConfigWriteParams) => Promise<SkillsConfigWriteResponse>;
-  readonly exportRemoteSkill: (params: SkillsRemoteWriteParams) => Promise<SkillsRemoteWriteResponse>;
+  readonly installMarketplacePlugin: (params: PluginInstallParams) => Promise<PluginInstallResponse>;
 }
 
 export function SkillsView(props: SkillsViewProps): JSX.Element {
@@ -35,9 +35,9 @@ export function SkillsView(props: SkillsViewProps): JSX.Element {
     selectedRootPath: props.selectedRootPath,
     notifications: props.notifications,
     listSkills: props.listSkills,
-    listRemoteSkills: props.listRemoteSkills,
+    listMarketplacePlugins: props.listMarketplacePlugins,
     writeSkillConfig: props.writeSkillConfig,
-    exportRemoteSkill: props.exportRemoteSkill,
+    installMarketplacePlugin: props.installMarketplacePlugin,
   });
 
   return (
@@ -66,7 +66,7 @@ export function SkillsView(props: SkillsViewProps): JSX.Element {
           installingIds={model.installingIds}
           loading={model.loadingRecommended}
           skills={model.recommendedSkills}
-          onInstallSkill={model.installRemoteSkill}
+          onInstallSkill={model.installMarketplaceSkill}
         />
       </main>
     </div>
@@ -157,11 +157,11 @@ function InstalledSkillsSection(props: {
 }
 
 function RecommendedSkillsSection(props: {
-  readonly skills: ReadonlyArray<RemoteSkillCard>;
+  readonly skills: ReadonlyArray<MarketplacePluginCard>;
   readonly installingIds: Readonly<Record<string, boolean>>;
   readonly error: string | null;
   readonly loading: boolean;
-  readonly onInstallSkill: (skill: RemoteSkillCard) => Promise<void>;
+  readonly onInstallSkill: (skill: MarketplacePluginCard) => Promise<void>;
 }): JSX.Element {
   return (
     <section className="skills-section">
@@ -234,13 +234,13 @@ function InstalledSkillCardView(props: {
 }
 
 function RemoteSkillCardView(props: {
-  readonly skill: RemoteSkillCard;
+  readonly skill: MarketplacePluginCard;
   readonly installing: boolean;
-  readonly onInstallSkill: (skill: RemoteSkillCard) => Promise<void>;
+  readonly onInstallSkill: (skill: MarketplacePluginCard) => Promise<void>;
 }): JSX.Element {
   return (
     <article className="skills-card skills-card-remote">
-      <SkillAvatar brandColor={null} icon={null} name={props.skill.name} />
+      <SkillAvatar brandColor={props.skill.brandColor} icon={props.skill.icon} name={props.skill.name} />
       <div className="skills-card-copy">
         <strong>{props.skill.name}</strong>
         <p>{props.skill.description}</p>

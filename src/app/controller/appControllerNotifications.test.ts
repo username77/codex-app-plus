@@ -144,7 +144,7 @@ describe("applyAppServerNotification", () => {
     }, "item/completed", {
       threadId: "thread-1",
       turnId: "turn-1",
-      item: { type: "agentMessage", id: "item-1", text: "完整答案", phase: null },
+      item: { type: "agentMessage", id: "item-1", text: "完整答案", phase: null, memoryCitation: null },
     });
 
     const completedItem = state.conversationsById["thread-1"]?.turns[0]?.items[0]?.item;

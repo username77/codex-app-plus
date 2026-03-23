@@ -86,7 +86,7 @@ function createConversationTurn(overrides?: Partial<ConversationTurnState>): Con
     status: "completed",
     error: null,
     params: { input: [{ type: "text", text: "请继续", text_elements: [] }], cwd: null, model: null, effort: null, serviceTier: null, collaborationMode: null },
-    items: [{ item: { type: "agentMessage", id: "assistant-1", text: "已经完成。", phase: null }, approvalRequestId: null, outputText: "", terminalInteractions: [], rawResponse: null, progressMessages: [] }],
+    items: [{ item: { type: "agentMessage", id: "assistant-1", text: "已经完成。", phase: null, memoryCitation: null }, approvalRequestId: null, outputText: "", terminalInteractions: [], rawResponse: null, progressMessages: [] }],
     turnStartedAtMs: null,
     planExplanation: null,
     planSteps: [],
@@ -396,7 +396,7 @@ describe("HomeConversationCanvas", () => {
   it("keeps streamed assistant text visible after a sparse turnCompleted notification", () => {
     const conversation = createConversationState(createConversationTurn({
       status: "inProgress",
-      items: [{ item: { type: "agentMessage", id: "assistant-1", text: "assistant reply", phase: null }, approvalRequestId: null, outputText: "", terminalInteractions: [], rawResponse: null, progressMessages: [] }],
+      items: [{ item: { type: "agentMessage", id: "assistant-1", text: "assistant reply", phase: null, memoryCitation: null }, approvalRequestId: null, outputText: "", terminalInteractions: [], rawResponse: null, progressMessages: [] }],
     }));
     const nextConversation = syncCompletedTurn(conversation, createNotificationTurn({ status: "completed" }));
 

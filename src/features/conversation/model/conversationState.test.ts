@@ -12,7 +12,7 @@ const TOKEN_USAGE: ThreadTokenUsage = {
 
 function createAssistantItem(text: string): ConversationTurnState["items"][number] {
   return {
-    item: { type: "agentMessage", id: "assistant-1", text, phase: null },
+    item: { type: "agentMessage", id: "assistant-1", text, phase: null, memoryCitation: null },
     approvalRequestId: null,
     outputText: "",
     terminalInteractions: [],
@@ -154,7 +154,7 @@ describe("conversationState", () => {
     const conversation = createConversation();
 
     const nextConversation = syncCompletedTurn(conversation, createNotificationTurn({
-      items: [{ type: "agentMessage", id: "assistant-2", text: "server final reply", phase: null }],
+      items: [{ type: "agentMessage", id: "assistant-2", text: "server final reply", phase: null, memoryCitation: null }],
     }));
     const [nextTurn] = nextConversation.turns;
 

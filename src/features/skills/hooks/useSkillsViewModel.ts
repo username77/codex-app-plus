@@ -1,30 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReceivedNotification } from "../../../domain/types";
 import type { AuthMode } from "../../../protocol/generated/AuthMode";
+import type { PluginInstallParams } from "../../../protocol/generated/v2/PluginInstallParams";
+import type { PluginInstallResponse } from "../../../protocol/generated/v2/PluginInstallResponse";
+import type { PluginListParams } from "../../../protocol/generated/v2/PluginListParams";
+import type { PluginListResponse } from "../../../protocol/generated/v2/PluginListResponse";
 import type { SkillsConfigWriteParams } from "../../../protocol/generated/v2/SkillsConfigWriteParams";
 import type { SkillsConfigWriteResponse } from "../../../protocol/generated/v2/SkillsConfigWriteResponse";
 import type { SkillsListParams } from "../../../protocol/generated/v2/SkillsListParams";
 import type { SkillsListResponse } from "../../../protocol/generated/v2/SkillsListResponse";
-import type { SkillsRemoteReadParams } from "../../../protocol/generated/v2/SkillsRemoteReadParams";
-import type { SkillsRemoteReadResponse } from "../../../protocol/generated/v2/SkillsRemoteReadResponse";
-import type { SkillsRemoteWriteParams } from "../../../protocol/generated/v2/SkillsRemoteWriteParams";
-import type { SkillsRemoteWriteResponse } from "../../../protocol/generated/v2/SkillsRemoteWriteResponse";
 import {
   createInstalledSkillsCatalog,
-  createRemoteSkillCards,
+  createMarketplacePluginCards,
   filterInstalledSkillCards,
-  filterRemoteSkillCards,
+  filterMarketplacePluginCards,
   replaceInstalledSkillEnabled,
   type InstalledSkillCard,
   type InstalledSkillsCatalog,
-  type RemoteSkillCard,
+  type MarketplacePluginCard,
 } from "../model/skillCatalog";
-
-const REMOTE_SKILLS_PARAMS: SkillsRemoteReadParams = {
-  hazelnutScope: "all-shared",
-  productSurface: "codex",
-  enabled: true,
-};
 
 interface AsyncState<T> {
   readonly data: T;
@@ -39,15 +33,15 @@ interface SkillsViewModelOptions {
   readonly selectedRootPath: string | null;
   readonly notifications: ReadonlyArray<ReceivedNotification>;
   readonly listSkills: (params: SkillsListParams) => Promise<SkillsListResponse>;
-  readonly listRemoteSkills: (params: SkillsRemoteReadParams) => Promise<SkillsRemoteReadResponse>;
+  readonly listMarketplacePlugins: (params: PluginListParams) => Promise<PluginListResponse>;
   readonly writeSkillConfig: (params: SkillsConfigWriteParams) => Promise<SkillsConfigWriteResponse>;
-  readonly exportRemoteSkill: (params: SkillsRemoteWriteParams) => Promise<SkillsRemoteWriteResponse>;
+  readonly installMarketplacePlugin: (params: PluginInstallParams) => Promise<PluginInstallResponse>;
 }
 
 export interface SkillsViewModel {
   readonly query: string;
   readonly installedSkills: ReadonlyArray<InstalledSkillCard>;
-  readonly recommendedSkills: ReadonlyArray<RemoteSkillCard>;
+  readonly recommendedSkills: ReadonlyArray<MarketplacePluginCard>;
   readonly scanErrors: ReadonlyArray<{ readonly path: string; readonly message: string }>;
   readonly installedError: string | null;
   readonly recommendedError: string | null;
@@ -60,11 +54,11 @@ export interface SkillsViewModel {
   readonly setQuery: (value: string) => void;
   readonly refresh: () => Promise<void>;
   readonly toggleSkillEnabled: (skill: InstalledSkillCard) => Promise<void>;
-  readonly installRemoteSkill: (skill: RemoteSkillCard) => Promise<void>;
+  readonly installMarketplaceSkill: (skill: MarketplacePluginCard) => Promise<void>;
 }
 
 const EMPTY_LOCAL_CATALOG: InstalledSkillsCatalog = { skills: [], scanErrors: [] };
-const EMPTY_REMOTE_SKILLS: ReadonlyArray<RemoteSkillCard> = [];
+const EMPTY_RECOMMENDED_SKILLS: ReadonlyArray<MarketplacePluginCard> = [];
 
 export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewModel {
   const {
@@ -74,16 +68,16 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
     selectedRootPath,
     notifications,
     listSkills,
-    listRemoteSkills,
+    listMarketplacePlugins,
     writeSkillConfig,
-    exportRemoteSkill,
+    installMarketplacePlugin,
   } = options;
   const [query, setQuery] = useState("");
   const [installedState, setInstalledState] = useState<AsyncState<InstalledSkillsCatalog>>(
     createAsyncState(EMPTY_LOCAL_CATALOG),
   );
-  const [recommendedState, setRecommendedState] = useState<AsyncState<ReadonlyArray<RemoteSkillCard>>>(
-    createAsyncState(EMPTY_REMOTE_SKILLS),
+  const [recommendedState, setRecommendedState] = useState<AsyncState<ReadonlyArray<MarketplacePluginCard>>>(
+    createAsyncState(EMPTY_RECOMMENDED_SKILLS),
   );
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingPaths, setPendingPaths] = useState<Readonly<Record<string, boolean>>>({});
@@ -116,7 +110,7 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
     }
     if (recommendedUnavailableReason !== null) {
       setRecommendedState({
-        data: EMPTY_REMOTE_SKILLS,
+        data: EMPTY_RECOMMENDED_SKILLS,
         loading: false,
         error: recommendedUnavailableReason,
       });
@@ -124,12 +118,16 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
     }
     setRecommendedState((current) => ({ ...current, loading: true, error: null }));
     try {
-      const response = await listRemoteSkills(REMOTE_SKILLS_PARAMS);
-      setRecommendedState({ data: createRemoteSkillCards(response.data), loading: false, error: null });
+      const response = await listMarketplacePlugins(createPluginListParams(selectedRootPath));
+      setRecommendedState({
+        data: createMarketplacePluginCards(response),
+        loading: false,
+        error: response.remoteSyncError,
+      });
     } catch (error) {
       setRecommendedState((current) => ({ ...current, loading: false, error: toErrorMessage(error) }));
     }
-  }, [listRemoteSkills, ready, recommendedUnavailableReason]);
+  }, [listMarketplacePlugins, ready, recommendedUnavailableReason, selectedRootPath]);
 
   const refresh = useCallback(async () => {
     await Promise.all([refreshInstalled(true), refreshRecommended()]);
@@ -151,7 +149,7 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
     }
   }, [writeSkillConfig]);
 
-  const installRemoteSkill = useCallback(async (skill: RemoteSkillCard) => {
+  const installMarketplaceSkill = useCallback(async (skill: MarketplacePluginCard) => {
     if (recommendedUnavailableReason !== null) {
       setActionError(recommendedUnavailableReason);
       return;
@@ -159,14 +157,19 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
     setActionError(null);
     setInstallingIds((current) => ({ ...current, [skill.id]: true }));
     try {
-      await exportRemoteSkill({ hazelnutId: skill.id });
+      await installMarketplacePlugin({
+        marketplacePath: skill.marketplacePath,
+        pluginName: skill.pluginName,
+        forceRemoteSync: true,
+      });
       await refreshInstalled(true);
+      await refreshRecommended();
     } catch (error) {
-      setActionError(`安装推荐技能失败：${toErrorMessage(error)}`);
+      setActionError(`安装推荐插件失败：${toErrorMessage(error)}`);
     } finally {
       setInstallingIds((current) => omitRecordKey(current, skill.id));
     }
-  }, [exportRemoteSkill, recommendedUnavailableReason, refreshInstalled]);
+  }, [installMarketplacePlugin, recommendedUnavailableReason, refreshInstalled, refreshRecommended]);
 
   useEffect(() => {
     void Promise.all([refreshInstalled(false), refreshRecommended()]);
@@ -186,7 +189,7 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
     [installedState.data.skills, query],
   );
   const recommendedSkills = useMemo(
-    () => filterRemoteSkillCards(recommendedState.data, query),
+    () => filterMarketplacePluginCards(recommendedState.data, query),
     [query, recommendedState.data],
   );
 
@@ -206,7 +209,7 @@ export function useSkillsViewModel(options: SkillsViewModelOptions): SkillsViewM
     setQuery,
     refresh,
     toggleSkillEnabled,
-    installRemoteSkill,
+    installMarketplaceSkill,
   };
 }
 
@@ -215,15 +218,15 @@ function getRecommendedUnavailableReason(
   authMode: AuthMode | null,
 ): string | null {
   if (authStatus === "needs_login") {
-    return "推荐技能仅支持 ChatGPT 登录。请先完成 ChatGPT 登录后再刷新。";
+    return "推荐插件仅支持 ChatGPT 登录。请先完成 ChatGPT 登录后再刷新。";
   }
   if (authStatus === "unknown") {
-    return "正在检测认证状态，暂时无法加载推荐技能。";
+    return "正在检测认证状态，暂时无法加载推荐插件。";
   }
   if (authMode === "chatgpt" || authMode === "chatgptAuthTokens") {
     return null;
   }
-  return "推荐技能仅支持 ChatGPT 登录；当前是 API Key 认证，官方远程技能链路不可用。";
+  return "推荐插件仅支持 ChatGPT 登录；当前是 API Key 认证，官方插件市场链路不可用。";
 }
 
 function createAsyncState<T>(data: T): AsyncState<T> {
@@ -235,6 +238,13 @@ function createSkillsListParams(selectedRootPath: string | null, forceReload: bo
     return { forceReload };
   }
   return { cwds: [selectedRootPath], forceReload };
+}
+
+function createPluginListParams(selectedRootPath: string | null): PluginListParams {
+  if (selectedRootPath === null) {
+    return { forceRemoteSync: true };
+  }
+  return { cwds: [selectedRootPath], forceRemoteSync: true };
 }
 
 function findLastSkillsChangedIndex(notifications: ReadonlyArray<ReceivedNotification>): number {

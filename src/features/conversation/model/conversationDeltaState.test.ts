@@ -4,7 +4,7 @@ import { applyConversationOutputDeltas, applyConversationTextDeltas } from "./co
 
 function createAgentMessageItem(id: string, text: string): ConversationTurnState["items"][number] {
   return {
-    item: { type: "agentMessage", id, text, phase: null },
+    item: { type: "agentMessage", id, text, phase: null, memoryCitation: null },
     approvalRequestId: null,
     outputText: "",
     terminalInteractions: [],
@@ -99,7 +99,13 @@ describe("conversationDeltaState", () => {
     expect(nextConversation).not.toBe(conversation);
     expect(nextConversation.turns[0]).not.toBe(firstTurn);
     expect(nextConversation.turns[1]).toBe(secondTurn);
-    expect(nextConversation.turns[0]?.items[0]?.item).toEqual({ type: "agentMessage", id: "message-1", text: "hello world", phase: null });
+    expect(nextConversation.turns[0]?.items[0]?.item).toEqual({
+      type: "agentMessage",
+      id: "message-1",
+      text: "hello world",
+      phase: null,
+      memoryCitation: null,
+    });
     expect(nextConversation.turns[0]?.items[1]?.item).toEqual({ type: "plan", id: "plan-1", text: "plan more" });
   });
 

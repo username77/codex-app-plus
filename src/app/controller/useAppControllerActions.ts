@@ -31,14 +31,14 @@ import type {
   ConfigReadResponse,
   ConfigBatchWriteParams,
   ConfigValueWriteParams,
+  PluginInstallParams,
+  PluginInstallResponse,
+  PluginListParams,
+  PluginListResponse,
   SkillsConfigWriteParams,
   SkillsConfigWriteResponse,
   SkillsListParams,
   SkillsListResponse,
-  SkillsRemoteReadParams,
-  SkillsRemoteReadResponse,
-  SkillsRemoteWriteParams,
-  SkillsRemoteWriteResponse,
 } from "./appControllerTypes";
 
 type Dispatch = (action: import("../../domain/types").AppAction) => void;
@@ -141,14 +141,14 @@ export function useAppControllerActions({
   const listSkills = useCallback((params: SkillsListParams) => (
     client.request("skills/list", params) as Promise<SkillsListResponse>
   ), [client]);
-  const listRemoteSkills = useCallback((params: SkillsRemoteReadParams) => (
-    client.request("skills/remote/list", params) as Promise<SkillsRemoteReadResponse>
+  const listMarketplacePlugins = useCallback((params: PluginListParams) => (
+    client.request("plugin/list", params) as Promise<PluginListResponse>
   ), [client]);
   const writeSkillConfig = useCallback((params: SkillsConfigWriteParams) => (
     client.request("skills/config/write", params) as Promise<SkillsConfigWriteResponse>
   ), [client]);
-  const exportRemoteSkill = useCallback((params: SkillsRemoteWriteParams) => (
-    client.request("skills/remote/export", params) as Promise<SkillsRemoteWriteResponse>
+  const installMarketplacePlugin = useCallback((params: PluginInstallParams) => (
+    client.request("plugin/install", params) as Promise<PluginInstallResponse>
   ), [client]);
   const setMultiAgentEnabled = useCallback(async (enabled: boolean) => {
     await runBusy(async () => {
@@ -201,10 +201,10 @@ export function useAppControllerActions({
     archiveThread,
     batchWriteConfig,
     batchWriteConfigSnapshot,
-    exportRemoteSkill,
+    installMarketplacePlugin,
     listArchivedThreads,
+    listMarketplacePlugins,
     listMcpServerStatuses,
-    listRemoteSkills,
     listSkills,
     login,
     logout,

@@ -85,6 +85,8 @@ function createCollabTurn(childThreadId: string, status: "completed" | "errored"
       senderThreadId: "thread-1",
       receiverThreadIds: [childThreadId],
       prompt: "inspect ui",
+      model: null,
+      reasoningEffort: null,
       agentsStates: {
         [childThreadId]: { status, message: status === "notFound" ? null : "done" }
       }
@@ -108,6 +110,8 @@ function createRunningCollabTurn(
       senderThreadId,
       receiverThreadIds: [...childThreadIds],
       prompt: "inspect ui",
+      model: null,
+      reasoningEffort: null,
       agentsStates: Object.fromEntries(childThreadIds.map((threadId) => [threadId, { status: "running", message: null }])),
     }],
   };
@@ -261,7 +265,7 @@ describe("useWorkspaceConversation", () => {
             id: "turn-1",
             status: "inProgress" as const,
             error: null,
-            items: [{ type: "agentMessage" as const, id: "assistant-1", text: "", phase: null }],
+            items: [{ type: "agentMessage" as const, id: "assistant-1", text: "", phase: null, memoryCitation: null }],
           }],
         }), { resumeState: "resumed" }),
       });

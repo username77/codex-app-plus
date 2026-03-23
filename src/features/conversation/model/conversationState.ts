@@ -51,7 +51,7 @@ export function createSkeletonItem(itemId: string, target: ConversationTextDelta
     return { type: "plan", id: itemId, text: "" };
   }
   if (target.type === "agentMessage") {
-    return { type: "agentMessage", id: itemId, text: "", phase: null };
+    return { type: "agentMessage", id: itemId, text: "", phase: null, memoryCitation: null };
   }
   return { type: "reasoning", id: itemId, summary: [], content: [] };
 }
