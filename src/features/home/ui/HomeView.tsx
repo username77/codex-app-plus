@@ -37,9 +37,11 @@ import { useTerminalController } from "../../terminal/hooks/useTerminalControlle
 import { TerminalDock } from "../../terminal/ui/TerminalDock";
 import { TerminalPanel } from "../../terminal/ui/TerminalPanel";
 import { WorkspaceDiffSidebarHost } from "../../workspace/ui/WorkspaceDiffSidebarHost";
+import type { UpdateWorkspaceLaunchScriptsInput } from "../../workspace/hooks/useWorkspaceRoots";
 import { extractConnectionRetryInfo } from "../model/homeConnectionRetry";
 import { HomeSidebar } from "./HomeSidebar";
 import { HomeViewMainContent } from "./HomeViewMainContent";
+import { useWorkspaceLaunchScripts } from "../hooks/useWorkspaceLaunchScripts";
 import {
   createHomeMainContentProps,
   createHomeSidebarProps,
@@ -58,6 +60,9 @@ export interface HomeViewProps {
   readonly selectedRootId: string | null;
   readonly selectedRootName: string;
   readonly selectedRootPath: string | null;
+  readonly onUpdateWorkspaceLaunchScripts: (
+    input: UpdateWorkspaceLaunchScriptsInput,
+  ) => void;
   readonly threads: ReadonlyArray<ThreadSummary>;
   readonly selectedThread: ThreadSummary | null;
   readonly selectedThreadId: string | null;
@@ -133,6 +138,10 @@ export interface HomeViewProps {
 
 export function HomeView(props: HomeViewProps): JSX.Element {
   const uiState = useHomeViewUiState(props.selectedRootPath);
+  const selectedRoot = useMemo(
+    () => props.roots.find((root) => root.id === props.selectedRootId) ?? null,
+    [props.roots, props.selectedRootId],
+  );
   const gitController = useWorkspaceGit({
     diffStateEnabled: uiState.canShowDiffSidebar,
     hostBridge: props.hostBridge,
@@ -164,6 +173,11 @@ export function HomeView(props: HomeViewProps): JSX.Element {
     shell: props.embeddedTerminalShell,
     enforceUtf8: props.embeddedTerminalUtf8 ?? true,
   });
+  const launchState = useWorkspaceLaunchScripts({
+    selectedRoot,
+    terminalController,
+    updateWorkspaceLaunchScripts: props.onUpdateWorkspaceLaunchScripts,
+  });
 
   const toggleTerminal = useCallback(() => {
     if (uiState.openTerminal) {
@@ -176,6 +190,7 @@ export function HomeView(props: HomeViewProps): JSX.Element {
   const contentProps = createHomeMainContentProps(
     props,
     gitController,
+    launchState,
     filteredActivities,
     retryInfo,
     uiState.openTerminal,

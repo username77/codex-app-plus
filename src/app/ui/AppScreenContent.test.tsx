@@ -64,6 +64,7 @@ function createWorkspace(): WorkspaceRootController {
     selectRoot: vi.fn(),
     addRoot: vi.fn(),
     removeRoot: vi.fn(),
+    updateWorkspaceLaunchScripts: vi.fn(),
   };
 }
 

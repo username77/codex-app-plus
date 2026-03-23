@@ -79,4 +79,38 @@ describe("useTerminalTabs", () => {
     expect(result.current.terminals).toHaveLength(1);
     expect(result.current.activeRootKey).toBe("root-2");
   });
+
+  it("ensures a named terminal exists and updates its title", () => {
+    const { result } = renderHook(() =>
+      useTerminalTabs({
+        activeRootId: "root-1",
+        activeRootPath: "E:/code/workspace-a",
+      }),
+    );
+
+    act(() => {
+      result.current.ensureTerminal({
+        rootKey: "root-1",
+        terminalId: "launch:web",
+        title: "启动: 前端",
+      });
+    });
+
+    expect(result.current.terminals).toEqual([
+      { id: "launch:web", title: "启动: 前端" },
+    ]);
+    expect(result.current.activeTerminalId).toBe("launch:web");
+
+    act(() => {
+      result.current.ensureTerminal({
+        rootKey: "root-1",
+        terminalId: "launch:web",
+        title: "启动: API",
+      });
+    });
+
+    expect(result.current.terminals).toEqual([
+      { id: "launch:web", title: "启动: API" },
+    ]);
+  });
 });

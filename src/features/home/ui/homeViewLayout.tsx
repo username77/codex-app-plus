@@ -3,6 +3,7 @@ import type { TimelineEntry } from "../../../domain/types";
 import type { ConnectionRetryInfo } from "../model/homeConnectionRetry";
 import type { WorkspaceGitController } from "../../git/model/types";
 import { OfficialSidebarToggleIcon } from "../../shared/ui/officialIcons";
+import type { WorkspaceLaunchScriptsState } from "../hooks/useWorkspaceLaunchScripts";
 import type { HomeSidebarProps } from "./HomeSidebar";
 import type { HomeViewMainContentProps } from "./HomeViewMainContent";
 import type { HomeViewProps } from "./HomeView";
@@ -91,6 +92,7 @@ export function createHomeSidebarProps(
 export function createHomeMainContentProps(
   props: HomeViewProps,
   gitController: WorkspaceGitController,
+  launchState: WorkspaceLaunchScriptsState | null,
   activities: ReadonlyArray<TimelineEntry>,
   retryInfo: ConnectionRetryInfo | null,
   terminalOpen: boolean,
@@ -122,6 +124,7 @@ export function createHomeMainContentProps(
     inputText: props.inputText,
     interruptPending: props.interruptPending,
     isResponding: props.isResponding,
+    launchState,
     models: props.models,
     multiAgentAvailable: props.multiAgentAvailable ?? false,
     multiAgentEnabled: props.multiAgentEnabled ?? false,

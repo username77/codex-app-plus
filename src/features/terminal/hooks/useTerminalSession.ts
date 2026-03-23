@@ -36,9 +36,12 @@ export interface TerminalSessionState {
   readonly containerRef: RefCallback<HTMLDivElement>;
   readonly focusTerminal: () => void;
   readonly message: string;
+  readonly readyKey: string | null;
   readonly restartSession: () => Promise<void>;
+  readonly restartTerminalSession: (tabKey: string) => Promise<void>;
   readonly status: TerminalStatus;
   readonly closeTerminalSession: (tabKey: string) => Promise<void>;
+  readonly writeTerminalData: (tabKey: string, data: string) => Promise<void>;
 }
 
 export function useTerminalSession(options: UseTerminalSessionOptions): TerminalSessionState {
@@ -70,6 +73,7 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
   const fitFrameRef = useRef<number | null>(null);
   const [status, setStatus] = useState<TerminalStatus>("idle");
   const [message, setMessage] = useState(EMPTY_MESSAGE);
+  const [readyKey, setReadyKey] = useState<string | null>(null);
   const [sessionResetVersion, setSessionResetVersion] = useState(0);
   const [containerVersion, setContainerVersion] = useState(0);
 
@@ -158,6 +162,7 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
       outputBuffersRef.current.delete(tabKey);
       pendingSessionTabKeysRef.current.delete(tabKey);
       sessionIdByTabKeyRef.current.delete(tabKey);
+      setReadyKey((current) => current === tabKey ? null : current);
       if (renderedTabKeyRef.current === tabKey) {
         renderedTabKeyRef.current = null;
       }
@@ -190,12 +195,28 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
     if (activeTabKey === null) {
       return;
     }
-    const sessionId = sessionIdByTabKeyRef.current.get(activeTabKey);
-    cleanupTerminalTab(activeTabKey);
+    await closeAndCleanupSession(activeTabKey);
+  }, [activeTabKey, cleanupTerminalTab, hostBridge]);
+
+  async function closeAndCleanupSession(tabKey: string): Promise<void> {
+    const sessionId = sessionIdByTabKeyRef.current.get(tabKey);
+    cleanupTerminalTab(tabKey);
     if (sessionId !== undefined) {
       await hostBridge.terminal.closeSession({ sessionId });
     }
-  }, [activeTabKey, cleanupTerminalTab, hostBridge]);
+  }
+
+  const restartTerminalSession = useCallback(async (tabKey: string) => {
+    await closeAndCleanupSession(tabKey);
+  }, [cleanupTerminalTab, hostBridge]);
+
+  const writeTerminalData = useCallback(async (tabKey: string, data: string) => {
+    const sessionId = sessionIdByTabKeyRef.current.get(tabKey);
+    if (sessionId === undefined) {
+      throw new Error("终端会话尚未就绪");
+    }
+    await hostBridge.terminal.write({ data, sessionId });
+  }, [hostBridge]);
 
   useEffect(() => {
     activeTabKeyRef.current = activeTabKey;
@@ -247,16 +268,19 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
   useEffect(() => {
     if (!isVisible) {
       setMessage(EMPTY_MESSAGE);
+      setReadyKey(null);
       return;
     }
     if (activeRootPath === null || activeTerminalId === null) {
       setStatus("idle");
       setMessage(EMPTY_MESSAGE);
+      setReadyKey(null);
       return;
     }
     if (terminalRef.current === null || fitAddonRef.current === null) {
       setStatus("idle");
       setMessage(PREPARING_MESSAGE);
+      setReadyKey(null);
       return;
     }
     const tabKey = buildTabKey(activeRootKey, activeTerminalId);
@@ -264,6 +288,7 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
     if (existingSessionId !== undefined) {
       setStatus("ready");
       setMessage(READY_MESSAGE);
+      setReadyKey(tabKey);
       if (renderedTabKeyRef.current !== tabKey) {
         syncActiveBuffer(tabKey);
         renderedTabKeyRef.current = tabKey;
@@ -274,6 +299,7 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
     if (pendingSessionTabKeysRef.current.has(tabKey)) {
       setStatus("starting");
       setMessage(STARTING_MESSAGE);
+      setReadyKey(null);
       return;
     }
 
@@ -281,6 +307,7 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
       pendingSessionTabKeysRef.current.add(tabKey);
       setStatus("starting");
       setMessage(STARTING_MESSAGE);
+      setReadyKey(null);
       const terminal = terminalRef.current;
       if (terminal === null) {
         return;
@@ -306,6 +333,7 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
       }
       setStatus("ready");
       setMessage(READY_MESSAGE);
+      setReadyKey(tabKey);
       syncActiveBuffer(tabKey);
       renderedTabKeyRef.current = tabKey;
       scheduleSessionLayout(result.sessionId);
@@ -314,6 +342,7 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
     void openSession().catch(() => {
       setStatus("error");
       setMessage(FAILURE_MESSAGE);
+      setReadyKey(null);
     }).finally(() => {
       pendingSessionTabKeysRef.current.delete(tabKey);
     });
@@ -380,7 +409,10 @@ export function useTerminalSession(options: UseTerminalSessionOptions): Terminal
     containerRef,
     focusTerminal,
     message,
+    readyKey,
     restartSession,
+    restartTerminalSession,
     status,
+    writeTerminalData,
   };
 }

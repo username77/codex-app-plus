@@ -130,23 +130,31 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
     error: null,
   });
   mockedUseTerminalController.mockReturnValue({
+    activeRootKey: "root-1",
     activeTerminalId: null,
+    ensureTerminalWithTitle: vi.fn(),
     hasWorkspace: true,
     hidePanel: vi.fn(),
     onCloseTerminal: vi.fn(),
     onNewTerminal: vi.fn(),
     onSelectTerminal: vi.fn(),
     requestTerminalFocus: vi.fn(),
+    restartTerminalSession: vi.fn().mockResolvedValue(undefined),
     showPanel: vi.fn(),
+    showPanelOnly: vi.fn(),
     terminalState: {
       closeTerminalSession: vi.fn().mockResolvedValue(undefined),
       containerRef: { current: null },
       focusTerminal: vi.fn(),
       message: "Open a terminal to start a session.",
+      readyKey: null,
       restartSession: vi.fn().mockResolvedValue(undefined),
+      restartTerminalSession: vi.fn().mockResolvedValue(undefined),
       status: "idle",
+      writeTerminalData: vi.fn().mockResolvedValue(undefined),
     },
     terminals: [],
+    writeTerminalData: vi.fn().mockResolvedValue(undefined),
   });
   const root = { id: "root-1", name: "FPGA", path: "E:/code/FPGA" };
   const thread = createThread();
@@ -161,6 +169,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       selectedRootId={root.id}
       selectedRootName={root.name}
       selectedRootPath={root.path}
+      onUpdateWorkspaceLaunchScripts={vi.fn()}
       threads={[thread]}
       selectedThread={thread}
       selectedThreadId={thread.id}

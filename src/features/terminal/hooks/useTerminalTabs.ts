@@ -16,6 +16,12 @@ interface UseTerminalTabsOptions {
   readonly activeRootPath: string | null;
 }
 
+interface EnsureTerminalOptions {
+  readonly rootKey: string;
+  readonly terminalId: string;
+  readonly title: string;
+}
+
 function createTerminalId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
@@ -45,6 +51,24 @@ function renumberAutoNamedTabs(
     return { ...tab, title: nextTitle };
   });
   return changed ? nextTabs : tabs;
+}
+
+function ensureTerminalRecord(
+  tabs: ReadonlyArray<TerminalTabRecord>,
+  terminalId: string,
+  title: string,
+): ReadonlyArray<TerminalTabRecord> {
+  const index = tabs.findIndex((tab) => tab.id === terminalId);
+  if (index === -1) {
+    return [...tabs, { id: terminalId, title, autoNamed: false }];
+  }
+  const current = tabs[index];
+  if (current.title === title && current.autoNamed === false) {
+    return tabs;
+  }
+  return tabs.map((tab) => (
+    tab.id === terminalId ? { ...tab, title, autoNamed: false } : tab
+  ));
 }
 
 export function useTerminalTabs(options: UseTerminalTabsOptions) {
@@ -100,6 +124,25 @@ export function useTerminalTabs(options: UseTerminalTabsOptions) {
     setActiveTabIdByRoot((previous) => ({ ...previous, [rootKey]: terminalId }));
   }, []);
 
+  const ensureTerminal = useCallback((options: EnsureTerminalOptions) => {
+    setTabsByRoot((previous) => {
+      const existing = previous[options.rootKey] ?? [];
+      const nextTabs = ensureTerminalRecord(
+        existing,
+        options.terminalId,
+        options.title,
+      );
+      return nextTabs === existing
+        ? previous
+        : { ...previous, [options.rootKey]: nextTabs };
+    });
+    setActiveTabIdByRoot((previous) => ({
+      ...previous,
+      [options.rootKey]: options.terminalId,
+    }));
+    return options.terminalId;
+  }, []);
+
   const terminals = useMemo(() => {
     if (!hasWorkspace) {
       return [];
@@ -119,6 +162,7 @@ export function useTerminalTabs(options: UseTerminalTabsOptions) {
     activeTerminalId,
     closeTerminal,
     createTerminal,
+    ensureTerminal,
     hasWorkspace,
     setActiveTerminal,
     terminals,

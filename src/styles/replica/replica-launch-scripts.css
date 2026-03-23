@@ -1,0 +1,149 @@
+.launch-script-cluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.launch-script-item {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.launch-script-button {
+  border: 1px solid var(--border-light);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-sm);
+}
+
+.launch-script-button:hover:not(:disabled),
+.launch-script-button[aria-expanded="true"] {
+  background: var(--surface-hover);
+}
+
+.launch-script-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(360px, calc(100vw - 40px));
+  padding: 14px;
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-lg);
+  z-index: 90;
+}
+
+.launch-script-title {
+  margin-bottom: 10px;
+  color: var(--text-main);
+  font-size: var(--app-ui-font-size-base);
+  font-weight: 600;
+}
+
+.launch-script-input,
+.launch-script-textarea {
+  width: 100%;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background: var(--surface-panel-muted);
+  color: var(--text-main);
+}
+
+.launch-script-input {
+  height: 38px;
+  padding: 0 12px;
+}
+
+.launch-script-textarea {
+  resize: vertical;
+  min-height: 120px;
+  padding: 10px 12px;
+}
+
+.launch-script-input:focus-visible,
+.launch-script-textarea:focus-visible,
+.launch-script-actions button:focus-visible,
+.launch-script-icon-option:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+.launch-script-error {
+  margin-top: 10px;
+  color: var(--error-fg);
+  font-size: var(--app-ui-font-size-sm);
+}
+
+.launch-script-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.launch-script-actions button {
+  min-width: 74px;
+  height: 36px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background: var(--surface-panel);
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.launch-script-actions button:hover {
+  background: var(--surface-hover);
+}
+
+.launch-script-primary {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, #5ab7ff, #55ddb5) !important;
+  color: #03202b !important;
+  font-weight: 600;
+}
+
+.launch-script-danger {
+  color: var(--error-fg) !important;
+}
+
+.launch-script-nested-editor {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-light);
+}
+
+.launch-script-icon-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.launch-script-icon-option {
+  height: 40px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background: var(--surface-panel-muted);
+  color: var(--text-soft);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.launch-script-icon-option:hover {
+  background: var(--surface-hover);
+}
+
+.launch-script-icon-option.is-selected {
+  border-color: var(--accent-color);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+@media (max-width: 900px) {
+  .launch-script-popover {
+    right: auto;
+    left: 0;
+  }
+}

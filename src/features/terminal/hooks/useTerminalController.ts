@@ -4,6 +4,7 @@ import type { ResolvedTheme } from "../../../domain/theme";
 import { useTerminalSession } from "./useTerminalSession";
 import { useTerminalTabs } from "./useTerminalTabs";
 import type { TerminalTab } from "./useTerminalTabs";
+import { buildTabKey } from "./terminalSessionModel";
 
 interface UseTerminalControllerOptions {
   readonly activeRootId: string | null;
@@ -48,6 +49,7 @@ export function useTerminalController(options: UseTerminalControllerOptions) {
     activeTerminalId,
     closeTerminal,
     createTerminal,
+    ensureTerminal,
     hasWorkspace,
     setActiveTerminal,
     terminals,
@@ -72,13 +74,20 @@ export function useTerminalController(options: UseTerminalControllerOptions) {
     },
   });
 
-  const showPanel = useCallback(() => {
-    const nextTerminalId = resolveTerminalToActivate(activeTerminalId, terminals);
+  const revealPanel = useCallback(() => {
     onShowPanel?.();
     if (!hasWorkspace) {
       return;
     }
     requestTerminalFocus();
+  }, [hasWorkspace, onShowPanel, requestTerminalFocus]);
+
+  const showPanel = useCallback(() => {
+    const nextTerminalId = resolveTerminalToActivate(activeTerminalId, terminals);
+    revealPanel();
+    if (!hasWorkspace) {
+      return;
+    }
     if (nextTerminalId !== null) {
       setActiveTerminal(activeRootKey, nextTerminalId);
       return;
@@ -96,7 +105,12 @@ export function useTerminalController(options: UseTerminalControllerOptions) {
     requestTerminalFocus,
     setActiveTerminal,
     terminals,
+    revealPanel,
   ]);
+
+  const showPanelOnly = useCallback(() => {
+    revealPanel();
+  }, [revealPanel]);
 
   const hidePanel = useCallback(() => {
     onHidePanel?.();
@@ -137,16 +151,45 @@ export function useTerminalController(options: UseTerminalControllerOptions) {
     [activeRootKey, closeTerminal, onHidePanel, terminalState, terminals],
   );
 
+  const ensureTerminalWithTitle = useCallback(
+    (terminalId: string, title: string) => ensureTerminal({
+      rootKey: activeRootKey,
+      terminalId,
+      title,
+    }),
+    [activeRootKey, ensureTerminal],
+  );
+
+  const restartTerminalSession = useCallback(
+    (terminalId: string) => terminalState.restartTerminalSession(
+      buildTabKey(activeRootKey, terminalId),
+    ),
+    [activeRootKey, terminalState],
+  );
+
+  const writeTerminalData = useCallback(
+    (terminalId: string, data: string) => terminalState.writeTerminalData(
+      buildTabKey(activeRootKey, terminalId),
+      data,
+    ),
+    [activeRootKey, terminalState],
+  );
+
   return {
     activeTerminalId,
+    activeRootKey,
+    ensureTerminalWithTitle,
     hasWorkspace,
     hidePanel,
     onCloseTerminal,
     onNewTerminal,
     onSelectTerminal,
     requestTerminalFocus,
+    restartTerminalSession,
     showPanel,
+    showPanelOnly,
     terminalState,
     terminals,
+    writeTerminalData,
   };
 }

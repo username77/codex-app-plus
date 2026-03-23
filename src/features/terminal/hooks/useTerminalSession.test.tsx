@@ -223,6 +223,7 @@ describe("useTerminalSession", () => {
         sessionId: "session-1",
       });
     });
+    expect(result.current.readyKey).toBe("root-1:terminal-1");
   });
 
   it("keeps the existing session when the panel is hidden and shown again", async () => {
@@ -265,5 +266,44 @@ describe("useTerminalSession", () => {
       expect(hostBridge.terminal.createSession).toHaveBeenCalledTimes(1);
     });
     expect(hostBridge.terminal.closeSession).not.toHaveBeenCalled();
+  });
+
+  it("does not retain a stale readyKey after switching to a different tab", async () => {
+    const hostBridge = createHostBridge();
+    vi.mocked(hostBridge.terminal.createSession)
+      .mockResolvedValueOnce({ sessionId: "session-1", shell: "PowerShell" })
+      .mockResolvedValueOnce({ sessionId: "session-2", shell: "PowerShell" });
+    const { result, rerender } = renderHook(
+      ({ activeTerminalId }: { readonly activeTerminalId: string }) =>
+        useTerminalSession({
+          activeRootKey: "root-1",
+          activeRootPath: "E:/code/codex-app-plus",
+          activeTerminalId,
+          focusRequestVersion: 0,
+          hostBridge,
+          isVisible: true,
+          shell: "powerShell",
+          enforceUtf8: true,
+          resolvedTheme: "dark",
+        }),
+      {
+        initialProps: {
+          activeTerminalId: "terminal-1",
+        },
+      },
+    );
+
+    await act(async () => {
+      result.current.containerRef(document.createElement("div"));
+    });
+    await waitFor(() => {
+      expect(result.current.readyKey).toBe("root-1:terminal-1");
+    });
+
+    rerender({ activeTerminalId: "launch" });
+
+    await waitFor(() => {
+      expect(result.current.readyKey).toBe("root-1:launch");
+    });
   });
 });

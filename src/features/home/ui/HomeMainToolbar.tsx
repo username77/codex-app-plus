@@ -3,6 +3,8 @@ import { WorkspaceGitButtonLauncher } from "../../workspace/ui/WorkspaceGitButto
 import type { WorkspaceGitController } from "../../git/model/types";
 import { WorkspaceOpenButton } from "../../workspace/ui/WorkspaceOpenButton";
 import { GitDiffIcon } from "../../git/ui/gitIcons";
+import type { WorkspaceLaunchScriptsState } from "../hooks/useWorkspaceLaunchScripts";
+import { LaunchScriptsToolbar } from "./LaunchScriptsToolbar";
 
 const DEFAULT_CONVERSATION_TITLE = "会话";
 const DEFAULT_WORKSPACE_TITLE = "工作区会话";
@@ -24,6 +26,7 @@ interface HomeMainToolbarProps {
   readonly diffOpen: boolean;
   readonly workspaceSwitching: boolean;
   readonly gitController: WorkspaceGitController;
+  readonly launchState?: WorkspaceLaunchScriptsState | null;
   readonly workspaceOpener: WorkspaceOpener;
   readonly onSelectWorkspaceOpener: (opener: WorkspaceOpener) => void;
   readonly onToggleTerminal: () => void;
@@ -96,6 +99,12 @@ export function HomeMainToolbar(props: HomeMainToolbarProps): JSX.Element {
         {subtitle === null ? null : <p className="toolbar-subtitle">{subtitle}</p>}
       </div>
       <div className="toolbar-actions">
+        {props.launchState === null || props.launchState === undefined ? null : (
+          <LaunchScriptsToolbar
+            disabled={props.selectedRootPath === null || props.workspaceSwitching}
+            state={props.launchState}
+          />
+        )}
         <WorkspaceOpenButton
           hostBridge={props.hostBridge}
           selectedRootPath={props.selectedRootPath}

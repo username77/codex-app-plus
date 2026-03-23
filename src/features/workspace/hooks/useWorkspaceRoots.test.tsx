@@ -32,7 +32,12 @@ describe("useWorkspaceRoots", () => {
 
     const second = renderHook(() => useWorkspaceRoots());
     expect(second.result.current.roots).toHaveLength(1);
-    expect(second.result.current.roots[0]).toMatchObject({ name: "FPGA", path: "E:/code/FPGA" });
+    expect(second.result.current.roots[0]).toMatchObject({
+      name: "FPGA",
+      path: "E:/code/FPGA",
+      launchScript: null,
+      launchScripts: null,
+    });
   });
 
   it("shows a removed root again after manual re-add", () => {
@@ -54,5 +59,48 @@ describe("useWorkspaceRoots", () => {
 
     expect(result.current.roots).toHaveLength(1);
     expect(result.current.roots[0]).toMatchObject({ name: removedRoot.name, path: removedRoot.path });
+  });
+
+  it("persists launch script settings for a workspace", async () => {
+    const first = renderHook(() => useWorkspaceRoots());
+
+    act(() => {
+      first.result.current.addRoot({ name: "FPGA", path: "E:/code/FPGA" });
+    });
+
+    const rootId = first.result.current.roots[0]?.id ?? "";
+    act(() => {
+      first.result.current.updateWorkspaceLaunchScripts({
+        rootId,
+        launchScript: "npm run dev",
+        launchScripts: [
+          {
+            id: "web",
+            script: "pnpm web",
+            icon: "globe",
+            label: "前端",
+          },
+        ],
+      });
+    });
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem(ROOTS_STORAGE_KEY)).toContain("npm run dev");
+    });
+
+    first.unmount();
+
+    const second = renderHook(() => useWorkspaceRoots());
+    expect(second.result.current.roots[0]).toMatchObject({
+      launchScript: "npm run dev",
+      launchScripts: [
+        {
+          id: "web",
+          script: "pnpm web",
+          icon: "globe",
+          label: "前端",
+        },
+      ],
+    });
   });
 });

@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { inferWorkspaceNameFromPath, normalizeWorkspacePath, trimWorkspaceText } from "../model/workspacePath";
+import {
+  normalizeWorkspaceLaunchScriptConfig,
+  type LaunchScriptEntry,
+} from "../model/workspaceLaunchScripts";
 
 const ROOTS_STORAGE_KEY = "codex-app-plus.workspace-roots";
 const EMPTY_ROOTS: ReadonlyArray<WorkspaceRoot> = [];
@@ -8,11 +12,19 @@ export interface WorkspaceRoot {
   readonly id: string;
   readonly name: string;
   readonly path: string;
+  readonly launchScript?: string | null;
+  readonly launchScripts?: ReadonlyArray<LaunchScriptEntry> | null;
 }
 
 export interface AddWorkspaceRootInput {
   readonly name: string;
   readonly path: string;
+}
+
+export interface UpdateWorkspaceLaunchScriptsInput {
+  readonly rootId: string;
+  readonly launchScript: string | null;
+  readonly launchScripts: ReadonlyArray<LaunchScriptEntry> | null;
 }
 
 export interface WorkspaceRootController {
@@ -21,6 +33,7 @@ export interface WorkspaceRootController {
   selectRoot: (rootId: string) => void;
   addRoot: (input: AddWorkspaceRootInput) => void;
   removeRoot: (rootId: string) => void;
+  updateWorkspaceLaunchScripts: (input: UpdateWorkspaceLaunchScriptsInput) => void;
 }
 
 function normalizeStoredRoot(value: unknown): WorkspaceRoot | null {
@@ -49,7 +62,12 @@ function normalizeStoredRoot(value: unknown): WorkspaceRoot | null {
     return null;
   }
 
-  return { id: record.id, name, path };
+  return {
+    id: record.id,
+    name,
+    path,
+    ...normalizeWorkspaceLaunchScriptConfig(record),
+  };
 }
 
 function parseStoredRoots(raw: string | null): ReadonlyArray<WorkspaceRoot> {
@@ -99,7 +117,13 @@ function sanitizeInput(input: AddWorkspaceRootInput): WorkspaceRoot | null {
     return null;
   }
 
-  return { id: crypto.randomUUID(), name, path };
+  return {
+    id: crypto.randomUUID(),
+    name,
+    path,
+    launchScript: null,
+    launchScripts: null,
+  };
 }
 
 function removeRootByKey(roots: ReadonlyArray<WorkspaceRoot>, key: string): ReadonlyArray<WorkspaceRoot> {
@@ -149,8 +173,31 @@ export function useWorkspaceRoots(): WorkspaceRootController {
     [roots]
   );
 
+  const updateWorkspaceLaunchScripts = useCallback(
+    (input: UpdateWorkspaceLaunchScriptsInput) => {
+      setRoots((current) => current.map((root) => {
+        if (root.id !== input.rootId) {
+          return root;
+        }
+        return {
+          ...root,
+          launchScript: input.launchScript,
+          launchScripts: input.launchScripts,
+        };
+      }));
+    },
+    [],
+  );
+
   return useMemo(
-    () => ({ roots, selectedRootId, selectRoot: setSelectedRootId, addRoot, removeRoot }),
-    [addRoot, removeRoot, roots, selectedRootId]
+    () => ({
+      roots,
+      selectedRootId,
+      selectRoot: setSelectedRootId,
+      addRoot,
+      removeRoot,
+      updateWorkspaceLaunchScripts,
+    }),
+    [addRoot, removeRoot, roots, selectedRootId, updateWorkspaceLaunchScripts]
   );
 }

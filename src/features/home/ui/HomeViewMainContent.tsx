@@ -28,6 +28,7 @@ import { HomePlanRequestComposer } from "../../composer/ui/HomePlanRequestCompos
 import { HomeTurnPlanDrawer } from "../../conversation/ui/HomeTurnPlanDrawer";
 import { HomeUserInputPrompt } from "../../conversation/ui/HomeUserInputPrompt";
 import { createComposerCommandBridge } from "../../composer/service/composerCommandBridge";
+import type { WorkspaceLaunchScriptsState } from "../hooks/useWorkspaceLaunchScripts";
 import type { WorkspaceGitController } from "../../git/model/types";
 import { GitCommitDialog } from "../../git/ui/GitCommitDialog";
 import { extractConnectionRetryInfo } from "../model/homeConnectionRetry";
@@ -75,6 +76,7 @@ export interface HomeViewMainContentProps {
   readonly interruptPending: boolean;
   readonly selectedConversationLoading: boolean;
   readonly workspaceSwitch: WorkspaceSwitchState;
+  readonly launchState: WorkspaceLaunchScriptsState | null;
   readonly terminalOpen: boolean;
   readonly diffOpen: boolean;
   readonly followUpQueueMode: FollowUpMode;
@@ -179,6 +181,7 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
         hostBridge={props.hostBridge}
         conversationActive={derivedState.conversationActive}
         gitController={props.gitController}
+        launchState={props.launchState}
         workspaceOpener={props.workspaceOpener}
         selectedRootName={props.selectedRootName}
         selectedRootPath={props.selectedRootPath}

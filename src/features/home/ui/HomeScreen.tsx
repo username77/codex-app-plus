@@ -87,6 +87,7 @@ export function HomeScreen(props: HomeScreenProps): JSX.Element {
       selectedRootId={props.workspace.selectedRootId}
       selectedRootName={selectedRootName}
       selectedRootPath={selectedRootPath}
+      onUpdateWorkspaceLaunchScripts={props.workspace.updateWorkspaceLaunchScripts}
       threads={conversation.visibleThreads}
       selectedThread={conversation.selectedThread}
       selectedThreadId={conversation.selectedThreadId}
