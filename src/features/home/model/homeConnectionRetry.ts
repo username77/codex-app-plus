@@ -71,7 +71,7 @@ function extractRetryText(text: string): ExtractRetryTextResult {
   let latestInfo: RetryLineInfo | null = null;
   let hasVisibleContentAfterRetry = false;
 
-  for (const line of text.split(/\r?\n/)) {
+  for (const line of splitTextForRetryParsing(text)) {
     const info = parseRetryLine(line);
     if (info === null) {
       keptLines.push(line);
@@ -90,6 +90,27 @@ function extractRetryText(text: string): ExtractRetryTextResult {
     info: latestInfo,
     hasVisibleContentAfterRetry,
   };
+}
+
+function splitTextForRetryParsing(text: string): ReadonlyArray<string> {
+  const lines: string[] = [];
+
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.includes("\r")) {
+      lines.push(line);
+      continue;
+    }
+
+    const carriageReturnParts = line.split("\r");
+    if (carriageReturnParts.some((part) => parseRetryLine(part) !== null)) {
+      lines.push(...carriageReturnParts);
+      continue;
+    }
+
+    lines.push(line);
+  }
+
+  return lines;
 }
 
 function parseRetryLine(line: string): RetryLineInfo | null {

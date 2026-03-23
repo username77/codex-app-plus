@@ -107,10 +107,44 @@ describe("extractConnectionRetryInfo", () => {
     });
     expect(result.retryInfo).toMatchObject({ attempt: 1, total: 5, sourceEntryId: "assistant-1" });
   });
+
+  it("filters retry progress separated by carriage returns from streaming text", () => {
+    const activities = [
+      createAgentMessage("assistant-1", "继续生成中\rReconnecting... 1/5"),
+    ];
+
+    const result = extractConnectionRetryInfo(activities);
+
+    expect(result.activities).toHaveLength(1);
+    expect(result.activities[0]).toMatchObject({
+      id: "assistant-1",
+      text: "继续生成中",
+    });
+    expect(result.retryInfo).toMatchObject({ attempt: 1, total: 5, sourceEntryId: "assistant-1" });
+  });
+
+  it("clears retry info when content resumes after carriage-return retry progress", () => {
+    const activities = [
+      createAgentMessage("assistant-1", "Reconnecting... 1/5\r继续生成中"),
+    ];
+
+    const result = extractConnectionRetryInfo(activities);
+
+    expect(result.activities).toHaveLength(1);
+    expect(result.activities[0]).toMatchObject({
+      id: "assistant-1",
+      text: "继续生成中",
+    });
+    expect(result.retryInfo).toBeNull();
+  });
 });
 
 describe("stripConnectionRetryLines", () => {
   it("removes retry-only lines from shell output", () => {
     expect(stripConnectionRetryLines("line 1\nReconnecting... 1/5\n\nline 2")).toBe("line 1\n\nline 2");
+  });
+
+  it("removes retry-only segments separated by carriage returns", () => {
+    expect(stripConnectionRetryLines("line 1\rReconnecting... 1/5\rline 2")).toBe("line 1\nline 2");
   });
 });

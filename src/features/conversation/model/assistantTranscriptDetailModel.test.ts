@@ -9,4 +9,8 @@ describe("createShellBody", () => {
   it("keeps the command line when output only contains reconnect progress", () => {
     expect(createShellBody("rg foo", "Reconnecting... 1/5\nReconnecting... 2/5")).toBe("$ rg foo");
   });
+
+  it("strips reconnect progress separated by carriage returns from command output", () => {
+    expect(createShellBody("rg foo", "命令失败\rReconnecting... 1/5\r继续输出")).toBe("$ rg foo\n\n命令失败\n继续输出");
+  });
 });
