@@ -161,6 +161,12 @@ describe("HomeSidebar", () => {
     expect(onOpenSkills).toHaveBeenCalledTimes(1);
   });
 
+  it("does not render the automation nav item", () => {
+    renderSidebar(createThread("codexData"));
+
+    expect(screen.queryByRole("button", { name: "自动化" })).not.toBeInTheDocument();
+  });
+
   it("forwards the workspace row new thread button", async () => {
     const { onCreateThread } = renderSidebar(createThread("codexData"));
 

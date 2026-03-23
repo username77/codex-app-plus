@@ -50,10 +50,6 @@ function SidebarNav(props: {
         <SidebarIcon kind="new-thread" />
         <span>新会话</span>
       </button>
-      <button type="button" className="sidebar-nav-item">
-        <SidebarIcon kind="automation" />
-        <span>自动化</span>
-      </button>
       <button type="button" className="sidebar-nav-item" onClick={props.onOpenSkills}>
         <SidebarIcon kind="skills" />
         <span>技能</span>
