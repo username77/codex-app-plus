@@ -3,6 +3,7 @@ use std::process::Stdio;
 use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 
 use crate::agent_environment::resolve_agent_environment;
+use crate::command_utils::command_failure_detail;
 use crate::error::{AppError, AppResult};
 use crate::models::{AgentEnvironment, AppServerStartInput};
 use crate::windows_child_process::configure_background_tokio_command;
@@ -117,28 +118,15 @@ fn parse_version_output(stdout: &[u8]) -> AppResult<String> {
     Ok(version)
 }
 
-fn command_failure_detail(stderr: &[u8], stdout: &[u8], fallback_status: String) -> String {
-    let stderr_text = String::from_utf8_lossy(stderr).trim().to_string();
-    if !stderr_text.is_empty() {
-        return stderr_text;
-    }
-    let stdout_text = String::from_utf8_lossy(stdout).trim().to_string();
-    if !stdout_text.is_empty() {
-        return stdout_text;
-    }
-    fallback_status
-}
-
 #[cfg(test)]
 mod tests {
     use std::env;
     use std::fs;
-    use std::path::PathBuf;
     use std::sync::{Mutex, OnceLock};
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::CodexCli;
     use crate::models::AppServerStartInput;
+    use crate::test_support::unique_temp_dir;
     use tokio::process::Command;
 
     fn env_lock() -> std::sync::MutexGuard<'static, ()> {
@@ -146,18 +134,10 @@ mod tests {
         LOCK.get_or_init(|| Mutex::new(())).lock().unwrap()
     }
 
-    fn unique_dir(name: &str) -> PathBuf {
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        env::temp_dir().join(format!("codex-app-plus-{name}-{timestamp}"))
-    }
-
     #[test]
     fn resolves_explicit_cmd_path() {
         let _guard = env_lock();
-        let directory = unique_dir("explicit");
+        let directory = unique_temp_dir("codex-app-plus", "explicit");
         fs::create_dir_all(&directory).unwrap();
         let path = directory.join("codex.cmd");
         fs::write(&path, "@echo off").unwrap();
@@ -180,7 +160,7 @@ mod tests {
     fn finds_codex_on_path() {
         let _guard = env_lock();
         let original_path = env::var_os("PATH");
-        let directory = unique_dir("path");
+        let directory = unique_temp_dir("codex-app-plus", "path");
         fs::create_dir_all(&directory).unwrap();
         fs::write(directory.join("codex.cmd"), "@echo off").unwrap();
         env::set_var("PATH", &directory);
@@ -201,7 +181,7 @@ mod tests {
     fn returns_error_when_codex_missing() {
         let _guard = env_lock();
         let original_path = env::var_os("PATH");
-        env::set_var("PATH", unique_dir("missing"));
+        env::set_var("PATH", unique_temp_dir("codex-app-plus", "missing"));
 
         let result = CodexCli::resolve(&AppServerStartInput::default());
 

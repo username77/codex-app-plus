@@ -1,6 +1,5 @@
 use std::fs;
 use std::path::PathBuf;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use toml::Table;
@@ -10,13 +9,10 @@ use super::live::{
     LiveFiles,
 };
 use super::live_io::write_live_files;
+use crate::test_support::unique_temp_dir;
 
 fn unique_dir(name: &str) -> PathBuf {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
-    let path = std::env::temp_dir().join(format!("codex-auth-{name}-{nanos}"));
+    let path = unique_temp_dir("codex-auth", name);
     fs::create_dir_all(&path).unwrap();
     path
 }

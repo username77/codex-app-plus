@@ -45,10 +45,7 @@ impl AppServerRuntime {
         let _ = self.supervisor.terminate();
 
         let mut child = self.child.lock().await;
-        if child.id().is_some() {
-            let _ = child.kill().await;
-            let _ = child.wait().await;
-        }
+        terminate_tokio_child(&mut child).await;
         let _ = emit_connection_changed(app, "disconnected");
     }
 
@@ -224,8 +221,7 @@ async fn spawn_runtime(
     let stderr_log = AppServerStderrLog::new();
     let mut spawned = cli.spawn_app_server()?;
     if let Err(error) = supervisor.assign_tokio_child(&spawned.child) {
-        let _ = spawned.child.kill().await;
-        let _ = spawned.child.wait().await;
+        terminate_tokio_child(&mut spawned.child).await;
         return Err(error);
     }
 
@@ -256,6 +252,14 @@ async fn spawn_runtime(
         wait_task,
         next_id: AtomicU64::new(1),
     }))
+}
+
+async fn terminate_tokio_child(child: &mut Child) {
+    if child.id().is_none() {
+        return;
+    }
+    let _ = child.kill().await;
+    let _ = child.wait().await;
 }
 
 fn spawn_wait_task(

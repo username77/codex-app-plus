@@ -2,6 +2,7 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::command_utils::command_failure_detail;
 use crate::error::{AppError, AppResult};
 use crate::windows_child_process::configure_background_std_command;
 
@@ -196,18 +197,6 @@ where
         return None;
     }
     Some(PathBuf::from(root).join(SYSTEM32_DIR).join(WSL_COMMAND))
-}
-
-fn command_failure_detail(stderr: &[u8], stdout: &[u8], fallback_status: String) -> String {
-    let stderr_text = String::from_utf8_lossy(stderr).trim().to_string();
-    if !stderr_text.is_empty() {
-        return stderr_text;
-    }
-    let stdout_text = String::from_utf8_lossy(stdout).trim().to_string();
-    if !stdout_text.is_empty() {
-        return stdout_text;
-    }
-    fallback_status
 }
 
 #[cfg(test)]

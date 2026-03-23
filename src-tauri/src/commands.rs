@@ -1,3 +1,4 @@
+use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::app_approval_rules::remember_command_approval_rule;
@@ -12,6 +13,7 @@ use crate::codex_auth::{
 };
 use crate::codex_data::{delete_codex_session, list_codex_sessions, read_codex_session};
 use crate::codex_provider::{delete_codex_provider, list_codex_providers, upsert_codex_provider};
+use crate::command_utils::open_detached_target;
 use crate::error::{AppError, AppResult};
 use crate::events::{EVENT_CONTEXT_MENU_REQUESTED, EVENT_NOTIFICATION_REQUESTED};
 use crate::models::{
@@ -33,6 +35,21 @@ use crate::workspace_launcher::open_workspace;
 
 pub(crate) fn to_result<T>(result: AppResult<T>) -> Result<T, String> {
     result.map_err(|error| error.to_string())
+}
+
+fn require_non_empty(value: &str, field_name: &str) -> Result<(), String> {
+    if value.trim().is_empty() {
+        return Err(format!("{field_name} 不能为空"));
+    }
+    Ok(())
+}
+
+fn emit_app_event<T>(app: &AppHandle, event_name: &str, payload: T) -> Result<(), String>
+where
+    T: Clone + Serialize,
+{
+    app.emit(event_name, payload)
+        .map_err(|error| error.to_string())
 }
 
 fn toggle_window_maximize(window: &tauri::WebviewWindow) -> AppResult<()> {
@@ -103,10 +120,8 @@ pub async fn server_request_resolve(
 
 #[tauri::command]
 pub fn app_open_external(url: String) -> Result<(), String> {
-    if url.trim().is_empty() {
-        return Err("url 不能为空".to_string());
-    }
-    to_result(open::that_detached(url).map_err(|e| AppError::Io(e.to_string())))
+    require_non_empty(&url, "url")?;
+    to_result(open_detached_target(url))
 }
 
 #[tauri::command]
@@ -223,11 +238,8 @@ pub fn app_clear_chatgpt_auth_state() -> Result<(), String> {
 
 #[tauri::command]
 pub fn app_show_notification(app: AppHandle, input: ShowNotificationInput) -> Result<(), String> {
-    if input.title.trim().is_empty() {
-        return Err("notification.title 不能为空".to_string());
-    }
-    app.emit(EVENT_NOTIFICATION_REQUESTED, input)
-        .map_err(|e| e.to_string())
+    require_non_empty(&input.title, "notification.title")?;
+    emit_app_event(&app, EVENT_NOTIFICATION_REQUESTED, input)
 }
 
 #[tauri::command]
@@ -235,8 +247,7 @@ pub fn app_show_context_menu(app: AppHandle, input: ShowContextMenuInput) -> Res
     if input.items.is_empty() {
         return Err("context menu items 不能为空".to_string());
     }
-    app.emit(EVENT_CONTEXT_MENU_REQUESTED, input)
-        .map_err(|e| e.to_string())
+    emit_app_event(&app, EVENT_CONTEXT_MENU_REQUESTED, input)
 }
 
 #[tauri::command]

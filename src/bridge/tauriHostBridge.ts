@@ -2,50 +2,50 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
   ActivateCodexChatgptInput,
-  AppServerStartInput,
   AgentEnvironment,
-  OpenCodexConfigTomlInput,
   ApplyCodexProviderInput,
+  AppServerStartInput,
   BridgeEventName,
   BridgeEventPayloadMap,
   CaptureCodexOauthSnapshotInput,
-  CodexProviderApplyResult,
+  ChatgptAuthTokensOutput,
   CodexAuthModeStateOutput,
   CodexAuthSwitchResult,
+  CodexProviderApplyResult,
   CodexProviderDraft,
   CodexProviderRecord,
   CodexProviderStore,
-  DeleteCodexSessionInput,
+  CodexSessionReadInput,
+  CodexSessionReadOutput,
+  CodexSessionSummaryOutput,
   DeleteCodexProviderInput,
+  DeleteCodexSessionInput,
+  GitBranchRef,
   GitCheckoutInput,
   GitCommitInput,
   GitDiffInput,
   GitDiffOutput,
-  GitWorkspaceDiffsInput,
-  GitWorkspaceDiffOutput,
   GitDiscardInput,
   GitPathsInput,
+  GitPushInput,
   GitRemoteInput,
   GitRepoInput,
-  ChatgptAuthTokensOutput,
+  GitStatusSnapshotOutput,
+  GitWorkspaceDiffOutput,
+  GitWorkspaceDiffsInput,
   GlobalAgentInstructionsOutput,
   GetCodexAuthModeStateInput,
-  GitStatusSnapshotOutput,
-  GitBranchRef,
   HostBridge,
-  OpenWorkspaceInput,
   ImportOfficialDataInput,
   ListCodexSessionsInput,
-  UpdateChatgptAuthTokensInput,
-  UpdateGlobalAgentInstructionsInput,
-  CodexSessionReadInput,
-  CodexSessionReadOutput,
-  CodexSessionSummaryOutput,
+  OpenCodexConfigTomlInput,
+  OpenWorkspaceInput,
+  RememberCommandApprovalRuleInput,
+  RememberCommandApprovalRuleOutput,
   RpcCancelInput,
   RpcNotifyInput,
   RpcRequestInput,
   RpcRequestOutput,
-  RememberCommandApprovalRuleOutput,
   ServerRequestResolveInput,
   ShowContextMenuInput,
   ShowNotificationInput,
@@ -53,8 +53,12 @@ import type {
   TerminalCreateInput,
   TerminalCreateOutput,
   TerminalResizeInput,
-  TerminalWriteInput
+  TerminalWriteInput,
+  UpdateChatgptAuthTokensInput,
+  UpdateGlobalAgentInstructionsInput
 } from "./types";
+
+type TauriPayload = Readonly<Record<string, unknown>>;
 
 function mustDefined<T>(value: T | null | undefined, message: string): T {
   if (value === undefined || value === null) {
@@ -63,208 +67,170 @@ function mustDefined<T>(value: T | null | undefined, message: string): T {
   return value;
 }
 
+function invokeCommand<TResult = void>(
+  command: string,
+  payload?: TauriPayload
+): Promise<TResult> {
+  return invoke<TResult>(command, payload);
+}
+
+function invokeWithInput<TInput, TResult = void>(
+  command: string,
+  input: TInput
+): Promise<TResult> {
+  return invokeCommand<TResult>(command, { input });
+}
+
+function invokeWithOptionalInput<TInput extends object, TResult = void>(
+  command: string,
+  input?: TInput
+): Promise<TResult> {
+  return invokeCommand<TResult>(command, { input: input ?? {} });
+}
+
 export function createTauriHostBridge(): HostBridge {
   return {
     appServer: {
       start: (input?: AppServerStartInput) =>
-        invoke("app_server_start", {
-          input: input ?? {}
-        }),
-      stop: () => invoke("app_server_stop"),
+        invokeWithOptionalInput("app_server_start", input),
+      stop: () => invokeCommand("app_server_stop"),
       restart: (input?: AppServerStartInput) =>
-        invoke("app_server_restart", {
-          input: input ?? {}
-        })
+        invokeWithOptionalInput("app_server_restart", input)
     },
     rpc: {
       request: (input: RpcRequestInput) =>
-        invoke<RpcRequestOutput>("rpc_request", {
-          input
-        }),
-      notify: (input: RpcNotifyInput) =>
-        invoke("rpc_notify", {
-          input
-        }),
-      cancel: (input: RpcCancelInput) =>
-        invoke("rpc_cancel", {
-          input
-        })
+        invokeWithInput<RpcRequestInput, RpcRequestOutput>("rpc_request", input),
+      notify: (input: RpcNotifyInput) => invokeWithInput("rpc_notify", input),
+      cancel: (input: RpcCancelInput) => invokeWithInput("rpc_cancel", input)
     },
     serverRequest: {
       resolve: (input: ServerRequestResolveInput) =>
-        invoke("server_request_resolve", {
-          input
-        })
+        invokeWithInput("server_request_resolve", input)
     },
     app: {
-      setWindowTheme: (theme) =>
-        invoke("app_set_window_theme", {
-          theme
-        }),
-      startWindowDragging: () =>
-        invoke("app_start_window_dragging"),
-      controlWindow: (action) =>
-        invoke("app_control_window", {
-          action
-        }),
-      openExternal: (url: string) =>
-        invoke("app_open_external", {
-          url
-        }),
+      setWindowTheme: (theme) => invokeCommand("app_set_window_theme", { theme }),
+      startWindowDragging: () => invokeCommand("app_start_window_dragging"),
+      controlWindow: (action) => invokeCommand("app_control_window", { action }),
+      openExternal: (url: string) => invokeCommand("app_open_external", { url }),
       openWorkspace: (input: OpenWorkspaceInput) =>
-        invoke("app_open_workspace", {
-          input
-        }),
+        invokeWithInput("app_open_workspace", input),
       openCodexConfigToml: (input: OpenCodexConfigTomlInput) =>
-        invoke("app_open_codex_config_toml", {
-          input
-        }),
+        invokeWithInput("app_open_codex_config_toml", input),
       readGlobalAgentInstructions: (input: { readonly agentEnvironment: AgentEnvironment }) =>
-        invoke<GlobalAgentInstructionsOutput>("app_read_global_agent_instructions", {
-          input
-        }),
+        invokeWithInput<
+          { readonly agentEnvironment: AgentEnvironment },
+          GlobalAgentInstructionsOutput
+        >("app_read_global_agent_instructions", input),
       writeGlobalAgentInstructions: (input: UpdateGlobalAgentInstructionsInput) =>
-        invoke<GlobalAgentInstructionsOutput>("app_write_global_agent_instructions", {
-          input
-        }),
+        invokeWithInput<
+          UpdateGlobalAgentInstructionsInput,
+          GlobalAgentInstructionsOutput
+        >("app_write_global_agent_instructions", input),
       listCodexProviders: () =>
-        invoke<CodexProviderStore>("app_list_codex_providers"),
+        invokeCommand<CodexProviderStore>("app_list_codex_providers"),
       upsertCodexProvider: (input: CodexProviderDraft) =>
-        invoke<CodexProviderRecord>("app_upsert_codex_provider", {
+        invokeWithInput<CodexProviderDraft, CodexProviderRecord>(
+          "app_upsert_codex_provider",
           input
-        }),
+        ),
       deleteCodexProvider: (input: DeleteCodexProviderInput) =>
-        invoke<CodexProviderStore>("app_delete_codex_provider", {
+        invokeWithInput<DeleteCodexProviderInput, CodexProviderStore>(
+          "app_delete_codex_provider",
           input
-        }),
+        ),
       applyCodexProvider: (input: ApplyCodexProviderInput) =>
-        invoke<CodexProviderApplyResult>("app_apply_codex_provider", {
+        invokeWithInput<ApplyCodexProviderInput, CodexProviderApplyResult>(
+          "app_apply_codex_provider",
           input
-        }),
+        ),
       getCodexAuthModeState: (input: GetCodexAuthModeStateInput) =>
-        invoke<CodexAuthModeStateOutput>("app_get_codex_auth_mode_state", {
+        invokeWithInput<GetCodexAuthModeStateInput, CodexAuthModeStateOutput>(
+          "app_get_codex_auth_mode_state",
           input
-        }),
+        ),
       activateCodexChatgpt: (input: ActivateCodexChatgptInput) =>
-        invoke<CodexAuthSwitchResult>("app_activate_codex_chatgpt", {
+        invokeWithInput<ActivateCodexChatgptInput, CodexAuthSwitchResult>(
+          "app_activate_codex_chatgpt",
           input
-        }),
+        ),
       captureCodexOauthSnapshot: (input: CaptureCodexOauthSnapshotInput) =>
-        invoke<CodexAuthModeStateOutput>("app_capture_codex_oauth_snapshot", {
+        invokeWithInput<CaptureCodexOauthSnapshotInput, CodexAuthModeStateOutput>(
+          "app_capture_codex_oauth_snapshot",
           input
-        }),
+        ),
       readChatgptAuthTokens: () =>
-        invoke<ChatgptAuthTokensOutput>("app_read_chatgpt_auth_tokens"),
+        invokeCommand<ChatgptAuthTokensOutput>("app_read_chatgpt_auth_tokens"),
       writeChatgptAuthTokens: (input: UpdateChatgptAuthTokensInput) =>
-        invoke<ChatgptAuthTokensOutput>("app_write_chatgpt_auth_tokens", {
+        invokeWithInput<UpdateChatgptAuthTokensInput, ChatgptAuthTokensOutput>(
+          "app_write_chatgpt_auth_tokens",
           input
-        }),
-      clearChatgptAuthState: () =>
-        invoke("app_clear_chatgpt_auth_state"),
+        ),
+      clearChatgptAuthState: () => invokeCommand("app_clear_chatgpt_auth_state"),
       showNotification: (input: ShowNotificationInput) =>
-        invoke("app_show_notification", {
-          input
-        }),
+        invokeWithInput("app_show_notification", input),
       showContextMenu: (input: ShowContextMenuInput) =>
-        invoke("app_show_context_menu", {
-          input
-        }),
+        invokeWithInput("app_show_context_menu", input),
       importOfficialData: (input: ImportOfficialDataInput) =>
-        invoke("app_import_official_data", {
-          input
-        }),
+        invokeWithInput("app_import_official_data", input),
       listCodexSessions: (input: ListCodexSessionsInput) =>
-        invoke<ReadonlyArray<CodexSessionSummaryOutput>>("app_list_codex_sessions", {
+        invokeWithInput<ListCodexSessionsInput, ReadonlyArray<CodexSessionSummaryOutput>>(
+          "app_list_codex_sessions",
           input
-        }),
+        ),
       readCodexSession: (input: CodexSessionReadInput) =>
-        invoke<CodexSessionReadOutput>("app_read_codex_session", {
+        invokeWithInput<CodexSessionReadInput, CodexSessionReadOutput>(
+          "app_read_codex_session",
           input
-        }),
+        ),
       deleteCodexSession: (input: DeleteCodexSessionInput) =>
-        invoke("app_delete_codex_session", {
-          input
-        }),
-      rememberCommandApprovalRule: (input) =>
-        invoke<RememberCommandApprovalRuleOutput>("app_remember_command_approval_rule", {
-          input
-        })
+        invokeWithInput("app_delete_codex_session", input),
+      rememberCommandApprovalRule: (input: RememberCommandApprovalRuleInput) =>
+        invokeWithInput<
+          RememberCommandApprovalRuleInput,
+          RememberCommandApprovalRuleOutput
+        >("app_remember_command_approval_rule", input)
     },
     git: {
       getStatusSnapshot: (input: GitRepoInput) =>
-        invoke<GitStatusSnapshotOutput>("git_get_status_snapshot", {
+        invokeWithInput<GitRepoInput, GitStatusSnapshotOutput>(
+          "git_get_status_snapshot",
           input
-        }),
+        ),
       getBranchRefs: (input: GitRepoInput) =>
-        invoke<ReadonlyArray<GitBranchRef>>("git_get_branch_refs", {
+        invokeWithInput<GitRepoInput, ReadonlyArray<GitBranchRef>>(
+          "git_get_branch_refs",
           input
-        }),
+        ),
       getRemoteUrl: (input: GitRemoteInput) =>
-        invoke<string | null>("git_get_remote_url", {
-          input
-        }),
+        invokeWithInput<GitRemoteInput, string | null>("git_get_remote_url", input),
       getDiff: (input: GitDiffInput) =>
-        invoke<GitDiffOutput>("git_get_diff", {
-          input
-        }),
+        invokeWithInput<GitDiffInput, GitDiffOutput>("git_get_diff", input),
       getWorkspaceDiffs: (input: GitWorkspaceDiffsInput) =>
-        invoke<ReadonlyArray<GitWorkspaceDiffOutput>>("git_get_workspace_diffs", {
+        invokeWithInput<GitWorkspaceDiffsInput, ReadonlyArray<GitWorkspaceDiffOutput>>(
+          "git_get_workspace_diffs",
           input
-        }),
+        ),
       initRepository: (input: GitRepoInput) =>
-        invoke("git_init_repository", {
-          input
-        }),
-      stagePaths: (input: GitPathsInput) =>
-        invoke("git_stage_paths", {
-          input
-        }),
-      unstagePaths: (input: GitPathsInput) =>
-        invoke("git_unstage_paths", {
-          input
-        }),
-      discardPaths: (input: GitDiscardInput) =>
-        invoke("git_discard_paths", {
-          input
-        }),
-      commit: (input: GitCommitInput) =>
-        invoke("git_commit", {
-          input
-        }),
-      fetch: (input: GitRepoInput) =>
-        invoke("git_fetch", {
-          input
-        }),
-      pull: (input: GitRepoInput) =>
-        invoke("git_pull", {
-          input
-        }),
-      push: (input: GitRepoInput) =>
-        invoke("git_push", {
-          input
-        }),
-      checkout: (input: GitCheckoutInput) =>
-        invoke("git_checkout", {
-          input
-        })
+        invokeWithInput("git_init_repository", input),
+      stagePaths: (input: GitPathsInput) => invokeWithInput("git_stage_paths", input),
+      unstagePaths: (input: GitPathsInput) => invokeWithInput("git_unstage_paths", input),
+      discardPaths: (input: GitDiscardInput) => invokeWithInput("git_discard_paths", input),
+      commit: (input: GitCommitInput) => invokeWithInput("git_commit", input),
+      fetch: (input: GitRepoInput) => invokeWithInput("git_fetch", input),
+      pull: (input: GitRepoInput) => invokeWithInput("git_pull", input),
+      push: (input: GitPushInput) => invokeWithInput("git_push", input),
+      checkout: (input: GitCheckoutInput) => invokeWithInput("git_checkout", input)
     },
     terminal: {
       createSession: (input?: TerminalCreateInput) =>
-        invoke<TerminalCreateOutput>("terminal_create_session", {
-          input: input ?? {}
-        }),
-      write: (input: TerminalWriteInput) =>
-        invoke("terminal_write", {
+        invokeWithOptionalInput<TerminalCreateInput, TerminalCreateOutput>(
+          "terminal_create_session",
           input
-        }),
-      resize: (input: TerminalResizeInput) =>
-        invoke("terminal_resize", {
-          input
-        }),
+        ),
+      write: (input: TerminalWriteInput) => invokeWithInput("terminal_write", input),
+      resize: (input: TerminalResizeInput) => invokeWithInput("terminal_resize", input),
       closeSession: (input: TerminalCloseInput) =>
-        invoke("terminal_close_session", {
-          input
-        })
+        invokeWithInput("terminal_close_session", input)
     },
     subscribe: async <E extends BridgeEventName>(
       eventName: E,

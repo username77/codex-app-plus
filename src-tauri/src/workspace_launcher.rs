@@ -1,6 +1,8 @@
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
+use crate::command_utils::{open_detached_target, spawn_background_command};
 use crate::error::{AppError, AppResult};
 use crate::models::{OpenWorkspaceInput, WorkspaceOpener};
 
@@ -48,39 +50,22 @@ pub fn open_workspace(input: OpenWorkspaceInput) -> AppResult<()> {
 
     match input.opener {
         WorkspaceOpener::Vscode => open_vscode_workspace(&path),
-        WorkspaceOpener::Explorer => {
-            open::that_detached(path).map_err(|error| AppError::Io(error.to_string()))?;
-            Ok(())
-        }
+        WorkspaceOpener::Explorer => open_detached_target(path),
         WorkspaceOpener::Terminal => {
-            std::process::Command::new("cmd.exe")
-                .args(["/K", "cd", "/d", &input.path])
-                .spawn()
-                .map_err(|error| AppError::Io(error.to_string()))?;
-            Ok(())
+            spawn_program("cmd.exe", ["/K", "cd", "/d", input.path.as_str()])
         }
-        WorkspaceOpener::VisualStudio => {
-            std::process::Command::new("devenv.exe")
-                .arg(&input.path)
-                .spawn()
-                .map_err(|error| AppError::Io(error.to_string()))?;
-            Ok(())
-        }
+        WorkspaceOpener::VisualStudio => spawn_program("devenv.exe", [input.path.as_str()]),
         WorkspaceOpener::GithubDesktop => {
             let uri = format!(
                 "github-desktop://openRepo/{}",
                 input.path.replace('\\', "/")
             );
-            open::that_detached(uri).map_err(|error| AppError::Io(error.to_string()))?;
-            Ok(())
+            open_detached_target(uri)
         }
-        WorkspaceOpener::GitBash => {
-            std::process::Command::new("C:\\Program Files\\Git\\git-bash.exe")
-                .arg(format!("--cd={}", input.path))
-                .spawn()
-                .map_err(|error| AppError::Io(error.to_string()))?;
-            Ok(())
-        }
+        WorkspaceOpener::GitBash => spawn_program(
+            "C:\\Program Files\\Git\\git-bash.exe",
+            [format!("--cd={}", input.path)],
+        ),
     }
 }
 
@@ -242,110 +227,20 @@ fn is_script_binary(path: &Path) -> bool {
 }
 
 fn spawn_command(spec: CommandSpec) -> AppResult<()> {
-    std::process::Command::new(&spec.program)
-        .args(&spec.arguments)
-        .spawn()
-        .map_err(|error| AppError::Io(error.to_string()))?;
-    Ok(())
+    let mut command = Command::new(&spec.program);
+    command.args(&spec.arguments);
+    spawn_background_command(&mut command)
+}
+
+fn spawn_program<I, S>(program: &str, arguments: I) -> AppResult<()>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    let mut command = Command::new(program);
+    command.args(arguments);
+    spawn_background_command(&mut command)
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::fs;
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    fn unique_dir(name: &str) -> PathBuf {
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        std::env::temp_dir().join(format!("codex-app-plus-{name}-{timestamp}"))
-    }
-
-    fn test_locations(
-        path_directories: Vec<PathBuf>,
-        local_app_data: Option<PathBuf>,
-    ) -> VscodeSearchLocations {
-        VscodeSearchLocations {
-            path_directories,
-            path_extensions: vec![OsString::from(".cmd"), OsString::from(".exe")],
-            local_app_data,
-            program_files: None,
-            program_files_x86: None,
-        }
-    }
-
-    #[test]
-    fn builds_cmd_shell_command_for_code_cmd_on_path() {
-        let root = unique_dir("vscode-path");
-        let path_directory = root.join("bin");
-        let workspace_path = root.join("workspace");
-        let script_path = path_directory.join("code.cmd");
-        fs::create_dir_all(&path_directory).unwrap();
-        fs::create_dir_all(&workspace_path).unwrap();
-        fs::write(&script_path, "@echo off\r\n").unwrap();
-
-        let spec = build_vscode_command_for_locations(
-            &workspace_path,
-            &test_locations(vec![path_directory], None),
-        )
-        .unwrap();
-
-        assert_eq!(spec.program, OsString::from("cmd.exe"));
-        assert_eq!(
-            spec.arguments,
-            vec![
-                OsString::from("/C"),
-                script_path.as_os_str().to_os_string(),
-                OsString::from("--new-window"),
-                workspace_path.as_os_str().to_os_string(),
-            ]
-        );
-    }
-
-    #[test]
-    fn falls_back_to_common_user_install_location() {
-        let root = unique_dir("vscode-install");
-        let local_app_data = root.join("local");
-        let workspace_path = root.join("workspace");
-        let executable_path = local_app_data
-            .join("Programs")
-            .join("Microsoft VS Code")
-            .join("Code.exe");
-        fs::create_dir_all(executable_path.parent().unwrap()).unwrap();
-        fs::create_dir_all(&workspace_path).unwrap();
-        fs::write(&executable_path, []).unwrap();
-
-        let spec = build_vscode_command_for_locations(
-            &workspace_path,
-            &test_locations(Vec::new(), Some(local_app_data)),
-        )
-        .unwrap();
-
-        assert_eq!(spec.program, executable_path.as_os_str().to_os_string());
-        assert_eq!(
-            spec.arguments,
-            vec![
-                OsString::from("--new-window"),
-                workspace_path.as_os_str().to_os_string(),
-            ]
-        );
-    }
-
-    #[test]
-    fn returns_explicit_error_when_vscode_cannot_be_found() {
-        let root = unique_dir("vscode-missing");
-        let workspace_path = root.join("workspace");
-        fs::create_dir_all(&workspace_path).unwrap();
-
-        let result =
-            build_vscode_command_for_locations(&workspace_path, &test_locations(Vec::new(), None));
-
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("未找到 VS Code 可执行文件"));
-    }
-}
+mod tests;

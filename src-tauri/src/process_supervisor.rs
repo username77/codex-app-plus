@@ -159,8 +159,9 @@ mod windows_impl {
     mod tests {
         use std::fs;
         use std::path::PathBuf;
-        use std::time::{Duration, SystemTime, UNIX_EPOCH};
+        use std::time::Duration;
 
+        use crate::test_support::unique_temp_file;
         use tokio::process::Command;
         use tokio::time::{sleep, timeout};
         use windows_sys::Win32::Foundation::{CloseHandle, WAIT_OBJECT_0};
@@ -254,11 +255,7 @@ mod windows_impl {
         }
 
         fn unique_path(name: &str) -> PathBuf {
-            let timestamp = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_nanos();
-            std::env::temp_dir().join(format!("codex-app-plus-{name}-{timestamp}.txt"))
+            unique_temp_file("codex-app-plus", name, "txt")
         }
     }
 }

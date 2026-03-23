@@ -82,8 +82,7 @@ impl TerminalManager {
         let mut child =
             spawn_shell_process(pty_pair.slave, &shell, cwd, enforce_utf8.unwrap_or(true))?;
         if let Err(error) = supervisor.assign_portable_child(child.as_ref()) {
-            let _ = child.clone_killer().kill();
-            let _ = child.wait();
+            terminate_portable_child(&mut child);
             return Err(error);
         }
         let killer = child.clone_killer();
@@ -272,6 +271,11 @@ fn lock_mutex<'a, T>(mutex: &'a Mutex<T>, name: &str) -> AppResult<MutexGuard<'a
 
 fn map_terminal_error(error: impl std::fmt::Display) -> AppError {
     AppError::Io(error.to_string())
+}
+
+fn terminate_portable_child(child: &mut Box<dyn Child + Send + Sync>) {
+    let _ = child.clone_killer().kill();
+    let _ = child.wait();
 }
 
 fn kill_session(session: Arc<TerminalSession>) -> AppResult<()> {

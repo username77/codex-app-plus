@@ -10,6 +10,7 @@ mod codex_cli;
 mod codex_data;
 mod codex_provider;
 mod codex_session_text;
+mod command_utils;
 mod commands;
 mod error;
 mod events;
@@ -22,6 +23,8 @@ mod rpc_transport;
 mod rules;
 mod terminal_commands;
 mod terminal_manager;
+#[cfg(test)]
+mod test_support;
 mod window_theme;
 mod windows_child_process;
 mod workspace_launcher;
