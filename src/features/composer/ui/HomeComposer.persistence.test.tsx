@@ -121,6 +121,7 @@ function renderComposer(overrides?: Partial<ComponentProps<typeof HomeComposer>>
         onToggleDiff={vi.fn()}
         onUpdateThreadBranch={vi.fn().mockResolvedValue(undefined)}
         onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
+        onPromoteQueuedFollowUp={vi.fn().mockResolvedValue(undefined)}
         onRemoveQueuedFollowUp={vi.fn()}
         onClearQueuedFollowUps={vi.fn()}
         {...overrides}

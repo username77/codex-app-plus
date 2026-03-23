@@ -152,6 +152,7 @@ export function HomeScreen(props: HomeScreenProps): JSX.Element {
       onLogin={props.controller.login}
       onLogout={props.controller.logout}
       onResolveServerRequest={props.controller.resolveServerRequest}
+      onPromoteQueuedFollowUp={conversation.promoteQueuedFollowUp}
       onRemoveQueuedFollowUp={conversation.removeQueuedFollowUp}
       onClearQueuedFollowUps={conversation.clearQueuedFollowUps}
       onDismissBanner={actions.dismissBanner}

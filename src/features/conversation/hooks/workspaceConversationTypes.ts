@@ -39,6 +39,7 @@ export interface WorkspaceConversationController {
   sendTurn: (options: SendTurnOptions) => Promise<void>;
   interruptActiveTurn: () => Promise<void>;
   updateThreadBranch: (branch: string) => Promise<void>;
+  promoteQueuedFollowUp: (followUpId: string) => Promise<void>;
   removeQueuedFollowUp: (followUpId: string) => void;
   clearQueuedFollowUps: () => void;
 }

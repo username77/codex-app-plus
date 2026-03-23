@@ -173,17 +173,16 @@ export const zhCN = {
       followUpQueueMode: {
         label: "Follow-up 模式",
         description: "会话进行中再次发送消息时的默认处理方式。",
-        note: "支持 queue、steer、interrupt 三种模式。",
+        note: "支持 queue、interrupt 两种模式。",
         options: {
           queue: "Queue",
-          steer: "Steer",
           interrupt: "Interrupt",
         },
       },
       composerEnterBehavior: {
         label: "回车行为",
         description: "Composer 中 Enter 的发送规则。",
-        note: "支持 Cmd/Ctrl+Shift+Enter 单次反向 follow-up。",
+        note: "会话响应中输入新内容时，发送会按当前 Follow-up 模式处理。",
         options: {
           enter: "Enter 发送",
           cmdIfMultiline: "多行时 Ctrl/Cmd+Enter 发送",

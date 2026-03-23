@@ -120,6 +120,17 @@ export function updateQueuedFollowUps(state: AppState, conversationId: string, n
   return updateConversation(state, conversationId, (conversation) => ({ ...conversation, queuedFollowUps: nextQueuedFollowUps }));
 }
 
+export function promoteQueuedFollowUp(
+  queuedFollowUps: ConversationState["queuedFollowUps"],
+  followUpId: string,
+): ConversationState["queuedFollowUps"] {
+  const target = queuedFollowUps.find((followUp) => followUp.id === followUpId);
+  if (target === undefined || queuedFollowUps[0]?.id === followUpId) {
+    return queuedFollowUps;
+  }
+  return [target, ...queuedFollowUps.filter((followUp) => followUp.id !== followUpId)];
+}
+
 export function pushBanner(state: AppState, banner: UiBanner): AppState {
   const banners = [banner, ...state.banners.filter((item) => item.id !== banner.id)].slice(0, MAX_BANNERS);
   return { ...state, banners };

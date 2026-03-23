@@ -27,7 +27,7 @@ html[data-theme="dark"] .composer-area {
 }
 
 .plan-request-composer,
-.composer-queue-panel,
+.composer-queue-card,
 .composer-card,
 .composer-select-menu,
 .composer-select-submenu,
@@ -61,7 +61,6 @@ html[data-theme="dark"] .composer-area {
 .plan-request-question-header,
 .plan-request-option-index,
 .plan-request-option-copy small,
-.composer-queue-item p,
 .composer-queue-clear,
 .composer-queue-remove,
 .composer-footer,
@@ -86,10 +85,10 @@ html[data-theme="dark"] .composer-area {
 
 .plan-request-option,
 .plan-request-escape,
-.composer-queue-item,
 .attachment-clip,
 .attachment-clip-file,
 .composer-mini-btn,
+.composer-queue-promote,
 .composer-select-trigger,
 .composer-attachment-choice,
 .composer-attachment-mode-icon-wrap,
@@ -118,6 +117,7 @@ html[data-theme="dark"] .composer-area {
 .composer-select-folder-trigger:hover,
 .composer-footer-item:hover,
 .composer-footer-popover-item:hover,
+.composer-queue-promote:hover,
 .composer-attachment-item:hover,
 .composer-attachment-row:hover,
 .attachment-clip-remove:hover {

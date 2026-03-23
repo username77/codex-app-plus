@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { ComposerModelOption } from "../../composer/model/composerPreferences";
 import type { HostBridge } from "../../../bridge/types";
@@ -219,6 +219,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
       onSendTurn={vi.fn().mockResolvedValue(undefined)}
       onPersistComposerSelection={vi.fn().mockResolvedValue(undefined)}
       onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
+      onPromoteQueuedFollowUp={vi.fn().mockResolvedValue(undefined)}
       onAddRoot={vi.fn()}
       onRemoveRoot={vi.fn()}
       onRetryConnection={vi.fn().mockResolvedValue(undefined)}
@@ -234,30 +235,41 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
 }
 
 describe("HomeView interrupt composer", () => {
-  it("shows the pause button and interrupts on click", () => {
+  it("shows the stop button and interrupts on click when no draft is present", () => {
     const onSendTurn = vi.fn().mockResolvedValue(undefined);
     const onInterruptTurn = vi.fn().mockResolvedValue(undefined);
 
-    renderHomeView({ onSendTurn, onInterruptTurn });
-    fireEvent.click(screen.getByRole("button", { name: "Pause response" }));
+    renderHomeView({ inputText: "", onSendTurn, onInterruptTurn });
+    fireEvent.click(screen.getByRole("button", { name: "Stop response" }));
 
     expect(onInterruptTurn).toHaveBeenCalledTimes(1);
     expect(onSendTurn).not.toHaveBeenCalled();
   });
 
-  it("interrupts from Enter instead of sending while responding", () => {
+  it("interrupts from Enter instead of sending while responding without a draft", () => {
     const onSendTurn = vi.fn().mockResolvedValue(undefined);
     const onInterruptTurn = vi.fn().mockResolvedValue(undefined);
 
-    renderHomeView({ onSendTurn, onInterruptTurn });
+    renderHomeView({ inputText: "", onSendTurn, onInterruptTurn });
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
 
     expect(onInterruptTurn).toHaveBeenCalledTimes(1);
     expect(onSendTurn).not.toHaveBeenCalled();
   });
 
-  it("keeps the pause button disabled after an interrupt is already pending", () => {
-    renderHomeView({ interruptPending: true });
-    expect(screen.getByRole("button", { name: "Pause response" })).toBeDisabled();
+  it("sends follow-up content instead of interrupting while responding with a draft", async () => {
+    const onSendTurn = vi.fn().mockResolvedValue(undefined);
+    const onInterruptTurn = vi.fn().mockResolvedValue(undefined);
+
+    renderHomeView({ inputText: "继续分析", onSendTurn, onInterruptTurn });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    await waitFor(() => expect(onSendTurn).toHaveBeenCalledTimes(1));
+    expect(onInterruptTurn).not.toHaveBeenCalled();
+  });
+
+  it("keeps the stop button disabled after an interrupt is already pending", () => {
+    renderHomeView({ inputText: "", interruptPending: true });
+    expect(screen.getByRole("button", { name: "Stop response" })).toBeDisabled();
   });
 });

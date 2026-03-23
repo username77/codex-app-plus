@@ -202,6 +202,7 @@ export type AppAction =
   | { type: "serverRequest/received"; request: ReceivedServerRequest }
   | { type: "serverRequest/resolved"; requestId: string }
   | { type: "followUp/enqueued"; conversationId: string; followUp: QueuedFollowUp }
+  | { type: "followUp/promoted"; conversationId: string; followUpId: string }
   | { type: "followUp/dequeued"; conversationId: string; followUpId: string }
   | { type: "followUp/removed"; conversationId: string; followUpId: string }
   | { type: "followUp/cleared"; conversationId: string }

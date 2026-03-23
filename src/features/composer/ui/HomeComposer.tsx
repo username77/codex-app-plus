@@ -57,6 +57,7 @@ export interface HomeComposerProps {
   readonly onUpdateThreadBranch: (branch: string) => Promise<void>;
   readonly onInterruptTurn: () => Promise<void>;
   readonly onLogout?: () => Promise<void>;
+  readonly onPromoteQueuedFollowUp: (followUpId: string) => Promise<void>;
   readonly onRemoveQueuedFollowUp: (followUpId: string) => void;
   readonly onClearQueuedFollowUps: () => void;
 }
@@ -96,13 +97,15 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
   });
   const appServerReady = props.appServerReady !== false;
   const interactionDisabled = props.busy || multiAgentPending;
+  const hasDraftToSend = hasDraftContent(props.inputText, attachments.length > 0);
   const canSend = appServerReady
     && !interactionDisabled
-    && (props.inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH || attachments.length > 0);
-  const buttonDisabled = interactionDisabled
-    || !appServerReady
-    || (props.isResponding ? props.interruptPending : !canSend);
-  const buttonLabel = props.isResponding ? "Pause response" : "Send message";
+    && hasDraftToSend;
+  const showInterruptAction = props.isResponding && !hasDraftToSend;
+  const buttonDisabled = showInterruptAction
+    ? interactionDisabled || !appServerReady || props.interruptPending
+    : interactionDisabled || !appServerReady || !canSend;
+  const buttonLabel = showInterruptAction ? "Stop response" : "Send message";
 
   useComposerTextareaAutosize({ textareaRef: commandPalette.textareaRef, value: props.inputText, maxExtraRows: MAX_COMPOSER_INPUT_EXTRA_ROWS });
   useToolbarMenuDismissal(commandPalette.open, containerRef, () => void commandPalette.dismiss());
@@ -129,6 +132,13 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
     props,
   ]);
 
+  const handlePromoteQueuedFollowUp = useCallback((followUpId: string) => {
+    void props.onPromoteQueuedFollowUp(followUpId).catch((error) => {
+      console.error("插队失败", error);
+      notifyError("插队失败", error);
+    });
+  }, [notifyError, props]);
+
   const handleToggleMultiAgent = useCallback(async () => {
     setMenuOpen(false);
     setMultiAgentPending(true);
@@ -141,26 +151,34 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
 
   return (
     <footer className="composer-area">
-      <ComposerQueuedFollowUpsPanel queuedFollowUps={props.queuedFollowUps} onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp} onClearQueuedFollowUps={props.onClearQueuedFollowUps} />
-      <div className="composer-card" ref={containerRef}>
-        {multiAgentPending ? <ComposerReloadOverlay /> : null}
-        {menuOpen ? <button type="button" className="composer-popover-backdrop" aria-label="Close attachment menu" onClick={() => setMenuOpen(false)} /> : null}
-        {commandPalette.open ? <ComposerCommandPalette open={true} title={commandPalette.title} items={commandPalette.items} selectedIndex={commandPalette.selectedIndex} onSelectItem={commandPalette.onSelectItem} /> : null}
-        {attachments.length === 0 ? null : <AttachmentDraft attachments={attachments} onRemove={removeAttachment} />}
-        <textarea ref={commandPalette.textareaRef} rows={1} className="composer-input" placeholder={getComposerPlaceholder(props.selectedRootPath)} value={props.inputText} disabled={interactionDisabled} onPaste={(event) => void handlePaste(event)} onSelect={commandPalette.syncFromTextareaSelection} onKeyDown={(event) => handleInputKeyDown(event, props, commandPalette.handleKeyDown, submit)} onChange={(event) => handleInputChange(event.currentTarget.value, event.currentTarget.selectionStart, props.onInputChange, commandPalette.syncFromTextInput)} />
-        <div className="composer-bar">
-          <div className="composer-left">
-            <div className="composer-plus-anchor">
-              {menuOpen ? <ComposerAttachmentMenu collaborationPreset={props.collaborationPreset} serviceTier={composerSelection.selectedServiceTier} multiAgentAvailable={multiAgentAvailable} multiAgentEnabled={multiAgentEnabled} multiAgentDisabled={interactionDisabled || props.isResponding} onAddAttachments={() => handleAddAttachments(openFilePicker, setMenuOpen)} onSelectCollaborationPreset={props.onSelectCollaborationPreset} onSelectServiceTier={handleSelectServiceTier} onToggleMultiAgent={handleToggleMultiAgent} onClose={() => setMenuOpen(false)} /> : null}
-              <button type="button" className={menuOpen ? "composer-mini-btn composer-mini-btn-active" : "composer-mini-btn"} aria-label="Open attachment menu" aria-haspopup="menu" aria-expanded={menuOpen} disabled={interactionDisabled} onClick={() => void toggleAttachmentMenu(menuOpen, setMenuOpen, commandPalette.dismiss)}>
-                <OfficialPlusIcon className="composer-plus-icon" />
-              </button>
+      <div className="composer-stack">
+        <ComposerQueuedFollowUpsPanel
+          queuedFollowUps={props.queuedFollowUps}
+          interruptPending={props.interruptPending}
+          onPromoteQueuedFollowUp={handlePromoteQueuedFollowUp}
+          onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
+          onClearQueuedFollowUps={props.onClearQueuedFollowUps}
+        />
+        <div className="composer-card" ref={containerRef}>
+          {multiAgentPending ? <ComposerReloadOverlay /> : null}
+          {menuOpen ? <button type="button" className="composer-popover-backdrop" aria-label="Close attachment menu" onClick={() => setMenuOpen(false)} /> : null}
+          {commandPalette.open ? <ComposerCommandPalette open={true} title={commandPalette.title} items={commandPalette.items} selectedIndex={commandPalette.selectedIndex} onSelectItem={commandPalette.onSelectItem} /> : null}
+          {attachments.length === 0 ? null : <AttachmentDraft attachments={attachments} onRemove={removeAttachment} />}
+          <textarea ref={commandPalette.textareaRef} rows={1} className="composer-input" placeholder={getComposerPlaceholder(props.selectedRootPath)} value={props.inputText} disabled={interactionDisabled} onPaste={(event) => void handlePaste(event)} onSelect={commandPalette.syncFromTextareaSelection} onKeyDown={(event) => handleInputKeyDown(event, props, attachments.length > 0, commandPalette.handleKeyDown, submit)} onChange={(event) => handleInputChange(event.currentTarget.value, event.currentTarget.selectionStart, props.onInputChange, commandPalette.syncFromTextInput)} />
+          <div className="composer-bar">
+            <div className="composer-left">
+              <div className="composer-plus-anchor">
+                {menuOpen ? <ComposerAttachmentMenu collaborationPreset={props.collaborationPreset} serviceTier={composerSelection.selectedServiceTier} multiAgentAvailable={multiAgentAvailable} multiAgentEnabled={multiAgentEnabled} multiAgentDisabled={interactionDisabled || props.isResponding} onAddAttachments={() => handleAddAttachments(openFilePicker, setMenuOpen)} onSelectCollaborationPreset={props.onSelectCollaborationPreset} onSelectServiceTier={handleSelectServiceTier} onToggleMultiAgent={handleToggleMultiAgent} onClose={() => setMenuOpen(false)} /> : null}
+                <button type="button" className={menuOpen ? "composer-mini-btn composer-mini-btn-active" : "composer-mini-btn"} aria-label="Open attachment menu" aria-haspopup="menu" aria-expanded={menuOpen} disabled={interactionDisabled} onClick={() => void toggleAttachmentMenu(menuOpen, setMenuOpen, commandPalette.dismiss)}>
+                  <OfficialPlusIcon className="composer-plus-icon" />
+                </button>
+              </div>
+              <ComposerModelControls disabled={interactionDisabled} models={props.models} selectedModel={composerSelection.selectedModel} selectedEffort={composerSelection.selectedEffort} supportedEfforts={composerSelection.selectedModelOption?.supportedEfforts ?? []} onSelectModel={handleSelectModel} onSelectEffort={handleSelectEffort} />
             </div>
-            <ComposerModelControls disabled={interactionDisabled} models={props.models} selectedModel={composerSelection.selectedModel} selectedEffort={composerSelection.selectedEffort} supportedEfforts={composerSelection.selectedModelOption?.supportedEfforts ?? []} onSelectModel={handleSelectModel} onSelectEffort={handleSelectEffort} />
+            <button type="button" className="send-btn" aria-label={buttonLabel} disabled={buttonDisabled} onClick={() => showInterruptAction ? void props.onInterruptTurn() : submit()}>
+              {showInterruptAction ? <PauseResponseIcon className="send-icon" /> : <SendArrowIcon className="send-icon" />}
+            </button>
           </div>
-          <button type="button" className="send-btn" aria-label={buttonLabel} disabled={buttonDisabled} onClick={() => props.isResponding ? void props.onInterruptTurn() : submit()}>
-            {props.isResponding ? <PauseResponseIcon className="send-icon" /> : <SendArrowIcon className="send-icon" />}
-          </button>
         </div>
       </div>
       <ComposerFooter permissionLevel={props.permissionLevel} gitController={props.gitController} selectedThreadId={props.selectedThreadId} selectedThreadBranch={props.selectedThreadBranch} onSelectPermission={props.onSelectPermissionLevel} onUpdateThreadBranch={props.onUpdateThreadBranch} />
@@ -202,21 +220,22 @@ function handleInputChange(
 function handleInputKeyDown(
   event: KeyboardEvent<HTMLTextAreaElement>,
   props: HomeComposerProps,
+  hasAttachments: boolean,
   handlePaletteKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => boolean,
   submit: (followUpOverride?: FollowUpMode) => void,
 ): void {
   if (handlePaletteKeyDown(event)) {
     return;
   }
-  handleComposerEnterKey(event, props.inputText, props.composerEnterBehavior, props.followUpQueueMode, props.isResponding, submit, () => void props.onInterruptTurn());
+  handleComposerEnterKey(event, props.inputText, props.composerEnterBehavior, props.isResponding, hasDraftContent(props.inputText, hasAttachments), submit, () => void props.onInterruptTurn());
 }
 
 function handleComposerEnterKey(
   event: KeyboardEvent<HTMLTextAreaElement>,
   inputText: string,
   composerEnterBehavior: ComposerEnterBehavior,
-  followUpQueueMode: FollowUpMode,
   isResponding: boolean,
+  hasDraftToSend: boolean,
   submit: (followUpOverride?: FollowUpMode) => void,
   interrupt: () => void,
 ): void {
@@ -224,24 +243,19 @@ function handleComposerEnterKey(
     return;
   }
   const metaPressed = event.metaKey || event.ctrlKey;
-  if (event.shiftKey && metaPressed) {
-    event.preventDefault();
-    if (isResponding) {
-      interrupt();
-      return;
-    }
-    submit(followUpQueueMode === "queue" ? "steer" : "queue");
-    return;
-  }
   if (event.shiftKey || !shouldSendOnEnter(inputText, composerEnterBehavior, metaPressed)) {
     return;
   }
   event.preventDefault();
-  if (isResponding) {
+  if (isResponding && !hasDraftToSend) {
     interrupt();
     return;
   }
   submit();
+}
+
+function hasDraftContent(inputText: string, hasAttachments: boolean): boolean {
+  return inputText.trim().length >= MIN_TRIMMED_MESSAGE_LENGTH || hasAttachments;
 }
 
 function shouldSendOnEnter(inputText: string, behavior: ComposerEnterBehavior, metaPressed: boolean): boolean {

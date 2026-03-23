@@ -108,6 +108,19 @@ describe("GeneralSettingsSection", () => {
     expect(
       screen.getByText("已作用于时间线；完整输出会额外显示 raw response 与调试项。"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("会话响应中输入新内容时，发送会按当前 Follow-up 模式处理。"),
+    ).toBeInTheDocument();
+  });
+
+  it("only offers queue and interrupt follow-up modes", () => {
+    renderSection();
+
+    fireEvent.click(screen.getByRole("button", { name: "Follow-up 模式：Queue" }));
+
+    expect(screen.getByRole("menuitemradio", { name: /Queue/ })).toBeInTheDocument();
+    expect(screen.getByRole("menuitemradio", { name: "Interrupt" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitemradio", { name: "Steer" })).toBeNull();
   });
 
   it("offers auto language detection alongside Chinese and English", () => {
@@ -139,6 +152,11 @@ describe("GeneralSettingsSection", () => {
     expect(
       screen.getByText(
         "Defaults to the system language, keeps your manual choice once changed, and updates migrated screens immediately.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "While a response is streaming, new draft content is sent using the current follow-up mode.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Force UTF-8 for the embedded terminal")).toBeInTheDocument();

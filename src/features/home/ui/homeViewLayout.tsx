@@ -132,6 +132,7 @@ export function createHomeMainContentProps(
     onInterruptTurn: props.onInterruptTurn,
     onLogout: props.onLogout,
     onPersistComposerSelection: props.onPersistComposerSelection,
+    onPromoteQueuedFollowUp: props.onPromoteQueuedFollowUp,
     onRemoveQueuedFollowUp: props.onRemoveQueuedFollowUp,
     onResolveServerRequest: props.onResolveServerRequest,
     onRetryConnection: props.onRetryConnection,

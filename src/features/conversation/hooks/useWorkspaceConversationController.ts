@@ -7,7 +7,6 @@ import type { ThreadStartResponse } from "../../../protocol/generated/v2/ThreadS
 import type { TurnInterruptParams } from "../../../protocol/generated/v2/TurnInterruptParams";
 import type { TurnStartParams } from "../../../protocol/generated/v2/TurnStartParams";
 import type { TurnStartResponse } from "../../../protocol/generated/v2/TurnStartResponse";
-import type { TurnSteerParams } from "../../../protocol/generated/v2/TurnSteerParams";
 import { useAppDispatch, useAppStoreApi } from "../../../state/store";
 import {
   createThreadPermissionOverrides,
@@ -41,6 +40,7 @@ type WorkspaceConversationActions = Pick<
   | "clearQueuedFollowUps"
   | "createThread"
   | "interruptActiveTurn"
+  | "promoteQueuedFollowUp"
   | "removeQueuedFollowUp"
   | "selectCollaborationPreset"
   | "selectThread"
@@ -222,16 +222,6 @@ export function useWorkspaceConversationController({
     await startTurn(conversation.id, sendOptions, response.thread.cwd || response.cwd || agentWorkspacePath);
   }, [appServerClient, appServerReady, dispatch, options.agentEnvironment, options.permissionSettings, options.selectedRootPath, startTurn, store]);
 
-  const steerTurn = useCallback(async (conversationId: string, turnId: string, sendOptions: SendTurnOptions) => {
-    if (!appServerReady) {
-      throw createAppServerNotReadyError();
-    }
-    const input = createInput(sendOptions.text, sendOptions.attachments);
-    const params: TurnSteerParams = { threadId: conversationId, input, expectedTurnId: turnId };
-    await appServerClient.request("turn/steer", params);
-    dispatch({ type: "conversation/itemCompleted", conversationId, turnId, item: { type: "userMessage", id: `steer-${Date.now()}`, content: input } });
-  }, [appServerClient, appServerReady, dispatch]);
-
   const interruptTurn = useCallback(async (conversationId: string, turnId: string) => {
     if (!appServerReady) {
       throw createAppServerNotReadyError();
@@ -325,18 +315,13 @@ export function useWorkspaceConversationController({
       return;
     }
     const mode = sendOptions.followUpOverride ?? options.followUpQueueMode;
-    if (mode === "steer") {
-      await steerTurn(selectedConversation.id, currentActiveTurnId, sendOptions);
-      dispatch({ type: "input/changed", value: "" });
-      return;
-    }
     const followUp = createQueuedFollowUp({ ...sendOptions, followUpOverride: mode });
     dispatch({ type: "followUp/enqueued", conversationId: selectedConversation.id, followUp });
     dispatch({ type: "input/changed", value: "" });
     if (mode === "interrupt" && selectedConversation.interruptRequestedTurnId !== currentActiveTurnId) {
       await interruptTurn(selectedConversation.id, currentActiveTurnId);
     }
-  }, [dispatch, ensureConversationResumed, getConversation, interruptTurn, options.followUpQueueMode, options.selectedRootPath, selectedConversation, startNewConversation, startTurn, steerTurn]);
+  }, [dispatch, ensureConversationResumed, getConversation, interruptTurn, options.followUpQueueMode, options.selectedRootPath, selectedConversation, startNewConversation, startTurn]);
 
   const interruptActiveTurn = useCallback(async () => {
     if (selectedConversation === null || activeTurnId === null || selectedConversation.interruptRequestedTurnId === activeTurnId) {
@@ -393,10 +378,53 @@ export function useWorkspaceConversationController({
     }
   }, [dispatch, selectedConversation]);
 
+  const promoteQueuedFollowUp = useCallback(async (followUpId: string) => {
+    if (!appServerReady) {
+      throw createAppServerNotReadyError();
+    }
+    if (selectedConversation === null) {
+      return;
+    }
+    const conversationId = selectedConversation.id;
+    await ensureConversationResumed(conversationId);
+    const currentConversation = getConversation(conversationId) ?? selectedConversation;
+    const followUp = currentConversation.queuedFollowUps.find((entry) => entry.id === followUpId) ?? null;
+    if (followUp === null) {
+      return;
+    }
+    dispatch({ type: "followUp/promoted", conversationId, followUpId });
+    const promotedConversation = getConversation(conversationId) ?? currentConversation;
+    const currentActiveTurnId = getActiveTurnId(promotedConversation);
+    if (currentActiveTurnId !== null) {
+      if (promotedConversation.interruptRequestedTurnId !== currentActiveTurnId) {
+        await interruptTurn(conversationId, currentActiveTurnId);
+      }
+      return;
+    }
+    if (drainingConversationIds.current.has(conversationId)) {
+      return;
+    }
+    drainingConversationIds.current.add(conversationId);
+    try {
+      await startTurn(conversationId, {
+        text: followUp.text,
+        attachments: followUp.attachments,
+        selection: { model: followUp.model, effort: followUp.effort, serviceTier: followUp.serviceTier },
+        permissionLevel: followUp.permissionLevel,
+        collaborationPreset: followUp.collaborationPreset,
+        followUpOverride: followUp.mode,
+      }, promotedConversation.cwd ?? options.selectedRootPath);
+      dispatch({ type: "followUp/dequeued", conversationId, followUpId });
+    } finally {
+      drainingConversationIds.current.delete(conversationId);
+    }
+  }, [appServerReady, dispatch, ensureConversationResumed, getConversation, interruptTurn, options.selectedRootPath, selectedConversation, startTurn]);
+
   return {
     clearQueuedFollowUps,
     createThread,
     interruptActiveTurn,
+    promoteQueuedFollowUp,
     removeQueuedFollowUp,
     selectCollaborationPreset,
     selectThread,

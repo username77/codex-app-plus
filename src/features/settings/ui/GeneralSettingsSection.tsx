@@ -46,7 +46,6 @@ function createThreadDetailOptions(t: Translator): ReadonlyArray<SettingsSelectO
 function createFollowUpModeOptions(t: Translator): ReadonlyArray<SettingsSelectOption<FollowUpMode>> {
   return [
     { value: "queue", label: t("settings.general.followUpQueueMode.options.queue") },
-    { value: "steer", label: t("settings.general.followUpQueueMode.options.steer") },
     { value: "interrupt", label: t("settings.general.followUpQueueMode.options.interrupt") }
   ];
 }

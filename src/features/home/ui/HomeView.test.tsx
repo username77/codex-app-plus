@@ -270,6 +270,7 @@ function renderHomeView(overrides?: Partial<ComponentProps<typeof HomeView>>) {
         onPersistComposerSelection={vi.fn().mockResolvedValue(undefined)}
         onUpdateThreadBranch={vi.fn().mockResolvedValue(undefined)}
         onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
+        onPromoteQueuedFollowUp={vi.fn().mockResolvedValue(undefined)}
         onAddRoot={vi.fn()}
         onRemoveRoot={vi.fn()}
         onRetryConnection={vi.fn().mockResolvedValue(undefined)}
@@ -640,6 +641,7 @@ describe("HomeView", () => {
         onPersistComposerSelection={vi.fn().mockResolvedValue(undefined)}
         onUpdateThreadBranch={vi.fn().mockResolvedValue(undefined)}
         onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
+        onPromoteQueuedFollowUp={vi.fn().mockResolvedValue(undefined)}
         onAddRoot={vi.fn()}
         onRemoveRoot={vi.fn()}
         onRetryConnection={vi.fn().mockResolvedValue(undefined)}
@@ -755,7 +757,8 @@ describe("HomeView", () => {
     expect(heading).toHaveAttribute("title", longTitle);
   });
 
-  it("shows queued follow-ups and forwards remove/clear actions", () => {
+  it("shows queued follow-ups and forwards insert/remove/clear actions", async () => {
+    const onPromoteQueuedFollowUp = vi.fn().mockResolvedValue(undefined);
     const onRemoveQueuedFollowUp = vi.fn();
     const onClearQueuedFollowUps = vi.fn();
 
@@ -774,14 +777,18 @@ describe("HomeView", () => {
           createdAt: "2026-03-06T09:00:00.000Z"
         }
       ],
+      onPromoteQueuedFollowUp,
       onRemoveQueuedFollowUp,
       onClearQueuedFollowUps
     });
 
-    expect(screen.getByText("Queued follow-ups")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /排队发送.*共 1 条待发送/ })).toBeInTheDocument();
+    expect(screen.getByText("continue fix")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "插队" }));
     fireEvent.click(screen.getByRole("button", { name: "移除" }));
     fireEvent.click(screen.getByRole("button", { name: "清空" }));
 
+    await waitFor(() => expect(onPromoteQueuedFollowUp).toHaveBeenCalledWith("follow-1"));
     expect(onRemoveQueuedFollowUp).toHaveBeenCalledWith("follow-1");
     expect(onClearQueuedFollowUps).toHaveBeenCalledTimes(1);
   });

@@ -28,6 +28,7 @@ import { flushConversationOutputDeltas, flushConversationTextDeltas } from "./co
 import {
   dismissBanner,
   mergeConversation,
+  promoteQueuedFollowUp,
   pruneThreadCollaborationPresets,
   pushBanner,
   pushNotification,
@@ -220,6 +221,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "followUp/enqueued": {
       const current = state.conversationsById[action.conversationId];
       return current === undefined ? state : updateQueuedFollowUps(state, action.conversationId, [...current.queuedFollowUps, action.followUp]);
+    }
+    case "followUp/promoted": {
+      const current = state.conversationsById[action.conversationId];
+      return current === undefined ? state : updateQueuedFollowUps(state, action.conversationId, promoteQueuedFollowUp(current.queuedFollowUps, action.followUpId));
     }
     case "followUp/dequeued":
     case "followUp/removed": {

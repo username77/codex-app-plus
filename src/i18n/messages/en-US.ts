@@ -174,17 +174,16 @@ export const enUS = {
       followUpQueueMode: {
         label: "Follow-up mode",
         description: "Default behavior when sending another message during an active session.",
-        note: "Supports queue, steer, and interrupt.",
+        note: "Supports queue and interrupt.",
         options: {
           queue: "Queue",
-          steer: "Steer",
           interrupt: "Interrupt",
         },
       },
       composerEnterBehavior: {
         label: "Enter behavior",
         description: "How Enter sends from the Composer.",
-        note: "Cmd/Ctrl+Shift+Enter still sends one reversed follow-up.",
+        note: "While a response is streaming, new draft content is sent using the current follow-up mode.",
         options: {
           enter: "Send with Enter",
           cmdIfMultiline: "Use Ctrl/Cmd+Enter for multiline",

@@ -117,6 +117,7 @@ function renderComposer(overrides?: Partial<ComponentProps<typeof HomeComposer>>
         onToggleDiff={vi.fn()}
         onUpdateThreadBranch={vi.fn().mockResolvedValue(undefined)}
         onInterruptTurn={vi.fn().mockResolvedValue(undefined)}
+        onPromoteQueuedFollowUp={vi.fn().mockResolvedValue(undefined)}
         onRemoveQueuedFollowUp={vi.fn()}
         onClearQueuedFollowUps={vi.fn()}
         {...overrides}
@@ -194,6 +195,25 @@ describe("HomeComposer attachments", () => {
       text: "",
       attachments: [expect.objectContaining({ kind: "file", name: "notes.md", source: "mention" })],
     }));
+  });
+
+  it("keeps the send action active while responding when only attachments are queued", async () => {
+    openMock.mockResolvedValue(["E:/code/codex-app-plus/notes.md"]);
+    const onSendTurn = vi.fn().mockResolvedValue(undefined);
+    const onInterruptTurn = vi.fn().mockResolvedValue(undefined);
+    renderComposer({ inputText: "", isResponding: true, onSendTurn, onInterruptTurn });
+
+    fireEvent.click(screen.getByRole("button", { name: "Open attachment menu" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Add files and photos/i }));
+    await waitFor(() => expect(screen.getByText("notes.md")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    await waitFor(() => expect(onSendTurn).toHaveBeenCalledWith(expect.objectContaining({
+      text: "",
+      attachments: [expect.objectContaining({ kind: "file", name: "notes.md", source: "mention" })],
+    })));
+    expect(onInterruptTurn).not.toHaveBeenCalled();
   });
 
   it("shows and toggles multi-agent when available", async () => {

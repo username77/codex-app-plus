@@ -123,6 +123,21 @@ function createSendOptions(text: string, attachments: ReadonlyArray<ComposerAtta
   };
 }
 
+function createQueuedFollowUp(id: string, text: string) {
+  return {
+    id,
+    text,
+    attachments: [],
+    model: "gpt-5.2",
+    effort: "medium" as const,
+    serviceTier: null,
+    permissionLevel: "default" as const,
+    collaborationPreset: "default" as const,
+    mode: "queue" as const,
+    createdAt: "2026-03-06T09:00:00.000Z",
+  };
+}
+
 function renderConversation(
   hostBridge: HostBridge,
   collaborationModes = [
@@ -704,6 +719,61 @@ describe("useWorkspaceConversation", () => {
     expect(result.current.conversation.queuedFollowUps[0]?.attachments).toEqual(attachments);
   });
 
+  it("promotes a queued follow-up to the front and interrupts the active turn", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "turn/interrupt") {
+        return { requestId: "request-1", result: { success: true } };
+      }
+      return { requestId: "noop", result: {} };
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread({ status: { type: "active" as const, activeFlags: [] }, turns: [createTurn()] }), { resumeState: "resumed" }) });
+      result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-1" });
+      result.current.store.dispatch({ type: "followUp/enqueued", conversationId: "thread-1", followUp: createQueuedFollowUp("follow-1", "first queued") });
+      result.current.store.dispatch({ type: "followUp/enqueued", conversationId: "thread-1", followUp: createQueuedFollowUp("follow-2", "second queued") });
+    });
+
+    await act(async () => {
+      await result.current.conversation.promoteQueuedFollowUp("follow-2");
+    });
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/interrupt", params: { threadId: "thread-1", turnId: "turn-1" } }));
+    expect(result.current.conversation.queuedFollowUps.map((followUp) => followUp.id)).toEqual(["follow-2", "follow-1"]);
+  });
+
+  it("starts the promoted queued follow-up immediately when no active turn is present", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "turn/start") {
+        return { requestId: "request-1", result: { turn: createTurn() } };
+      }
+      return { requestId: "noop", result: {} };
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread({ status: { type: "active" as const, activeFlags: [] }, turns: [] }), { resumeState: "resumed" }) });
+      result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-1" });
+      result.current.store.dispatch({ type: "followUp/enqueued", conversationId: "thread-1", followUp: createQueuedFollowUp("follow-1", "first queued") });
+      result.current.store.dispatch({ type: "followUp/enqueued", conversationId: "thread-1", followUp: createQueuedFollowUp("follow-2", "second queued") });
+    });
+
+    await act(async () => {
+      await result.current.conversation.promoteQueuedFollowUp("follow-2");
+    });
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({
+      method: "turn/start",
+      params: expect.objectContaining({
+        input: [{ type: "text", text: "second queued", text_elements: [] }],
+      }),
+    }));
+    expect(result.current.conversation.queuedFollowUps.map((followUp) => followUp.id)).toEqual(["follow-1"]);
+  });
+
   it("sends official attachment inputs on turn start", async () => {
     const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
       if (input.method === "turn/start") {
@@ -739,10 +809,10 @@ describe("useWorkspaceConversation", () => {
     }));
   });
 
-  it("steers the active turn when requested", async () => {
+  it("starts a fresh turn immediately when interrupt mode is chosen without an active turn", async () => {
     const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
-      if (input.method === "turn/steer") {
-        return { requestId: "request-1", result: { turnId: "turn-1" } };
+      if (input.method === "turn/start") {
+        return { requestId: "request-1", result: { turn: createTurn() } };
       }
       return { requestId: "noop", result: {} };
     });
@@ -752,17 +822,15 @@ describe("useWorkspaceConversation", () => {
     act(() => {
       result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread(), { resumeState: "resumed" }) });
       result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-1" });
-      result.current.store.dispatch({ type: "conversation/turnPlaceholderAdded", conversationId: "thread-1", params: { input: [{ type: "text", text: "hello", text_elements: [] }], cwd: "E:/code/FPGA", model: "gpt-5.2", effort: "medium", serviceTier: null, collaborationMode: null } });
-      result.current.store.dispatch({ type: "conversation/turnStarted", conversationId: "thread-1", turn: createTurn() });
-      result.current.store.dispatch({ type: "conversation/statusChanged", conversationId: "thread-1", status: "active", activeFlags: [] });
-      result.current.store.dispatch({ type: "input/changed", value: "先看失败测试" });
     });
 
     await act(async () => {
-      await result.current.conversation.sendTurn({ ...createSendOptions("look at failure first"), followUpOverride: "steer" });
+      await result.current.conversation.sendTurn({ ...createSendOptions("interrupt after idle"), followUpOverride: "interrupt" });
     });
 
-    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/steer" }));
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ method: "turn/start" }));
+    expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ method: "turn/interrupt" }));
+    expect(result.current.conversation.queuedFollowUps).toHaveLength(0);
   });
 
   it("keeps follow-up interrupt mode as turn-only interruption", async () => {
@@ -789,6 +857,57 @@ describe("useWorkspaceConversation", () => {
     expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ method: "thread/backgroundTerminals/clean" }));
     expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ method: "thread/unsubscribe" }));
     expect(result.current.conversation.queuedFollowUps).toHaveLength(1);
+  });
+
+  it("does not send a duplicate interrupt request when one is already pending", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "turn/interrupt") {
+        return { requestId: "request-1", result: { success: true } };
+      }
+      return { requestId: "noop", result: {} };
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread({ status: { type: "active" as const, activeFlags: [] }, turns: [createTurn()] }), { resumeState: "resumed" }) });
+      result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-1" });
+      result.current.store.dispatch({ type: "turn/interruptRequested", conversationId: "thread-1", turnId: "turn-1" });
+      result.current.store.dispatch({ type: "input/changed", value: "继续排队" });
+    });
+
+    await act(async () => {
+      await result.current.conversation.sendTurn({ ...createSendOptions("interrupt already pending"), followUpOverride: "interrupt" });
+    });
+
+    expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ method: "turn/interrupt" }));
+    expect(result.current.conversation.queuedFollowUps).toHaveLength(1);
+  });
+
+  it("reorders the queue without sending another interrupt when one is already pending", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "turn/interrupt") {
+        return { requestId: "request-1", result: { success: true } };
+      }
+      return { requestId: "noop", result: {} };
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({ type: "conversation/upserted", conversation: createConversationFromThread(createThread({ status: { type: "active" as const, activeFlags: [] }, turns: [createTurn()] }), { resumeState: "resumed" }) });
+      result.current.store.dispatch({ type: "conversation/selected", conversationId: "thread-1" });
+      result.current.store.dispatch({ type: "followUp/enqueued", conversationId: "thread-1", followUp: createQueuedFollowUp("follow-1", "first queued") });
+      result.current.store.dispatch({ type: "followUp/enqueued", conversationId: "thread-1", followUp: createQueuedFollowUp("follow-2", "second queued") });
+      result.current.store.dispatch({ type: "turn/interruptRequested", conversationId: "thread-1", turnId: "turn-1" });
+    });
+
+    await act(async () => {
+      await result.current.conversation.promoteQueuedFollowUp("follow-2");
+    });
+
+    expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ method: "turn/interrupt" }));
+    expect(result.current.conversation.queuedFollowUps.map((followUp) => followUp.id)).toEqual(["follow-2", "follow-1"]);
   });
 
   it("waits for the app server to become ready before resuming a selected thread", async () => {

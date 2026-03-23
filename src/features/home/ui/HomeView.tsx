@@ -125,6 +125,7 @@ export interface HomeViewProps {
   readonly onResolveServerRequest: (
     resolution: ServerRequestResolution,
   ) => Promise<void>;
+  readonly onPromoteQueuedFollowUp: (followUpId: string) => Promise<void>;
   readonly onRemoveQueuedFollowUp: (followUpId: string) => void;
   readonly onClearQueuedFollowUps: () => void;
   readonly onDismissBanner: (bannerId: string) => void;

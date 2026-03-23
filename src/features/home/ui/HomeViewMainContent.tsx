@@ -98,6 +98,7 @@ export interface HomeViewMainContentProps {
   readonly onInterruptTurn: () => Promise<void>;
   readonly onLogout: () => Promise<void>;
   readonly onResolveServerRequest: (resolution: ServerRequestResolution) => Promise<void>;
+  readonly onPromoteQueuedFollowUp: (followUpId: string) => Promise<void>;
   readonly onRemoveQueuedFollowUp: (followUpId: string) => void;
   readonly onClearQueuedFollowUps: () => void;
   readonly onCreateThread: () => Promise<void>;
@@ -277,6 +278,7 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
           onUpdateThreadBranch={props.onUpdateThreadBranch}
           onInterruptTurn={props.onInterruptTurn}
           onLogout={props.onLogout}
+          onPromoteQueuedFollowUp={props.onPromoteQueuedFollowUp}
           onRemoveQueuedFollowUp={props.onRemoveQueuedFollowUp}
           onClearQueuedFollowUps={props.onClearQueuedFollowUps}
         />
