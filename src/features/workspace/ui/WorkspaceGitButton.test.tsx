@@ -106,7 +106,7 @@ describe("WorkspaceGitButton", () => {
     expect(screen.queryByRole("menuitem", { name: "打开 Git 工作台" })).not.toBeInTheDocument();
   });
 
-  it("提交和推送在不可执行时置灰", () => {
+  it("工作区干净时提交置灰，但推送仍可尝试", () => {
     renderButton({
       controller: createController({
         commitMessage: "",
@@ -114,17 +114,17 @@ describe("WorkspaceGitButton", () => {
       })
     });
 
-    expect(screen.getByRole("button", { name: "推送当前工作区" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "推送当前工作区" })).not.toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "选择 Git 操作" }));
 
     const menuItems = screen.getAllByRole("menuitem");
     expect(menuItems[0]).toBeDisabled();
-    expect(menuItems[1]).toBeDisabled();
+    expect(menuItems[1]).not.toBeDisabled();
     expect(menuItems[2]).not.toBeDisabled();
   });
 
-  it("有已暂存更改时允许打开提交卡片", () => {
+  it("有未暂存更改时允许打开提交卡片", () => {
     const openCommitDialog = vi.fn();
     renderButton({
       controller: createController({
@@ -132,7 +132,8 @@ describe("WorkspaceGitButton", () => {
         commitMessage: "",
         status: {
           ...status,
-          staged: [{ path: "src/App.tsx", originalPath: null, indexStatus: "M", worktreeStatus: " " }],
+          unstaged: [{ path: "src/App.tsx", originalPath: null, indexStatus: " ", worktreeStatus: "M" }],
+          isClean: false,
           branch: { ...status.branch!, ahead: 0 }
         }
       })

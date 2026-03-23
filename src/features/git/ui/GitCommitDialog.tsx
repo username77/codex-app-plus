@@ -1,6 +1,10 @@
 import { useEffect, useRef, type KeyboardEvent, type RefObject } from "react";
 import { canCommitChanges } from "../model/gitActionAvailability";
 import type { WorkspaceGitController } from "../model/types";
+import {
+  hasCommitableChanges,
+  hasUnresolvedConflicts,
+} from "../model/workspaceGitHelpers";
 import { GitCommitIcon } from "./gitIcons";
 
 const COMMIT_DIALOG_LABEL = "提交更改";
@@ -25,8 +29,16 @@ function getHelperText(controller: WorkspaceGitController): string {
   if (controller.status === null) {
     return "将提交当前已暂存的更改。";
   }
+  if (hasUnresolvedConflicts(controller.status)) {
+    return "请先解决冲突后再提交。";
+  }
+  if (!hasCommitableChanges(controller.status)) {
+    return "当前没有可提交的更改。";
+  }
   if (controller.status.staged.length === 0) {
-    return "请先暂存至少一项更改。";
+    return controller.commitMessage.trim().length === 0
+      ? "填写提交说明后，将自动暂存当前更改并提交。"
+      : "提交时会自动暂存当前更改。";
   }
   if (controller.commitMessage.trim().length === 0) {
     return "请填写提交说明后再正式提交。";

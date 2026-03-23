@@ -5,6 +5,10 @@ import { GitStateCard } from "./GitStateCard";
 import { canOpenCommitDialog, canPullChanges, canPushChanges } from "../model/gitActionAvailability";
 import type { WorkspaceGitController } from "../model/types";
 import { getCurrentBranchTitle, getGitViewState, getSelectedDiffKey, isGitBusy } from "../model/gitViewState";
+import {
+  getCommitableChangeCount,
+  hasUnresolvedConflicts,
+} from "../model/workspaceGitHelpers";
 
 interface WorkspaceGitViewProps {
   readonly selectedRootName: string;
@@ -117,9 +121,14 @@ function GitCommitCard(props: { readonly controller: WorkspaceGitController }): 
   }
 
   const canOpen = canOpenCommitDialog(props.controller);
-  const helperText = status.staged.length === 0
-    ? "先在左侧把要提交的文件暂存起来，然后点击下面的按钮填写提交说明。"
-    : `当前有 ${status.staged.length} 项已暂存更改，点击按钮后可填写提交说明并正式提交。`;
+  const commitableCount = getCommitableChangeCount(status);
+  const helperText = hasUnresolvedConflicts(status)
+    ? "当前存在未解决冲突，请先处理冲突后再提交。"
+    : status.staged.length > 0
+      ? `当前有 ${status.staged.length} 项已暂存更改，点击按钮后可填写提交说明并正式提交。`
+      : commitableCount === 0
+        ? "当前没有可提交的更改。"
+        : `当前有 ${commitableCount} 项待提交更改，点击按钮后可填写提交说明并自动暂存提交。`;
   return (
     <section className="git-card">
       <h3 className="git-card-title">提交</h3>

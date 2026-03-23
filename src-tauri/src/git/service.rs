@@ -15,6 +15,7 @@ use super::repository::{
     require_repository_context, resolve_workspace, to_args, validate_paths, validate_pathspec,
 };
 use super::runtime::RepositoryContextCache;
+use super::sync::{run_fetch, run_pull, run_push};
 use super::workspace_diffs::load_workspace_diffs;
 
 const STATUS_ARGS: [&str; 4] = [
@@ -28,9 +29,6 @@ const BRANCH_ARGS: [&str; 3] = [
     "--list",
     "--format=%(refname:short)%09%(upstream:short)%09%(HEAD)",
 ];
-const FETCH_ARGS: [&str; 3] = ["fetch", "--all", "--prune"];
-const PULL_ARGS: [&str; 1] = ["pull"];
-const PUSH_ARGS: [&str; 1] = ["push"];
 const INIT_ARGS: [&str; 1] = ["init"];
 
 pub fn get_status_snapshot_for_repo_root(repo_root: &Path) -> AppResult<GitStatusSnapshotOutput> {
@@ -146,17 +144,26 @@ pub fn commit(input: GitCommitInput, cache: &RepositoryContextCache) -> AppResul
 }
 
 pub fn fetch(input: GitRepoInput, cache: &RepositoryContextCache) -> AppResult<()> {
-    run_repo_command(&input.repo_path, cache, &FETCH_ARGS)
+    let context = require_repository_context(&input.repo_path, cache)?;
+    let snapshot = get_status_snapshot_for_repo_root(&context.repo_root)?;
+    let upstream = snapshot.branch.as_ref().and_then(|branch| branch.upstream.as_deref());
+    run_fetch(&context.repo_root, upstream)
 }
 
 pub fn pull(input: GitRepoInput, cache: &RepositoryContextCache) -> AppResult<()> {
-    run_repo_command(&input.repo_path, cache, &PULL_ARGS)
+    let context = require_repository_context(&input.repo_path, cache)?;
+    run_pull(&context.repo_root)
 }
 
 pub fn push(input: GitPushInput, cache: &RepositoryContextCache) -> AppResult<()> {
     let context = require_repository_context(&input.repo_path, cache)?;
-    let args = create_push_args(input.force_with_lease.unwrap_or(false));
-    run_git(&context.repo_root, &args).map(|_| ())
+    let snapshot = get_status_snapshot_for_repo_root(&context.repo_root)?;
+    let upstream = snapshot.branch.as_ref().and_then(|branch| branch.upstream.as_deref());
+    run_push(
+        &context.repo_root,
+        upstream,
+        input.force_with_lease.unwrap_or(false),
+    )
 }
 
 pub fn checkout(input: GitCheckoutInput, cache: &RepositoryContextCache) -> AppResult<()> {
@@ -175,15 +182,6 @@ pub fn checkout(input: GitCheckoutInput, cache: &RepositoryContextCache) -> AppR
         vec![OsString::from("checkout"), OsString::from(branch_name)]
     };
     run_git(&context.repo_root, &args).map(|_| ())
-}
-
-fn run_repo_command(
-    repo_path: &str,
-    cache: &RepositoryContextCache,
-    args: &[&str],
-) -> AppResult<()> {
-    let context = require_repository_context(repo_path, cache)?;
-    run_git(&context.repo_root, &to_args(args)).map(|_| ())
 }
 
 fn run_path_command(
@@ -234,37 +232,18 @@ fn create_remote_url_args(remote_name: &str) -> Vec<OsString> {
     ]
 }
 
-fn create_push_args(force_with_lease: bool) -> Vec<OsString> {
-    let mut args = to_args(&PUSH_ARGS);
-    if force_with_lease {
-        args.push(OsString::from("--force-with-lease"));
-    }
-    args
-}
-
 fn extract_remote_name(upstream: &str) -> Option<&str> {
     upstream.split_once('/').map(|(name, _)| name)
 }
 
 #[cfg(test)]
 mod tests {
-    use std::ffi::OsString;
-
-    use super::{create_push_args, extract_remote_name};
+    use super::extract_remote_name;
 
     #[test]
     fn extracts_remote_name_from_upstream() {
         assert_eq!(extract_remote_name("origin/main"), Some("origin"));
         assert_eq!(extract_remote_name("fork/feature/test"), Some("fork"));
         assert_eq!(extract_remote_name("main"), None);
-    }
-
-    #[test]
-    fn creates_push_args_with_force_with_lease() {
-        let args = create_push_args(true);
-
-        assert_eq!(args.len(), 2);
-        assert_eq!(args[0], OsString::from("push"));
-        assert_eq!(args[1], OsString::from("--force-with-lease"));
     }
 }

@@ -36,6 +36,7 @@ export function useWorkspaceGit(options: UseWorkspaceGitOptions): WorkspaceGitCo
   const actions = useWorkspaceGitActions({
     hostBridge: options.hostBridge,
     selectedRootPath: options.selectedRootPath,
+    status: state.status,
     commitMessage: state.commitMessage,
     selectedBranch: state.selectedBranch,
     newBranchName: state.newBranchName,

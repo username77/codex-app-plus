@@ -40,6 +40,25 @@ export function pickBranchName(status: GitStatusOutput | null, currentBranch: st
   return activeBranch ?? status.branch?.head ?? status.branches[0]?.name ?? "";
 }
 
+export function getCommitableChangeCount(status: GitStatusOutput | null): number {
+  if (status === null || !status.isRepository) {
+    return 0;
+  }
+  return status.staged.length + status.unstaged.length + status.untracked.length;
+}
+
+export function hasCommitableChanges(status: GitStatusOutput | null): boolean {
+  return getCommitableChangeCount(status) > 0;
+}
+
+export function hasUnresolvedConflicts(status: GitStatusOutput | null): boolean {
+  return status !== null && status.conflicted.length > 0;
+}
+
+export function collectAutoStagePaths(status: GitStatusOutput): ReadonlyArray<string> {
+  return normalizePaths([...status.unstaged, ...status.untracked].map((entry) => entry.path));
+}
+
 function matchesDiffTarget(entry: GitStatusEntry, target: GitDiffTarget): boolean {
   return entry.path === target.path;
 }

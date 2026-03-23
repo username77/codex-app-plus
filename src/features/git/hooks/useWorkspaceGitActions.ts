@@ -1,11 +1,19 @@
 import { useCallback } from "react";
 import type { HostBridge } from "../../../bridge/types";
 import type { GitNotice } from "../model/types";
-import { formatActionError, normalizePaths } from "../model/workspaceGitHelpers";
+import {
+  collectAutoStagePaths,
+  formatActionError,
+  hasCommitableChanges,
+  hasUnresolvedConflicts,
+  normalizePaths,
+} from "../model/workspaceGitHelpers";
+import type { GitStatusOutput } from "../../../bridge/types";
 
 interface UseWorkspaceGitActionsOptions {
   readonly hostBridge: HostBridge;
   readonly selectedRootPath: string | null;
+  readonly status: GitStatusOutput | null;
   readonly commitMessage: string;
   readonly selectedBranch: string;
   readonly newBranchName: string;
@@ -25,6 +33,9 @@ interface UseWorkspaceGitActionsOptions {
 }
 
 const COMMIT_ACTION_NAME = "提交更改";
+const COMMIT_EMPTY_MESSAGE = "请先填写提交说明。";
+const COMMIT_CONFLICT_MESSAGE = "请先解决冲突后再提交。";
+const COMMIT_EMPTY_CHANGES_MESSAGE = "当前没有可提交的更改。";
 
 function applyBranchPrefix(branchPrefix: string, branchName: string): string {
   const normalizedPrefix = branchPrefix.trim();
@@ -59,6 +70,28 @@ function useRunAction(options: UseWorkspaceGitActionsOptions) {
   );
 }
 
+async function prepareCommit(
+  options: UseWorkspaceGitActionsOptions,
+  repoPath: string,
+): Promise<string | null> {
+  if (hasUnresolvedConflicts(options.status)) {
+    return COMMIT_CONFLICT_MESSAGE;
+  }
+  if (!hasCommitableChanges(options.status)) {
+    return COMMIT_EMPTY_CHANGES_MESSAGE;
+  }
+  if (options.status === null || options.status.staged.length > 0) {
+    return null;
+  }
+
+  const paths = collectAutoStagePaths(options.status);
+  if (paths.length === 0) {
+    return COMMIT_EMPTY_CHANGES_MESSAGE;
+  }
+  await options.hostBridge.git.stagePaths({ repoPath, paths });
+  return null;
+}
+
 export function useWorkspaceGitActions(options: UseWorkspaceGitActionsOptions) {
   const runAction = useRunAction(options);
   const stagePaths = useCallback(async (paths: ReadonlyArray<string>) => {
@@ -87,7 +120,7 @@ export function useWorkspaceGitActions(options: UseWorkspaceGitActionsOptions) {
   const commit = useCallback(async () => {
     const message = options.commitMessage.trim();
     if (message.length === 0) {
-      options.setCommitDialogError("请先填写提交说明。");
+      options.setCommitDialogError(COMMIT_EMPTY_MESSAGE);
       return;
     }
     if (options.selectedRootPath === null) {
@@ -98,6 +131,12 @@ export function useWorkspaceGitActions(options: UseWorkspaceGitActionsOptions) {
     options.setNotice(null);
     options.setCommitDialogError(null);
     try {
+      const preparationError = await prepareCommit(options, options.selectedRootPath);
+      if (preparationError !== null) {
+        options.setCommitDialogError(preparationError);
+        options.setNotice({ kind: "error", text: preparationError });
+        return;
+      }
       await options.hostBridge.git.commit({ repoPath: options.selectedRootPath, message });
       options.setNotice({ kind: "success", text: "提交已创建。" });
       options.setCommitDialogOpen(false);
@@ -114,6 +153,7 @@ export function useWorkspaceGitActions(options: UseWorkspaceGitActionsOptions) {
     options.commitMessage,
     options.hostBridge.git,
     options.refresh,
+    options.status,
     options.selectedRootPath,
     options.setCommitDialogError,
     options.setCommitDialogOpen,

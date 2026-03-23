@@ -5,7 +5,7 @@ import type { GitStatusOutput } from "../../../bridge/types";
 import type { WorkspaceGitController } from "../model/types";
 import { GitCommitDialog } from "./GitCommitDialog";
 
-function createStatus(): GitStatusOutput {
+function createStatus(overrides?: Partial<GitStatusOutput>): GitStatusOutput {
   return {
     isRepository: true,
     repoRoot: "E:/code/project",
@@ -18,6 +18,7 @@ function createStatus(): GitStatusOutput {
     untracked: [],
     conflicted: [],
     isClean: false,
+    ...overrides,
   };
 }
 
@@ -100,6 +101,27 @@ describe("GitCommitDialog", () => {
     fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
 
     await waitFor(() => expect(commit).toHaveBeenCalledTimes(1));
+  });
+
+  it("shows auto-stage guidance when only unstaged changes exist", async () => {
+    renderDialog({
+      status: createStatus({
+        staged: [],
+        unstaged: [
+          {
+            path: "src/App.tsx",
+            originalPath: null,
+            indexStatus: " ",
+            worktreeStatus: "M",
+          },
+        ],
+      }),
+    });
+
+    expect(
+      screen.getByText("填写提交说明后，将自动暂存当前更改并提交。"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "正式提交" })).toBeDisabled();
   });
 
   it("closes when the user clicks cancel", () => {

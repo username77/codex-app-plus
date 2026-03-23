@@ -342,4 +342,45 @@ describe("useWorkspaceGit", () => {
     expect(result.current.commitMessage).toBe("feat: improve commit flow");
     expect(result.current.commitDialogError).toContain("提交更改失败");
   });
+
+  it("auto stages unstaged and untracked changes before committing", async () => {
+    const stagePaths = vi.fn().mockResolvedValue(undefined);
+    const commit = vi.fn().mockResolvedValue(undefined);
+    const hostBridge = createHostBridge(
+      vi.fn().mockResolvedValue(createSnapshot({
+        staged: [],
+        unstaged: [{ path: "src/App.tsx", originalPath: null, indexStatus: " ", worktreeStatus: "M" }],
+        untracked: [{ path: "src/New.ts", originalPath: null, indexStatus: "?", worktreeStatus: "?" }],
+        isClean: false,
+      })),
+      vi.fn().mockResolvedValue(createDiff("src/App.tsx")),
+      undefined,
+      undefined,
+      { stagePaths, commit },
+    );
+
+    const { result } = renderHook(() => useWorkspaceGit(createGitOptions(hostBridge)));
+
+    await waitFor(() => expect(result.current.statusLoaded).toBe(true));
+    act(() => {
+      result.current.openCommitDialog();
+      result.current.setCommitMessage("feat: commit all visible changes");
+    });
+
+    await act(async () => {
+      await result.current.commit();
+    });
+
+    expect(stagePaths).toHaveBeenCalledWith({
+      repoPath: "E:/code/project",
+      paths: ["src/App.tsx", "src/New.ts"],
+    });
+    expect(commit).toHaveBeenCalledWith({
+      repoPath: "E:/code/project",
+      message: "feat: commit all visible changes",
+    });
+    expect(stagePaths.mock.invocationCallOrder[0]).toBeLessThan(
+      commit.mock.invocationCallOrder[0],
+    );
+  });
 });
