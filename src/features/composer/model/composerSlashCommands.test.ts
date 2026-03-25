@@ -59,8 +59,8 @@ describe("composerSlashCommands", () => {
       "debug-m-update",
     ];
     if (import.meta.env.DEV) {
-      expected.splice(33, 0, "rollout");
-      expected.splice(40, 0, "test-approval");
+      expected.splice(expected.indexOf("feedback") + 1, 0, "rollout");
+      expected.splice(expected.indexOf("settings") + 1, 0, "test-approval");
     }
     expect(listCommandIds()).toEqual(expected);
   });

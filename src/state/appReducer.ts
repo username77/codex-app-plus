@@ -245,6 +245,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, experimentalFeatures: [...action.features] };
     case "config/loaded":
       return { ...state, configSnapshot: action.config };
+    case "customPrompts/loaded":
+      return { ...state, customPrompts: [...action.prompts] };
     case "mcp/statusesLoaded":
       return { ...state, mcpServerStatuses: [...action.statuses] };
     case "auth/changed":

@@ -67,6 +67,18 @@ export interface GlobalAgentInstructionsOutput {
   readonly content: string;
 }
 
+export interface ReadCustomPromptsInput {
+  readonly agentEnvironment: AgentEnvironment;
+}
+
+export interface CustomPromptOutput {
+  readonly name: string;
+  readonly path: string;
+  readonly content: string;
+  readonly description: string | null;
+  readonly argumentHint: string | null;
+}
+
 export interface UpdateGlobalAgentInstructionsInput {
   readonly agentEnvironment?: AgentEnvironment;
   readonly content: string;

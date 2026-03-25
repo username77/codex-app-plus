@@ -167,6 +167,22 @@ pub struct ReadGlobalAgentInstructionsInput {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ListCustomPromptsInput {
+    pub agent_environment: AgentEnvironment,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomPromptOutput {
+    pub name: String,
+    pub path: String,
+    pub content: String,
+    pub description: Option<String>,
+    pub argument_hint: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateGlobalAgentInstructionsInput {
     pub agent_environment: Option<AgentEnvironment>,
     pub content: String,

@@ -14,6 +14,7 @@ import {
   createThreadPermissionOverrides,
   createTurnPermissionOverrides,
 } from "../../composer/model/composerPermission";
+import { expandCustomPromptCommand } from "../../composer/model/customPromptTemplate";
 import { resolveAgentWorkspacePath } from "../../workspace/model/workspacePath";
 import { createConversationFromThread } from "../model/conversationState";
 import { deriveConversationPreviewTitle, pickConversationTitle } from "../model/conversationTitle";
@@ -327,29 +328,31 @@ export function useWorkspaceConversationController({
   }, [nextQueuedConversationId, processQueuedFollowUp]);
 
   const sendTurn = useCallback(async (sendOptions: SendTurnOptions) => {
-    const text = sendOptions.text.trim();
+    const expandedText = expandCustomPromptCommand(sendOptions.text, store.getState().customPrompts);
+    const normalizedSendOptions = expandedText === null ? sendOptions : { ...sendOptions, text: expandedText };
+    const text = normalizedSendOptions.text.trim();
     if (text.length === 0 && sendOptions.attachments.length === 0) {
       return;
     }
     if (selectedConversation === null) {
-      await startNewConversation(sendOptions);
+      await startNewConversation(normalizedSendOptions);
       dispatch({ type: "input/changed", value: "" });
       return;
     }
     await ensureConversationResumed(selectedConversation.id);
     const currentActiveTurnId = getActiveTurnId(getConversation(selectedConversation.id) ?? selectedConversation);
     if (currentActiveTurnId === null) {
-      await startTurn(selectedConversation.id, sendOptions, selectedConversation.cwd ?? options.selectedRootPath);
+      await startTurn(selectedConversation.id, normalizedSendOptions, selectedConversation.cwd ?? options.selectedRootPath);
       dispatch({ type: "input/changed", value: "" });
       return;
     }
-    const mode = sendOptions.followUpOverride ?? options.followUpQueueMode;
+    const mode = normalizedSendOptions.followUpOverride ?? options.followUpQueueMode;
     if (mode === "steer") {
-      await steerTurn(selectedConversation.id, currentActiveTurnId, sendOptions);
+      await steerTurn(selectedConversation.id, currentActiveTurnId, normalizedSendOptions);
       dispatch({ type: "input/changed", value: "" });
       return;
     }
-    const followUp = createQueuedFollowUp({ ...sendOptions, followUpOverride: mode });
+    const followUp = createQueuedFollowUp({ ...normalizedSendOptions, followUpOverride: mode });
     dispatch({ type: "followUp/enqueued", conversationId: selectedConversation.id, followUp });
     dispatch({ type: "input/changed", value: "" });
   }, [dispatch, ensureConversationResumed, getConversation, options.followUpQueueMode, options.selectedRootPath, selectedConversation, startNewConversation, startTurn, steerTurn]);

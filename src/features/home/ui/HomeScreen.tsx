@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { flushSync } from "react-dom";
 import type { HostBridge } from "../../../bridge/types";
 import type { ResolvedTheme } from "../../../domain/theme";
@@ -19,6 +19,7 @@ import { requestWorkspaceFolder } from "../../../app/workspacePicker";
 import { useHomeScreenState } from "../../../app/controller/appControllerState";
 import type { AppController } from "../../../app/controller/appControllerTypes";
 import { createHostBridgeAppServerClient } from "../../../protocol/appServerClient";
+import { useAppDispatch } from "../../../state/store";
 import { HomeView } from "./HomeView";
 
 interface HomeScreenProps {
@@ -36,7 +37,9 @@ interface HomeScreenProps {
 
 export function HomeScreen(props: HomeScreenProps): JSX.Element {
   const state = useHomeScreenState();
+  const dispatch = useAppDispatch();
   const { t } = useI18n();
+  const { notifyError } = useUiBannerNotifications("custom-prompts");
   const appServerReady = state.connectionStatus === "connected"
     && state.initialized
     && state.fatalError === null
@@ -45,6 +48,25 @@ export function HomeScreen(props: HomeScreenProps): JSX.Element {
     () => createHostBridgeAppServerClient(props.hostBridge),
     [props.hostBridge],
   );
+  useEffect(() => {
+    let cancelled = false;
+    void props.hostBridge.app.listCustomPrompts({
+      agentEnvironment: props.preferences.agentEnvironment,
+    }).then((prompts) => {
+      if (!cancelled) {
+        dispatch({ type: "customPrompts/loaded", prompts });
+      }
+    }).catch((error) => {
+      if (cancelled) {
+        return;
+      }
+      console.error("读取自定义 prompts 失败", error);
+      notifyError("读取自定义 prompts 失败", error);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch, notifyError, props.hostBridge, props.preferences.agentEnvironment]);
   const { selectedRootName, selectedRootPath } = useSelectedWorkspace(props.workspace, t("home.workspaceSelector.placeholder"));
   const permissionSettings = useMemo(() => ({
     defaultApprovalPolicy: props.preferences.composerDefaultApprovalPolicy,

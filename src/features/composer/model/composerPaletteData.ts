@@ -1,7 +1,9 @@
 import type { ComposerPermissionLevel } from "./composerPermission";
 import type { ComposerModelOption } from "./composerPreferences";
+import type { CustomPromptOutput } from "../../../bridge/types";
 import type { ComposerCommandPaletteItem } from "../ui/ComposerCommandPalette";
 import type { ComposerActiveTrigger } from "./composerInputTriggers";
+import { createCustomPromptPaletteItems } from "./customPromptPalette";
 import {
   listComposerSlashCommands,
   type ComposerSlashCommandContext,
@@ -24,6 +26,7 @@ const NO_THREADS_MESSAGE = "No resumable threads";
 
 export interface SlashPaletteCollections {
   readonly slashContext: ComposerSlashCommandContext;
+  readonly customPrompts: ReadonlyArray<CustomPromptOutput>;
   readonly collaborationItems: ReadonlyArray<ComposerCommandPaletteItem>;
   readonly resumeItems: ReadonlyArray<ComposerCommandPaletteItem>;
 }
@@ -39,7 +42,7 @@ export function createPaletteItems(
   collections: SlashPaletteCollections,
 ): ReadonlyArray<ComposerCommandPaletteItem> {
   if (mode === "slash-root") {
-    return createSlashItems(activeTrigger?.query ?? "", collections.slashContext);
+    return createSlashItems(activeTrigger?.query ?? "", collections);
   }
   if (mode === "slash-model") {
     return createModelItems(models, selectedModel);
@@ -89,19 +92,24 @@ export interface MentionPaletteSession {
 
 function createSlashItems(
   query: string,
-  context: ComposerSlashCommandContext,
+  collections: SlashPaletteCollections,
 ): ReadonlyArray<ComposerCommandPaletteItem> {
-  const commands = listComposerSlashCommands(query, context);
-  if (commands.length === 0) {
+  const commands = listComposerSlashCommands(query, collections.slashContext);
+  const builtinIds = listComposerSlashCommands("", collections.slashContext).map((command) => command.id);
+  const promptItems = createCustomPromptPaletteItems(query, collections.customPrompts, builtinIds);
+  if (commands.length === 0 && promptItems.length === 0) {
     return [createNoticeItem(NO_COMMANDS_MESSAGE)];
   }
-  return commands.map((command) => ({
-    key: command.id,
-    label: command.name,
-    description: command.disabledReason ?? command.description,
-    disabled: command.disabledReason !== null,
-    meta: command.disabledReason === null ? command.metaLabel : "Unavailable",
-  }));
+  return [
+    ...commands.map((command) => ({
+      key: command.id,
+      label: command.name,
+      description: command.disabledReason ?? command.description,
+      disabled: command.disabledReason !== null,
+      meta: command.disabledReason === null ? command.metaLabel : "Unavailable",
+    })),
+    ...promptItems,
+  ];
 }
 
 function createModelItems(

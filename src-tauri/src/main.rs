@@ -12,6 +12,7 @@ mod codex_provider;
 mod codex_session_text;
 mod command_utils;
 mod commands;
+mod custom_prompts;
 mod error;
 mod events;
 mod git;
@@ -36,7 +37,8 @@ use commands::{
     app_activate_codex_chatgpt, app_apply_codex_provider, app_capture_codex_oauth_snapshot,
     app_clear_chatgpt_auth_state, app_control_window, app_delete_codex_provider,
     app_delete_codex_session, app_get_codex_auth_mode_state, app_import_official_data,
-    app_list_codex_providers, app_list_codex_sessions, app_open_codex_config_toml,
+    app_list_codex_providers, app_list_codex_sessions, app_list_custom_prompts,
+    app_open_codex_config_toml,
     app_open_external, app_open_workspace, app_read_chatgpt_auth_tokens, app_read_codex_session,
     app_read_global_agent_instructions, app_read_proxy_settings,
     app_remember_command_approval_rule, app_server_restart, app_server_start, app_server_stop,
@@ -91,6 +93,7 @@ fn main() {
             app_open_workspace,
             app_open_codex_config_toml,
             app_read_global_agent_instructions,
+            app_list_custom_prompts,
             app_write_global_agent_instructions,
             app_read_proxy_settings,
             app_write_proxy_settings,

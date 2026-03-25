@@ -15,11 +15,14 @@ import type { CollaborationPreset } from "../../../domain/timeline";
 import type { AppState } from "../../../domain/types";
 import type { ComposerPermissionLevel } from "../model/composerPermission";
 import type { ComposerModelOption } from "../model/composerPreferences";
+import type { CustomPromptOutput } from "../../../bridge/types";
 import type { AppStoreApi } from "../../../state/store";
 import { useAppDispatch, useAppSelector } from "../../../state/store";
 import type { ComposerCommandPaletteItem } from "../ui/ComposerCommandPalette";
 import { executeSlashCommand, focusTextarea, readTextareaCaret, toPermissionLevel } from "../model/composerCommandActions";
 import type { ComposerCommandBridge } from "../service/composerCommandBridge";
+import { customPromptNameFromPaletteKey } from "../model/customPromptPalette";
+import { createCustomPromptCommandInsert } from "../model/customPromptTemplate";
 import { getActiveComposerTrigger, replaceComposerTrigger, type ComposerActiveTrigger } from "../model/composerInputTriggers";
 import { createPaletteItems, createTriggerKey, getPaletteTitle, type PaletteMode } from "../model/composerPaletteData";
 import { parseComposerSlashQuery } from "../model/composerSlashCommands";
@@ -83,6 +86,7 @@ export function useComposerCommandPalette(
   options: UseComposerCommandPaletteOptions,
 ): UseComposerCommandPaletteState {
   const dispatch = useAppDispatch();
+  const customPrompts = useAppSelector((state) => state.customPrompts);
   const trigger = usePaletteTrigger(options.inputText);
   const mention = useMentionPalette(options, dispatch, trigger.mode, trigger.activeTrigger);
   const selectedConversation = useSelectedConversation(options.selectedThreadId);
@@ -128,7 +132,7 @@ export function useComposerCommandPalette(
     setSelectedIndex(0);
     await mention.stop();
   }, [mention, setSelectedIndex, trigger]);
-  const selectItem = useSelectPaletteItem(options, trigger, mention, dismiss, slashContext, slashDeps);
+  const selectItem = useSelectPaletteItem(options, trigger, mention, dismiss, slashContext, slashDeps, customPrompts);
   const selectCurrentItem = useCallback(() => selectItem(items[selectedIndex] ?? null), [items, selectedIndex, selectItem]);
   const handleKeyDown = usePaletteKeyboard(trigger.mode, items.length, setSelectedIndex, dismiss, selectCurrentItem);
 
@@ -217,7 +221,7 @@ function useBoundedSelection(itemCount: number) {
   return [selectedIndex, setSelectedIndex] as const;
 }
 
-function useSelectPaletteItem(options: UseComposerCommandPaletteOptions, trigger: ReturnType<typeof usePaletteTrigger>, mention: ReturnType<typeof useMentionPalette>, dismiss: () => Promise<void>, slashContext: SlashExecutionContext, slashDeps: SlashExecutionDependencies) {
+function useSelectPaletteItem(options: UseComposerCommandPaletteOptions, trigger: ReturnType<typeof usePaletteTrigger>, mention: ReturnType<typeof useMentionPalette>, dismiss: () => Promise<void>, slashContext: SlashExecutionContext, slashDeps: SlashExecutionDependencies, customPrompts: ReadonlyArray<CustomPromptOutput>) {
   return useCallback(async (item: ComposerCommandPaletteItem | null) => {
     if (item === null || item.disabled) return;
     try {
@@ -226,7 +230,7 @@ function useSelectPaletteItem(options: UseComposerCommandPaletteOptions, trigger
       if (trigger.mode === "slash-permissions") return selectPermissionItem(item.key, slashContext.configSnapshot, slashDeps, dismiss, trigger.textareaRef);
       if (trigger.mode === "slash-collab") return selectCollaborationItem(item.key, options.onSelectCollaborationPreset, dismiss, trigger.textareaRef);
       if (trigger.mode === "slash-resume") return selectResumeItem(item.key, slashContext, slashDeps, dismiss, trigger.textareaRef);
-      await selectRootSlashItem(item.key, options, trigger, mention, slashContext, slashDeps);
+      await selectRootSlashItem(item.key, options, trigger, mention, slashContext, slashDeps, customPrompts);
     } catch (error) {
       slashDeps.dispatch({
         type: "banner/pushed",
@@ -239,7 +243,7 @@ function useSelectPaletteItem(options: UseComposerCommandPaletteOptions, trigger
         },
       });
     }
-  }, [dismiss, mention, options, slashContext, slashDeps, trigger]);
+  }, [customPrompts, dismiss, mention, options, slashContext, slashDeps, trigger]);
 }
 
 async function selectMentionItem(item: ComposerCommandPaletteItem, options: UseComposerCommandPaletteOptions, trigger: ReturnType<typeof usePaletteTrigger>, dismiss: () => Promise<void>): Promise<void> {
@@ -274,8 +278,12 @@ async function selectResumeItem(itemKey: string, slashContext: SlashExecutionCon
   focusTextarea(textareaRef, readTextareaCaret(textareaRef.current, 0));
 }
 
-async function selectRootSlashItem(itemKey: string, options: UseComposerCommandPaletteOptions, trigger: ReturnType<typeof usePaletteTrigger>, mention: ReturnType<typeof useMentionPalette>, slashContext: SlashExecutionContext, slashDeps: SlashExecutionDependencies): Promise<void> {
+async function selectRootSlashItem(itemKey: string, options: UseComposerCommandPaletteOptions, trigger: ReturnType<typeof usePaletteTrigger>, mention: ReturnType<typeof useMentionPalette>, slashContext: SlashExecutionContext, slashDeps: SlashExecutionDependencies, customPrompts: ReadonlyArray<CustomPromptOutput>): Promise<void> {
   if (trigger.activeTrigger?.kind !== "slash") return;
+  const customPromptName = customPromptNameFromPaletteKey(itemKey);
+  if (customPromptName !== null) {
+    return selectCustomPromptItem(customPromptName, customPrompts, options, trigger);
+  }
   const parsed = parseComposerSlashQuery(trigger.activeTrigger.query);
   mention.clearError();
   if (LOCAL_OR_PICKER_COMMANDS.has(itemKey)) {
@@ -284,6 +292,26 @@ async function selectRootSlashItem(itemKey: string, options: UseComposerCommandP
   }
   await executeDirectSlashCommand(itemKey, parsed.argumentsText, slashContext, slashDeps);
   await executeSlashCommand(itemKey, { inputText: options.inputText, activeTrigger: trigger.activeTrigger, onInputChange: options.onInputChange, onCreateThread: options.onCreateThread, onToggleDiff: options.onToggleDiff }, trigger.textareaRef, trigger.setManualMode, trigger.setSuppressedTriggerKey);
+}
+
+async function selectCustomPromptItem(
+  promptName: string,
+  customPrompts: ReadonlyArray<CustomPromptOutput>,
+  options: UseComposerCommandPaletteOptions,
+  trigger: ReturnType<typeof usePaletteTrigger>,
+): Promise<void> {
+  const prompt = customPrompts.find((item) => item.name === promptName) ?? null;
+  if (prompt === null || trigger.activeTrigger?.kind !== "slash") {
+    return;
+  }
+  const insert = createCustomPromptCommandInsert(prompt);
+  const next = replaceComposerTrigger(options.inputText, trigger.activeTrigger.range, insert.text);
+  options.onInputChange(next.text);
+  trigger.setSuppressedTriggerKey(null);
+  const caret = insert.cursor === null
+    ? next.caret
+    : trigger.activeTrigger.range.start + insert.cursor;
+  focusTextarea(trigger.textareaRef, caret);
 }
 
 function usePaletteKeyboard(mode: PaletteMode, itemCount: number, setSelectedIndex: Dispatch<SetStateAction<number>>, dismiss: () => Promise<void>, selectCurrentItem: () => Promise<void>) {

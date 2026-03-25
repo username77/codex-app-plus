@@ -408,6 +408,82 @@ describe("useWorkspaceConversation", () => {
     expect(result.current.conversation.selectedThreadId).toBe("thread-1");
   });
 
+  it("expands custom prompts before sending the turn", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "thread/start") {
+        return createThreadStartResponse();
+      }
+      if (input.method === "turn/start") {
+        return { requestId: "request-2", result: { turn: createTurn() } };
+      }
+      throw new Error(`unexpected method: ${input.method}`);
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({
+        type: "customPrompts/loaded",
+        prompts: [{
+          name: "review-branch",
+          path: "~/.codex/prompts/review-branch.md",
+          content: "Review $USER changes on $BRANCH",
+          description: "Review branch changes",
+          argumentHint: null,
+        }],
+      });
+    });
+
+    await act(async () => {
+      await result.current.conversation.sendTurn(
+        createSendOptions('/prompts:review-branch USER="Alice Smith" BRANCH=main'),
+      );
+    });
+
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      method: "turn/start",
+      params: expect.objectContaining({
+        input: [{
+          type: "text",
+          text: "Review Alice Smith changes on main",
+          text_elements: [],
+        }],
+      }),
+    }));
+  });
+
+  it("surfaces custom prompt argument errors without starting a turn", async () => {
+    const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
+      if (input.method === "thread/start") {
+        return createThreadStartResponse();
+      }
+      if (input.method === "turn/start") {
+        return { requestId: "request-2", result: { turn: createTurn() } };
+      }
+      throw new Error(`unexpected method: ${input.method}`);
+    });
+    const hostBridge = { rpc: { request, notify: vi.fn(), cancel: vi.fn() }, app: {} } as unknown as HostBridge;
+    const { result } = renderConversation(hostBridge);
+
+    act(() => {
+      result.current.store.dispatch({
+        type: "customPrompts/loaded",
+        prompts: [{
+          name: "review-branch",
+          path: "~/.codex/prompts/review-branch.md",
+          content: "Review $USER changes on $BRANCH",
+          description: null,
+          argumentHint: null,
+        }],
+      });
+    });
+
+    await expect(
+      result.current.conversation.sendTurn(createSendOptions("/prompts:review-branch USER=Alice")),
+    ).rejects.toThrow("缺少必填参数");
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it("transfers the draft collaboration preset into the first created thread", async () => {
     const request = vi.fn(async (input: { readonly method: string; readonly params: unknown }) => {
       if (input.method === "thread/start") {

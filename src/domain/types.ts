@@ -1,3 +1,4 @@
+import type { CustomPromptOutput } from "../bridge/types";
 import type { AuthMode } from "../protocol/generated/AuthMode";
 import type { PlanType } from "../protocol/generated/PlanType";
 import type { FuzzyFileSearchResult } from "../protocol/generated/FuzzyFileSearchResult";
@@ -146,6 +147,7 @@ export interface AppState {
   readonly collaborationModes: ReadonlyArray<CollaborationModePreset>;
   readonly experimentalFeatures: ReadonlyArray<ExperimentalFeature>;
   readonly configSnapshot: ConfigReadResponse | null;
+  readonly customPrompts: ReadonlyArray<CustomPromptOutput>;
   readonly mcpServerStatuses: ReadonlyArray<McpServerStatus>;
   readonly authStatus: AuthStatus;
   readonly authMode: string | null;
@@ -212,6 +214,7 @@ export type AppAction =
   | { type: "collaborationModes/loaded"; modes: ReadonlyArray<CollaborationModePreset> }
   | { type: "experimentalFeatures/loaded"; features: ReadonlyArray<ExperimentalFeature> }
   | { type: "config/loaded"; config: ConfigReadResponse }
+  | { type: "customPrompts/loaded"; prompts: ReadonlyArray<CustomPromptOutput> }
   | { type: "mcp/statusesLoaded"; statuses: ReadonlyArray<McpServerStatus> }
   | { type: "auth/changed"; status: AuthStatus; mode: string | null }
   | { type: "account/updated"; account: AccountSummary | null }
@@ -260,6 +263,7 @@ export const INITIAL_STATE: AppState = {
   collaborationModes: [],
   experimentalFeatures: [],
   configSnapshot: null,
+  customPrompts: [],
   mcpServerStatuses: [],
   authStatus: "unknown",
   authMode: null,

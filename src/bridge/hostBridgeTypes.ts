@@ -7,6 +7,7 @@ import type {
   CodexAuthModeStateOutput,
   CodexAuthSwitchResult,
   CodexProviderApplyResult,
+  CustomPromptOutput,
   CodexProviderDraft,
   CodexProviderRecord,
   CodexProviderStore,
@@ -19,6 +20,7 @@ import type {
   GetCodexAuthModeStateInput,
   ImportOfficialDataInput,
   ListCodexSessionsInput,
+  ReadCustomPromptsInput,
   OpenCodexConfigTomlInput,
   OpenWorkspaceInput,
   ReadProxySettingsInput,
@@ -85,6 +87,7 @@ export interface HostBridge {
     openExternal(url: string): Promise<void>;
     openWorkspace(input: OpenWorkspaceInput): Promise<void>;
     openCodexConfigToml(input: OpenCodexConfigTomlInput): Promise<void>;
+    listCustomPrompts(input: ReadCustomPromptsInput): Promise<ReadonlyArray<CustomPromptOutput>>;
     readGlobalAgentInstructions(input: {
       readonly agentEnvironment: AgentEnvironment;
     }): Promise<GlobalAgentInstructionsOutput>;

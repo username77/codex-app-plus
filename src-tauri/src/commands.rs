@@ -7,6 +7,7 @@ use crate::app_support::{
     read_chatgpt_auth_tokens, read_global_agent_instructions, write_chatgpt_auth_tokens,
     write_global_agent_instructions,
 };
+use crate::custom_prompts::list_custom_prompts;
 use crate::codex_auth::{
     activate_codex_chatgpt, activate_codex_provider, capture_codex_oauth_snapshot,
     get_codex_auth_mode_state,
@@ -28,7 +29,8 @@ use crate::models::{
     RememberCommandApprovalRuleOutput, RpcCancelInput, RpcNotifyInput, RpcRequestInput,
     RpcRequestOutput, ServerRequestResolveInput, ShowContextMenuInput, ShowNotificationInput,
     UpdateChatgptAuthTokensInput, UpdateGlobalAgentInstructionsInput, UpdateProxySettingsInput,
-    UpdateProxySettingsOutput, UpsertCodexProviderInput,
+    UpdateProxySettingsOutput, UpsertCodexProviderInput, CustomPromptOutput,
+    ListCustomPromptsInput,
     WindowChromeAction,
 };
 use crate::process_manager::ProcessManager;
@@ -166,6 +168,13 @@ pub fn app_read_global_agent_instructions(
     input: ReadGlobalAgentInstructionsInput,
 ) -> Result<GlobalAgentInstructionsOutput, String> {
     to_result(read_global_agent_instructions(input))
+}
+
+#[tauri::command]
+pub fn app_list_custom_prompts(
+    input: ListCustomPromptsInput,
+) -> Result<Vec<CustomPromptOutput>, String> {
+    to_result(list_custom_prompts(input))
 }
 
 #[tauri::command]

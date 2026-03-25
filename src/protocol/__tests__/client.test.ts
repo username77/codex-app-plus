@@ -32,6 +32,7 @@ function createHostBridge(): HostBridge {
       openExternal: vi.fn().mockResolvedValue(undefined),
       openWorkspace: vi.fn().mockResolvedValue(undefined),
       openCodexConfigToml: vi.fn().mockResolvedValue(undefined),
+      listCustomPrompts: vi.fn().mockResolvedValue([]),
       readGlobalAgentInstructions: vi.fn().mockResolvedValue({
         path: "C:/Users/Administrator/.codex/AGENTS.md",
         content: ""

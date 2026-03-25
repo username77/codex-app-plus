@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { ComposerPermissionLevel } from "../model/composerPermission";
 import type { ComposerModelOption } from "../model/composerPreferences";
+import type { CustomPromptOutput } from "../../../bridge/types";
 import { AppStoreProvider, useAppStore } from "../../../state/store";
 import type { ComposerCommandBridge } from "../service/composerCommandBridge";
 import { HomeComposer } from "./HomeComposer";
@@ -36,6 +37,7 @@ function ComposerHarness(props: {
   readonly onToggleDiff?: ReturnType<typeof vi.fn>;
   readonly onSelectCollaborationPreset?: ReturnType<typeof vi.fn>;
   readonly request?: ReturnType<typeof vi.fn>;
+  readonly customPrompts?: ReadonlyArray<CustomPromptOutput>;
 }): JSX.Element {
   const { dispatch } = useAppStore();
   const [inputText, setInputText] = useState("");
@@ -48,6 +50,9 @@ function ComposerHarness(props: {
     stopFuzzySession: vi.fn().mockResolvedValue(undefined),
     request: props.request ?? vi.fn().mockResolvedValue({}),
   }), [dispatch, props.request]);
+  useEffect(() => {
+    dispatch({ type: "customPrompts/loaded", prompts: [...(props.customPrompts ?? [])] });
+  }, [dispatch, props.customPrompts]);
 
   return (
     <HomeComposer
@@ -206,6 +211,27 @@ describe("HomeComposer commands", () => {
     expect(screen.getByText("当前有任务正在执行，官方不允许这条命令在运行中使用。")).toBeInTheDocument();
     fireEvent.keyDown(textarea, { key: "Enter" });
     expect(onCreateThread).not.toHaveBeenCalled();
+  });
+
+  it("shows custom prompts in the palette and inserts the command template", async () => {
+    renderHarness({
+      customPrompts: [{
+        name: "draft-pr",
+        path: "~/.codex/prompts/draft-pr.md",
+        content: "Create a draft PR for $BRANCH",
+        description: "创建草稿 PR",
+        argumentHint: null,
+      }],
+    });
+    const textarea = screen.getByRole("textbox");
+
+    fireEvent.change(textarea, { target: { value: "/draft", selectionStart: 6 } });
+
+    await waitFor(() => expect(screen.getByRole("menuitem", { name: /\/prompts:draft-pr/i })).toBeInTheDocument());
+
+    fireEvent.keyDown(textarea, { key: "Enter" });
+
+    await waitFor(() => expect((textarea as HTMLTextAreaElement).value).toBe('/prompts:draft-pr BRANCH=""'));
   });
 
   it("opens mention results from @ and adds a chip", async () => {

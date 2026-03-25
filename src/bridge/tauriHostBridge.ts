@@ -12,6 +12,7 @@ import type {
   CodexAuthModeStateOutput,
   CodexAuthSwitchResult,
   CodexProviderApplyResult,
+  CustomPromptOutput,
   CodexProviderDraft,
   CodexProviderRecord,
   CodexProviderStore,
@@ -38,6 +39,7 @@ import type {
   HostBridge,
   ImportOfficialDataInput,
   ListCodexSessionsInput,
+  ReadCustomPromptsInput,
   OpenCodexConfigTomlInput,
   OpenWorkspaceInput,
   ReadProxySettingsInput,
@@ -120,6 +122,11 @@ export function createTauriHostBridge(): HostBridge {
         invokeWithInput("app_open_workspace", input),
       openCodexConfigToml: (input: OpenCodexConfigTomlInput) =>
         invokeWithInput("app_open_codex_config_toml", input),
+      listCustomPrompts: (input: ReadCustomPromptsInput) =>
+        invokeWithInput<ReadCustomPromptsInput, ReadonlyArray<CustomPromptOutput>>(
+          "app_list_custom_prompts",
+          input
+        ),
       readGlobalAgentInstructions: (input: { readonly agentEnvironment: AgentEnvironment }) =>
         invokeWithInput<
           { readonly agentEnvironment: AgentEnvironment },

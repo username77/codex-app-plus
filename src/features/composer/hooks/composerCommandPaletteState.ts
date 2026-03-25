@@ -24,6 +24,7 @@ export interface SlashRuntimeState {
 }
 
 export interface SlashCollections {
+  readonly customPrompts: AppState["customPrompts"];
   readonly collaborationItems: ReadonlyArray<{
     readonly key: CollaborationPreset;
     readonly label: string;
@@ -92,6 +93,7 @@ export function useSlashCollections(
   realtimeState: SlashExecutionContext["realtimeState"],
 ): SlashCollections {
   const collaborationModes = useAppSelector((state) => state.collaborationModes);
+  const customPrompts = useAppSelector((state) => state.customPrompts);
   const resumeInputs = useAppSelector(
     useMemo(
       () => (state: AppState) => state.orderedConversationIds
@@ -125,6 +127,7 @@ export function useSlashCollections(
         taskRunning: options.isResponding,
         capabilities: DEFAULT_COMPOSER_SLASH_CAPABILITIES,
       },
+      customPrompts,
       collaborationItems: collaborationModes
         .filter((mode) => mode.mode !== null)
         .map((mode) => ({
@@ -144,6 +147,7 @@ export function useSlashCollections(
     }),
     [
       collaborationModes,
+      customPrompts,
       options.collaborationPreset,
       options.isResponding,
       options.selectedRootPath,
