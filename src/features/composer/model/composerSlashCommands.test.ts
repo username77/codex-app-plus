@@ -54,8 +54,6 @@ describe("composerSlashCommands", () => {
       "realtime",
       "settings",
       "subagents",
-      "debug-m-drop",
-      "debug-m-update",
     ];
     if (import.meta.env.DEV) {
       expected.splice(expected.indexOf("feedback") + 1, 0, "rollout");

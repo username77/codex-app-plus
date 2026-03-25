@@ -95,8 +95,6 @@ const COMMANDS = Object.freeze<ReadonlyArray<ComposerSlashDefinition>>([
   { id: "settings", description: "配置实时麦克风与扬声器。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, unavailableReason: "当前桌面壳还没有实时音频设置面板。" },
   { id: "test-approval", description: "触发一次审批测试。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, unavailableReason: "当前桌面壳还没有审批测试入口。", debugOnly: true },
   { id: "subagents", description: "切换活动 agent 线程。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, unavailableReason: "当前桌面壳还没有活动 agent 线程切换器。" },
-  { id: "debug-m-drop", description: "官方调试命令，请勿使用。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: false, supportsInlineArgs: false, unavailableReason: "官方调试命令，请勿使用。" },
-  { id: "debug-m-update", description: "官方调试命令，请勿使用。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: false, supportsInlineArgs: false, unavailableReason: "官方调试命令，请勿使用。" },
 ]);
 
 const ALIAS_TO_ID = new Map(
