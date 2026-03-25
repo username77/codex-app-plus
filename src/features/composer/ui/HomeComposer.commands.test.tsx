@@ -31,6 +31,7 @@ function createGitController(): import("../../git/model/types").WorkspaceGitCont
 
 function ComposerHarness(props: {
   readonly selectedRootPath?: string | null;
+  readonly isResponding?: boolean;
   readonly onCreateThread?: ReturnType<typeof vi.fn>;
   readonly onToggleDiff?: ReturnType<typeof vi.fn>;
   readonly onSelectCollaborationPreset?: ReturnType<typeof vi.fn>;
@@ -64,7 +65,7 @@ function ComposerHarness(props: {
       gitController={createGitController()}
       selectedThreadId="thread-1"
       selectedThreadBranch={null}
-      isResponding={false}
+      isResponding={props.isResponding ?? false}
       interruptPending={false}
       composerCommandBridge={composerCommandBridge}
       onSelectCollaborationPreset={props.onSelectCollaborationPreset ?? vi.fn()}
@@ -158,6 +159,53 @@ describe("HomeComposer commands", () => {
 
     await waitFor(() => expect(onSelectCollaborationPreset).toHaveBeenCalledWith("plan"));
     expect((textarea as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("executes /clean through the canonical /stop request path", async () => {
+    const request = vi.fn().mockResolvedValue({});
+    renderHarness({ request });
+    const textarea = screen.getByRole("textbox");
+
+    fireEvent.change(textarea, { target: { value: "/clean", selectionStart: 6 } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+
+    await waitFor(() => expect(request).toHaveBeenCalledWith("thread/backgroundTerminals/clean", {
+      threadId: "thread-1",
+    }));
+    expect((textarea as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("executes /plugins through the official request path", async () => {
+    const request = vi.fn(async (method: string) => {
+      if (method === "plugin/list") {
+        return { marketplaces: [], remoteSyncError: null };
+      }
+      return {};
+    });
+    renderHarness({ request });
+    const textarea = screen.getByRole("textbox");
+
+    fireEvent.change(textarea, { target: { value: "/plugins", selectionStart: 8 } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+
+    await waitFor(() => expect(request).toHaveBeenCalledWith("plugin/list", {
+      cwds: ["E:/code/codex-app-plus"],
+      forceRemoteSync: true,
+    }));
+    expect((textarea as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("shows /new as unavailable while the assistant is responding", async () => {
+    const onCreateThread = vi.fn().mockResolvedValue(undefined);
+    renderHarness({ isResponding: true, onCreateThread });
+    const textarea = screen.getByRole("textbox");
+
+    fireEvent.change(textarea, { target: { value: "/new", selectionStart: 4 } });
+
+    await waitFor(() => expect(screen.getByRole("menuitem", { name: /\/new/i })).toHaveAttribute("aria-disabled", "true"));
+    expect(screen.getByText("当前有任务正在执行，官方不允许这条命令在运行中使用。")).toBeInTheDocument();
+    fireEvent.keyDown(textarea, { key: "Enter" });
+    expect(onCreateThread).not.toHaveBeenCalled();
   });
 
   it("opens mention results from @ and adds a chip", async () => {

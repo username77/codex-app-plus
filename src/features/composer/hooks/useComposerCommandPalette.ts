@@ -44,6 +44,7 @@ interface UseComposerCommandPaletteOptions {
   readonly selectedRootPath: string | null;
   readonly selectedThreadId: string | null;
   readonly collaborationPreset: CollaborationPreset;
+  readonly isResponding: boolean;
   readonly models: ReadonlyArray<ComposerModelOption>;
   readonly selectedModel: string | null;
   readonly selectedServiceTier: ServiceTier | null;
@@ -110,7 +111,8 @@ export function useComposerCommandPalette(
     connectionStatus: runtimeState.connectionStatus,
     realtimeState: runtimeState.realtimeState,
     collaborationModes: runtimeState.collaborationModes,
-  }), [options.collaborationPreset, options.selectedRootPath, options.selectedServiceTier, options.selectedThreadId, runtimeState.account, runtimeState.collaborationModes, runtimeState.configSnapshot, runtimeState.connectionStatus, runtimeState.rateLimits, runtimeState.realtimeState, selectedConversation]);
+    taskRunning: options.isResponding,
+  }), [options.collaborationPreset, options.isResponding, options.selectedRootPath, options.selectedServiceTier, options.selectedThreadId, runtimeState.account, runtimeState.collaborationModes, runtimeState.configSnapshot, runtimeState.connectionStatus, runtimeState.rateLimits, runtimeState.realtimeState, selectedConversation]);
   const slashDeps = useMemo<SlashExecutionDependencies>(() => ({
     composerCommandBridge: options.composerCommandBridge,
     dispatch,
@@ -218,12 +220,25 @@ function useBoundedSelection(itemCount: number) {
 function useSelectPaletteItem(options: UseComposerCommandPaletteOptions, trigger: ReturnType<typeof usePaletteTrigger>, mention: ReturnType<typeof useMentionPalette>, dismiss: () => Promise<void>, slashContext: SlashExecutionContext, slashDeps: SlashExecutionDependencies) {
   return useCallback(async (item: ComposerCommandPaletteItem | null) => {
     if (item === null || item.disabled) return;
-    if (trigger.mode === "mention" && trigger.activeTrigger?.kind === "mention") return selectMentionItem(item, options, trigger, dismiss);
-    if (trigger.mode === "slash-model") return selectModelItem(item.key, options.onSelectModel, dismiss, trigger.textareaRef);
-    if (trigger.mode === "slash-permissions") return selectPermissionItem(item.key, slashContext.configSnapshot, slashDeps, dismiss, trigger.textareaRef);
-    if (trigger.mode === "slash-collab") return selectCollaborationItem(item.key, options.onSelectCollaborationPreset, dismiss, trigger.textareaRef);
-    if (trigger.mode === "slash-resume") return selectResumeItem(item.key, slashContext, slashDeps, dismiss, trigger.textareaRef);
-    await selectRootSlashItem(item.key, options, trigger, mention, slashContext, slashDeps);
+    try {
+      if (trigger.mode === "mention" && trigger.activeTrigger?.kind === "mention") return selectMentionItem(item, options, trigger, dismiss);
+      if (trigger.mode === "slash-model") return selectModelItem(item.key, options.onSelectModel, dismiss, trigger.textareaRef);
+      if (trigger.mode === "slash-permissions") return selectPermissionItem(item.key, slashContext.configSnapshot, slashDeps, dismiss, trigger.textareaRef);
+      if (trigger.mode === "slash-collab") return selectCollaborationItem(item.key, options.onSelectCollaborationPreset, dismiss, trigger.textareaRef);
+      if (trigger.mode === "slash-resume") return selectResumeItem(item.key, slashContext, slashDeps, dismiss, trigger.textareaRef);
+      await selectRootSlashItem(item.key, options, trigger, mention, slashContext, slashDeps);
+    } catch (error) {
+      slashDeps.dispatch({
+        type: "banner/pushed",
+        banner: {
+          id: `slash:error:${item.key}`,
+          level: "error",
+          title: "Slash 命令执行失败",
+          detail: toErrorMessage(error),
+          source: "slash-command",
+        },
+      });
+    }
   }, [dismiss, mention, options, slashContext, slashDeps, trigger]);
 }
 
@@ -296,4 +311,8 @@ function usePaletteKeyboard(mode: PaletteMode, itemCount: number, setSelectedInd
     }
     return false;
   }, [dismiss, itemCount, mode, selectCurrentItem, setSelectedIndex]);
+}
+
+function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

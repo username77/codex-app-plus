@@ -21,7 +21,7 @@ function createProvider() {
 }
 
 function openAddProviderDialog(root: HTMLElement) {
-  const addButton = root.querySelector<HTMLButtonElement>(".settings-head-action");
+  const addButton = root.querySelector<HTMLButtonElement>(".codex-provider-card .settings-head-action");
   if (addButton === null) {
     throw new Error("missing add provider button");
   }
@@ -60,6 +60,14 @@ function createBaseProps(
     refreshConfigSnapshot: vi.fn().mockResolvedValue(undefined),
     refreshAuthState: vi.fn().mockResolvedValue(undefined),
     login: vi.fn().mockResolvedValue(undefined),
+    readProxySettings: vi.fn().mockResolvedValue({
+      settings: {
+        enabled: false,
+        httpProxy: "",
+        httpsProxy: "",
+        noProxy: "",
+      },
+    }),
     listCodexProviders: vi.fn().mockResolvedValue({ version: 1, providers: [] }),
     upsertCodexProvider: vi.fn(),
     deleteCodexProvider: vi.fn(),
@@ -77,6 +85,14 @@ function createBaseProps(
       authPath: "C:/Users/Administrator/.codex/auth.json",
       configPath: "C:/Users/Administrator/.codex/config.toml",
       restoredFromSnapshot: false,
+    }),
+    writeProxySettings: vi.fn().mockResolvedValue({
+      settings: {
+        enabled: false,
+        httpProxy: "",
+        httpsProxy: "",
+        noProxy: "",
+      },
     }),
     batchWriteConfig: vi.fn().mockResolvedValue({}),
     writeConfigValue: vi.fn().mockResolvedValue({}),
@@ -194,6 +210,7 @@ describe("ConfigSettingsSection", () => {
     expect(await screen.findByText("Config")).toBeInTheDocument();
     expect(screen.getByText("Open config file")).toBeInTheDocument();
     expect(screen.getByText("Provider presets")).toBeInTheDocument();
+    expect(screen.getByText("Proxy")).toBeInTheDocument();
   });
 
   it("writes the Windows Sandbox config when toggled on", async () => {

@@ -59,7 +59,23 @@ function createBaseProps(
     refreshAuthState: vi.fn().mockResolvedValue(undefined),
     login: vi.fn().mockResolvedValue(undefined),
     readGlobalAgentInstructions: vi.fn().mockResolvedValue({ path: "~/.codex/AGENTS.md", content: "" }),
+    readProxySettings: vi.fn().mockResolvedValue({
+      settings: {
+        enabled: false,
+        httpProxy: "",
+        httpsProxy: "",
+        noProxy: "",
+      },
+    }),
     writeGlobalAgentInstructions: vi.fn().mockResolvedValue({ path: "~/.codex/AGENTS.md", content: "" }),
+    writeProxySettings: vi.fn().mockResolvedValue({
+      settings: {
+        enabled: false,
+        httpProxy: "",
+        httpsProxy: "",
+        noProxy: "",
+      },
+    }),
     listCodexProviders: vi.fn().mockResolvedValue({ version: 1, providers: [] }),
     upsertCodexProvider: vi.fn(),
     deleteCodexProvider: vi.fn(),

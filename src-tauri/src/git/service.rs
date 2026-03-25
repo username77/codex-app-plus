@@ -110,7 +110,7 @@ pub fn stage_paths(input: GitPathsInput, cache: &RepositoryContextCache) -> AppR
 pub fn unstage_paths(input: GitPathsInput, cache: &RepositoryContextCache) -> AppResult<()> {
     let context = require_repository_context(&input.repo_path, cache)?;
     let paths = validate_paths(&input.paths)?;
-    let args = if has_head(&context.repo_root) {
+    let args = if has_head(&context.repo_root)? {
         extend_args(&["reset", "HEAD", "--"], paths)
     } else {
         extend_args(&["rm", "--cached", "-r", "--"], paths)

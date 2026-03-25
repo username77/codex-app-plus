@@ -12,6 +12,8 @@ use crate::models::{
     TerminalWriteInput,
 };
 use crate::process_supervisor::ProcessSupervisor;
+use crate::proxy_environment::apply_terminal_proxy_environment;
+use crate::proxy_settings::load_proxy_settings;
 use portable_pty::{native_pty_system, Child, ChildKiller, MasterPty, PtySize};
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -162,6 +164,8 @@ fn spawn_shell_process(
     if let Some(path) = cwd {
         command.cwd(path);
     }
+    let proxy_settings = load_proxy_settings(crate::models::AgentEnvironment::WindowsNative)?;
+    apply_terminal_proxy_environment(&mut command, &proxy_settings);
     apply_utf8_environment(&mut command, enforce_utf8);
     slave.spawn_command(command).map_err(map_terminal_error)
 }

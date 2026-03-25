@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 
 use crate::error::{AppError, AppResult};
 use crate::models::AppServerStartInput;
+use crate::proxy_environment::proxy_environment_assignments;
+use crate::proxy_settings::load_proxy_settings;
 
 use super::CodexCli;
 
@@ -10,7 +12,7 @@ const WINDOWS_CANDIDATES: [&str; 4] = ["codex.cmd", "codex.exe", "codex.ps1", "c
 
 pub(super) fn resolve_windows_cli(input: &AppServerStartInput) -> AppResult<CodexCli> {
     let path = resolve_windows_codex_path(input)?;
-    Ok(build_windows_cli(path))
+    build_windows_cli(path)
 }
 
 fn resolve_windows_codex_path(input: &AppServerStartInput) -> AppResult<PathBuf> {
@@ -53,32 +55,40 @@ fn search_path_candidates() -> Option<PathBuf> {
     None
 }
 
-fn build_windows_cli(path: PathBuf) -> CodexCli {
+fn build_windows_cli(path: PathBuf) -> AppResult<CodexCli> {
     let display_path = path.to_string_lossy().to_string();
     let extension = file_extension(&path);
     let path_text = display_path.clone();
+    let proxy_settings = load_proxy_settings(crate::models::AgentEnvironment::WindowsNative)?;
+    let environment = proxy_environment_assignments(&proxy_settings)
+        .into_iter()
+        .map(|(key, value)| (key.to_string(), value))
+        .collect::<Vec<_>>();
 
     if extension == "cmd" || extension == "bat" {
-        return CodexCli {
+        return Ok(CodexCli {
             program: "cmd.exe".to_string(),
             prefix_args: vec!["/C".to_string(), path_text],
             display_path,
-        };
+            environment,
+        });
     }
 
     if extension == "ps1" {
-        return CodexCli {
+        return Ok(CodexCli {
             program: "powershell.exe".to_string(),
             prefix_args: vec!["-File".to_string(), path_text],
             display_path,
-        };
+            environment,
+        });
     }
 
-    CodexCli {
+    Ok(CodexCli {
         program: path_text,
         prefix_args: Vec::new(),
         display_path,
-    }
+        environment,
+    })
 }
 
 fn file_extension(path: &Path) -> String {

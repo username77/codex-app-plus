@@ -8,6 +8,9 @@ import type {
   CodexProviderRecord,
   CodexProviderStore,
   DeleteCodexProviderInput,
+  ReadProxySettingsOutput,
+  UpdateProxySettingsInput,
+  UpdateProxySettingsOutput,
 } from "../../../bridge/types";
 import type { WindowsSandboxSetupState } from "../../../domain/types";
 import { useI18n } from "../../../i18n";
@@ -23,6 +26,7 @@ import { CodexAuthModeCard } from "./CodexAuthModeCard";
 import { CodexProviderDialog } from "./CodexProviderDialog";
 import { CodexProviderDeleteDialog } from "./CodexProviderDeleteDialog";
 import { CodexProviderListCard } from "./CodexProviderListCard";
+import { ProxySettingsCard } from "./ProxySettingsCard";
 import { WindowsSandboxSettingsCard } from "./WindowsSandboxSettingsCard";
 import { writeForcedLoginMethod } from "./configAuthMode";
 
@@ -40,12 +44,16 @@ interface ConfigSettingsSectionProps {
   refreshConfigSnapshot: () => Promise<unknown>;
   refreshAuthState: () => Promise<void>;
   login: () => Promise<void>;
+  readProxySettings: (
+    input: { readonly agentEnvironment: AgentEnvironment }
+  ) => Promise<ReadProxySettingsOutput>;
   listCodexProviders: () => Promise<CodexProviderStore>;
   upsertCodexProvider: (input: CodexProviderDraft) => Promise<CodexProviderRecord>;
   deleteCodexProvider: (input: DeleteCodexProviderInput) => Promise<CodexProviderStore>;
   applyCodexProvider: (input: { readonly id: string }) => Promise<CodexProviderApplyResult>;
   getCodexAuthModeState: () => Promise<CodexAuthModeStateOutput>;
   activateCodexChatgpt: () => Promise<CodexAuthSwitchResult>;
+  writeProxySettings: (input: UpdateProxySettingsInput) => Promise<UpdateProxySettingsOutput>;
   batchWriteConfig: (params: ConfigBatchWriteParams) => Promise<unknown>;
   writeConfigValue: (params: ConfigValueWriteParams) => Promise<unknown>;
 }
@@ -257,6 +265,12 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
           </button>
         </div>
       </section>
+      <ProxySettingsCard
+        agentEnvironment={props.agentEnvironment}
+        busy={props.busy}
+        readProxySettings={props.readProxySettings}
+        writeProxySettings={props.writeProxySettings}
+      />
       <WindowsSandboxSettingsCard
         agentEnvironment={props.agentEnvironment}
         busy={props.busy}

@@ -21,6 +21,8 @@ import type {
   ListCodexSessionsInput,
   OpenCodexConfigTomlInput,
   OpenWorkspaceInput,
+  ReadProxySettingsInput,
+  ReadProxySettingsOutput,
   RpcCancelInput,
   RpcNotifyInput,
   RpcRequestInput,
@@ -30,6 +32,8 @@ import type {
   ServerRequestResolveInput,
   ShowContextMenuInput,
   ShowNotificationInput,
+  UpdateProxySettingsInput,
+  UpdateProxySettingsOutput,
   WindowChromeAction,
   WindowTheme,
   UpdateChatgptAuthTokensInput,
@@ -84,9 +88,11 @@ export interface HostBridge {
     readGlobalAgentInstructions(input: {
       readonly agentEnvironment: AgentEnvironment;
     }): Promise<GlobalAgentInstructionsOutput>;
+    readProxySettings(input: ReadProxySettingsInput): Promise<ReadProxySettingsOutput>;
     writeGlobalAgentInstructions(
       input: UpdateGlobalAgentInstructionsInput
     ): Promise<GlobalAgentInstructionsOutput>;
+    writeProxySettings(input: UpdateProxySettingsInput): Promise<UpdateProxySettingsOutput>;
     listCodexProviders(): Promise<CodexProviderStore>;
     upsertCodexProvider(input: CodexProviderDraft): Promise<CodexProviderRecord>;
     deleteCodexProvider(input: DeleteCodexProviderInput): Promise<CodexProviderStore>;

@@ -83,6 +83,10 @@ export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
         ...input,
         agentEnvironment: props.preferences.agentEnvironment,
       }),
+    readProxySettings: (input) =>
+      props.hostBridge.app.readProxySettings(input),
+    writeProxySettings: (input) =>
+      props.hostBridge.app.writeProxySettings(input),
     listCodexProviders: () => props.hostBridge.app.listCodexProviders(),
     upsertCodexProvider: (input) => props.hostBridge.app.upsertCodexProvider(input),
     deleteCodexProvider: (input) => props.hostBridge.app.deleteCodexProvider(input),

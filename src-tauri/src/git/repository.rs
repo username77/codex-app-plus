@@ -153,13 +153,14 @@ mod tests {
         let workspace = TestWorkspace::create();
         let cache = RepositoryContextCache::default();
         let repo_path = workspace.child.to_string_lossy().to_string();
+        let canonical_root = fs::canonicalize(&workspace.root).expect("canonical root");
 
         let first = resolve_workspace(&repo_path, &cache).expect("first resolve");
         let second = resolve_workspace(&repo_path, &cache).expect("second resolve");
 
         assert_eq!(cache.len(), 1);
-        assert_eq!(first.repo_root, Some(workspace.root.clone()));
-        assert_eq!(second.repo_root, Some(workspace.root.clone()));
+        assert_eq!(first.repo_root, Some(canonical_root.clone()));
+        assert_eq!(second.repo_root, Some(canonical_root));
     }
 
     #[test]

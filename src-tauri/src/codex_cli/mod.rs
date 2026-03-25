@@ -23,6 +23,7 @@ pub struct CodexCli {
     pub(crate) program: String,
     pub(crate) prefix_args: Vec<String>,
     pub(crate) display_path: String,
+    pub(crate) environment: Vec<(String, String)>,
 }
 
 impl CodexCli {
@@ -90,6 +91,9 @@ impl CodexCli {
         let mut command = Command::new(&self.program);
         command.args(&self.prefix_args);
         command.args(args);
+        for (key, value) in &self.environment {
+            command.env(key, value);
+        }
         configure_background_tokio_command(&mut command);
         command
     }
@@ -211,6 +215,7 @@ mod tests {
                 "/root/.nvm/versions/node/v24.14.0/bin/codex".to_string(),
             ],
             display_path: "wsl.exe --distribution Ubuntu --cd /home/me --exec /root/.nvm/versions/node/v24.14.0/bin/codex".to_string(),
+            environment: Vec::new(),
         };
 
         let version_args = collect_args(cli.command_for_args(&["--version"]));

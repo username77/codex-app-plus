@@ -3,18 +3,20 @@ use std::path::Path;
 use std::process::Command;
 
 use crate::error::{AppError, AppResult};
+use crate::proxy_environment::apply_std_proxy_environment;
+use crate::proxy_settings::load_proxy_settings;
 use crate::windows_child_process::configure_background_std_command;
 
 const GIT_PROGRAM: &str = "git";
 
-pub(super) fn has_head(repo_root: &Path) -> bool {
-    git_command()
+pub(super) fn has_head(repo_root: &Path) -> AppResult<bool> {
+    git_command()?
         .arg("-C")
         .arg(repo_root)
         .args(["rev-parse", "--verify", "HEAD"])
         .output()
         .map(|output| output.status.success())
-        .unwrap_or(false)
+        .map_err(AppError::from)
 }
 
 pub(super) fn run_git(repo_root: &Path, args: &[OsString]) -> AppResult<String> {
@@ -26,7 +28,7 @@ pub(super) fn run_git_with_exit_codes(
     args: &[OsString],
     allowed_exit_codes: &[i32],
 ) -> AppResult<String> {
-    let output = git_command()
+    let output = git_command()?
         .arg("-C")
         .arg(repo_root)
         .args(args)
@@ -50,10 +52,12 @@ pub(super) fn run_git_with_exit_codes(
     )))
 }
 
-fn git_command() -> Command {
+fn git_command() -> AppResult<Command> {
     let mut command = Command::new(GIT_PROGRAM);
     configure_background_std_command(&mut command);
-    command
+    let settings = load_proxy_settings(crate::models::AgentEnvironment::WindowsNative)?;
+    apply_std_proxy_environment(&mut command, &settings);
+    Ok(command)
 }
 
 fn format_git_error(args: &[OsString], stderr: &[u8], stdout: &[u8]) -> String {

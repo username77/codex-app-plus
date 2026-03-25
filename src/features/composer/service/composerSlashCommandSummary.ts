@@ -7,6 +7,7 @@ import type { ConfigReadResponse } from "../../../protocol/generated/v2/ConfigRe
 import type { ConfigRequirementsReadResponse } from "../../../protocol/generated/v2/ConfigRequirementsReadResponse";
 import type { McpServerStatus } from "../../../protocol/generated/v2/McpServerStatus";
 import type { AppInfo } from "../../../protocol/generated/v2/AppInfo";
+import type { PluginListResponse } from "../../../protocol/generated/v2/PluginListResponse";
 import { readUserConfigWriteTarget } from "../../settings/config/configWriteTarget";
 
 const SUMMARY_LIMIT = 5;
@@ -55,6 +56,15 @@ export function formatAppSummary(apps: ReadonlyArray<AppInfo>): string {
   const enabled = apps.filter((app) => app.isEnabled).length;
   const accessible = apps.filter((app) => app.isAccessible).length;
   return `共 ${apps.length} 个 app；已启用 ${enabled} 个；可访问 ${accessible} 个：${formatNames(apps.map((app) => app.name))}`;
+}
+
+export function formatPluginSummary(response: PluginListResponse): string {
+  const plugins = response.marketplaces.flatMap((marketplace) => marketplace.plugins);
+  const installed = plugins.filter((plugin) => plugin.installed).length;
+  const enabled = plugins.filter((plugin) => plugin.enabled).length;
+  const marketplaceSummary = response.marketplaces.map((marketplace) => `${marketplace.name} (${marketplace.plugins.length})`);
+  const remoteSync = response.remoteSyncError === null ? "" : `；远端同步错误：${response.remoteSyncError}`;
+  return `共 ${plugins.length} 个插件，已安装 ${installed} 个，已启用 ${enabled} 个；市场：${formatNames(marketplaceSummary)}${remoteSync}`;
 }
 
 function formatNames(items: ReadonlyArray<string>): string {

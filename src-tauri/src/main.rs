@@ -19,6 +19,8 @@ mod global_agent_instructions;
 mod models;
 mod process_manager;
 mod process_supervisor;
+mod proxy_environment;
+mod proxy_settings;
 mod rpc_transport;
 mod rules;
 mod terminal_commands;
@@ -36,11 +38,12 @@ use commands::{
     app_delete_codex_session, app_get_codex_auth_mode_state, app_import_official_data,
     app_list_codex_providers, app_list_codex_sessions, app_open_codex_config_toml,
     app_open_external, app_open_workspace, app_read_chatgpt_auth_tokens, app_read_codex_session,
-    app_read_global_agent_instructions, app_remember_command_approval_rule, app_server_restart,
-    app_server_start, app_server_stop, app_set_window_theme, app_show_context_menu,
+    app_read_global_agent_instructions, app_read_proxy_settings,
+    app_remember_command_approval_rule, app_server_restart, app_server_start, app_server_stop,
+    app_set_window_theme, app_show_context_menu,
     app_show_notification, app_start_window_dragging, app_upsert_codex_provider,
-    app_write_chatgpt_auth_tokens, app_write_global_agent_instructions, rpc_cancel, rpc_notify,
-    rpc_request, server_request_resolve,
+    app_write_chatgpt_auth_tokens, app_write_global_agent_instructions,
+    app_write_proxy_settings, rpc_cancel, rpc_notify, rpc_request, server_request_resolve,
 };
 use git::commands::{
     git_checkout, git_commit, git_discard_paths, git_fetch, git_get_branch_refs, git_get_diff,
@@ -89,6 +92,8 @@ fn main() {
             app_open_codex_config_toml,
             app_read_global_agent_instructions,
             app_write_global_agent_instructions,
+            app_read_proxy_settings,
+            app_write_proxy_settings,
             app_list_codex_providers,
             app_upsert_codex_provider,
             app_delete_codex_provider,

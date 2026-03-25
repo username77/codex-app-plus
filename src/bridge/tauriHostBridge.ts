@@ -40,6 +40,8 @@ import type {
   ListCodexSessionsInput,
   OpenCodexConfigTomlInput,
   OpenWorkspaceInput,
+  ReadProxySettingsInput,
+  ReadProxySettingsOutput,
   RememberCommandApprovalRuleInput,
   RememberCommandApprovalRuleOutput,
   RpcCancelInput,
@@ -55,7 +57,9 @@ import type {
   TerminalResizeInput,
   TerminalWriteInput,
   UpdateChatgptAuthTokensInput,
-  UpdateGlobalAgentInstructionsInput
+  UpdateGlobalAgentInstructionsInput,
+  UpdateProxySettingsInput,
+  UpdateProxySettingsOutput
 } from "./types";
 
 type TauriPayload = Readonly<Record<string, unknown>>;
@@ -121,11 +125,21 @@ export function createTauriHostBridge(): HostBridge {
           { readonly agentEnvironment: AgentEnvironment },
           GlobalAgentInstructionsOutput
         >("app_read_global_agent_instructions", input),
+      readProxySettings: (input: ReadProxySettingsInput) =>
+        invokeWithInput<ReadProxySettingsInput, ReadProxySettingsOutput>(
+          "app_read_proxy_settings",
+          input
+        ),
       writeGlobalAgentInstructions: (input: UpdateGlobalAgentInstructionsInput) =>
         invokeWithInput<
           UpdateGlobalAgentInstructionsInput,
           GlobalAgentInstructionsOutput
         >("app_write_global_agent_instructions", input),
+      writeProxySettings: (input: UpdateProxySettingsInput) =>
+        invokeWithInput<UpdateProxySettingsInput, UpdateProxySettingsOutput>(
+          "app_write_proxy_settings",
+          input
+        ),
       listCodexProviders: () =>
         invokeCommand<CodexProviderStore>("app_list_codex_providers"),
       upsertCodexProvider: (input: CodexProviderDraft) =>

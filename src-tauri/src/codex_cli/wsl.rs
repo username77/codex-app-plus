@@ -2,6 +2,8 @@ use std::path::Path;
 
 use crate::error::{AppError, AppResult};
 use crate::models::AppServerStartInput;
+use crate::proxy_environment::proxy_environment_assignments;
+use crate::proxy_settings::load_proxy_settings;
 use crate::wsl_support::{
     ensure_wsl_command_available, is_windows_path_like, resolve_default_wsl_context,
     resolve_wsl_command_path, WslContext,
@@ -27,11 +29,13 @@ pub(super) fn resolve_wsl_cli(input: &AppServerStartInput) -> AppResult<CodexCli
     let context = resolve_default_wsl_context()?;
     let program = resolve_wsl_codex_program(input.codex_path.as_deref())?;
     let resolved_program = ensure_wsl_command_available(&context, &program)?;
-    let spec = build_launch_spec(&wsl_program, &context, &resolved_program)?;
+    let proxy_settings = load_proxy_settings(crate::models::AgentEnvironment::Wsl)?;
+    let spec = build_launch_spec(&wsl_program, &context, &resolved_program, &proxy_settings)?;
     Ok(CodexCli {
         program: spec.wsl_program,
         prefix_args: spec.prefix_args,
         display_path: spec.display_path,
+        environment: Vec::new(),
     })
 }
 
@@ -39,8 +43,9 @@ fn build_launch_spec(
     wsl_program: &Path,
     context: &WslContext,
     program: &str,
+    proxy_settings: &crate::models::ProxySettings,
 ) -> AppResult<WslLaunchSpec> {
-    let prefix_args = build_wsl_exec_prefix(context, &program);
+    let prefix_args = build_wsl_exec_prefix(context, program, proxy_settings);
     let wsl_program_text = wsl_program.to_string_lossy().to_string();
     Ok(WslLaunchSpec {
         display_path: build_display_path(&wsl_program_text, &prefix_args),
@@ -63,7 +68,11 @@ fn resolve_wsl_codex_program(codex_path: Option<&str>) -> AppResult<String> {
     Ok(candidate.to_string())
 }
 
-fn build_wsl_exec_prefix(context: &WslContext, program: &str) -> Vec<String> {
+fn build_wsl_exec_prefix(
+    context: &WslContext,
+    program: &str,
+    proxy_settings: &crate::models::ProxySettings,
+) -> Vec<String> {
     vec![
         "--distribution".to_string(),
         context.distro_name.clone(),
@@ -72,10 +81,26 @@ fn build_wsl_exec_prefix(context: &WslContext, program: &str) -> Vec<String> {
         "--exec".to_string(),
         WSL_LOGIN_SHELL.to_string(),
         WSL_LOGIN_EXEC_FLAG.to_string(),
-        WSL_LOGIN_EXEC_SCRIPT.to_string(),
+        build_wsl_exec_script(proxy_settings),
         WSL_LOGIN_ARG0.to_string(),
         program.to_string(),
     ]
+}
+
+fn build_wsl_exec_script(proxy_settings: &crate::models::ProxySettings) -> String {
+    let exports = proxy_environment_assignments(proxy_settings)
+        .into_iter()
+        .map(|(key, value)| format!("export {key}={};", shell_quote(value.as_str())))
+        .collect::<Vec<_>>()
+        .join(" ");
+    if exports.is_empty() {
+        return WSL_LOGIN_EXEC_SCRIPT.to_string();
+    }
+    format!("{exports} exec \"$@\"")
+}
+
+fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\"'\"'"))
 }
 
 fn build_display_path(program: &str, args: &[String]) -> String {
@@ -133,6 +158,7 @@ mod tests {
             Path::new(r"C:\Windows\System32\wsl.exe"),
             &wsl_context(),
             "/usr/local/bin/codex",
+            &crate::models::ProxySettings::default(),
         )
         .expect("launch spec");
 
@@ -169,6 +195,7 @@ mod tests {
             Path::new("wsl.exe"),
             &wsl_context(),
             "/root/.nvm/versions/node/v24.14.0/bin/codex",
+            &crate::models::ProxySettings::default(),
         )
         .expect("launch spec");
 
@@ -176,5 +203,25 @@ mod tests {
             spec.display_path,
             "wsl.exe --distribution Ubuntu --cd /home/me --exec /root/.nvm/versions/node/v24.14.0/bin/codex"
         );
+    }
+
+    #[test]
+    fn injects_proxy_exports_into_wsl_launch_script() {
+        let spec = build_launch_spec(
+            Path::new("wsl.exe"),
+            &wsl_context(),
+            "/usr/local/bin/codex",
+            &crate::models::ProxySettings {
+                enabled: true,
+                http_proxy: "http://127.0.0.1:8080".to_string(),
+                https_proxy: String::new(),
+                no_proxy: "localhost".to_string(),
+            },
+        )
+        .expect("launch spec");
+
+        assert!(spec.prefix_args[7].contains("export HTTP_PROXY='http://127.0.0.1:8080';"));
+        assert!(spec.prefix_args[7].contains("export no_proxy='localhost';"));
+        assert!(spec.prefix_args[7].contains("exec \"$@\""));
     }
 }

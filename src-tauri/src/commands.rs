@@ -23,13 +23,16 @@ use crate::models::{
     CodexSessionReadInput, CodexSessionReadOutput, CodexSessionSummary, DeleteCodexProviderInput,
     DeleteCodexSessionInput, GetCodexAuthModeStateInput, GlobalAgentInstructionsOutput,
     ImportOfficialDataInput, ListCodexSessionsInput, OpenCodexConfigTomlInput, OpenWorkspaceInput,
-    ReadGlobalAgentInstructionsInput, RememberCommandApprovalRuleInput,
+    ReadGlobalAgentInstructionsInput, ReadProxySettingsInput, ReadProxySettingsOutput,
+    RememberCommandApprovalRuleInput,
     RememberCommandApprovalRuleOutput, RpcCancelInput, RpcNotifyInput, RpcRequestInput,
     RpcRequestOutput, ServerRequestResolveInput, ShowContextMenuInput, ShowNotificationInput,
-    UpdateChatgptAuthTokensInput, UpdateGlobalAgentInstructionsInput, UpsertCodexProviderInput,
+    UpdateChatgptAuthTokensInput, UpdateGlobalAgentInstructionsInput, UpdateProxySettingsInput,
+    UpdateProxySettingsOutput, UpsertCodexProviderInput,
     WindowChromeAction,
 };
 use crate::process_manager::ProcessManager;
+use crate::proxy_settings::{read_proxy_settings, write_proxy_settings};
 use crate::window_theme::{apply_window_theme, WindowTheme};
 use crate::workspace_launcher::open_workspace;
 
@@ -170,6 +173,20 @@ pub fn app_write_global_agent_instructions(
     input: UpdateGlobalAgentInstructionsInput,
 ) -> Result<GlobalAgentInstructionsOutput, String> {
     to_result(write_global_agent_instructions(input))
+}
+
+#[tauri::command]
+pub fn app_read_proxy_settings(
+    input: ReadProxySettingsInput,
+) -> Result<ReadProxySettingsOutput, String> {
+    to_result(read_proxy_settings(input))
+}
+
+#[tauri::command]
+pub fn app_write_proxy_settings(
+    input: UpdateProxySettingsInput,
+) -> Result<UpdateProxySettingsOutput, String> {
+    to_result(write_proxy_settings(input))
 }
 
 #[tauri::command]

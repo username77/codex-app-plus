@@ -3,6 +3,7 @@ import type { ConversationState } from "../../../domain/conversation";
 import type { CollaborationPreset } from "../../../domain/timeline";
 import type { AppState } from "../../../domain/types";
 import { useAppSelector } from "../../../state/store";
+import { DEFAULT_COMPOSER_SLASH_CAPABILITIES, type ComposerSlashCapabilitySnapshot } from "../model/composerSlashCommandCatalog";
 import type { SlashExecutionContext } from "../service/composerSlashCommandExecutor";
 import type { UseComposerCommandPaletteOptions } from "./useComposerCommandPalette";
 
@@ -41,6 +42,8 @@ export interface SlashCollections {
     readonly hasThread: boolean;
     readonly hasWorkspace: boolean;
     readonly realtimeActive: boolean;
+    readonly taskRunning: boolean;
+    readonly capabilities: ComposerSlashCapabilitySnapshot;
   };
 }
 
@@ -84,7 +87,7 @@ export function useSlashRuntimeState(selectedThreadId: string | null): SlashRunt
 export function useSlashCollections(
   options: Pick<
     UseComposerCommandPaletteOptions,
-    "collaborationPreset" | "selectedRootPath" | "selectedThreadId"
+    "collaborationPreset" | "selectedRootPath" | "selectedThreadId" | "isResponding"
   >,
   realtimeState: SlashExecutionContext["realtimeState"],
 ): SlashCollections {
@@ -119,6 +122,8 @@ export function useSlashCollections(
         realtimeActive: realtimeState !== null
           && realtimeState.sessionId !== null
           && !realtimeState.closed,
+        taskRunning: options.isResponding,
+        capabilities: DEFAULT_COMPOSER_SLASH_CAPABILITIES,
       },
       collaborationItems: collaborationModes
         .filter((mode) => mode.mode !== null)
@@ -140,6 +145,7 @@ export function useSlashCollections(
     [
       collaborationModes,
       options.collaborationPreset,
+      options.isResponding,
       options.selectedRootPath,
       options.selectedThreadId,
       realtimeState,

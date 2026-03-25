@@ -72,6 +72,29 @@ export interface UpdateGlobalAgentInstructionsInput {
   readonly content: string;
 }
 
+export interface ProxySettings {
+  readonly enabled: boolean;
+  readonly httpProxy: string;
+  readonly httpsProxy: string;
+  readonly noProxy: string;
+}
+
+export interface ReadProxySettingsInput {
+  readonly agentEnvironment: AgentEnvironment;
+}
+
+export interface ReadProxySettingsOutput {
+  readonly settings: ProxySettings;
+}
+
+export interface UpdateProxySettingsInput extends ProxySettings {
+  readonly agentEnvironment: AgentEnvironment;
+}
+
+export interface UpdateProxySettingsOutput {
+  readonly settings: ProxySettings;
+}
+
 export interface ChatgptAuthTokensOutput {
   readonly accessToken: string;
   readonly chatgptAccountId: string;

@@ -1,41 +1,68 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_COMPOSER_SLASH_CAPABILITIES } from "./composerSlashCommandCatalog";
 import { listComposerSlashCommands } from "./composerSlashCommands";
 
 function listCommandIds(): ReadonlyArray<string> {
-  return listComposerSlashCommands("", { hasThread: true, hasWorkspace: true, realtimeActive: false }).map((command) => command.id);
+  return listComposerSlashCommands("", {
+    hasThread: true,
+    hasWorkspace: true,
+    realtimeActive: false,
+    taskRunning: false,
+    capabilities: DEFAULT_COMPOSER_SLASH_CAPABILITIES,
+  }).map((command) => command.id);
 }
 
 describe("composerSlashCommands", () => {
-  it("includes the latest official slash commands in the palette list", () => {
-    expect(listCommandIds()).toEqual(expect.arrayContaining([
+  it("matches the latest official command list and order", () => {
+    const expected = [
+      "model",
       "fast",
       "approvals",
+      "permissions",
       "setup-default-sandbox",
       "sandbox-add-read-dir",
+      "experimental",
       "skills",
+      "review",
+      "rename",
       "new",
       "resume",
       "fork",
+      "init",
+      "compact",
       "plan",
       "collab",
       "agent",
+      "diff",
       "copy",
+      "mention",
+      "status",
       "debug-config",
+      "title",
       "statusline",
       "theme",
+      "mcp",
       "apps",
+      "plugins",
+      "logout",
       "quit",
       "exit",
       "feedback",
       "ps",
-      "clean",
+      "stop",
+      "clear",
       "personality",
       "realtime",
       "settings",
-      "multi-agents",
+      "subagents",
       "debug-m-drop",
       "debug-m-update",
-    ]));
+    ];
+    if (import.meta.env.DEV) {
+      expected.splice(33, 0, "rollout");
+      expected.splice(40, 0, "test-approval");
+    }
+    expect(listCommandIds()).toEqual(expected);
   });
 
   it("drops stale commands that are not in the latest official package", () => {
@@ -47,28 +74,58 @@ describe("composerSlashCommands", () => {
       "history",
       "login",
       "memory",
+      "multi-agents",
       "terminal-setup",
       "upgrade",
       "vim",
     ]));
   });
 
-  it("keeps wired aliases enabled and marks the rest as unavailable", () => {
-    const commands = listComposerSlashCommands("", { hasThread: true, hasWorkspace: true, realtimeActive: false });
-    const approvals = commands.find((command) => command.id === "approvals");
-    const newThread = commands.find((command) => command.id === "new");
-    const sandboxReadDir = commands.find((command) => command.id === "sandbox-add-read-dir");
-
-    expect(approvals?.disabledReason).toBeNull();
-    expect(newThread?.disabledReason).toBeNull();
-    expect(sandboxReadDir?.disabledReason).toContain("官方链路");
+  it("maps /clean to the canonical /stop command", () => {
+    const alias = listComposerSlashCommands("clean", {
+      hasThread: true,
+      hasWorkspace: true,
+      realtimeActive: false,
+      taskRunning: false,
+      capabilities: DEFAULT_COMPOSER_SLASH_CAPABILITIES,
+    })[0];
+    expect(alias).toMatchObject({
+      id: "stop",
+      name: "/stop",
+      metaLabel: "Alias",
+      disabledReason: null,
+    });
   });
 
-  it("requires arguments for rename and realtime start", () => {
-    const rename = listComposerSlashCommands("rename", { hasThread: true, hasWorkspace: true, realtimeActive: false })[0];
-    const realtime = listComposerSlashCommands("realtime", { hasThread: true, hasWorkspace: true, realtimeActive: false })[0];
+  it("disables task-blocked commands while a turn is running", () => {
+    const busyContext = {
+      hasThread: true,
+      hasWorkspace: true,
+      realtimeActive: false,
+      taskRunning: true,
+      capabilities: DEFAULT_COMPOSER_SLASH_CAPABILITIES,
+    } as const;
+    const createThread = listComposerSlashCommands("new", busyContext)[0];
+    const stop = listComposerSlashCommands("stop", busyContext)[0];
+
+    expect(createThread?.disabledReason).toContain("任务正在执行");
+    expect(stop?.disabledReason).toBeNull();
+  });
+
+  it("requires arguments for rename and realtime start, and blocks inline /plan prompts", () => {
+    const context = {
+      hasThread: true,
+      hasWorkspace: true,
+      realtimeActive: false,
+      taskRunning: false,
+      capabilities: DEFAULT_COMPOSER_SLASH_CAPABILITIES,
+    } as const;
+    const rename = listComposerSlashCommands("rename", context)[0];
+    const realtime = listComposerSlashCommands("realtime", context)[0];
+    const plan = listComposerSlashCommands("plan 调研这个仓库", context)[0];
 
     expect(rename?.disabledReason).toContain("新的线程标题");
     expect(realtime?.disabledReason).toContain("提示词");
+    expect(plan?.disabledReason).toContain("/plan");
   });
 });

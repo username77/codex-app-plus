@@ -21,6 +21,41 @@ pub struct AppServerStartInput {
     pub codex_path: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ProxySettings {
+    pub enabled: bool,
+    pub http_proxy: String,
+    pub https_proxy: String,
+    pub no_proxy: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadProxySettingsInput {
+    pub agent_environment: AgentEnvironment,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadProxySettingsOutput {
+    pub settings: ProxySettings,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateProxySettingsInput {
+    pub agent_environment: AgentEnvironment,
+    #[serde(flatten)]
+    pub settings: ProxySettings,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateProxySettingsOutput {
+    pub settings: ProxySettings,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcRequestInput {

@@ -80,6 +80,7 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
     selectedRootPath: props.selectedRootPath,
     selectedThreadId: props.selectedThreadId,
     collaborationPreset: props.collaborationPreset,
+    isResponding: props.isResponding,
     models: props.models,
     selectedModel: composerSelection.selectedModel,
     selectedServiceTier: composerSelection.selectedServiceTier,

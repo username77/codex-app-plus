@@ -3,6 +3,7 @@ import type { AppPreferencesController } from "../hooks/useAppPreferences";
 import type { AppUpdateState, WindowsSandboxSetupState } from "../../../domain/types";
 import type { ResolvedTheme } from "../../../domain/theme";
 import type {
+  AgentEnvironment,
   CodexAuthModeStateOutput,
   CodexAuthSwitchResult,
   CodexProviderApplyResult,
@@ -11,6 +12,9 @@ import type {
   CodexProviderStore,
   DeleteCodexProviderInput,
   GlobalAgentInstructionsOutput,
+  ReadProxySettingsOutput,
+  UpdateProxySettingsInput,
+  UpdateProxySettingsOutput,
   UpdateGlobalAgentInstructionsInput,
 } from "../../../bridge/types";
 import type { WorkspaceRoot } from "../../workspace/hooks/useWorkspaceRoots";
@@ -66,9 +70,11 @@ export interface SettingsViewProps {
   refreshAuthState: () => Promise<void>;
   login: () => Promise<void>;
   readGlobalAgentInstructions: () => Promise<GlobalAgentInstructionsOutput>;
+  readProxySettings: (input: { readonly agentEnvironment: AgentEnvironment }) => Promise<ReadProxySettingsOutput>;
   writeGlobalAgentInstructions: (
     input: UpdateGlobalAgentInstructionsInput
   ) => Promise<GlobalAgentInstructionsOutput>;
+  writeProxySettings: (input: UpdateProxySettingsInput) => Promise<UpdateProxySettingsOutput>;
   listCodexProviders: () => Promise<CodexProviderStore>;
   upsertCodexProvider: (input: CodexProviderDraft) => Promise<CodexProviderRecord>;
   deleteCodexProvider: (input: DeleteCodexProviderInput) => Promise<CodexProviderStore>;
@@ -168,12 +174,14 @@ function SettingsContent(props: SettingsViewProps): JSX.Element {
           refreshConfigSnapshot={props.refreshConfigSnapshot}
           refreshAuthState={props.refreshAuthState}
           login={props.login}
+          readProxySettings={props.readProxySettings}
           listCodexProviders={props.listCodexProviders}
           upsertCodexProvider={props.upsertCodexProvider}
           deleteCodexProvider={props.deleteCodexProvider}
           applyCodexProvider={props.applyCodexProvider}
           getCodexAuthModeState={props.getCodexAuthModeState}
           activateCodexChatgpt={props.activateCodexChatgpt}
+          writeProxySettings={props.writeProxySettings}
           batchWriteConfig={props.batchWriteConfig}
           writeConfigValue={props.writeConfigValue}
           windowsSandboxSetup={props.windowsSandboxSetup}
