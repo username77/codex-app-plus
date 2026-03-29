@@ -133,20 +133,20 @@ describe("SettingsView", () => {
     expect(screen.getByText("代码风格")).toBeInTheDocument();
   });
 
-  it("does not render composer permission defaults in the general section", () => {
+  it("renders composer permission defaults in the general section", () => {
     render(<SettingsView {...createBaseProps()} />, {
       wrapper: createI18nWrapper("zh-CN"),
     });
 
-    expect(screen.queryByText("Composer 权限默认值")).toBeNull();
+    expect(screen.getByText("Composer 权限默认值")).toBeInTheDocument();
   });
 
-  it("renders composer permission defaults in the config section", () => {
+  it("does not render composer permission defaults in the config section", () => {
     render(<SettingsView {...createBaseProps({ section: "config" })} />, {
       wrapper: createI18nWrapper("zh-CN"),
     });
 
-    expect(screen.getByText("Composer 权限默认值")).toBeInTheDocument();
+    expect(screen.queryByText("Composer 权限默认值")).toBeNull();
   });
 
   it("renders agents settings in the agents section", () => {

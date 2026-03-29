@@ -137,23 +137,50 @@ function SettingsSidebar(props: {
   onSelectSection: (section: SettingsSection) => void;
 }): JSX.Element {
   const { t } = useI18n();
+  const getItem = (key: SettingsSection) => props.navItems.find((i) => i.key === key)!;
+  const renderNavItem = (key: SettingsSection, comingSoon = false) => {
+    const item = getItem(key);
+    return (
+      <button
+        key={item.key}
+        type="button"
+        className={[
+          "settings-nav-item",
+          item.key === props.section ? "settings-nav-item-active" : "",
+          comingSoon ? "settings-nav-item--coming-soon" : "",
+        ].filter(Boolean).join(" ")}
+        onClick={comingSoon ? undefined : () => props.onSelectSection(item.key)}
+      >
+        <span className="settings-nav-icon">{item.icon}</span>
+        <span>{item.label}</span>
+        {comingSoon && <span className="settings-nav-coming-soon-badge">Coming Soon</span>}
+      </button>
+    );
+  };
   return (
     <aside className="settings-sidebar">
       <button type="button" className="settings-back-app" onClick={props.onBackHome}>
         ← {t("settings.sidebar.backToApp")}
       </button>
       <nav className="settings-nav">
-        {props.navItems.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            className={item.key === props.section ? "settings-nav-item settings-nav-item-active" : "settings-nav-item"}
-            onClick={() => props.onSelectSection(item.key)}
-          >
-            <span className="settings-nav-icon">{item.icon}</span>
-            <span>{item.label}</span>
-          </button>
-        ))}
+        <div className="settings-nav-group-label">{t("settings.nav.group.interface")}</div>
+        {renderNavItem("general")}
+        {renderNavItem("appearance")}
+        <div className="settings-nav-group-label">{t("settings.nav.group.auth")}</div>
+        {renderNavItem("config")}
+        <div className="settings-nav-group-label">{t("settings.nav.group.ai")}</div>
+        {renderNavItem("agents")}
+        {renderNavItem("personalization")}
+        <div className="settings-nav-group-label">{t("settings.nav.group.integrations")}</div>
+        {renderNavItem("mcp")}
+        <div className="settings-nav-group-label">{t("settings.nav.group.vcs")}</div>
+        {renderNavItem("git")}
+        <div className="settings-nav-group-label">{t("settings.nav.group.workspace")}</div>
+        {renderNavItem("environment")}
+        {renderNavItem("worktree", true)}
+        <div className="settings-nav-group-label">{t("settings.nav.group.system")}</div>
+        {renderNavItem("archived")}
+        {renderNavItem("about")}
       </nav>
     </aside>
   );
@@ -162,7 +189,12 @@ function SettingsSidebar(props: {
 function SettingsContent(props: SettingsViewProps & { readonly sectionTitle: string }): JSX.Element {
 
   if (props.section === "general") {
-    return <GeneralSettingsSection preferences={props.preferences} steerAvailable={props.steerAvailable} />;
+    return (
+      <>
+        <GeneralSettingsSection preferences={props.preferences} steerAvailable={props.steerAvailable} />
+        <ComposerPermissionDefaultsCard preferences={props.preferences} />
+      </>
+    );
   }
   if (props.section === "appearance") {
     return (
@@ -195,7 +227,6 @@ function SettingsContent(props: SettingsViewProps & { readonly sectionTitle: str
           writeConfigValue={props.writeConfigValue}
           windowsSandboxSetup={props.windowsSandboxSetup}
         />
-        <ComposerPermissionDefaultsCard preferences={props.preferences} />
       </>
     );
   }

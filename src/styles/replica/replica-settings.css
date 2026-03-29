@@ -71,6 +71,41 @@
   box-shadow: var(--shadow-md);
 }
 
+.settings-nav-group-label {
+  font-size: var(--app-ui-font-size-xs);
+  font-weight: 600;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 12px;
+  margin-top: 12px;
+  margin-bottom: 2px;
+  user-select: none;
+}
+
+.settings-nav-group-label:first-child {
+  margin-top: 4px;
+}
+
+.settings-nav-item--coming-soon {
+  opacity: 0.4;
+  pointer-events: none;
+  cursor: default;
+}
+
+.settings-nav-coming-soon-badge {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-subtle);
+  background: var(--surface-hover);
+  border-radius: 4px;
+  padding: 2px 5px;
+  line-height: 1.4;
+}
+
 .settings-main {
   overflow: auto;
   scrollbar-gutter: stable;
