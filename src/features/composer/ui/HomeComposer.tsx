@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import type { ComposerPermissionLevel } from "../model/composerPermission";
 import type { ComposerModelOption, ComposerSelection } from "../model/composerPreferences";
 import {
@@ -29,6 +29,7 @@ import { useUiBannerNotifications } from "../../shared/hooks/useUiBannerNotifica
 
 const MIN_TRIMMED_MESSAGE_LENGTH = 1;
 const MAX_COMPOSER_INPUT_EXTRA_ROWS = 3;
+type ReportErrorFn = ReturnType<typeof useUiBannerNotifications>["reportError"];
 
 export interface HomeComposerProps {
   readonly appServerReady?: boolean;
@@ -78,24 +79,18 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [multiAgentPending, setMultiAgentPending] = useState(false);
-  const fileReferenceDraft = parseComposerFileReferenceDraft(props.inputText);
-  const composerBodyText = fileReferenceDraft.bodyText;
-  const fileReferencePaths = fileReferenceDraft.filePaths;
-  const updateComposerBodyText = useCallback((nextBodyText: string) => {
-    props.onInputChange(serializeComposerFileReferenceDraft(nextBodyText, fileReferencePaths));
-  }, [fileReferencePaths, props]);
-  const appendFileReferenceTexts = useCallback((paths: ReadonlyArray<string>, nextBodyText?: string) => {
-    const nextInputText = nextBodyText === undefined
-      ? appendComposerFileReferencePaths(props.inputText, paths)
-      : serializeComposerFileReferenceDraft(nextBodyText, [...fileReferencePaths, ...paths]);
-    props.onInputChange(nextInputText);
-  }, [fileReferencePaths, props.inputText, props.onInputChange]);
-  const appendWorkspaceFilePaths = useCallback((paths: ReadonlyArray<string>) => {
-    appendFileReferenceTexts(paths.map((path) => toComposerFileReferencePath(path, props.selectedRootPath)));
-  }, [appendFileReferenceTexts, props.selectedRootPath]);
-  const removeFileReference = useCallback((path: string) => {
-    props.onInputChange(removeComposerFileReferencePath(props.inputText, path));
-  }, [props.inputText, props.onInputChange]);
+  const {
+    composerBodyText,
+    fileReferencePaths,
+    appendFileReferenceTexts,
+    appendWorkspaceFilePaths,
+    removeFileReference,
+    updateComposerBodyText,
+  } = useHomeComposerDraft({
+    inputText: props.inputText,
+    onInputChange: props.onInputChange,
+    selectedRootPath: props.selectedRootPath,
+  });
   const { attachments, clearAttachments, openFilePicker, removeAttachment, handlePaste } = useComposerAttachments({
     selectedThreadId: props.selectedThreadId,
     onInsertFilePaths: appendWorkspaceFilePaths,
@@ -140,34 +135,19 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
   useComposerTextareaAutosize({ textareaRef: commandPalette.textareaRef, value: composerBodyText, maxExtraRows: MAX_COMPOSER_INPUT_EXTRA_ROWS });
   useToolbarMenuDismissal(commandPalette.open, containerRef, () => void commandPalette.dismiss());
 
-  const submit = useCallback((followUpOverride?: FollowUpMode) => {
-    void submitTurn(
-      props,
-      canSend,
-      props.inputText,
-      attachments,
-      composerSelection,
-      clearAttachments,
-      commandPalette.dismiss,
-      props.collaborationPreset,
-      reportError,
-      followUpOverride,
-    );
-  }, [
+  const { handlePromoteQueuedFollowUp, submit } = useHomeComposerActions({
     attachments,
     canSend,
     clearAttachments,
-    commandPalette.dismiss,
+    collaborationPreset: props.collaborationPreset,
     composerSelection,
+    dismissPalette: commandPalette.dismiss,
+    inputText: props.inputText,
+    onPromoteQueuedFollowUp: props.onPromoteQueuedFollowUp,
+    onSendTurn: props.onSendTurn,
+    permissionLevel: props.permissionLevel,
     reportError,
-    props,
-  ]);
-
-  const handlePromoteQueuedFollowUp = useCallback((followUpId: string) => {
-    void props.onPromoteQueuedFollowUp(followUpId).catch((error) => {
-      reportError("插队失败", error);
-    });
-  }, [props, reportError]);
+  });
 
   const handleToggleMultiAgent = useCallback(async () => {
     setMenuOpen(false);
@@ -214,6 +194,85 @@ export function HomeComposer(props: HomeComposerProps): JSX.Element {
       <ComposerFooter permissionLevel={props.permissionLevel} gitController={props.gitController} selectedThreadId={props.selectedThreadId} selectedThreadBranch={props.selectedThreadBranch} onSelectPermission={props.onSelectPermissionLevel} onUpdateThreadBranch={props.onUpdateThreadBranch} />
     </footer>
   );
+}
+
+function useHomeComposerDraft(args: {
+  readonly inputText: string;
+  readonly onInputChange: (text: string) => void;
+  readonly selectedRootPath: string | null;
+}) {
+  const fileReferenceDraft = useMemo(
+    () => parseComposerFileReferenceDraft(args.inputText),
+    [args.inputText],
+  );
+  const composerBodyText = fileReferenceDraft.bodyText;
+  const fileReferencePaths = fileReferenceDraft.filePaths;
+
+  const updateComposerBodyText = useCallback((nextBodyText: string) => {
+    args.onInputChange(serializeComposerFileReferenceDraft(nextBodyText, fileReferencePaths));
+  }, [args.onInputChange, fileReferencePaths]);
+
+  const appendFileReferenceTexts = useCallback((paths: ReadonlyArray<string>, nextBodyText?: string) => {
+    const nextInputText = nextBodyText === undefined
+      ? appendComposerFileReferencePaths(args.inputText, paths)
+      : serializeComposerFileReferenceDraft(nextBodyText, [...fileReferencePaths, ...paths]);
+    args.onInputChange(nextInputText);
+  }, [args.inputText, args.onInputChange, fileReferencePaths]);
+
+  const appendWorkspaceFilePaths = useCallback((paths: ReadonlyArray<string>) => {
+    appendFileReferenceTexts(paths.map((path) => toComposerFileReferencePath(path, args.selectedRootPath)));
+  }, [appendFileReferenceTexts, args.selectedRootPath]);
+
+  const removeFileReference = useCallback((path: string) => {
+    args.onInputChange(removeComposerFileReferencePath(args.inputText, path));
+  }, [args.inputText, args.onInputChange]);
+
+  return {
+    composerBodyText,
+    fileReferencePaths,
+    appendFileReferenceTexts,
+    appendWorkspaceFilePaths,
+    removeFileReference,
+    updateComposerBodyText,
+  };
+}
+
+function useHomeComposerActions(args: {
+  readonly attachments: ReturnType<typeof useComposerAttachments>["attachments"];
+  readonly canSend: boolean;
+  readonly clearAttachments: () => void;
+  readonly collaborationPreset: CollaborationPreset;
+  readonly composerSelection: ReturnType<typeof useComposerSelection>;
+  readonly dismissPalette: () => Promise<void>;
+  readonly inputText: string;
+  readonly onPromoteQueuedFollowUp: (followUpId: string) => Promise<void>;
+  readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
+  readonly permissionLevel: ComposerPermissionLevel;
+  readonly reportError: ReportErrorFn;
+}) {
+  const submit = useCallback((followUpOverride?: FollowUpMode) => {
+    void submitTurn({
+      attachments: args.attachments,
+      canSend: args.canSend,
+      clearAttachments: args.clearAttachments,
+      collaborationPreset: args.collaborationPreset,
+      composerSelection: args.composerSelection,
+      dismissPalette: args.dismissPalette,
+      followUpOverride,
+      inputText: args.inputText,
+      onSendTurn: args.onSendTurn,
+      permissionLevel: args.permissionLevel,
+      reportError: args.reportError,
+    });
+  }, [args]);
+
+  const handlePromoteQueuedFollowUp = useCallback((followUpId: string) => {
+    void args.onPromoteQueuedFollowUp(followUpId).catch((error) => {
+      args.reportError("插队失败", error);
+    });
+  }, [args]);
+
+  return { handlePromoteQueuedFollowUp, submit };
 }
 
 function ComposerReloadOverlay(): JSX.Element {
@@ -287,27 +346,39 @@ function shouldSendOnEnter(inputText: string, behavior: ComposerEnterBehavior, m
   return !inputText.includes("\n");
 }
 
-async function submitTurn(
-  props: HomeComposerProps,
-  canSend: boolean,
-  text: string,
-  attachments: ReturnType<typeof useComposerAttachments>["attachments"],
-  composerSelection: ReturnType<typeof useComposerSelection>,
-  clearAttachments: () => void,
-  dismissPalette: () => Promise<void>,
-  collaborationPreset: CollaborationPreset,
-  reportError: (title: string, error: unknown, options?: { readonly detail?: string | null; readonly logMessage?: string; readonly rethrow?: boolean }) => void,
-  followUpOverride?: FollowUpMode,
-): Promise<void> {
-  if (!canSend) {
+async function submitTurn(args: {
+  readonly attachments: ReturnType<typeof useComposerAttachments>["attachments"];
+  readonly canSend: boolean;
+  readonly clearAttachments: () => void;
+  readonly collaborationPreset: CollaborationPreset;
+  readonly composerSelection: ReturnType<typeof useComposerSelection>;
+  readonly dismissPalette: () => Promise<void>;
+  readonly followUpOverride?: FollowUpMode;
+  readonly inputText: string;
+  readonly onSendTurn: (options: SendTurnOptions) => Promise<void>;
+  readonly permissionLevel: ComposerPermissionLevel;
+  readonly reportError: ReportErrorFn;
+}): Promise<void> {
+  if (!args.canSend) {
     return;
   }
   try {
-    await dismissPalette();
-    await props.onSendTurn({ text, attachments, selection: { model: composerSelection.selectedModel, effort: composerSelection.selectedEffort, serviceTier: composerSelection.selectedServiceTier }, permissionLevel: props.permissionLevel, collaborationPreset, followUpOverride });
-    clearAttachments();
+    await args.dismissPalette();
+    await args.onSendTurn({
+      text: args.inputText,
+      attachments: args.attachments,
+      selection: {
+        model: args.composerSelection.selectedModel,
+        effort: args.composerSelection.selectedEffort,
+        serviceTier: args.composerSelection.selectedServiceTier,
+      },
+      permissionLevel: args.permissionLevel,
+      collaborationPreset: args.collaborationPreset,
+      followUpOverride: args.followUpOverride,
+    });
+    args.clearAttachments();
   } catch (error) {
-    reportError("发送消息失败", error);
+    args.reportError("发送消息失败", error);
   }
 }
 

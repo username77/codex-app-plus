@@ -1,6 +1,5 @@
 use portable_pty::CommandBuilder;
 use std::process::Command as StdCommand;
-use tokio::process::Command as TokioCommand;
 
 use crate::models::ProxySettings;
 
@@ -39,15 +38,6 @@ pub(crate) fn apply_std_proxy_environment(
     }
 }
 
-pub(crate) fn apply_tokio_proxy_environment(
-    command: &mut TokioCommand,
-    settings: &ProxySettings,
-) {
-    for (key, value) in proxy_environment_assignments(settings) {
-        command.env(key, value);
-    }
-}
-
 pub(crate) fn apply_terminal_proxy_environment(
     command: &mut CommandBuilder,
     settings: &ProxySettings,
@@ -72,14 +62,10 @@ fn extend_assignments(
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        apply_std_proxy_environment, apply_tokio_proxy_environment,
-        proxy_environment_assignments,
-    };
+    use super::{apply_std_proxy_environment, proxy_environment_assignments};
     use crate::models::ProxySettings;
     use std::collections::BTreeMap;
     use std::process::Command as StdCommand;
-    use tokio::process::Command as TokioCommand;
 
     fn enabled_settings() -> ProxySettings {
         ProxySettings {
@@ -138,30 +124,6 @@ mod tests {
                 .get("https_proxy")
                 .or_else(|| env_map.get("HTTPS_PROXY")),
             Some(&"https://127.0.0.1:8443".to_string())
-        );
-    }
-
-    #[test]
-    fn applies_proxy_environment_to_tokio_command() {
-        let mut command = TokioCommand::new("codex");
-        apply_tokio_proxy_environment(&mut command, &enabled_settings());
-
-        let env_map = command
-            .as_std()
-            .get_envs()
-            .map(|(key, value)| {
-                (
-                    key.to_string_lossy().to_string(),
-                    value
-                        .map(|item| item.to_string_lossy().to_string())
-                        .unwrap_or_default(),
-                )
-            })
-            .collect::<BTreeMap<_, _>>();
-
-        assert_eq!(
-            env_map.get("NO_PROXY"),
-            Some(&"localhost,127.0.0.1".to_string())
         );
     }
 }
