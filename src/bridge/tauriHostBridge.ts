@@ -24,6 +24,7 @@ import type {
   GitBranchRef,
   GitCheckoutInput,
   GitCommitInput,
+  GitDeleteBranchInput,
   GitDiffInput,
   GitDiffOutput,
   GitDiscardInput,
@@ -240,7 +241,9 @@ export function createTauriHostBridge(): HostBridge {
       fetch: (input: GitRepoInput) => invokeWithInput("git_fetch", input),
       pull: (input: GitRepoInput) => invokeWithInput("git_pull", input),
       push: (input: GitPushInput) => invokeWithInput("git_push", input),
-      checkout: (input: GitCheckoutInput) => invokeWithInput("git_checkout", input)
+      checkout: (input: GitCheckoutInput) => invokeWithInput("git_checkout", input),
+      deleteBranch: (input: GitDeleteBranchInput) =>
+        invokeWithInput("git_delete_branch", input)
     },
     terminal: {
       createSession: (input?: TerminalCreateInput) =>

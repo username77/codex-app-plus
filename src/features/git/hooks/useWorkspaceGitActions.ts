@@ -179,6 +179,18 @@ export function useWorkspaceGitActions(options: UseWorkspaceGitActionsOptions) {
     return runAction("切换分支", (repoPath) => options.hostBridge.git.checkout({ repoPath, branchName: normalizedBranchName, create: false }), `已切换到分支 ${normalizedBranchName}。`);
   }, [options.hostBridge.git, options.invalidateBranchRefs, runAction]);
   const checkoutSelectedBranch = useCallback(() => checkoutBranch(options.selectedBranch), [checkoutBranch, options.selectedBranch]);
+  const deleteBranch = useCallback(async (branchName: string, force = false) => {
+    const normalizedBranchName = branchName.trim();
+    if (normalizedBranchName.length === 0) {
+      return false;
+    }
+    options.invalidateBranchRefs();
+    return runAction(
+      force ? "强制删除分支" : "删除分支",
+      (repoPath) => options.hostBridge.git.deleteBranch({ repoPath, branchName: normalizedBranchName, force }),
+      force ? `已强制删除分支 ${normalizedBranchName}。` : `已删除分支 ${normalizedBranchName}。`
+    );
+  }, [options.hostBridge.git, options.invalidateBranchRefs, runAction]);
   const createBranchFromName = useCallback(async (branchName: string) => {
     const normalizedBranchName = branchName.trim();
     if (normalizedBranchName.length === 0) {
@@ -230,6 +242,7 @@ export function useWorkspaceGitActions(options: UseWorkspaceGitActionsOptions) {
     openCommitDialog,
     closeCommitDialog,
     checkoutBranch,
+    deleteBranch,
     createBranchFromName,
     checkoutSelectedBranch,
     createBranch

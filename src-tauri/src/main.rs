@@ -48,9 +48,10 @@ use commands::{
     app_write_proxy_settings, rpc_cancel, rpc_notify, rpc_request, server_request_resolve,
 };
 use git::commands::{
-    git_checkout, git_commit, git_discard_paths, git_fetch, git_get_branch_refs, git_get_diff,
-    git_get_remote_url, git_get_status_snapshot, git_get_workspace_diffs, git_init_repository,
-    git_pull, git_push, git_stage_paths, git_unstage_paths,
+    git_checkout, git_commit, git_delete_branch, git_discard_paths, git_fetch,
+    git_get_branch_refs, git_get_diff, git_get_remote_url, git_get_status_snapshot,
+    git_get_workspace_diffs, git_init_repository, git_pull, git_push, git_stage_paths,
+    git_unstage_paths,
 };
 use git::runtime::GitRuntimeState;
 use process_manager::ProcessManager;
@@ -128,6 +129,7 @@ fn main() {
             git_pull,
             git_push,
             git_checkout,
+            git_delete_branch,
             terminal_create_session,
             terminal_write,
             terminal_resize,

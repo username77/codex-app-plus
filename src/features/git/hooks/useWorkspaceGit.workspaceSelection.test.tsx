@@ -48,7 +48,8 @@ function createHostBridge(getStatusSnapshot: ReturnType<typeof vi.fn>): HostBrid
       fetch: vi.fn().mockResolvedValue(undefined),
       pull: vi.fn().mockResolvedValue(undefined),
       push: vi.fn().mockResolvedValue(undefined),
-      checkout: vi.fn().mockResolvedValue(undefined),
+      checkout: vi.fn(),
+      deleteBranch: vi.fn().mockResolvedValue(undefined),
     },
   } as unknown as HostBridge;
 }

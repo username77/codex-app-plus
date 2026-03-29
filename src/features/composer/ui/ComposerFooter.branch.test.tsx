@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GitStatusOutput } from "../../../bridge/types";
 import type { GitNotice, WorkspaceGitController } from "../../git/model/types";
 import { ComposerFooterBranchPopover } from "./ComposerFooterBranchPopover";
@@ -36,6 +36,7 @@ interface RenderOptions {
   readonly selectedThreadBranch?: string | null;
   readonly checkoutSucceeds?: boolean;
   readonly createSucceeds?: boolean;
+  readonly deleteResponses?: ReadonlyArray<{ readonly success: boolean; readonly errorText?: string }>;
   readonly metadataHandler?: (branch: string) => Promise<void>;
 }
 
@@ -46,6 +47,7 @@ function renderPopover(options: RenderOptions = {}) {
     calls.push(`metadata:${branch}`);
     await options.metadataHandler?.(branch);
   });
+  const deleteResponses = options.deleteResponses ? [...options.deleteResponses] : [];
 
   function Harness(): JSX.Element {
     const [selectedBranch, setSelectedBranch] = useState("");
@@ -92,6 +94,15 @@ function renderPopover(options: RenderOptions = {}) {
         }
         return true
       }),
+      deleteBranch: vi.fn(async (branchName: string, force?: boolean) => {
+        calls.push(force ? `delete-force:${branchName}` : `delete:${branchName}`);
+        const response = deleteResponses.shift();
+        if (response && !response.success) {
+          setNotice({ kind: "error", text: response.errorText ?? "delete failed" });
+          return false;
+        }
+        return true;
+      }),
       createBranchFromName: vi.fn().mockResolvedValue(true),
       checkoutSelectedBranch: vi.fn().mockResolvedValue(true),
       createBranch: vi.fn(async () => {
@@ -124,6 +135,10 @@ function renderPopover(options: RenderOptions = {}) {
 }
 
 describe("ComposerFooterBranchPopover", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("renders branch list, filters search, and toggles create mode", () => {
     const { container } = renderPopover({ selectedThreadBranch: "feature/agent" });
     const searchInput = container.querySelector(".branch-search-input") as HTMLInputElement;
@@ -194,6 +209,63 @@ describe("ComposerFooterBranchPopover", () => {
     renderPopover({ branchRefsLoaded: false, branchRefsLoading: true });
 
     expect(screen.getByText("\u6b63\u5728\u8bfb\u53d6 Git \u5206\u652f")).toBeInTheDocument();
+  });
+
+  it("deletes a local branch from the context menu after confirmation", async () => {
+    const confirm = vi.fn().mockReturnValue(true);
+    vi.stubGlobal("confirm", confirm);
+    const { calls } = renderPopover({ selectedThreadBranch: "feature/agent" });
+
+    fireEvent.contextMenu(screen.getByRole("menuitem", { name: /feature\/ui/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "删除分支" }));
+
+    await waitFor(() => {
+      expect(confirm).toHaveBeenCalledWith("确定删除分支 feature/ui 吗？");
+      expect(calls).toContain("delete:feature/ui");
+    });
+  });
+
+  it("does not allow deleting the current branch from the context menu", () => {
+    const { container } = renderPopover();
+    const branchButtons = container.querySelectorAll(".branch-item");
+
+    fireEvent.contextMenu(branchButtons[0]!.parentElement as HTMLElement);
+    expect(screen.getByRole("menuitem", { name: "删除分支" })).toBeDisabled();
+  });
+
+  it("offers force delete when branch is not fully merged", async () => {
+    const confirm = vi.fn()
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true);
+    vi.stubGlobal("confirm", confirm);
+    const { container, calls } = renderPopover({
+      deleteResponses: [{ success: false, errorText: "git branch -d feature/ui 执行失败: error: the branch 'feature/ui' is not fully merged" }],
+    });
+
+    const branchButtons = container.querySelectorAll(".branch-item");
+    fireEvent.contextMenu(branchButtons[2]!.parentElement as HTMLElement);
+    fireEvent.click(screen.getByRole("menuitem", { name: "删除分支" }));
+
+    await waitFor(() => {
+      expect(confirm).toHaveBeenNthCalledWith(1, "确定删除分支 feature/ui 吗？");
+      expect(confirm).toHaveBeenNthCalledWith(2, "分支 feature/ui 尚未合并，是否强制删除？");
+      expect(calls).toContain("delete:feature/ui");
+      expect(calls).toContain("delete-force:feature/ui");
+    });
+  });
+
+  it("cancels branch deletion when confirmation is rejected", async () => {
+    const confirm = vi.fn().mockReturnValue(false);
+    vi.stubGlobal("confirm", confirm);
+    const { calls } = renderPopover({ selectedThreadBranch: "feature/agent" });
+
+    fireEvent.contextMenu(screen.getByRole("menuitem", { name: /feature\/ui/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "删除分支" }));
+
+    await waitFor(() => {
+      expect(confirm).toHaveBeenCalledWith("确定删除分支 feature/ui 吗？");
+    });
+    expect(calls).not.toContain("delete:feature/ui");
   });
 
   it("falls back to HEAD when remembered branch is missing and skips metadata for drafts", async () => {

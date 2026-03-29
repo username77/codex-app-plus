@@ -133,7 +133,8 @@ function createHostBridge(): HostBridge {
       fetch: vi.fn(),
       pull: vi.fn(),
       push: vi.fn(),
-      checkout: vi.fn()
+      checkout: vi.fn(),
+      deleteBranch: vi.fn()
     },
     terminal: {
       createSession: vi.fn().mockResolvedValue({ sessionId: "1", shell: "pwsh" }),

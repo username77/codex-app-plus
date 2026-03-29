@@ -69,7 +69,8 @@ function createHostBridge(createSession: ReturnType<typeof vi.fn>): HostBridge {
       fetch: vi.fn(),
       pull: vi.fn(),
       push: vi.fn(),
-      checkout: vi.fn()
+      checkout: vi.fn(),
+      deleteBranch: vi.fn()
     },
     terminal: {
       createSession,

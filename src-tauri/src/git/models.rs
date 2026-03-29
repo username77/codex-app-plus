@@ -79,6 +79,14 @@ pub struct GitCheckoutInput {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct GitDeleteBranchInput {
+    pub repo_path: String,
+    pub branch_name: String,
+    pub force: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GitRemoteInput {
     pub repo_path: String,
     pub remote_name: String,

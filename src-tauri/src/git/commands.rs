@@ -3,9 +3,9 @@ use tauri::State;
 use crate::error::AppResult;
 
 use super::models::{
-    GitBranchRef, GitCheckoutInput, GitCommitInput, GitDiffInput, GitDiffOutput, GitDiscardInput,
-    GitPathsInput, GitPushInput, GitRemoteInput, GitRepoInput, GitStatusSnapshotOutput,
-    GitWorkspaceDiffOutput, GitWorkspaceDiffsInput,
+    GitBranchRef, GitCheckoutInput, GitCommitInput, GitDeleteBranchInput, GitDiffInput,
+    GitDiffOutput, GitDiscardInput, GitPathsInput, GitPushInput, GitRemoteInput, GitRepoInput,
+    GitStatusSnapshotOutput, GitWorkspaceDiffOutput, GitWorkspaceDiffsInput,
 };
 use super::repository::resolve_workspace;
 use super::runtime::GitRuntimeState;
@@ -158,4 +158,13 @@ pub async fn git_checkout(
 ) -> Result<(), String> {
     let cache = state.repository_cache();
     run_blocking(move || service::checkout(input, &cache)).await
+}
+
+#[tauri::command]
+pub async fn git_delete_branch(
+    state: State<'_, GitRuntimeState>,
+    input: GitDeleteBranchInput,
+) -> Result<(), String> {
+    let cache = state.repository_cache();
+    run_blocking(move || service::delete_branch(input, &cache)).await
 }

@@ -51,6 +51,7 @@ function createHostBridge(overrides?: {
       pull: vi.fn(),
       push: vi.fn(),
       checkout: vi.fn(),
+      deleteBranch: vi.fn(),
     },
     terminal: {
       createSession: vi.fn(),

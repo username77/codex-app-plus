@@ -62,6 +62,7 @@ function renderDialog(overrides?: Partial<WorkspaceGitController>) {
       openCommitDialog: vi.fn(),
       closeCommitDialog,
       checkoutBranch: vi.fn().mockResolvedValue(true),
+      deleteBranch: vi.fn().mockResolvedValue(true),
       createBranchFromName: vi.fn().mockResolvedValue(true),
       checkoutSelectedBranch: vi.fn().mockResolvedValue(true),
       createBranch: vi.fn().mockResolvedValue(true),

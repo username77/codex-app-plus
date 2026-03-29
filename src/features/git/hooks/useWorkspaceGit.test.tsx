@@ -227,6 +227,54 @@ describe("useWorkspaceGit", () => {
     expect(result.current.status?.branches).toHaveLength(2);
   });
 
+  it("deletes a branch through the host bridge", async () => {
+    const deleteBranch = vi.fn().mockResolvedValue(undefined);
+    const hostBridge = createHostBridge(
+      vi.fn().mockResolvedValue(createSnapshot()),
+      vi.fn().mockResolvedValue(createDiff("src/App.tsx")),
+      undefined,
+      undefined,
+      { deleteBranch }
+    );
+
+    const { result } = renderHook(() => useWorkspaceGit(createGitOptions(hostBridge)));
+
+    await waitFor(() => expect(result.current.statusLoaded).toBe(true));
+    await act(async () => {
+      await result.current.deleteBranch("feature/ui");
+    });
+
+    expect(deleteBranch).toHaveBeenCalledWith({
+      repoPath: "E:/code/project",
+      branchName: "feature/ui",
+      force: false,
+    });
+  });
+
+  it("passes force delete to host bridge when requested", async () => {
+    const deleteBranch = vi.fn().mockResolvedValue(undefined);
+    const hostBridge = createHostBridge(
+      vi.fn().mockResolvedValue(createSnapshot()),
+      vi.fn().mockResolvedValue(createDiff("src/App.tsx")),
+      undefined,
+      undefined,
+      { deleteBranch }
+    );
+
+    const { result } = renderHook(() => useWorkspaceGit(createGitOptions(hostBridge)));
+
+    await waitFor(() => expect(result.current.statusLoaded).toBe(true));
+    await act(async () => {
+      await result.current.deleteBranch("feature/ui", true);
+    });
+
+    expect(deleteBranch).toHaveBeenCalledWith({
+      repoPath: "E:/code/project",
+      branchName: "feature/ui",
+      force: true,
+    });
+  });
+
   it("applies the configured branch prefix when creating a branch", async () => {
     const checkout = vi.fn().mockResolvedValue(undefined);
     const hostBridge = createHostBridge(

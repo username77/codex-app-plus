@@ -5,9 +5,9 @@ use crate::error::{AppError, AppResult};
 
 use super::diff::get_diff_preview;
 use super::models::{
-    GitBranchRef, GitCheckoutInput, GitCommitInput, GitDiffInput, GitDiffOutput, GitDiscardInput,
-    GitPathsInput, GitPushInput, GitRemoteInput, GitRepoInput, GitStatusSnapshotOutput,
-    GitWorkspaceDiffOutput, GitWorkspaceDiffsInput,
+    GitBranchRef, GitCheckoutInput, GitCommitInput, GitDeleteBranchInput, GitDiffInput,
+    GitDiffOutput, GitDiscardInput, GitPathsInput, GitPushInput, GitRemoteInput, GitRepoInput,
+    GitStatusSnapshotOutput, GitWorkspaceDiffOutput, GitWorkspaceDiffsInput,
 };
 use super::parse::{parse_branch_refs, parse_status_output};
 use super::process::{has_head, run_git};
@@ -181,6 +181,30 @@ pub fn checkout(input: GitCheckoutInput, cache: &RepositoryContextCache) -> AppR
     } else {
         vec![OsString::from("checkout"), OsString::from(branch_name)]
     };
+    run_git(&context.repo_root, &args).map(|_| ())
+}
+
+pub fn delete_branch(input: GitDeleteBranchInput, cache: &RepositoryContextCache) -> AppResult<()> {
+    let context = require_repository_context(&input.repo_path, cache)?;
+    let branch_name = input.branch_name.trim();
+    if branch_name.is_empty() {
+        return Err(AppError::InvalidInput("分支名称不能为空。".to_string()));
+    }
+    let snapshot = get_status_snapshot_for_repo_root(&context.repo_root)?;
+    if snapshot
+        .branch
+        .as_ref()
+        .and_then(|branch| branch.head.as_deref())
+        == Some(branch_name)
+    {
+        return Err(AppError::InvalidInput("不能删除当前检出的分支。".to_string()));
+    }
+    let delete_flag = if input.force.unwrap_or(false) { "-D" } else { "-d" };
+    let args = vec![
+        OsString::from("branch"),
+        OsString::from(delete_flag),
+        OsString::from(branch_name),
+    ];
     run_git(&context.repo_root, &args).map(|_| ())
 }
 

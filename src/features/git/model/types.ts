@@ -39,6 +39,7 @@ export interface WorkspaceGitController {
   readonly openCommitDialog: () => void;
   readonly closeCommitDialog: () => void;
   readonly checkoutBranch: (branchName: string) => Promise<boolean>;
+  readonly deleteBranch: (branchName: string, force?: boolean) => Promise<boolean>;
   readonly createBranchFromName: (branchName: string) => Promise<boolean>;
   readonly checkoutSelectedBranch: () => Promise<boolean>;
   readonly createBranch: () => Promise<boolean>;

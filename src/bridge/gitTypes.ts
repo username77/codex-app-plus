@@ -35,6 +35,11 @@ export interface GitCheckoutInput extends GitRepoInput {
   readonly create: boolean;
 }
 
+export interface GitDeleteBranchInput extends GitRepoInput {
+  readonly branchName: string;
+  readonly force?: boolean;
+}
+
 export interface GitRemoteInput extends GitRepoInput {
   readonly remoteName: string;
 }

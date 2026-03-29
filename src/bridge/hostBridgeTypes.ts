@@ -46,6 +46,7 @@ import type {
   GitBranchRef,
   GitCheckoutInput,
   GitCommitInput,
+  GitDeleteBranchInput,
   GitDiffInput,
   GitDiffOutput,
   GitDiscardInput,
@@ -133,6 +134,7 @@ export interface HostBridge {
     pull(input: GitRepoInput): Promise<void>;
     push(input: GitPushInput): Promise<void>;
     checkout(input: GitCheckoutInput): Promise<void>;
+    deleteBranch(input: GitDeleteBranchInput): Promise<void>;
   };
   readonly terminal: {
     createSession(input?: TerminalCreateInput): Promise<TerminalCreateOutput>;
