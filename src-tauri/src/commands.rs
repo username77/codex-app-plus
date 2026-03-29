@@ -2,6 +2,10 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::app_approval_rules::remember_command_approval_rule;
+use crate::agents_config::{
+    create_agent, delete_agent, get_agents_settings, read_agent_config, set_agents_core,
+    update_agent, write_agent_config,
+};
 use crate::app_support::{
     clear_chatgpt_auth_state, import_official_data, open_codex_config_toml,
     read_chatgpt_auth_tokens, read_global_agent_instructions, write_chatgpt_auth_tokens,
@@ -21,16 +25,19 @@ use crate::models::{
     ActivateCodexChatgptInput, AppServerStartInput, ApplyCodexProviderInput,
     CaptureCodexOauthSnapshotInput, ChatgptAuthTokensOutput, CodexAuthModeStateOutput,
     CodexAuthSwitchResult, CodexProviderApplyResult, CodexProviderRecord, CodexProviderStore,
-    CodexSessionReadInput, CodexSessionReadOutput, CodexSessionSummary, DeleteCodexProviderInput,
-    DeleteCodexSessionInput, GetCodexAuthModeStateInput, GlobalAgentInstructionsOutput,
-    ImportOfficialDataInput, ListCodexSessionsInput, OpenCodexConfigTomlInput, OpenWorkspaceInput,
-    ReadGlobalAgentInstructionsInput, ReadProxySettingsInput, ReadProxySettingsOutput,
-    RememberCommandApprovalRuleInput,
+    CodexSessionReadInput, CodexSessionReadOutput, CodexSessionSummary, CreateAgentInput,
+    DeleteAgentInput, DeleteCodexProviderInput,
+    DeleteCodexSessionInput, GetAgentsSettingsInput, GetCodexAuthModeStateInput,
+    GlobalAgentInstructionsOutput, ImportOfficialDataInput, ListCodexSessionsInput,
+    OpenCodexConfigTomlInput, OpenWorkspaceInput, ReadAgentConfigInput,
+    ReadAgentConfigOutput, ReadGlobalAgentInstructionsInput, ReadProxySettingsInput,
+    ReadProxySettingsOutput, RememberCommandApprovalRuleInput,
     RememberCommandApprovalRuleOutput, RpcCancelInput, RpcNotifyInput, RpcRequestInput,
-    RpcRequestOutput, ServerRequestResolveInput, ShowContextMenuInput, ShowNotificationInput,
-    UpdateChatgptAuthTokensInput, UpdateGlobalAgentInstructionsInput, UpdateProxySettingsInput,
+    RpcRequestOutput, ServerRequestResolveInput, SetAgentsCoreInput, ShowContextMenuInput,
+    ShowNotificationInput, UpdateAgentInput, UpdateChatgptAuthTokensInput,
+    UpdateGlobalAgentInstructionsInput, UpdateProxySettingsInput,
     UpdateProxySettingsOutput, UpsertCodexProviderInput, CustomPromptOutput,
-    ListCustomPromptsInput,
+    ListCustomPromptsInput, WriteAgentConfigInput, WriteAgentConfigOutput,
     WindowChromeAction,
 };
 use crate::process_manager::ProcessManager;
@@ -121,6 +128,55 @@ pub async fn server_request_resolve(
     input: ServerRequestResolveInput,
 ) -> Result<(), String> {
     to_result(state.resolve_server_request(input).await)
+}
+
+#[tauri::command]
+pub fn app_get_agents_settings(
+    input: GetAgentsSettingsInput,
+) -> Result<crate::models::AgentsSettingsOutput, String> {
+    to_result(get_agents_settings(input))
+}
+
+#[tauri::command]
+pub fn app_set_agents_core(
+    input: SetAgentsCoreInput,
+) -> Result<crate::models::AgentsSettingsOutput, String> {
+    to_result(set_agents_core(input))
+}
+
+#[tauri::command]
+pub fn app_create_agent(
+    input: CreateAgentInput,
+) -> Result<crate::models::AgentsSettingsOutput, String> {
+    to_result(create_agent(input))
+}
+
+#[tauri::command]
+pub fn app_update_agent(
+    input: UpdateAgentInput,
+) -> Result<crate::models::AgentsSettingsOutput, String> {
+    to_result(update_agent(input))
+}
+
+#[tauri::command]
+pub fn app_delete_agent(
+    input: DeleteAgentInput,
+) -> Result<crate::models::AgentsSettingsOutput, String> {
+    to_result(delete_agent(input))
+}
+
+#[tauri::command]
+pub fn app_read_agent_config(
+    input: ReadAgentConfigInput,
+) -> Result<ReadAgentConfigOutput, String> {
+    to_result(read_agent_config(input))
+}
+
+#[tauri::command]
+pub fn app_write_agent_config(
+    input: WriteAgentConfigInput,
+) -> Result<WriteAgentConfigOutput, String> {
+    to_result(write_agent_config(input))
 }
 
 #[tauri::command]

@@ -67,6 +67,67 @@ export interface GlobalAgentInstructionsOutput {
   readonly content: string;
 }
 
+export interface AgentSummaryOutput {
+  readonly name: string;
+  readonly description: string | null;
+  readonly configFile: string;
+  readonly resolvedPath: string;
+  readonly managedByApp: boolean;
+  readonly fileExists: boolean;
+}
+
+export interface AgentsSettingsOutput {
+  readonly configPath: string;
+  readonly multiAgentEnabled: boolean;
+  readonly maxThreads: number;
+  readonly maxDepth: number;
+  readonly agents: ReadonlyArray<AgentSummaryOutput>;
+}
+
+export interface SetAgentsCoreInput {
+  readonly agentEnvironment?: AgentEnvironment;
+  readonly multiAgentEnabled: boolean;
+  readonly maxThreads: number;
+  readonly maxDepth: number;
+}
+
+export interface CreateAgentInput {
+  readonly agentEnvironment?: AgentEnvironment;
+  readonly name: string;
+  readonly description: string | null;
+}
+
+export interface UpdateAgentInput {
+  readonly agentEnvironment?: AgentEnvironment;
+  readonly originalName: string;
+  readonly name: string;
+  readonly description: string | null;
+}
+
+export interface DeleteAgentInput {
+  readonly agentEnvironment?: AgentEnvironment;
+  readonly name: string;
+}
+
+export interface ReadAgentConfigInput {
+  readonly agentEnvironment?: AgentEnvironment;
+  readonly name: string;
+}
+
+export interface WriteAgentConfigInput {
+  readonly agentEnvironment?: AgentEnvironment;
+  readonly name: string;
+  readonly content: string;
+}
+
+export interface ReadAgentConfigOutput {
+  readonly content: string;
+}
+
+export interface WriteAgentConfigOutput {
+  readonly content: string;
+}
+
 export interface ReadCustomPromptsInput {
   readonly agentEnvironment: AgentEnvironment;
 }

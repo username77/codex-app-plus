@@ -61,6 +61,7 @@ export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
     preferences: props.preferences,
     resolvedTheme: props.resolvedTheme,
     configSnapshot: state.configSnapshot,
+    experimentalFeatures: state.experimentalFeatures,
     steerAvailable: steerState.available,
     busy: state.bootstrapBusy,
     ready: state.initialized,
@@ -76,6 +77,13 @@ export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
       props.hostBridge.app.readGlobalAgentInstructions({
         agentEnvironment: props.preferences.agentEnvironment,
       }),
+    getAgentsSettings: () => props.controller.getAgentsSettings(),
+    createAgent: (input) => props.controller.createAgent(input),
+    updateAgent: (input) => props.controller.updateAgent(input),
+    deleteAgent: (input) => props.controller.deleteAgent(input),
+    readAgentConfig: (name) => props.controller.readAgentConfig(name),
+    writeAgentConfig: (name, content) => props.controller.writeAgentConfig(name, content),
+    setMultiAgentEnabled: props.controller.setMultiAgentEnabled,
     writeGlobalAgentInstructions: (input) =>
       props.hostBridge.app.writeGlobalAgentInstructions({
         ...input,

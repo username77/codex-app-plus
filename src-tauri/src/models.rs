@@ -152,6 +152,93 @@ pub struct GlobalAgentInstructionsOutput {
     pub content: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentSummaryOutput {
+    pub name: String,
+    pub description: Option<String>,
+    pub config_file: String,
+    pub resolved_path: String,
+    pub managed_by_app: bool,
+    pub file_exists: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentsSettingsOutput {
+    pub config_path: String,
+    pub multi_agent_enabled: bool,
+    pub max_threads: u32,
+    pub max_depth: u32,
+    pub agents: Vec<AgentSummaryOutput>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetAgentsSettingsInput {
+    pub agent_environment: Option<AgentEnvironment>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetAgentsCoreInput {
+    pub agent_environment: Option<AgentEnvironment>,
+    pub multi_agent_enabled: bool,
+    pub max_threads: u32,
+    pub max_depth: u32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateAgentInput {
+    pub agent_environment: Option<AgentEnvironment>,
+    pub name: String,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAgentInput {
+    pub agent_environment: Option<AgentEnvironment>,
+    pub original_name: String,
+    pub name: String,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteAgentInput {
+    pub agent_environment: Option<AgentEnvironment>,
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadAgentConfigInput {
+    pub agent_environment: Option<AgentEnvironment>,
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WriteAgentConfigInput {
+    pub agent_environment: Option<AgentEnvironment>,
+    pub name: String,
+    pub content: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadAgentConfigOutput {
+    pub content: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WriteAgentConfigOutput {
+    pub content: String,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenCodexConfigTomlInput {

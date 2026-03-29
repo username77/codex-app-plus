@@ -1,6 +1,9 @@
 import type { HostBridge } from "../../bridge/types";
 import { APP_VERSION } from "../appVersion";
-import type { ServerRequestResolution, ThreadSummary } from "../../domain/types";
+import type {
+  ServerRequestResolution,
+  ThreadSummary
+} from "../../domain/types";
 import type { InitializeParams } from "../../protocol/generated/InitializeParams";
 import type { ConfigBatchWriteParams } from "../../protocol/generated/v2/ConfigBatchWriteParams";
 import type { ConfigReadResponse } from "../../protocol/generated/v2/ConfigReadResponse";
@@ -14,6 +17,14 @@ import type { SkillsConfigWriteResponse } from "../../protocol/generated/v2/Skil
 import type { SkillsListParams } from "../../protocol/generated/v2/SkillsListParams";
 import type { SkillsListResponse } from "../../protocol/generated/v2/SkillsListResponse";
 import type { McpServerStatus } from "../../protocol/generated/v2/McpServerStatus";
+import type {
+  AgentsSettingsOutput,
+  CreateAgentInput,
+  DeleteAgentInput,
+  ReadAgentConfigOutput,
+  UpdateAgentInput,
+  WriteAgentConfigOutput,
+} from "../../bridge/types";
 import { type ConfigMutationResult, type ConfigSnapshotMutationResult, type McpRefreshResult } from "../../features/settings/config/configOperations";
 import { ProtocolClient } from "../../protocol/client";
 
@@ -54,6 +65,12 @@ export interface AppController {
   writeSkillConfig: (params: SkillsConfigWriteParams) => Promise<SkillsConfigWriteResponse>;
   installMarketplacePlugin: (params: PluginInstallParams) => Promise<PluginInstallResponse>;
   setMultiAgentEnabled: (enabled: boolean) => Promise<void>;
+  getAgentsSettings: () => Promise<AgentsSettingsOutput>;
+  createAgent: (input: CreateAgentInput) => Promise<AgentsSettingsOutput>;
+  updateAgent: (input: UpdateAgentInput) => Promise<AgentsSettingsOutput>;
+  deleteAgent: (input: DeleteAgentInput) => Promise<AgentsSettingsOutput>;
+  readAgentConfig: (name: string) => Promise<ReadAgentConfigOutput>;
+  writeAgentConfig: (name: string, content: string) => Promise<WriteAgentConfigOutput>;
   checkForAppUpdate: () => Promise<void>;
   installAppUpdate: () => Promise<void>;
   login: () => Promise<void>;

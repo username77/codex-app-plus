@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import type {
   ActivateCodexChatgptInput,
   AgentEnvironment,
+  AgentsSettingsOutput,
   ApplyCodexProviderInput,
   AppServerStartInput,
   BridgeEventName,
@@ -12,6 +13,7 @@ import type {
   CodexAuthModeStateOutput,
   CodexAuthSwitchResult,
   CodexProviderApplyResult,
+  CreateAgentInput,
   CustomPromptOutput,
   CodexProviderDraft,
   CodexProviderRecord,
@@ -19,6 +21,7 @@ import type {
   CodexSessionReadInput,
   CodexSessionReadOutput,
   CodexSessionSummaryOutput,
+  DeleteAgentInput,
   DeleteCodexProviderInput,
   DeleteCodexSessionInput,
   GitBranchRef,
@@ -40,6 +43,8 @@ import type {
   HostBridge,
   ImportOfficialDataInput,
   ListCodexSessionsInput,
+  ReadAgentConfigInput,
+  ReadAgentConfigOutput,
   ReadCustomPromptsInput,
   OpenCodexConfigTomlInput,
   OpenWorkspaceInput,
@@ -52,6 +57,7 @@ import type {
   RpcRequestInput,
   RpcRequestOutput,
   ServerRequestResolveInput,
+  SetAgentsCoreInput,
   ShowContextMenuInput,
   ShowNotificationInput,
   TerminalCloseInput,
@@ -59,10 +65,13 @@ import type {
   TerminalCreateOutput,
   TerminalResizeInput,
   TerminalWriteInput,
+  UpdateAgentInput,
   UpdateChatgptAuthTokensInput,
   UpdateGlobalAgentInstructionsInput,
   UpdateProxySettingsInput,
-  UpdateProxySettingsOutput
+  UpdateProxySettingsOutput,
+  WriteAgentConfigInput,
+  WriteAgentConfigOutput,
 } from "./types";
 
 type TauriPayload = Readonly<Record<string, unknown>>;
@@ -133,6 +142,32 @@ export function createTauriHostBridge(): HostBridge {
           { readonly agentEnvironment: AgentEnvironment },
           GlobalAgentInstructionsOutput
         >("app_read_global_agent_instructions", input),
+      getAgentsSettings: (input: { readonly agentEnvironment?: AgentEnvironment }) =>
+        invokeWithInput<{ readonly agentEnvironment?: AgentEnvironment }, AgentsSettingsOutput>(
+          "app_get_agents_settings",
+          input
+        ),
+      setAgentsCore: (input: SetAgentsCoreInput) =>
+        invokeWithInput<SetAgentsCoreInput, AgentsSettingsOutput>(
+          "app_set_agents_core",
+          input
+        ),
+      createAgent: (input: CreateAgentInput) =>
+        invokeWithInput<CreateAgentInput, AgentsSettingsOutput>("app_create_agent", input),
+      updateAgent: (input: UpdateAgentInput) =>
+        invokeWithInput<UpdateAgentInput, AgentsSettingsOutput>("app_update_agent", input),
+      deleteAgent: (input: DeleteAgentInput) =>
+        invokeWithInput<DeleteAgentInput, AgentsSettingsOutput>("app_delete_agent", input),
+      readAgentConfig: (input: ReadAgentConfigInput) =>
+        invokeWithInput<ReadAgentConfigInput, ReadAgentConfigOutput>(
+          "app_read_agent_config",
+          input
+        ),
+      writeAgentConfig: (input: WriteAgentConfigInput) =>
+        invokeWithInput<WriteAgentConfigInput, WriteAgentConfigOutput>(
+          "app_write_agent_config",
+          input
+        ),
       readProxySettings: (input: ReadProxySettingsInput) =>
         invokeWithInput<ReadProxySettingsInput, ReadProxySettingsOutput>(
           "app_read_proxy_settings",

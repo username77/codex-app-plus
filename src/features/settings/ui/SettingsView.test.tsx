@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { ConfigReadResponse } from "../../../protocol/generated/v2/ConfigReadResponse";
 import { INITIAL_APP_UPDATE_STATE } from "../../../domain/appUpdate";
 import { createI18nWrapper } from "../../../test/createI18nWrapper";
 import {
@@ -37,6 +38,14 @@ function createPreferencesController(): AppPreferencesController {
   };
 }
 
+function createConfigSnapshot(): ConfigReadResponse {
+  return {
+    config: {},
+    origins: {},
+    layers: [],
+  } as unknown as ConfigReadResponse;
+}
+
 function createBaseProps(
   overrides: Partial<SettingsViewProps> = {}
 ): SettingsViewProps {
@@ -46,7 +55,8 @@ function createBaseProps(
     roots: [],
     preferences: createPreferencesController(),
     resolvedTheme: "light",
-    configSnapshot: { config: {} },
+    configSnapshot: createConfigSnapshot(),
+    experimentalFeatures: [],
     steerAvailable: true,
     busy: false,
     ready: true,
@@ -59,6 +69,13 @@ function createBaseProps(
     refreshAuthState: vi.fn().mockResolvedValue(undefined),
     login: vi.fn().mockResolvedValue(undefined),
     readGlobalAgentInstructions: vi.fn().mockResolvedValue({ path: "~/.codex/AGENTS.md", content: "" }),
+    getAgentsSettings: vi.fn().mockResolvedValue({ configPath: "", multiAgentEnabled: false, maxThreads: 6, maxDepth: 1, agents: [] }),
+    createAgent: vi.fn().mockResolvedValue({ configPath: "", multiAgentEnabled: false, maxThreads: 6, maxDepth: 1, agents: [] }),
+    updateAgent: vi.fn().mockResolvedValue({ configPath: "", multiAgentEnabled: false, maxThreads: 6, maxDepth: 1, agents: [] }),
+    deleteAgent: vi.fn().mockResolvedValue({ configPath: "", multiAgentEnabled: false, maxThreads: 6, maxDepth: 1, agents: [] }),
+    readAgentConfig: vi.fn().mockResolvedValue({ content: "" }),
+    writeAgentConfig: vi.fn().mockResolvedValue({ content: "" }),
+    setMultiAgentEnabled: vi.fn().mockResolvedValue(undefined),
     readProxySettings: vi.fn().mockResolvedValue({
       settings: {
         enabled: false,
@@ -130,6 +147,14 @@ describe("SettingsView", () => {
     });
 
     expect(screen.getByText("Composer 权限默认值")).toBeInTheDocument();
+  });
+
+  it("renders agents settings in the agents section", () => {
+    render(<SettingsView {...createBaseProps({ section: "agents" })} />, {
+      wrapper: createI18nWrapper("zh-CN"),
+    });
+
+    expect(screen.getByRole("heading", { name: "Agents" })).toBeInTheDocument();
   });
 
   it("moves app updates out of the general section", () => {

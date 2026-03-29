@@ -2,6 +2,7 @@ import type { ConfigMutationResult, McpRefreshResult } from "../config/configOpe
 import type { AppPreferencesController } from "../hooks/useAppPreferences";
 import type { AppUpdateState, WindowsSandboxSetupState } from "../../../domain/types";
 import type { ResolvedTheme } from "../../../domain/theme";
+import type { ConfigReadResponse } from "../../../protocol/generated/v2/ConfigReadResponse";
 import type {
   AgentEnvironment,
   CodexAuthModeStateOutput,
@@ -19,7 +20,6 @@ import type {
 } from "../../../bridge/types";
 import type { WorkspaceRoot } from "../../workspace/hooks/useWorkspaceRoots";
 import type { ConfigBatchWriteParams } from "../../../protocol/generated/v2/ConfigBatchWriteParams";
-import type { ConfigReadResponse } from "../../../protocol/generated/v2/ConfigReadResponse";
 import type { ConfigValueWriteParams } from "../../../protocol/generated/v2/ConfigValueWriteParams";
 import "../../../styles/replica/replica-settings.css";
 import "../../../styles/replica/replica-settings-extra.css";
@@ -27,6 +27,7 @@ import "../../../styles/replica/replica-settings-layout.css";
 import { useI18n, type MessageKey } from "../../../i18n";
 import { McpSettingsPanel } from "../../mcp/ui/McpSettingsPanel";
 import { AboutSettingsSection } from "./AboutSettingsSection";
+import { AgentsSettingsSection } from "./AgentsSettingsSection";
 import { AppearanceSettingsSection } from "./AppearanceSettingsSection";
 import { ComposerPermissionDefaultsCard } from "./ComposerPermissionDefaultsCard";
 import { ConfigSettingsSection } from "./ConfigSettingsSection";
@@ -43,6 +44,7 @@ export type SettingsSection =
   | "general"
   | "appearance"
   | "config"
+  | "agents"
   | "personalization"
   | "mcp"
   | "git"
@@ -57,7 +59,8 @@ export interface SettingsViewProps {
   readonly roots: ReadonlyArray<WorkspaceRoot>;
   readonly preferences: AppPreferencesController;
   readonly resolvedTheme: ResolvedTheme;
-  readonly configSnapshot: unknown;
+  readonly configSnapshot: ConfigReadResponse | null;
+  readonly experimentalFeatures: ReadonlyArray<import("../../../protocol/generated/v2/ExperimentalFeature").ExperimentalFeature>;
   readonly steerAvailable: boolean;
   readonly busy: boolean;
   readonly ready: boolean;
@@ -70,6 +73,13 @@ export interface SettingsViewProps {
   refreshAuthState: () => Promise<void>;
   login: () => Promise<void>;
   readGlobalAgentInstructions: () => Promise<GlobalAgentInstructionsOutput>;
+  getAgentsSettings: () => Promise<import("../../../bridge/types").AgentsSettingsOutput>;
+  createAgent: (input: import("../../../bridge/types").CreateAgentInput) => Promise<import("../../../bridge/types").AgentsSettingsOutput>;
+  updateAgent: (input: import("../../../bridge/types").UpdateAgentInput) => Promise<import("../../../bridge/types").AgentsSettingsOutput>;
+  deleteAgent: (input: import("../../../bridge/types").DeleteAgentInput) => Promise<import("../../../bridge/types").AgentsSettingsOutput>;
+  readAgentConfig: (name: string) => Promise<import("../../../bridge/types").ReadAgentConfigOutput>;
+  writeAgentConfig: (name: string, content: string) => Promise<import("../../../bridge/types").WriteAgentConfigOutput>;
+  setMultiAgentEnabled: (enabled: boolean) => Promise<void>;
   readProxySettings: (input: { readonly agentEnvironment: AgentEnvironment }) => Promise<ReadProxySettingsOutput>;
   writeGlobalAgentInstructions: (
     input: UpdateGlobalAgentInstructionsInput
@@ -104,6 +114,7 @@ const NAV_ITEM_DEFINITIONS: ReadonlyArray<{
   { key: "general", labelKey: "settings.nav.general", icon: "●" },
   { key: "appearance", labelKey: "settings.nav.appearance", icon: "◐" },
   { key: "config", labelKey: "settings.nav.config", icon: "⚙" },
+  { key: "agents", labelKey: "settings.nav.agents", icon: "◉" },
   { key: "personalization", labelKey: "settings.nav.personalization", icon: "◌" },
   { key: "mcp", labelKey: "settings.nav.mcp", icon: "✣" },
   { key: "git", labelKey: "settings.nav.git", icon: "⑂" },
@@ -186,6 +197,25 @@ function SettingsContent(props: SettingsViewProps & { readonly sectionTitle: str
         />
         <ComposerPermissionDefaultsCard preferences={props.preferences} />
       </>
+    );
+  }
+  if (props.section === "agents") {
+    return (
+      <AgentsSettingsSection
+        busy={props.busy}
+        configSnapshot={props.configSnapshot}
+        experimentalFeatures={props.experimentalFeatures}
+        onOpenConfigToml={props.onOpenConfigToml}
+        refreshConfigSnapshot={props.refreshConfigSnapshot}
+        setMultiAgentEnabled={props.setMultiAgentEnabled}
+        getAgentsSettings={props.getAgentsSettings}
+        createAgent={props.createAgent}
+        updateAgent={props.updateAgent}
+        deleteAgent={props.deleteAgent}
+        readAgentConfig={props.readAgentConfig}
+        writeAgentConfig={props.writeAgentConfig}
+        batchWriteConfig={props.batchWriteConfig}
+      />
     );
   }
   if (props.section === "personalization") {

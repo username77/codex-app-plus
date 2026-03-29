@@ -163,6 +163,24 @@ export function useAppControllerActions({
       await bootstrap(true);
     });
   }, [bootstrap, client, configSnapshot, runBusy]);
+  const getAgentsSettings = useCallback(() => (
+    hostBridge.app.getAgentsSettings({ agentEnvironment })
+  ), [agentEnvironment, hostBridge.app]);
+  const createAgent = useCallback((input: Parameters<HostBridge["app"]["createAgent"]>[0]) => (
+    hostBridge.app.createAgent({ ...input, agentEnvironment })
+  ), [agentEnvironment, hostBridge.app]);
+  const updateAgent = useCallback((input: Parameters<HostBridge["app"]["updateAgent"]>[0]) => (
+    hostBridge.app.updateAgent({ ...input, agentEnvironment })
+  ), [agentEnvironment, hostBridge.app]);
+  const deleteAgent = useCallback((input: Parameters<HostBridge["app"]["deleteAgent"]>[0]) => (
+    hostBridge.app.deleteAgent({ ...input, agentEnvironment })
+  ), [agentEnvironment, hostBridge.app]);
+  const readAgentConfig = useCallback((name: string) => (
+    hostBridge.app.readAgentConfig({ agentEnvironment, name })
+  ), [agentEnvironment, hostBridge.app]);
+  const writeAgentConfig = useCallback((name: string, content: string) => (
+    hostBridge.app.writeAgentConfig({ agentEnvironment, name, content })
+  ), [agentEnvironment, hostBridge.app]);
 
   const resolveServerRequest = useCallback(async (resolution: ServerRequestResolution) => {
     const request = pendingRequestsRef.current[resolution.requestId];
@@ -213,6 +231,12 @@ export function useAppControllerActions({
     refreshMcpData,
     resolveServerRequest,
     setMultiAgentEnabled,
+    getAgentsSettings,
+    createAgent,
+    updateAgent,
+    deleteAgent,
+    readAgentConfig,
+    writeAgentConfig,
     unarchiveThread,
     writeConfigValue,
     writeSkillConfig,

@@ -37,6 +37,43 @@ function createHostBridge(): HostBridge {
         path: "C:/Users/Administrator/.codex/AGENTS.md",
         content: ""
       }),
+      getAgentsSettings: vi.fn().mockResolvedValue({
+        configPath: "C:/Users/Administrator/.codex/config.toml",
+        multiAgentEnabled: false,
+        maxThreads: 6,
+        maxDepth: 1,
+        agents: [],
+      }),
+      setAgentsCore: vi.fn().mockResolvedValue({
+        configPath: "C:/Users/Administrator/.codex/config.toml",
+        multiAgentEnabled: false,
+        maxThreads: 6,
+        maxDepth: 1,
+        agents: [],
+      }),
+      createAgent: vi.fn().mockResolvedValue({
+        configPath: "C:/Users/Administrator/.codex/config.toml",
+        multiAgentEnabled: false,
+        maxThreads: 6,
+        maxDepth: 1,
+        agents: [],
+      }),
+      updateAgent: vi.fn().mockResolvedValue({
+        configPath: "C:/Users/Administrator/.codex/config.toml",
+        multiAgentEnabled: false,
+        maxThreads: 6,
+        maxDepth: 1,
+        agents: [],
+      }),
+      deleteAgent: vi.fn().mockResolvedValue({
+        configPath: "C:/Users/Administrator/.codex/config.toml",
+        multiAgentEnabled: false,
+        maxThreads: 6,
+        maxDepth: 1,
+        agents: [],
+      }),
+      readAgentConfig: vi.fn().mockResolvedValue({ content: "" }),
+      writeAgentConfig: vi.fn().mockResolvedValue({ content: "" }),
       readProxySettings: vi.fn().mockResolvedValue({
         settings: {
           enabled: false,

@@ -1,5 +1,6 @@
 import type {
   ActivateCodexChatgptInput,
+  AgentsSettingsOutput,
   AppServerStartInput,
   ApplyCodexProviderInput,
   CaptureCodexOauthSnapshotInput,
@@ -7,6 +8,7 @@ import type {
   CodexAuthModeStateOutput,
   CodexAuthSwitchResult,
   CodexProviderApplyResult,
+  CreateAgentInput,
   CustomPromptOutput,
   CodexProviderDraft,
   CodexProviderRecord,
@@ -14,12 +16,15 @@ import type {
   CodexSessionReadInput,
   CodexSessionReadOutput,
   CodexSessionSummaryOutput,
+  DeleteAgentInput,
   DeleteCodexProviderInput,
   DeleteCodexSessionInput,
   GlobalAgentInstructionsOutput,
   GetCodexAuthModeStateInput,
   ImportOfficialDataInput,
   ListCodexSessionsInput,
+  ReadAgentConfigInput,
+  ReadAgentConfigOutput,
   ReadCustomPromptsInput,
   OpenCodexConfigTomlInput,
   OpenWorkspaceInput,
@@ -32,14 +37,18 @@ import type {
   RememberCommandApprovalRuleInput,
   RememberCommandApprovalRuleOutput,
   ServerRequestResolveInput,
+  SetAgentsCoreInput,
   ShowContextMenuInput,
   ShowNotificationInput,
+  UpdateAgentInput,
   UpdateProxySettingsInput,
   UpdateProxySettingsOutput,
   WindowChromeAction,
   WindowTheme,
   UpdateChatgptAuthTokensInput,
   UpdateGlobalAgentInstructionsInput,
+  WriteAgentConfigInput,
+  WriteAgentConfigOutput,
 } from "./appTypes";
 import type { BridgeEventName, BridgeEventPayloadMap } from "./eventTypes";
 import type {
@@ -92,6 +101,13 @@ export interface HostBridge {
     readGlobalAgentInstructions(input: {
       readonly agentEnvironment: AgentEnvironment;
     }): Promise<GlobalAgentInstructionsOutput>;
+    getAgentsSettings(input: { readonly agentEnvironment?: AgentEnvironment }): Promise<AgentsSettingsOutput>;
+    setAgentsCore(input: SetAgentsCoreInput): Promise<AgentsSettingsOutput>;
+    createAgent(input: CreateAgentInput): Promise<AgentsSettingsOutput>;
+    updateAgent(input: UpdateAgentInput): Promise<AgentsSettingsOutput>;
+    deleteAgent(input: DeleteAgentInput): Promise<AgentsSettingsOutput>;
+    readAgentConfig(input: ReadAgentConfigInput): Promise<ReadAgentConfigOutput>;
+    writeAgentConfig(input: WriteAgentConfigInput): Promise<WriteAgentConfigOutput>;
     readProxySettings(input: ReadProxySettingsInput): Promise<ReadProxySettingsOutput>;
     writeGlobalAgentInstructions(
       input: UpdateGlobalAgentInstructionsInput

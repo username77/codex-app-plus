@@ -426,6 +426,53 @@
   font-size: 13px;
 }
 
+.settings-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  height: 34px;
+}
+
+.settings-stepper-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: #475569;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+  flex-shrink: 0;
+}
+
+.settings-stepper-btn:hover:not(:disabled) {
+  background: #eef2f7;
+}
+
+.settings-stepper-btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.settings-stepper-value {
+  min-width: 28px;
+  text-align: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: #1e293b;
+  padding: 0 2px;
+  border-left: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  line-height: 34px;
+  height: 100%;
+}
+
 .app-update-card {
   overflow: visible;
 }
@@ -1280,6 +1327,23 @@ html[data-theme="dark"] .settings-action-btn-primary {
 html[data-theme="dark"] .settings-action-btn-primary:hover {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
+}
+
+html[data-theme="dark"] .settings-stepper {
+  border-color: var(--border-light);
+}
+
+html[data-theme="dark"] .settings-stepper-btn {
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .settings-stepper-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+html[data-theme="dark"] .settings-stepper-value {
+  color: var(--text-main);
+  border-color: var(--border-light);
 }
 
 html[data-theme="dark"] .app-update-head-copy p,
