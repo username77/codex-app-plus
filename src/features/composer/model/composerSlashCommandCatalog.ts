@@ -5,7 +5,8 @@ export type ComposerSlashAction =
   | "openModel"
   | "openPermissions"
   | "openCollaboration"
-  | "openResume";
+  | "openResume"
+  | "openPersonality";
 
 export type ComposerSlashCommandFlavor = "official" | "local";
 export type ComposerSlashExecutionKind = "direct" | "picker" | "local" | "unavailable";
@@ -36,7 +37,7 @@ export interface ComposerSlashDefinition {
   readonly argumentHint?: string;
   readonly unavailableReason?: string;
   readonly inlineArgsDisabledReason?: string;
-  readonly visibilityGate?: "collaboration" | "apps" | "plugins" | "fast" | "realtime" | "sandbox";
+  readonly visibilityGate?: "collaboration" | "apps" | "plugins" | "fast" | "realtime" | "sandbox" | "personality";
   readonly debugOnly?: boolean;
 }
 
@@ -59,7 +60,6 @@ const COMMANDS = Object.freeze<ReadonlyArray<ComposerSlashDefinition>>([
   { id: "approvals", description: "选择 Codex 的权限级别。", flavor: "official", executionKind: "picker", action: "openPermissions", aliases: [], availableDuringTask: false, supportsInlineArgs: false },
   { id: "permissions", description: "选择 Codex 的权限级别。", flavor: "official", executionKind: "picker", action: "openPermissions", aliases: [], availableDuringTask: false, supportsInlineArgs: false },
   { id: "setup-default-sandbox", description: "设置默认 Windows Sandbox。", flavor: "official", executionKind: "direct", action: null, aliases: [], availableDuringTask: false, supportsInlineArgs: false, visibilityGate: "sandbox" },
-  { id: "sandbox-add-read-dir", description: "为 sandbox 增加只读目录。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: false, supportsInlineArgs: true, unavailableReason: "当前桌面壳还没有为 Windows Sandbox 增加只读目录的授权流程。", visibilityGate: "sandbox" },
   { id: "experimental", description: "查看实验特性状态。", flavor: "official", executionKind: "direct", action: null, aliases: [], availableDuringTask: false, supportsInlineArgs: false },
   { id: "skills", description: "查看当前工作区可用技能。", flavor: "official", executionKind: "direct", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false },
   { id: "review", description: "对当前改动发起官方 Review。", flavor: "official", executionKind: "direct", action: null, aliases: [], availableDuringTask: false, supportsInlineArgs: true, requiresThread: true },
@@ -71,29 +71,18 @@ const COMMANDS = Object.freeze<ReadonlyArray<ComposerSlashDefinition>>([
   { id: "compact", description: "压缩当前线程上下文。", flavor: "official", executionKind: "direct", action: null, aliases: [], availableDuringTask: false, supportsInlineArgs: false, requiresThread: true },
   { id: "plan", description: "切换到 Plan collaboration preset。", flavor: "official", executionKind: "direct", action: null, aliases: [], availableDuringTask: false, supportsInlineArgs: true, visibilityGate: "collaboration", inlineArgsDisabledReason: PLAN_INLINE_ARGS_DISABLED_REASON },
   { id: "collab", description: "选择 collaboration mode。", flavor: "official", executionKind: "picker", action: "openCollaboration", aliases: [], availableDuringTask: true, supportsInlineArgs: false, visibilityGate: "collaboration" },
-  { id: "agent", description: "切换活动 agent 线程。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, unavailableReason: "当前桌面壳还没有活动 agent 线程切换器。" },
   { id: "diff", description: "显示当前工作区 diff。", flavor: "official", executionKind: "local", action: "toggleDiff", aliases: [], availableDuringTask: true, supportsInlineArgs: false, requiresWorkspace: true },
-  { id: "copy", description: "复制最近一次输出。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, unavailableReason: "当前桌面壳还没有接入复制最近输出的命令链路。" },
   { id: "mention", description: "提及一个文件。", flavor: "official", executionKind: "local", action: "openMention", aliases: [], availableDuringTask: true, supportsInlineArgs: false, requiresWorkspace: true },
   { id: "status", description: "查看当前会话配置与 token 使用情况。", flavor: "official", executionKind: "direct", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false },
   { id: "debug-config", description: "查看配置层与来源。", flavor: "official", executionKind: "direct", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false },
-  { id: "title", description: "配置终端标题显示项。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: false, supportsInlineArgs: false, unavailableReason: "当前桌面壳还没有终端标题配置面板。" },
-  { id: "statusline", description: "配置状态栏显示项。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: false, supportsInlineArgs: false, unavailableReason: "当前桌面壳还没有状态栏配置面板。" },
   { id: "mcp", description: "查看 MCP 服务状态。", flavor: "official", executionKind: "direct", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false },
   { id: "apps", description: "查看可用 apps。", flavor: "official", executionKind: "direct", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, visibilityGate: "apps" },
   { id: "plugins", description: "浏览插件市场。", flavor: "official", executionKind: "direct", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, visibilityGate: "plugins" },
   { id: "logout", description: "退出当前账号。", flavor: "official", executionKind: "direct", action: null, aliases: [], availableDuringTask: false, supportsInlineArgs: false },
-  { id: "quit", description: "退出 Codex。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, unavailableReason: "当前桌面壳不支持通过 slash 直接退出应用。" },
-  { id: "exit", description: "退出 Codex。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, unavailableReason: "当前桌面壳不支持通过 slash 直接退出应用。" },
-  { id: "feedback", description: "上传反馈日志。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, unavailableReason: "当前桌面壳还没有反馈日志提交流程。" },
-  { id: "rollout", description: "显示当前 rollout 文件路径。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, unavailableReason: "当前桌面壳没有 rollout 路径展示入口。", debugOnly: true },
-  { id: "ps", description: "列出后台终端。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, unavailableReason: "当前协议只暴露了清理后台终端能力，还没有官方列表接口。" },
   { id: "stop", description: "停止当前线程的后台终端。", flavor: "official", executionKind: "direct", action: null, aliases: ["clean"], availableDuringTask: true, supportsInlineArgs: false, requiresThread: true },
   { id: "clear", description: "清空输入并开始新的聊天。", flavor: "official", executionKind: "local", action: "createThread", aliases: [], availableDuringTask: false, supportsInlineArgs: false },
-  { id: "personality", description: "选择交流风格。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: false, supportsInlineArgs: false, unavailableReason: "当前桌面壳还没有 personality 配置入口。" },
+  { id: "personality", description: "选择交流风格。", flavor: "official", executionKind: "picker", action: "openPersonality", aliases: [], availableDuringTask: false, supportsInlineArgs: false, visibilityGate: "personality" },
   { id: "realtime", description: "切换实时语音模式。", flavor: "official", executionKind: "direct", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, requiresThread: true, requiresArguments: true, argumentHint: "启动实时模式前，请在命令后输入提示词，例如 /realtime 帮我讲解当前改动。", visibilityGate: "realtime" },
-  { id: "settings", description: "配置实时麦克风与扬声器。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, unavailableReason: "当前桌面壳还没有实时音频设置面板。" },
-  { id: "test-approval", description: "触发一次审批测试。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, unavailableReason: "当前桌面壳还没有审批测试入口。", debugOnly: true },
   { id: "subagents", description: "切换活动 agent 线程。", flavor: "official", executionKind: "unavailable", action: null, aliases: [], availableDuringTask: true, supportsInlineArgs: false, unavailableReason: "当前桌面壳还没有活动 agent 线程切换器。" },
 ]);
 
@@ -158,6 +147,9 @@ function isCommandVisible(
   }
   if (command.visibilityGate === "sandbox") {
     return capabilities.allowElevateSandbox;
+  }
+  if (command.visibilityGate === "personality") {
+    return capabilities.personalityCommandEnabled;
   }
   return true;
 }

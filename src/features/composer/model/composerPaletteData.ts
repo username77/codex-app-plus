@@ -17,6 +17,7 @@ export type PaletteMode =
   | "slash-permissions"
   | "slash-collab"
   | "slash-resume"
+  | "slash-personality"
   | "mention"
   | null;
 
@@ -58,6 +59,9 @@ export function createPaletteItems(
   if (mode === "slash-resume") {
     return createStaticItems(collections.resumeItems, NO_THREADS_MESSAGE);
   }
+  if (mode === "slash-personality") {
+    return createPersonalityItems();
+  }
   if (mode === "mention") {
     return createMentionItems(mentionSession, paletteError);
   }
@@ -76,6 +80,9 @@ export function getPaletteTitle(mode: PaletteMode): string {
   }
   if (mode === "slash-resume") {
     return "Resume thread";
+  }
+  if (mode === "slash-personality") {
+    return "Choose personality";
   }
   if (mode === "mention") {
     return "Mention file";
@@ -172,6 +179,14 @@ function createMentionItems(
     return [createNoticeItem(mentionSession.completed ? NO_RESULTS_MESSAGE : SEARCHING_MESSAGE)];
   }
   return mentionSession.files.map(createMentionPaletteItem);
+}
+
+function createPersonalityItems(): ReadonlyArray<ComposerCommandPaletteItem> {
+  return [
+    { key: "none", label: "None", description: "无个性化风格，保持默认。", disabled: false, meta: null },
+    { key: "friendly", label: "Friendly", description: "友好、温暖的交流风格。", disabled: false, meta: null },
+    { key: "pragmatic", label: "Pragmatic", description: "简洁、务实的交流风格。", disabled: false, meta: null },
+  ];
 }
 
 function createNoticeItem(message: string): ComposerCommandPaletteItem {

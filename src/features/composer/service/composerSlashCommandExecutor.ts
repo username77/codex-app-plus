@@ -113,6 +113,22 @@ export async function applySlashPermissionLevel(
   await refreshSlashConfig(deps.composerCommandBridge, deps.dispatch);
   pushBanner(deps.dispatch, "info", "已更新审批策略", `当前默认审批策略：${approvalPolicy}`);
 }
+export async function applySlashPersonality(
+  personality: string,
+  configSnapshot: ConfigReadResponse | null,
+  deps: SlashExecutionDependencies,
+): Promise<void> {
+  const writeTarget = readUserConfigWriteTarget(configSnapshot);
+  await deps.composerCommandBridge.request("config/value/write", {
+    keyPath: "personality",
+    value: personality,
+    mergeStrategy: "replace",
+    filePath: writeTarget.filePath,
+    expectedVersion: writeTarget.expectedVersion,
+  });
+  await refreshSlashConfig(deps.composerCommandBridge, deps.dispatch);
+  pushBanner(deps.dispatch, "info", "已更新交流风格", `当前风格：${personality}`);
+}
 export async function resumeSlashThread(
   threadId: string,
   _context: SlashExecutionContext,

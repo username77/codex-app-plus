@@ -30,6 +30,7 @@ import { parseComposerSlashQuery } from "../model/composerSlashCommands";
 import { stopMentionSession, syncMentionSession, type MentionSessionRefs } from "../model/composerMentionSession";
 import {
   applySlashPermissionLevel,
+  applySlashPersonality,
   executeDirectSlashCommand,
   resumeSlashThread,
   type SlashExecutionContext,
@@ -42,7 +43,7 @@ import {
   useSlashRuntimeState,
 } from "./composerCommandPaletteState";
 
-type ManualPaletteMode = "slash-model" | "slash-permissions" | "slash-collab" | "slash-resume" | null;
+type ManualPaletteMode = "slash-model" | "slash-permissions" | "slash-collab" | "slash-resume" | "slash-personality" | null;
 
 interface UseComposerCommandPaletteOptions {
   readonly inputText: string;
@@ -84,7 +85,7 @@ interface UseComposerCommandPaletteState {
 }
 
 const NO_WORKSPACE_MESSAGE = "请先选择工作区后再使用 @ 文件提及。";
-const LOCAL_OR_PICKER_COMMANDS = new Set(["new", "clear", "diff", "mention", "model", "approvals", "permissions", "collab", "resume"]);
+const LOCAL_OR_PICKER_COMMANDS = new Set(["new", "clear", "diff", "mention", "model", "approvals", "permissions", "collab", "resume", "personality"]);
 
 export function useComposerCommandPalette(
   options: UseComposerCommandPaletteOptions,
@@ -234,6 +235,7 @@ function useSelectPaletteItem(options: UseComposerCommandPaletteOptions, trigger
       if (trigger.mode === "slash-permissions") return selectPermissionItem(item.key, slashContext.configSnapshot, slashDeps, dismiss, trigger.textareaRef);
       if (trigger.mode === "slash-collab") return selectCollaborationItem(item.key, options.onSelectCollaborationPreset, dismiss, trigger.textareaRef);
       if (trigger.mode === "slash-resume") return selectResumeItem(item.key, slashContext, slashDeps, dismiss, trigger.textareaRef);
+      if (trigger.mode === "slash-personality") return selectPersonalityItem(item.key, slashContext.configSnapshot, slashDeps, dismiss, trigger.textareaRef);
       await selectRootSlashItem(item.key, options, trigger, mention, slashContext, slashDeps, customPrompts);
     } catch (error) {
       slashDeps.dispatch({
@@ -279,6 +281,12 @@ async function selectCollaborationItem(itemKey: string, onSelectCollaborationPre
 
 async function selectResumeItem(itemKey: string, slashContext: SlashExecutionContext, slashDeps: SlashExecutionDependencies, dismiss: () => Promise<void>, textareaRef: RefObject<HTMLTextAreaElement>): Promise<void> {
   await resumeSlashThread(itemKey, slashContext, slashDeps);
+  await dismiss();
+  focusTextarea(textareaRef, readTextareaCaret(textareaRef.current, 0));
+}
+
+async function selectPersonalityItem(itemKey: string, configSnapshot: ConfigReadResponse | null, slashDeps: SlashExecutionDependencies, dismiss: () => Promise<void>, textareaRef: RefObject<HTMLTextAreaElement>): Promise<void> {
+  await applySlashPersonality(itemKey, configSnapshot, slashDeps);
   await dismiss();
   focusTextarea(textareaRef, readTextareaCaret(textareaRef.current, 0));
 }
