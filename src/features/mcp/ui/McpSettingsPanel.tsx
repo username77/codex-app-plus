@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ConfigMutationResult, McpRefreshResult } from "../../settings/config/configOperations";
 import { omitServer, readMcpConfigView, type JsonObject, type McpConfigServerView } from "../../settings/config/mcpConfig";
-import { MCP_RECOMMENDED_PRESETS } from "../../settings/config/mcpPresets";
 import type { ConfigBatchWriteParams } from "../../../protocol/generated/v2/ConfigBatchWriteParams";
 import type { ConfigValueWriteParams } from "../../../protocol/generated/v2/ConfigValueWriteParams";
 import type { McpAuthStatus } from "../../../protocol/generated/v2/McpAuthStatus";
@@ -157,39 +156,6 @@ function CustomServersSection(props: {
   );
 }
 
-function ReadOnlyServersSection(props: {
-  readonly servers: ReadonlyArray<McpConfigServerView>;
-}): JSX.Element {
-  const { t } = useI18n();
-
-  return (
-    <section className="settings-card">
-      <div className="settings-section-head"><strong>{t("settings.mcp.readOnlyTitle")}</strong></div>
-      {props.servers.length === 0 ? <div className="settings-empty">{t("settings.mcp.emptyReadOnlyServers")}</div> : props.servers.map((server) => <ServerRow key={server.id} server={server} pending={false} readOnly />)}
-    </section>
-  );
-}
-
-function RecommendedServersSection(props: {
-  readonly installedPresetIds: ReadonlySet<string>;
-  readonly pendingKey: string | null;
-  readonly onInstall: (presetId: string) => void;
-}): JSX.Element {
-  const { t } = useI18n();
-
-  return (
-    <section className="settings-card">
-      <div className="settings-section-head"><strong>{t("settings.mcp.recommendedTitle")}</strong></div>
-      {MCP_RECOMMENDED_PRESETS.map((preset) => (
-        <div key={preset.id} className="settings-reco-row">
-          <div className="settings-reco-avatar">{t("settings.mcp.presetAvatar")}</div>
-          <div className="settings-reco-text"><strong>{preset.label} <span>{t("settings.mcp.vendorLabel", { vendor: preset.vendor })}</span></strong><p>{t(preset.descriptionKey)}</p></div>
-          <button type="button" className="settings-mini-btn" disabled={props.installedPresetIds.has(preset.id) || props.pendingKey === `install:${preset.id}`} onClick={() => props.onInstall(preset.id)}>{props.installedPresetIds.has(preset.id) ? t("settings.mcp.installed") : props.pendingKey === `install:${preset.id}` ? t("settings.mcp.installing") : t("settings.mcp.installAction")}</button>
-        </div>
-      ))}
-    </section>
-  );
-}
 
 export function McpSettingsPanel(props: McpSettingsPanelProps): JSX.Element {
   const { t } = useI18n();
@@ -257,14 +223,6 @@ export function McpSettingsPanel(props: McpSettingsPanelProps): JSX.Element {
     void runMutation(`delete:${server.id}`, () => props.batchWriteConfig({ edits: [{ keyPath: "mcp_servers", value: omitServer(view.userServerMap, server.id), mergeStrategy: "replace" }], filePath: view.writeTarget.filePath, expectedVersion: view.writeTarget.expectedVersion })).then(() => setDeleteServer(null));
   }, [props.batchWriteConfig, runMutation, view.userServerMap, view.writeTarget]);
 
-  const handleInstall = useCallback((presetId: string) => {
-    const preset = MCP_RECOMMENDED_PRESETS.find((item) => item.id === presetId);
-    if (preset === undefined) {
-      return;
-    }
-    void runMutation(`install:${preset.id}`, () => props.writeConfigValue({ keyPath: `mcp_servers.${preset.id}`, value: preset.value, mergeStrategy: "upsert", filePath: view.writeTarget.filePath, expectedVersion: view.writeTarget.expectedVersion }));
-  }, [props.writeConfigValue, runMutation, view.writeTarget]);
-
   const handleSubmit = useCallback(async (serverId: string, value: JsonObject) => {
     await runMutation(`save:${serverId}`, () => props.writeConfigValue({ keyPath: `mcp_servers.${serverId}`, value, mergeStrategy: "upsert", filePath: view.writeTarget.filePath, expectedVersion: view.writeTarget.expectedVersion }));
     setDialogServer(undefined);
@@ -275,8 +233,6 @@ export function McpSettingsPanel(props: McpSettingsPanelProps): JSX.Element {
     <div className="settings-panel-group">
       <header className="settings-title-wrap"><h1 className="settings-page-title">{t("settings.mcp.title")}</h1><p className="settings-subtitle">{t("settings.mcp.subtitle")}</p></header>
       <CustomServersSection view={view} busy={props.busy} pendingKey={pendingKey} loading={loading} errorMessage={errorMessage} onAdd={() => setDialogServer(null)} onRefresh={() => void handleRefresh()} onToggle={handleToggle} onEdit={setDialogServer} onDelete={setDeleteServer} />
-      <ReadOnlyServersSection servers={view.readOnlyServers} />
-      <RecommendedServersSection installedPresetIds={view.installedPresetIds} pendingKey={pendingKey} onInstall={handleInstall} />
       <McpServerDialog open={dialogServer !== undefined} saving={pendingKey !== null} server={dialogServer ?? null} submitError={submitError} onClose={() => { setDialogServer(undefined); setSubmitError(null); }} onSubmit={handleSubmit} />
       <DeleteDialog server={deleteServer} pending={pendingKey !== null} onCancel={() => setDeleteServer(null)} onConfirm={handleDelete} />
     </div>

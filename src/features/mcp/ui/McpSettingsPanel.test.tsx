@@ -53,7 +53,7 @@ function renderPanel(
 }
 
 describe("McpSettingsPanel", () => {
-  it("renders writable and read-only servers from config snapshot", async () => {
+  it("renders writable servers from config snapshot", async () => {
     const refreshMcpData = vi.fn().mockResolvedValue(createRefreshResult());
 
     renderPanel({
@@ -67,8 +67,8 @@ describe("McpSettingsPanel", () => {
     await waitFor(() => expect(refreshMcpData).toHaveBeenCalled());
 
     expect(screen.getAllByText("fetch").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("projectOnly").length).toBeGreaterThan(0);
-    expect(screen.getByText("只读")).not.toBeNull();
+    expect(screen.queryAllByText("projectOnly")).toHaveLength(0);
+    expect(screen.queryByText("只读")).toBeNull();
   });
 
   it("blocks dotted server ids before submit", async () => {
@@ -127,7 +127,7 @@ describe("McpSettingsPanel", () => {
 
     expect(await screen.findByText("MCP Servers")).toBeInTheDocument();
     expect(screen.getByText("Custom servers")).toBeInTheDocument();
-    expect(screen.getByText("Read-only")).toBeInTheDocument();
-    expect(screen.getByText("Recommended servers")).toBeInTheDocument();
+    expect(screen.queryByText("Read-only")).not.toBeInTheDocument();
+    expect(screen.queryByText("Recommended servers")).not.toBeInTheDocument();
   });
 });
