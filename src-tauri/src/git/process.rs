@@ -19,6 +19,10 @@ pub(super) fn has_head(repo_root: &Path) -> AppResult<bool> {
         .map_err(AppError::from)
 }
 
+pub(super) fn rev_parse(repo_root: &Path, arg: &str) -> AppResult<String> {
+    run_git(repo_root, &[OsString::from("rev-parse"), OsString::from(arg)])
+}
+
 pub(super) fn run_git(repo_root: &Path, args: &[OsString]) -> AppResult<String> {
     run_git_with_exit_codes(repo_root, args, &[0])
 }

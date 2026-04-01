@@ -253,6 +253,10 @@ function useHomeScreenActions(args: {
     () => new Set(args.workspace.managedWorktrees.map((item) => item.path.replace(/\\/g, "/").toLowerCase())),
     [args.workspace.managedWorktrees],
   );
+  const managedWorktreeMap = useMemo(
+    () => new Map(args.workspace.managedWorktrees.map((item) => [item.path.replace(/\\/g, "/").toLowerCase(), item])),
+    [args.workspace.managedWorktrees],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -308,7 +312,7 @@ function useHomeScreenActions(args: {
         name: created.branch ?? created.path,
         path: created.path,
       });
-      args.workspace.addManagedWorktree({ path: created.path, branch: created.branch });
+      args.workspace.addManagedWorktree({ path: created.path, repoPath: root.path, branch: created.branch });
       await refreshWorktrees(root.path);
       args.openWorktreeSettings();
       args.closeCreateWorktreeDialog();
@@ -325,20 +329,21 @@ function useHomeScreenActions(args: {
       return;
     }
     try {
+      const record = managedWorktreeMap.get(root.path.replace(/\\/g, "/").toLowerCase());
       await args.hostBridge.git.removeWorktree({
-        repoPath: root.path,
+        repoPath: record?.repoPath ?? root.path,
         worktreePath: root.path,
       });
       args.workspace.removeManagedWorktree(root.path);
       args.workspace.removeRoot(root.id);
-      await refreshWorktrees(root.path);
+      await refreshWorktrees(record?.repoPath ?? root.path);
     } catch (error) {
       notifyAlertError("app.alerts.selectWorkspaceFailed", error, {
         logMessage: "删除工作树失败",
         rethrow: true,
       });
     }
-  }, [args.hostBridge.git, args.workspace, notifyAlertError, refreshWorktrees]);
+  }, [args.hostBridge.git, args.workspace, managedWorktreeMap, notifyAlertError, refreshWorktrees]);
 
   const createWorkspaceThreadInRoot = useCallback(async (rootId: string) => {
     const root = args.workspace.roots.find((item) => item.id === rootId);

@@ -3,9 +3,8 @@ use std::path::{Path, PathBuf};
 
 use crate::error::{AppError, AppResult};
 
+use super::process::rev_parse;
 use super::runtime::{RepositoryCacheEntry, RepositoryContextCache};
-
-const GIT_DIR_NAME: &str = ".git";
 
 #[derive(Debug, Clone)]
 pub(crate) struct RepositoryContext {
@@ -86,7 +85,7 @@ pub(crate) fn to_args(args: &[&str]) -> Vec<OsString> {
 }
 
 fn is_cache_entry_valid(entry: &RepositoryCacheEntry) -> bool {
-    entry.workspace_path.is_dir() && entry.repo_root.join(GIT_DIR_NAME).exists()
+    entry.workspace_path.is_dir() && is_repository_path(&entry.repo_root)
 }
 
 fn resolve_workspace_path(repo_path: &str) -> AppResult<PathBuf> {
@@ -109,19 +108,26 @@ fn resolve_workspace_path(repo_path: &str) -> AppResult<PathBuf> {
 }
 
 fn find_repository_root(workspace_path: &Path) -> Option<PathBuf> {
-    workspace_path
-        .ancestors()
-        .find(|candidate| candidate.join(GIT_DIR_NAME).exists())
-        .map(Path::to_path_buf)
+    rev_parse(workspace_path, "--show-toplevel")
+        .ok()
+        .map(PathBuf::from)
+        .and_then(|path| std::fs::canonicalize(path).ok())
+}
+
+fn is_repository_path(path: &Path) -> bool {
+    path.is_dir() && rev_parse(path, "--show-toplevel").is_ok()
 }
 
 #[cfg(test)]
 mod tests {
     use super::{require_repository_context, resolve_workspace};
     use crate::git::runtime::RepositoryContextCache;
+    use crate::test_support::unique_temp_dir;
     use std::fs;
-    use std::path::PathBuf;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
+
+    const GIT_PROGRAM: &str = "git";
 
     struct TestWorkspace {
         root: PathBuf,
@@ -130,14 +136,15 @@ mod tests {
 
     impl TestWorkspace {
         fn create() -> Self {
-            let suffix = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("system time")
-                .as_nanos();
-            let root = std::env::temp_dir().join(format!("codex-git-repo-test-{suffix}"));
+            let root = unique_temp_dir("codex-app-plus", "git-repository-workspace");
             let child = root.join("packages/app");
-            fs::create_dir_all(root.join(".git")).expect("create git dir");
             fs::create_dir_all(&child).expect("create child dir");
+            run_git_cmd(&root, &["init"]);
+            run_git_cmd(&root, &["config", "user.email", "test@example.com"]);
+            run_git_cmd(&root, &["config", "user.name", "Test User"]);
+            fs::write(root.join("README.md"), "hello\n").expect("write readme");
+            run_git_cmd(&root, &["add", "README.md"]);
+            run_git_cmd(&root, &["commit", "-m", "init"]);
             Self { root, child }
         }
     }
@@ -146,6 +153,45 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.root);
         }
+    }
+
+    struct RealGitRepo {
+        path: PathBuf,
+    }
+
+    impl RealGitRepo {
+        fn create() -> Self {
+            let path = unique_temp_dir("codex-app-plus", "git-repository-root");
+            fs::create_dir_all(&path).expect("create temp repo");
+            run_git_cmd(&path, &["init"]);
+            run_git_cmd(&path, &["config", "user.email", "test@example.com"]);
+            run_git_cmd(&path, &["config", "user.name", "Test User"]);
+            fs::write(path.join("README.md"), "hello\n").expect("write readme");
+            run_git_cmd(&path, &["add", "README.md"]);
+            run_git_cmd(&path, &["commit", "-m", "init"]);
+            Self { path }
+        }
+    }
+
+    impl Drop for RealGitRepo {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.path);
+        }
+    }
+
+    fn run_git_cmd(repo: &Path, args: &[&str]) {
+        let output = Command::new(GIT_PROGRAM)
+            .arg("-C")
+            .arg(repo)
+            .args(args)
+            .output()
+            .expect("run git command");
+        assert!(
+            output.status.success(),
+            "git command failed: {:?} {}",
+            args,
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 
     #[test]
@@ -177,5 +223,31 @@ mod tests {
 
         assert_eq!(cache.len(), 0);
         assert!(error.to_string().contains("当前工作区不是 Git 仓库"));
+    }
+
+    #[test]
+    fn resolves_main_repo_root_for_linked_worktree_path() {
+        let repo = RealGitRepo::create();
+        let cache = RepositoryContextCache::default();
+        let worktree_path = repo.path.join(".worktrees").join("feature-a");
+        fs::create_dir_all(worktree_path.parent().expect("worktree parent")).expect("create worktree parent");
+        run_git_cmd(
+            &repo.path,
+            &[
+                "worktree",
+                "add",
+                "-b",
+                "feature-a",
+                worktree_path.to_string_lossy().as_ref(),
+            ],
+        );
+
+        let resolved = resolve_workspace(worktree_path.to_string_lossy().as_ref(), &cache)
+            .expect("resolve linked worktree");
+
+        assert_eq!(
+            resolved.repo_root,
+            Some(fs::canonicalize(&worktree_path).expect("canonical worktree root"))
+        );
     }
 }

@@ -94,6 +94,7 @@ describe("useWorkspaceRoots", () => {
     act(() => {
       hook.result.current.addManagedWorktree({
         path: "E:/code/codex-worktrees/feature-a",
+        repoPath: "E:/code/codex",
         branch: "feature-a",
       });
     });
@@ -108,6 +109,7 @@ describe("useWorkspaceRoots", () => {
     expect(remounted.result.current.managedWorktrees).toHaveLength(1);
     expect(remounted.result.current.managedWorktrees[0]).toMatchObject({
       path: "E:/code/codex-worktrees/feature-a",
+      repoPath: "E:/code/codex",
       branch: "feature-a",
     });
   });
@@ -118,6 +120,7 @@ describe("useWorkspaceRoots", () => {
     act(() => {
       hook.result.current.addManagedWorktree({
         path: "E:/code/codex-worktrees/feature-a",
+        repoPath: "E:/code/codex",
         branch: "feature-a",
       });
       hook.result.current.removeManagedWorktree("E:/code/codex-worktrees/feature-a");

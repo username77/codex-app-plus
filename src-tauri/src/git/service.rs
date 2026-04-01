@@ -11,7 +11,7 @@ use super::models::{
     GitWorktreeEntry, GitWorktreeRemoveInput,
 };
 use super::parse::{parse_branch_refs, parse_status_output};
-use super::process::{has_head, run_git};
+use super::process::{has_head, rev_parse, run_git};
 use super::repository::{
     require_repository_context, resolve_workspace, to_args, validate_paths, validate_pathspec,
 };
@@ -169,7 +169,9 @@ pub fn remove_worktree(
     }
 
     let worktree = PathBuf::from(worktree_path);
-    if same_canonical_path(&context.repo_root, &worktree)? {
+    let worktree_top_level = canonicalize_worktree_path(&worktree)?;
+    let worktrees = parse_worktree_list_output(&run_git(&context.repo_root, &to_args(&WORKTREE_LIST_ARGS))?)?;
+    if is_main_worktree(&worktrees, &worktree_top_level)? {
         return Err(AppError::InvalidInput("不能删除主工作目录。".to_string()));
     }
 
@@ -413,10 +415,17 @@ fn local_branch_exists(repo_root: &Path, branch_name: &str) -> AppResult<bool> {
     Ok(output.lines().any(|line| !line.trim().is_empty()))
 }
 
-fn same_canonical_path(left: &Path, right: &Path) -> AppResult<bool> {
-    let left = std::fs::canonicalize(left)?;
-    let right = std::fs::canonicalize(right)?;
-    Ok(left == right)
+fn canonicalize_worktree_path(worktree_path: &Path) -> AppResult<PathBuf> {
+    let top_level = rev_parse(worktree_path, "--show-toplevel")?;
+    std::fs::canonicalize(top_level).map_err(AppError::from)
+}
+
+fn is_main_worktree(worktrees: &[GitWorktreeEntry], worktree_path: &Path) -> AppResult<bool> {
+    let Some(main_entry) = worktrees.first() else {
+        return Ok(false);
+    };
+    let main_worktree = std::fs::canonicalize(&main_entry.path)?;
+    Ok(main_worktree == worktree_path)
 }
 
 fn same_path_text(left: &str, right: &str) -> bool {
@@ -561,5 +570,56 @@ mod tests {
         )
         .expect("list worktrees again");
         assert!(!listed_again.iter().any(|entry| same_path_text(&entry.path, &created.path)));
+    }
+
+    #[test]
+    fn linked_worktree_path_no_longer_triggers_main_worktree_guard() {
+        let repo = TestRepo::create();
+        let cache = RepositoryContextCache::default();
+        let repo_path = repo.path.to_string_lossy().to_string();
+
+        let created = add_worktree(
+            GitWorktreeAddInput {
+                repo_path: repo_path.clone(),
+                branch_name: "feature/worktree-linked-remove".to_string(),
+                name: Some("feature-linked-remove".to_string()),
+            },
+            &cache,
+        )
+        .expect("create worktree");
+
+        let result = remove_worktree(
+            GitWorktreeRemoveInput {
+                repo_path: created.path.clone(),
+                worktree_path: created.path.clone(),
+                force: Some(true),
+            },
+            &cache,
+        );
+
+        if let Err(error) = result {
+            assert!(
+                !error.to_string().contains("不能删除主工作目录"),
+                "unexpected main worktree guard: {error}"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_removing_main_worktree() {
+        let repo = TestRepo::create();
+        let cache = RepositoryContextCache::default();
+
+        let error = remove_worktree(
+            GitWorktreeRemoveInput {
+                repo_path: repo.path.to_string_lossy().to_string(),
+                worktree_path: repo.path.to_string_lossy().to_string(),
+                force: Some(true),
+            },
+            &cache,
+        )
+        .expect_err("expected main worktree protection");
+
+        assert!(error.to_string().contains("不能删除主工作目录"));
     }
 }

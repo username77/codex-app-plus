@@ -38,6 +38,10 @@ export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
     () => new Set(props.workspace.managedWorktrees.map((item) => item.path.replace(/\\/g, "/").toLowerCase())),
     [props.workspace.managedWorktrees],
   );
+  const managedWorktreeMap = useMemo(
+    () => new Map(props.workspace.managedWorktrees.map((item) => [item.path.replace(/\\/g, "/").toLowerCase(), item])),
+    [props.workspace.managedWorktrees],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +100,7 @@ export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
         branchName: branchName.trim(),
       });
       props.workspace.addRoot({ name: created.branch ?? created.path, path: created.path });
-      props.workspace.addManagedWorktree({ path: created.path, branch: created.branch });
+      props.workspace.addManagedWorktree({ path: created.path, repoPath: selectedRootPath, branch: created.branch });
       const entries = await props.hostBridge.git.getWorktrees({ repoPath: selectedRootPath });
       setWorktrees(entries.filter((entry) => {
         const normalizedPath = entry.path.replace(/\\/g, "/").toLowerCase();
@@ -112,8 +116,9 @@ export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
       return;
     }
     try {
+      const record = managedWorktreeMap.get(worktreePath.replace(/\\/g, "/").toLowerCase());
       await props.hostBridge.git.removeWorktree({
-        repoPath: selectedRootPath,
+        repoPath: record?.repoPath ?? selectedRootPath,
         worktreePath,
       });
       const matchedRoot = props.workspace.roots.find((root) => root.path === worktreePath);
@@ -121,12 +126,12 @@ export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
         props.workspace.removeRoot(matchedRoot.id);
       }
       props.workspace.removeManagedWorktree(worktreePath);
-      const remaining = await props.hostBridge.git.getWorktrees({ repoPath: selectedRootPath });
+      const remaining = await props.hostBridge.git.getWorktrees({ repoPath: record?.repoPath ?? selectedRootPath });
       setWorktrees(remaining.filter((entry) => managedWorktreeSet.has(entry.path.replace(/\\/g, "/").toLowerCase()) && entry.path !== worktreePath));
     } catch (error) {
       reportError("删除工作树失败", error);
     }
-  }, [props.hostBridge.git, props.workspace, reportError, selectedRootPath, managedWorktreeSet]);
+  }, [props.hostBridge.git, props.workspace, reportError, selectedRootPath, managedWorktreeMap, managedWorktreeSet]);
 
   const settingsProps: SettingsViewProps = {
     appUpdate: state.appUpdate,

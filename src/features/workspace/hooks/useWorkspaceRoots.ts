@@ -21,6 +21,7 @@ export interface WorkspaceRoot {
 
 export interface ManagedWorktreeRecord {
   readonly path: string;
+  readonly repoPath: string;
   readonly branch: string | null;
   readonly createdAt: string;
 }
@@ -45,7 +46,7 @@ export interface WorkspaceRootController {
   addRoot: (input: AddWorkspaceRootInput) => void;
   removeRoot: (rootId: string) => void;
   reorderRoots: (fromIndex: number, toIndex: number) => void;
-  addManagedWorktree: (input: { readonly path: string; readonly branch: string | null }) => void;
+  addManagedWorktree: (input: { readonly path: string; readonly repoPath: string; readonly branch: string | null }) => void;
   removeManagedWorktree: (path: string) => void;
   updateWorkspaceLaunchScripts: (input: UpdateWorkspaceLaunchScriptsInput) => void;
 }
@@ -95,13 +96,15 @@ function normalizeManagedWorktree(value: unknown): ManagedWorktreeRecord | null 
   if (typeof value !== "object" || value === null) {
     return null;
   }
-  const record = value as { path?: unknown; branch?: unknown; createdAt?: unknown };
+  const record = value as { path?: unknown; repoPath?: unknown; branch?: unknown; createdAt?: unknown };
   const path = typeof record.path === "string" ? trimWorkspaceText(record.path) : "";
-  if (path.length === 0) {
+  const repoPath = typeof record.repoPath === "string" ? trimWorkspaceText(record.repoPath) : "";
+  if (path.length === 0 || repoPath.length === 0) {
     return null;
   }
   return {
     path,
+    repoPath,
     branch: typeof record.branch === "string" ? record.branch : null,
     createdAt: typeof record.createdAt === "string" ? record.createdAt : new Date(0).toISOString(),
   };
@@ -270,15 +273,21 @@ export function useWorkspaceRoots(): WorkspaceRootController {
     setRoots((current) => reorderRootsByIndex(current, fromIndex, toIndex));
   }, []);
 
-  const addManagedWorktree = useCallback((input: { readonly path: string; readonly branch: string | null }) => {
+  const addManagedWorktree = useCallback((input: { readonly path: string; readonly repoPath: string; readonly branch: string | null }) => {
     const normalizedPath = trimWorkspaceText(input.path);
-    if (normalizedPath.length === 0) {
+    const normalizedRepoPath = trimWorkspaceText(input.repoPath);
+    if (normalizedPath.length === 0 || normalizedRepoPath.length === 0) {
       return;
     }
     setManagedWorktrees((current) => {
       const pathKey = normalizeWorkspacePath(normalizedPath);
       const remaining = current.filter((item) => normalizeWorkspacePath(item.path) !== pathKey);
-      return [...remaining, { path: normalizedPath, branch: input.branch, createdAt: new Date().toISOString() }];
+      return [...remaining, {
+        path: normalizedPath,
+        repoPath: normalizedRepoPath,
+        branch: input.branch,
+        createdAt: new Date().toISOString(),
+      }];
     });
   }, []);
 
