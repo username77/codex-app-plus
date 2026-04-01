@@ -74,6 +74,15 @@ function renderSection(
 }
 
 describe("WorkspaceSidebarSection", () => {
+  it("renders only the add workspace button in the header", () => {
+    renderSection([]);
+
+    const header = screen.getByText("工作区").closest(".thread-section-header");
+    expect(header).not.toBeNull();
+    expect(within(header as HTMLElement).getAllByRole("button")).toHaveLength(1);
+    expect(within(header as HTMLElement).getByRole("button", { name: "添加工作区" })).toBeInTheDocument();
+  });
+
   it("expands workspaces independently without changing the selected workspace", () => {
     const threads = [createThread(ROOTS[0]!, 1), createThread(ROOTS[1]!, 2)];
 
@@ -143,7 +152,7 @@ describe("WorkspaceSidebarSection", () => {
     expect(within(threadButton as HTMLButtonElement).getByText("FPGA Thread 1")).toBeInTheDocument();
   });
 
-  it("shows workspace actions in the requested order without a count badge", () => {
+  it("shows workspace actions and keeps them inside the row", () => {
     renderSection([createThread(ROOTS[0]!, 1)]);
 
     const row = screen.getByText("FPGA").closest(".workspace-root-row");

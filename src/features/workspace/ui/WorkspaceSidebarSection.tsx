@@ -23,7 +23,7 @@ import {
 } from "../model/workspaceRootDnd";
 import type { WorkspaceRoot } from "../hooks/useWorkspaceRoots";
 import type { ThreadSummary } from "../../../domain/types";
-import { OfficialChevronRightIcon, OfficialFolderPlusIcon, OfficialSortIcon } from "../../shared/ui/officialIcons";
+import { OfficialChevronRightIcon, OfficialFolderPlusIcon } from "../../shared/ui/officialIcons";
 import { ThreadContextMenu } from "./ThreadContextMenu";
 import { WorkspaceRootMenu } from "./WorkspaceRootMenu";
 import { WorkspaceMoreIcon, WorkspaceNewThreadIcon } from "./WorkspaceRootActionIcons";
@@ -59,7 +59,6 @@ interface WorkspaceRootRowProps {
   readonly root: WorkspaceRoot;
   readonly expanded: boolean;
   readonly selected: boolean;
-  readonly showActions: boolean;
   readonly onCreateThread: () => Promise<void>;
   readonly onToggleExpanded: (rootId: string) => void;
   readonly onOpenMenu: (event: MouseEvent<HTMLButtonElement>, root: WorkspaceRoot) => void;
@@ -219,16 +218,14 @@ function WorkspaceRootRow(props: WorkspaceRootRowProps): JSX.Element {
         <OfficialChevronRightIcon className={chevronClassName} />
         <span className="thread-label">{props.root.name}</span>
       </button>
-      {props.showActions ? (
-        <div className="workspace-root-actions">
-          <button type="button" className="thread-item-tools workspace-root-action" aria-label={`工作区更多操作 ${props.root.name}`} title={`工作区更多操作 ${props.root.name}`} onClick={handleOpenMenu} onContextMenu={handleOpenMenu}>
-            <WorkspaceMoreIcon className="workspace-root-action-icon" />
-          </button>
-          <button type="button" className="thread-item-tools workspace-root-action" aria-label={`在工作区 ${props.root.name} 中创建新会话`} title={`在工作区 ${props.root.name} 中创建新会话`} onClick={handleCreateThread} onContextMenu={handleOpenMenu}>
-            <WorkspaceNewThreadIcon className="workspace-root-action-icon" />
-          </button>
-        </div>
-      ) : null}
+      <div className="workspace-root-actions">
+        <button type="button" className="thread-item-tools workspace-root-action" aria-label={`工作区更多操作 ${props.root.name}`} title={`工作区更多操作 ${props.root.name}`} onClick={handleOpenMenu} onContextMenu={handleOpenMenu}>
+          <WorkspaceMoreIcon className="workspace-root-action-icon" />
+        </button>
+        <button type="button" className="thread-item-tools workspace-root-action" aria-label={`在工作区 ${props.root.name} 中创建新会话`} title={`在工作区 ${props.root.name} 中创建新会话`} onClick={handleCreateThread} onContextMenu={handleOpenMenu}>
+          <WorkspaceNewThreadIcon className="workspace-root-action-icon" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -270,7 +267,6 @@ const WorkspaceRootItem = memo(function WorkspaceRootItem(props: WorkspaceRootIt
         root={props.root}
         expanded={props.expanded}
         selected={props.selected}
-        showActions={props.selected || props.expanded}
         onCreateThread={props.onCreateThread}
         onToggleExpanded={props.onToggleExpanded}
         onOpenMenu={props.onOpenRootMenu}
@@ -432,9 +428,6 @@ export function WorkspaceSidebarSection(props: WorkspaceSidebarSectionProps): JS
         <div className="thread-header-actions">
           <button type="button" className="thread-header-btn" onClick={props.onAddRoot} aria-label="添加工作区">
             <OfficialFolderPlusIcon className="thread-header-icon" />
-          </button>
-          <button type="button" className="thread-header-btn" aria-label="排序">
-            <OfficialSortIcon className="thread-header-icon" />
           </button>
         </div>
       </div>

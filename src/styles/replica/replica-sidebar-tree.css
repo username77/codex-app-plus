@@ -36,6 +36,12 @@
   padding: 0 2px;
 }
 
+.workspace-root-row .workspace-root-actions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease;
+}
+
 .workspace-root-row-dragging {
   opacity: 0.4;
 }
@@ -60,6 +66,12 @@
 .workspace-root-row:hover,
 .workspace-root-row:focus-within {
   background: var(--surface-hover);
+}
+
+.workspace-root-row:hover .workspace-root-actions,
+.workspace-root-row:focus-within .workspace-root-actions {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .workspace-root-row.thread-item-active:hover,
