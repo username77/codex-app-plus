@@ -1,13 +1,7 @@
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
   closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type DragMoveEvent,
-  type DragOverEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -17,10 +11,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { memo, useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { listThreadsForWorkspace } from "../model/workspaceThread";
-import {
-  resolveWorkspaceDropTargetIndex,
-  type WorkspaceDnDHoverState,
-} from "../model/workspaceRootDnd";
 import type { WorkspaceRoot } from "../hooks/useWorkspaceRoots";
 import type { ThreadSummary } from "../../../domain/types";
 import { OfficialChevronRightIcon, OfficialFolderPlusIcon } from "../../shared/ui/officialIcons";
@@ -28,6 +18,7 @@ import { ThreadContextMenu } from "./ThreadContextMenu";
 import { WorkspaceRootMenu } from "./WorkspaceRootMenu";
 import { WorkspaceMoreIcon, WorkspaceNewThreadIcon } from "./WorkspaceRootActionIcons";
 import { useWorkspaceRootMenuState } from "./useWorkspaceRootMenuState";
+import { useWorkspaceDnD } from "./useWorkspaceDnD";
 
 const DEFAULT_VISIBLE_THREAD_COUNT = 10;
 const MINUTE_IN_MS = 60 * 1000;
@@ -316,10 +307,7 @@ export function WorkspaceSidebarSection(props: WorkspaceSidebarSectionProps): JS
     onDeleteWorktree: props.onDeleteWorktree,
     isWorktree: (root) => isWorktreeRoot(root, worktreePathSet),
   });
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-  const [hoverState, setHoverState] = useState<WorkspaceDnDHoverState>({ overId: null, enteredAt: 0 });
-  const [dropMarkerRootId, setDropMarkerRootId] = useState<string | null>(null);
-  const [activeRootId, setActiveRootId] = useState<string | null>(null);
+  const dnd = useWorkspaceDnD(props.roots, props.onReorderRoots);
 
   useEffect(() => {
     if (expandedThreadRootIds.length === 0) {
@@ -351,76 +339,6 @@ export function WorkspaceSidebarSection(props: WorkspaceSidebarSectionProps): JS
     workspaceRootMenu.openMenu(event, root);
   }, [closeMenu, workspaceRootMenu]);
 
-  const handleDragOver = useCallback((event: DragOverEvent) => {
-    const overId = event.over?.id;
-    if (typeof overId !== "string") {
-      return;
-    }
-    setHoverState((current) => current.overId === overId ? current : ({ overId, enteredAt: Date.now() }));
-  }, []);
-
-  const handleDragMove = useCallback((event: DragMoveEvent) => {
-    const overId = event.over?.id;
-    if (typeof overId === "string") {
-      setDropMarkerRootId(overId);
-    }
-  }, []);
-
-  const handleDragStart = useCallback((event: { active: { id: string | number } }) => {
-    if (typeof event.active.id === "string") {
-      setActiveRootId(event.active.id);
-      setDropMarkerRootId(event.active.id);
-    }
-  }, []);
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const activeId = String(event.active.id);
-    const overId = event.over ? String(event.over.id) : null;
-    if (overId === null) {
-      setHoverState({ overId: null, enteredAt: 0 });
-      setDropMarkerRootId(null);
-      setActiveRootId(null);
-      return;
-    }
-
-    const overRect = event.over?.rect;
-    if (!overRect) {
-      setHoverState({ overId: null, enteredAt: 0 });
-      setDropMarkerRootId(null);
-      setActiveRootId(null);
-      return;
-    }
-
-    const translatedTop = event.active.rect.current.translated?.top;
-    const translatedHeight = event.active.rect.current.translated?.height;
-    const pointerY = (translatedTop ?? overRect.top) + ((translatedHeight ?? overRect.height) / 2);
-
-    const targetIndex = resolveWorkspaceDropTargetIndex({
-      roots: props.roots,
-      activeId,
-      overId,
-      pointerY,
-      overTop: overRect.top,
-      overHeight: overRect.height,
-      now: Date.now(),
-      hoverState,
-    });
-
-    const fromIndex = props.roots.findIndex((root) => root.id === activeId);
-    if (fromIndex >= 0 && targetIndex >= 0 && fromIndex !== targetIndex) {
-      props.onReorderRoots?.(fromIndex, targetIndex);
-    }
-
-    setHoverState({ overId: null, enteredAt: 0 });
-    setDropMarkerRootId(null);
-    setActiveRootId(null);
-  }, [hoverState, props]);
-
-  const activeRoot = useMemo(
-    () => props.roots.find((root) => root.id === activeRootId) ?? null,
-    [activeRootId, props.roots]
-  );
-
   return (
     <section className="thread-section">
       <div className="thread-section-header">
@@ -433,23 +351,19 @@ export function WorkspaceSidebarSection(props: WorkspaceSidebarSectionProps): JS
       </div>
       {props.error !== null ? <div className="thread-section-status" role="alert">加载会话失败：{props.error}</div> : null}
       <DndContext
-        sensors={sensors}
+        sensors={dnd.sensors}
         collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragMove={handleDragMove}
-        onDragEnd={handleDragEnd}
-        onDragCancel={() => {
-          setHoverState({ overId: null, enteredAt: 0 });
-          setDropMarkerRootId(null);
-          setActiveRootId(null);
-        }}
+        onDragStart={dnd.handleDragStart}
+        onDragOver={dnd.handleDragOver}
+        onDragMove={dnd.handleDragMove}
+        onDragEnd={dnd.handleDragEnd}
+        onDragCancel={dnd.handleDragCancel}
       >
         <SortableContext items={props.roots.map((root) => root.id)} strategy={verticalListSortingStrategy}>
           <ul className="thread-list workspace-root-list">
             {props.roots.map((root) => (
               <div key={root.id} className="workspace-root-sortable-wrapper">
-                {dropMarkerRootId === root.id ? <div className="workspace-root-drop-indicator" aria-hidden="true" /> : null}
+                {dnd.dropMarkerRootId === root.id ? <div className="workspace-root-drop-indicator" aria-hidden="true" /> : null}
                 <SortableWorkspaceRootItem
                   root={root}
                   expanded={expandedRootIds.includes(root.id)}
@@ -470,10 +384,10 @@ export function WorkspaceSidebarSection(props: WorkspaceSidebarSectionProps): JS
           </ul>
         </SortableContext>
         <DragOverlay>
-          {activeRoot ? (
+          {dnd.activeRoot ? (
             <div className="workspace-root-overlay thread-item workspace-root-row thread-item-active">
               <OfficialChevronRightIcon className="workspace-chevron" />
-              <span className="thread-label">{activeRoot.name}</span>
+              <span className="thread-label">{dnd.activeRoot.name}</span>
             </div>
           ) : null}
         </DragOverlay>

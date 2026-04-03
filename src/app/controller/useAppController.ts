@@ -1,16 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { AgentEnvironment, HostBridge } from "../../bridge/types";
-import type { ReceivedServerRequest } from "../../domain/serverRequests";
 import type { WindowsSandboxSetupCompletedNotification } from "../../protocol/generated/v2/WindowsSandboxSetupCompletedNotification";
 import { applyAppServerNotification } from "./appControllerNotifications";
 import { FrameTextDeltaQueue } from "../../features/conversation/model/frameTextDeltaQueue";
 import { OutputDeltaQueue } from "../../features/conversation/model/outputDeltaQueue";
 import { normalizeServerRequest } from "./serverRequests";
-import {
-  refreshConfigAfterWindowsSandboxSetup,
-  startWindowsSandboxSetupRequest,
-} from "../../features/settings/sandbox/windowsSandboxSetup";
-import { readWindowsSandboxConfigView } from "../../features/settings/sandbox/windowsSandboxConfig";
+import { refreshConfigAfterWindowsSandboxSetup } from "../../features/settings/sandbox/windowsSandboxSetup";
 import { ProtocolClient } from "../../protocol/client";
 import { useAppDispatch } from "../../state/store";
 import { useAppControllerRuntimeState } from "./appControllerState";
@@ -23,20 +18,16 @@ import {
   startOrReuseAppServer,
 } from "./appControllerBootstrap";
 import { openChatgptLogin, refreshAccountState } from "./appControllerAccount";
-import {
-  decrementThreadElicitation,
-  incrementThreadElicitation,
-  reportServerRequestError,
-} from "./appControllerServerRequests";
 import { tryAutoApproveCommandRequest } from "./commandApprovalController";
 import {
   createInitializeParams,
   RETRY_DELAY_MS,
   toErrorMessage,
   type AppController,
-  WINDOWS_SANDBOX_STATE_IDLE_RESET_MS,
 } from "./appControllerTypes";
 import { useAppControllerActions } from "./useAppControllerActions";
+import { useServerRequestTracker } from "./useServerRequestTracker";
+import { useWindowsSandboxSetup } from "./useWindowsSandboxSetup";
 
 export {
   ensureChatgptModeForLogin,
@@ -47,23 +38,6 @@ export {
   refreshAccountState,
 } from "./appControllerAccount";
 
-function readWindowsSandboxAutoSetupTarget(
-  configSnapshot: unknown,
-  agentEnvironment: AgentEnvironment,
-): { readonly key: string; readonly mode: "elevated" | "unelevated" } | null {
-  if (agentEnvironment !== "windowsNative") {
-    return null;
-  }
-  const view = readWindowsSandboxConfigView(configSnapshot);
-  if (!view.enabled || view.mode === null) {
-    return null;
-  }
-  return {
-    key: `${agentEnvironment}:${view.mode}:${view.source ?? "windows.sandbox"}`,
-    mode: view.mode,
-  };
-}
-
 export function useAppController(hostBridge: HostBridge, agentEnvironment: AgentEnvironment): AppController {
   const dispatch = useAppDispatch();
   const runtimeState = useAppControllerRuntimeState();
@@ -72,19 +46,16 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
   const bootStartedRef = useRef(false);
   const bootingRef = useRef(false);
   const retryTimerRef = useRef<number | null>(null);
-  const windowsSandboxResetTimerRef = useRef<number | null>(null);
   const retryHandlerRef = useRef<() => void>(() => undefined);
   const textDeltaQueueRef = useRef<FrameTextDeltaQueue | null>(null);
   const outputDeltaQueueRef = useRef<OutputDeltaQueue | null>(null);
   const pendingRequestsRef = useRef(runtimeState.pendingRequestsById);
-  const pausedRequestThreadIdsRef = useRef(new Map<string, string>());
-  const requestThreadMetaRef = useRef(new Map<string, { threadId: string; turnId: string | null }>());
-  const settledRequestIdsRef = useRef(new Set<string>());
   const previousAgentEnvironmentRef = useRef(agentEnvironment);
   const agentEnvironmentRef = useRef(agentEnvironment);
-  const windowsSandboxAutoSetupKeyRef = useRef<string | null>(null);
   const sessionIndexReloadInFlightRef = useRef(false);
   const approvalAllowlistRef = useRef<CommandApprovalAllowlist>({});
+
+  const requestTracker = useServerRequestTracker(clientRef, dispatch);
 
   if (textDeltaQueueRef.current === null) {
     textDeltaQueueRef.current = new FrameTextDeltaQueue({ onFlush: (entries) => dispatch({ type: "conversation/textDeltasFlushed", entries }) });
@@ -126,54 +97,8 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
     if (runtimeState.connectionStatus === "connected") {
       return;
     }
-    pausedRequestThreadIdsRef.current.clear();
-    requestThreadMetaRef.current.clear();
-    settledRequestIdsRef.current.clear();
-  }, [runtimeState.connectionStatus]);
-
-  const resumeThreadTimeout = useCallback((threadId: string, turnId: string | null) => {
-    if (clientRef.current === null) {
-      return;
-    }
-    void decrementThreadElicitation(clientRef.current, threadId).catch((error) => {
-      reportServerRequestError(dispatch, { threadId, turnId }, "Failed to resume request timeout", error);
-    });
-  }, [dispatch]);
-
-  const trackThreadRequest = useCallback((request: ReceivedServerRequest) => {
-    if (request.threadId === null || clientRef.current === null || pausedRequestThreadIdsRef.current.has(request.id)) {
-      return;
-    }
-    const { threadId } = request;
-    requestThreadMetaRef.current.set(request.id, { threadId, turnId: request.turnId });
-    void incrementThreadElicitation(clientRef.current, threadId)
-      .then(() => {
-        if (settledRequestIdsRef.current.delete(request.id)) {
-          requestThreadMetaRef.current.delete(request.id);
-          resumeThreadTimeout(threadId, request.turnId);
-          return;
-        }
-        pausedRequestThreadIdsRef.current.set(request.id, threadId);
-      })
-      .catch((error) => {
-        requestThreadMetaRef.current.delete(request.id);
-        reportServerRequestError(dispatch, request, "Failed to pause request timeout", error);
-      });
-  }, [dispatch, resumeThreadTimeout]);
-
-  const settleThreadRequest = useCallback((requestId: string) => {
-    const threadId = pausedRequestThreadIdsRef.current.get(requestId);
-    const requestMeta = requestThreadMetaRef.current.get(requestId) ?? null;
-    if (threadId === undefined) {
-      if (requestMeta !== null) {
-        settledRequestIdsRef.current.add(requestId);
-      }
-      return;
-    }
-    pausedRequestThreadIdsRef.current.delete(requestId);
-    requestThreadMetaRef.current.delete(requestId);
-    resumeThreadTimeout(threadId, requestMeta?.turnId ?? null);
-  }, [resumeThreadTimeout]);
+    requestTracker.clearOnDisconnect();
+  }, [runtimeState.connectionStatus, requestTracker]);
 
   const client = useMemo(() => {
     if (clientRef.current !== null) {
@@ -185,7 +110,7 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
         dispatch({ type: "notification/received", notification: { method, params } });
         applyAppServerNotification({ dispatch, textDeltaQueue: textDeltaQueueRef.current!, outputDeltaQueue: outputDeltaQueueRef.current!, agentEnvironment: agentEnvironmentRef.current }, method, params);
         if (method === "serverRequest/resolved") {
-          settleThreadRequest(String((params as { requestId: string | number }).requestId));
+          requestTracker.settleThreadRequest(String((params as { requestId: string | number }).requestId));
         }
         if (method === "account/login/completed" && clientRef.current !== null && (params as { success?: boolean }).success === true) {
           void (async () => {
@@ -234,12 +159,12 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
               return;
             }
             dispatch({ type: "serverRequest/received", request });
-            trackThreadRequest(request);
+            requestTracker.trackThreadRequest(request);
           });
           return;
         }
         dispatch({ type: "serverRequest/received", request });
-        trackThreadRequest(request);
+        requestTracker.trackThreadRequest(request);
       },
       onFatalError: (message) => {
         dispatch({ type: "fatal/error", message });
@@ -247,7 +172,7 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
       },
     });
     return clientRef.current;
-  }, [dispatch, hostBridge, scheduleRetry, settleThreadRequest, trackThreadRequest]);
+  }, [dispatch, hostBridge, requestTracker, scheduleRetry]);
 
   const bootstrap = useCallback(async (forceRestart: boolean) => {
     if (bootingRef.current) {
@@ -301,10 +226,6 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
     return () => {
       client.detach();
       clearRetry();
-      if (windowsSandboxResetTimerRef.current !== null) {
-        window.clearTimeout(windowsSandboxResetTimerRef.current);
-        windowsSandboxResetTimerRef.current = null;
-      }
     };
   }, [client, clearRetry]);
 
@@ -332,44 +253,7 @@ export function useAppController(hostBridge: HostBridge, agentEnvironment: Agent
     };
   }, [hostBridge, refreshConversationCatalog]);
 
-  useEffect(() => {
-    if (windowsSandboxResetTimerRef.current !== null) {
-      window.clearTimeout(windowsSandboxResetTimerRef.current);
-      windowsSandboxResetTimerRef.current = null;
-    }
-    if (
-      runtimeState.windowsSandboxSetup.pending
-      || runtimeState.windowsSandboxSetup.mode === null
-      || runtimeState.windowsSandboxSetup.success === null
-    ) {
-      return;
-    }
-    windowsSandboxResetTimerRef.current = window.setTimeout(() => {
-      windowsSandboxResetTimerRef.current = null;
-      dispatch({ type: "windowsSandbox/setupCleared" });
-    }, WINDOWS_SANDBOX_STATE_IDLE_RESET_MS);
-    return () => {
-      if (windowsSandboxResetTimerRef.current !== null) {
-        window.clearTimeout(windowsSandboxResetTimerRef.current);
-        windowsSandboxResetTimerRef.current = null;
-      }
-    };
-  }, [dispatch, runtimeState.windowsSandboxSetup]);
-
-  useEffect(() => {
-    const target = readWindowsSandboxAutoSetupTarget(runtimeState.configSnapshot, agentEnvironment);
-    if (target === null) {
-      windowsSandboxAutoSetupKeyRef.current = null;
-      return;
-    }
-    if (runtimeState.windowsSandboxSetup.pending || windowsSandboxAutoSetupKeyRef.current === target.key) {
-      return;
-    }
-    windowsSandboxAutoSetupKeyRef.current = target.key;
-    void startWindowsSandboxSetupRequest(client, dispatch, target.mode).catch((error) => {
-      console.error("自动启用 Windows 沙盒失败", error);
-    });
-  }, [agentEnvironment, client, dispatch, runtimeState.configSnapshot, runtimeState.windowsSandboxSetup.pending]);
+  useWindowsSandboxSetup(client, dispatch, agentEnvironment, runtimeState.configSnapshot, runtimeState.windowsSandboxSetup);
 
   useEffect(() => {
     if (bootStartedRef.current) {
