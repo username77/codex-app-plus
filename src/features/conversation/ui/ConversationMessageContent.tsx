@@ -1,4 +1,5 @@
 import type { ConversationMessage } from "../../../domain/types";
+import { useFileLinkActions } from "../hooks/fileLinkContext";
 import { HomePlanDraftCard } from "../../composer/ui/HomePlanDraftCard";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
@@ -15,9 +16,13 @@ interface ConversationMessageContentProps {
 }
 
 export function ConversationMessageContent(props: ConversationMessageContentProps): JSX.Element {
+  const fileLinkActions = useFileLinkActions();
+
   return (
     <div className={props.className}>
-      {splitMessageSegments(props.message.text).map((segment, index) => renderSegment(segment, index))}
+      {splitMessageSegments(props.message.text).map((segment, index) =>
+        renderSegment(segment, index, fileLinkActions),
+      )}
     </div>
   );
 }
@@ -56,10 +61,22 @@ function pushSegment(segments: Array<MessageSegment>, type: MessageSegment["type
   segments.push({ type, text: normalizedText });
 }
 
-function renderSegment(segment: MessageSegment, index: number): JSX.Element {
+function renderSegment(
+  segment: MessageSegment,
+  index: number,
+  fileLinkActions: ReturnType<typeof useFileLinkActions>,
+): JSX.Element {
   if (segment.type === "proposed-plan") {
     return <HomePlanDraftCard key={`segment-${index}`} markdown={segment.text} />;
   }
 
-  return <MarkdownRenderer key={`segment-${index}`} markdown={segment.text} />;
+  return (
+    <MarkdownRenderer
+      key={`segment-${index}`}
+      markdown={segment.text}
+      workspacePath={fileLinkActions?.workspacePath}
+      onOpenFileLink={fileLinkActions?.openFileLink}
+      onOpenExternalLink={fileLinkActions?.openExternalLink}
+    />
+  );
 }

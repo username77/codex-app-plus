@@ -47,6 +47,7 @@ function createHostBridge(createSession: ReturnType<typeof vi.fn>): HostBridge {
     app: {
       openExternal: vi.fn(),
       openWorkspace: vi.fn(),
+      openFileInEditor: vi.fn(),
       openCodexConfigToml: vi.fn(),
       showNotification: vi.fn(),
     showContextMenu: vi.fn(),

@@ -99,6 +99,7 @@ function createHostBridge(overrides?: Partial<HostBridge["app"]>): HostBridge {
       controlWindow: vi.fn().mockResolvedValue(undefined),
       openExternal: vi.fn().mockResolvedValue(undefined),
       openWorkspace: vi.fn().mockResolvedValue(undefined),
+      openFileInEditor: vi.fn().mockResolvedValue(undefined),
       openCodexConfigToml: vi.fn().mockResolvedValue(undefined),
       readGlobalAgentInstructions: vi.fn(),
       writeGlobalAgentInstructions: vi.fn(),

@@ -6,7 +6,7 @@ use crate::command_utils::{
     open_detached_target, spawn_background_command, spawn_hidden_background_command,
 };
 use crate::error::{AppError, AppResult};
-use crate::models::{OpenWorkspaceInput, WorkspaceOpener};
+use crate::models::{OpenFileInEditorInput, OpenWorkspaceInput, WorkspaceOpener};
 
 const CMD_EXECUTABLE: &str = "cmd.exe";
 const CMD_RUN_ARG: &str = "/C";
@@ -239,6 +239,58 @@ fn spawn_command(spec: CommandSpec) -> AppResult<()> {
         return spawn_hidden_background_command(&mut command);
     }
     spawn_background_command(&mut command)
+}
+
+pub fn open_file_in_editor(input: OpenFileInEditorInput) -> AppResult<()> {
+    if input.path.trim().is_empty() {
+        return Err(AppError::InvalidInput("path 不能为空".to_string()));
+    }
+
+    let locations = load_vscode_search_locations();
+    let binary = resolve_vscode_binary(&locations).ok_or_else(|| {
+        AppError::InvalidInput(
+            "未找到 VS Code 可执行文件，请确认已安装 VS Code 或将 code 命令加入 PATH。"
+                .to_string(),
+        )
+    })?;
+
+    let mut arguments: Vec<OsString> = vec![OsString::from("--reuse-window")];
+
+    let line = input.line.filter(|v| *v > 0);
+    if let Some(line) = line {
+        let column = input.column.filter(|v| *v > 0);
+        let goto_target = match column {
+            Some(col) => format!("{}:{}:{}", input.path, line, col),
+            None => format!("{}:{}", input.path, line),
+        };
+        arguments.push(OsString::from("--goto"));
+        arguments.push(OsString::from(goto_target));
+    } else {
+        arguments.push(OsString::from(&input.path));
+    }
+
+    let spec = if is_script_binary(&binary) {
+        CommandSpec {
+            program: OsString::from(CMD_EXECUTABLE),
+            arguments: {
+                let mut args = vec![
+                    OsString::from(CMD_RUN_ARG),
+                    binary.as_os_str().to_os_string(),
+                ];
+                args.extend(arguments);
+                args
+            },
+            hide_window: true,
+        }
+    } else {
+        CommandSpec {
+            program: binary.as_os_str().to_os_string(),
+            arguments,
+            hide_window: false,
+        }
+    };
+
+    spawn_command(spec)
 }
 
 fn spawn_program<I, S>(program: &str, arguments: I) -> AppResult<()>

@@ -29,7 +29,7 @@ use crate::models::{
     DeleteAgentInput, DeleteCodexProviderInput,
     DeleteCodexSessionInput, GetAgentsSettingsInput, GetCodexAuthModeStateInput,
     GlobalAgentInstructionsOutput, ImportOfficialDataInput, ListCodexSessionsInput,
-    OpenCodexConfigTomlInput, OpenWorkspaceInput, ReadAgentConfigInput,
+    OpenCodexConfigTomlInput, OpenFileInEditorInput, OpenWorkspaceInput, ReadAgentConfigInput,
     ReadAgentConfigOutput, ReadGlobalAgentInstructionsInput, ReadProxySettingsInput,
     ReadProxySettingsOutput, RememberCommandApprovalRuleInput,
     RememberCommandApprovalRuleOutput, RpcCancelInput, RpcNotifyInput, RpcRequestInput,
@@ -43,7 +43,7 @@ use crate::models::{
 use crate::process_manager::ProcessManager;
 use crate::proxy_settings::{read_proxy_settings, write_proxy_settings};
 use crate::window_theme::{apply_window_theme, WindowTheme};
-use crate::workspace_launcher::open_workspace;
+use crate::workspace_launcher::{open_file_in_editor, open_workspace};
 
 pub(crate) fn to_result<T>(result: AppResult<T>) -> Result<T, String> {
     result.map_err(|error| error.to_string())
@@ -223,6 +223,11 @@ pub fn app_control_window(
 #[tauri::command]
 pub fn app_open_workspace(input: OpenWorkspaceInput) -> Result<(), String> {
     to_result(open_workspace(input))
+}
+
+#[tauri::command]
+pub fn app_open_file_in_editor(input: OpenFileInEditorInput) -> Result<(), String> {
+    to_result(open_file_in_editor(input))
 }
 
 #[tauri::command]

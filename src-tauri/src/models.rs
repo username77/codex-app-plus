@@ -457,6 +457,14 @@ pub struct OpenWorkspaceInput {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct OpenFileInEditorInput {
+    pub path: String,
+    pub line: Option<u32>,
+    pub column: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RememberCommandApprovalRuleInput {
     pub agent_environment: AgentEnvironment,
     pub command: Vec<String>,

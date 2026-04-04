@@ -292,6 +292,12 @@ export interface OpenWorkspaceInput {
   readonly opener: WorkspaceOpener;
 }
 
+export interface OpenFileInEditorInput {
+  readonly path: string;
+  readonly line?: number | null;
+  readonly column?: number | null;
+}
+
 export interface RememberCommandApprovalRuleInput {
   readonly agentEnvironment: AgentEnvironment;
   readonly command: ReadonlyArray<string>;

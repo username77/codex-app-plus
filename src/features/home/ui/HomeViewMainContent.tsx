@@ -3,6 +3,8 @@ import type { ComposerPermissionLevel } from "../../composer/model/composerPermi
 import type { ComposerModelOption, ComposerSelection } from "../../composer/model/composerPreferences";
 import type { ThreadDetailLevel } from "../../settings/hooks/useAppPreferences";
 import type { SendTurnOptions } from "../../conversation/hooks/useWorkspaceConversation";
+import { FileLinkProvider, type FileLinkActions } from "../../conversation/hooks/fileLinkContext";
+import { useFileLinkOpener } from "../../conversation/hooks/useFileLinkOpener";
 import type { HostBridge, WorkspaceOpener } from "../../../bridge/types";
 import type {
   AccountSummary,
@@ -367,6 +369,21 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
   const [planDrawerCollapsed, setPlanDrawerCollapsed] = useState(true);
   const [dismissedPlanPromptId, setDismissedPlanPromptId] = useState<string | null>(null);
   const planSnapshotKeyRef = useRef<string | null>(null);
+  const { openFileLink } = useFileLinkOpener(props.hostBridge, props.selectedRootPath);
+
+  const openExternalLink = useCallback(
+    (url: string) => void props.hostBridge.app.openExternal(url),
+    [props.hostBridge],
+  );
+
+  const fileLinkActions = useMemo<FileLinkActions>(
+    () => ({
+      openFileLink,
+      openExternalLink,
+      workspacePath: props.selectedRootPath,
+    }),
+    [openFileLink, openExternalLink, props.selectedRootPath],
+  );
 
   useEffect(() => {
     if (derivedState.currentTurnPlan === null) {
@@ -414,6 +431,7 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
   }, [derivedState.latestPlanPrompt]);
 
   return (
+    <FileLinkProvider value={fileLinkActions}>
     <div className="replica-main">
       <HomeToolbarSection
         hostBridge={props.hostBridge}
@@ -522,5 +540,6 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
         />
       )}
     </div>
+    </FileLinkProvider>
   );
 }

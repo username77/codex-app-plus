@@ -50,6 +50,7 @@ import type {
   ReadAgentConfigOutput,
   ReadCustomPromptsInput,
   OpenCodexConfigTomlInput,
+  OpenFileInEditorInput,
   OpenWorkspaceInput,
   ReadProxySettingsInput,
   ReadProxySettingsOutput,
@@ -133,6 +134,8 @@ export function createTauriHostBridge(): HostBridge {
       openExternal: (url: string) => invokeCommand("app_open_external", { url }),
       openWorkspace: (input: OpenWorkspaceInput) =>
         invokeWithInput("app_open_workspace", input),
+      openFileInEditor: (input: OpenFileInEditorInput) =>
+        invokeWithInput("app_open_file_in_editor", input),
       openCodexConfigToml: (input: OpenCodexConfigTomlInput) =>
         invokeWithInput("app_open_codex_config_toml", input),
       listCustomPrompts: (input: ReadCustomPromptsInput) =>

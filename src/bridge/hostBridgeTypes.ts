@@ -27,6 +27,7 @@ import type {
   ReadAgentConfigOutput,
   ReadCustomPromptsInput,
   OpenCodexConfigTomlInput,
+  OpenFileInEditorInput,
   OpenWorkspaceInput,
   ReadProxySettingsInput,
   ReadProxySettingsOutput,
@@ -99,6 +100,7 @@ export interface HostBridge {
     controlWindow(action: WindowChromeAction): Promise<void>;
     openExternal(url: string): Promise<void>;
     openWorkspace(input: OpenWorkspaceInput): Promise<void>;
+    openFileInEditor(input: OpenFileInEditorInput): Promise<void>;
     openCodexConfigToml(input: OpenCodexConfigTomlInput): Promise<void>;
     listCustomPrompts(input: ReadCustomPromptsInput): Promise<ReadonlyArray<CustomPromptOutput>>;
     readGlobalAgentInstructions(input: {
