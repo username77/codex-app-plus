@@ -1,9 +1,37 @@
 use std::fs;
 use std::path::Path;
 
+use fs2::FileExt;
+
 use crate::error::{AppError, AppResult};
 
 pub(crate) fn write_live_files(
+    auth_path: &Path,
+    auth_bytes: &[u8],
+    config_path: &Path,
+    config_bytes: &[u8],
+) -> AppResult<()> {
+    let lock_path = auth_path.with_extension("lock");
+    let parent = lock_path
+        .parent()
+        .ok_or_else(|| AppError::InvalidInput("无效路径".to_string()))?;
+    fs::create_dir_all(parent)?;
+    let lock_file = fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .open(&lock_path)
+        .map_err(|e| AppError::Io(format!("无法创建锁文件: {e}")))?;
+    lock_file
+        .lock_exclusive()
+        .map_err(|e| AppError::Io(format!("无法获取文件锁: {e}")))?;
+
+    let result = write_live_files_inner(auth_path, auth_bytes, config_path, config_bytes);
+
+    let _ = lock_file.unlock();
+    result
+}
+
+fn write_live_files_inner(
     auth_path: &Path,
     auth_bytes: &[u8],
     config_path: &Path,

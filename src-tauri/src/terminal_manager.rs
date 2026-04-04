@@ -193,24 +193,47 @@ fn normalize_cwd(cwd: Option<String>) -> AppResult<Option<PathBuf>> {
     Ok(Some(path))
 }
 
+const OUTPUT_THROTTLE_MS: u64 = 16;
+
 fn spawn_output_thread(app: AppHandle, session_id: String, mut reader: Box<dyn Read + Send>) {
     std::thread::spawn(move || {
         let mut buffer = [0_u8; OUTPUT_BUFFER_SIZE];
         let mut decoder = Utf8ChunkDecoder::new();
+        let mut pending_output = String::new();
+        let mut last_emit = std::time::Instant::now();
+        let throttle_duration = std::time::Duration::from_millis(OUTPUT_THROTTLE_MS);
+
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) => break,
                 Ok(bytes_read) => {
                     if let Some(chunk) = decoder.decode(&buffer[..bytes_read]) {
-                        let _ = emit_terminal_output(&app, session_id.clone(), chunk);
+                        pending_output.push_str(&chunk);
+                    }
+
+                    if last_emit.elapsed() >= throttle_duration
+                        || pending_output.len() >= OUTPUT_BUFFER_SIZE
+                    {
+                        if !pending_output.is_empty() {
+                            let _ = emit_terminal_output(
+                                &app,
+                                session_id.clone(),
+                                std::mem::take(&mut pending_output),
+                            );
+                            last_emit = std::time::Instant::now();
+                        }
                     }
                 }
                 Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
                 Err(_) => break,
             }
         }
+
         if let Some(chunk) = decoder.finish() {
-            let _ = emit_terminal_output(&app, session_id, chunk);
+            pending_output.push_str(&chunk);
+        }
+        if !pending_output.is_empty() {
+            let _ = emit_terminal_output(&app, session_id, pending_output);
         }
     });
 }

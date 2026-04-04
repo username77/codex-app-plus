@@ -49,6 +49,17 @@ pub(crate) fn to_result<T>(result: AppResult<T>) -> Result<T, String> {
     result.map_err(|error| error.to_string())
 }
 
+async fn run_blocking<T, F>(task: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> AppResult<T> + Send + 'static,
+{
+    let result = tokio::task::spawn_blocking(task)
+        .await
+        .map_err(|error| error.to_string())?;
+    result.map_err(|error| error.to_string())
+}
+
 fn require_non_empty(value: &str, field_name: &str) -> Result<(), String> {
     if value.trim().is_empty() {
         return Err(format!("{field_name} 不能为空"));
@@ -131,52 +142,52 @@ pub async fn server_request_resolve(
 }
 
 #[tauri::command]
-pub fn app_get_agents_settings(
+pub async fn app_get_agents_settings(
     input: GetAgentsSettingsInput,
 ) -> Result<crate::models::AgentsSettingsOutput, String> {
-    to_result(get_agents_settings(input))
+    run_blocking(move || get_agents_settings(input)).await
 }
 
 #[tauri::command]
-pub fn app_set_agents_core(
+pub async fn app_set_agents_core(
     input: SetAgentsCoreInput,
 ) -> Result<crate::models::AgentsSettingsOutput, String> {
-    to_result(set_agents_core(input))
+    run_blocking(move || set_agents_core(input)).await
 }
 
 #[tauri::command]
-pub fn app_create_agent(
+pub async fn app_create_agent(
     input: CreateAgentInput,
 ) -> Result<crate::models::AgentsSettingsOutput, String> {
-    to_result(create_agent(input))
+    run_blocking(move || create_agent(input)).await
 }
 
 #[tauri::command]
-pub fn app_update_agent(
+pub async fn app_update_agent(
     input: UpdateAgentInput,
 ) -> Result<crate::models::AgentsSettingsOutput, String> {
-    to_result(update_agent(input))
+    run_blocking(move || update_agent(input)).await
 }
 
 #[tauri::command]
-pub fn app_delete_agent(
+pub async fn app_delete_agent(
     input: DeleteAgentInput,
 ) -> Result<crate::models::AgentsSettingsOutput, String> {
-    to_result(delete_agent(input))
+    run_blocking(move || delete_agent(input)).await
 }
 
 #[tauri::command]
-pub fn app_read_agent_config(
+pub async fn app_read_agent_config(
     input: ReadAgentConfigInput,
 ) -> Result<ReadAgentConfigOutput, String> {
-    to_result(read_agent_config(input))
+    run_blocking(move || read_agent_config(input)).await
 }
 
 #[tauri::command]
-pub fn app_write_agent_config(
+pub async fn app_write_agent_config(
     input: WriteAgentConfigInput,
 ) -> Result<WriteAgentConfigOutput, String> {
-    to_result(write_agent_config(input))
+    run_blocking(move || write_agent_config(input)).await
 }
 
 #[tauri::command]
@@ -220,102 +231,102 @@ pub fn app_open_codex_config_toml(input: OpenCodexConfigTomlInput) -> Result<(),
 }
 
 #[tauri::command]
-pub fn app_read_global_agent_instructions(
+pub async fn app_read_global_agent_instructions(
     input: ReadGlobalAgentInstructionsInput,
 ) -> Result<GlobalAgentInstructionsOutput, String> {
-    to_result(read_global_agent_instructions(input))
+    run_blocking(move || read_global_agent_instructions(input)).await
 }
 
 #[tauri::command]
-pub fn app_list_custom_prompts(
+pub async fn app_list_custom_prompts(
     input: ListCustomPromptsInput,
 ) -> Result<Vec<CustomPromptOutput>, String> {
-    to_result(list_custom_prompts(input))
+    run_blocking(move || list_custom_prompts(input)).await
 }
 
 #[tauri::command]
-pub fn app_write_global_agent_instructions(
+pub async fn app_write_global_agent_instructions(
     input: UpdateGlobalAgentInstructionsInput,
 ) -> Result<GlobalAgentInstructionsOutput, String> {
-    to_result(write_global_agent_instructions(input))
+    run_blocking(move || write_global_agent_instructions(input)).await
 }
 
 #[tauri::command]
-pub fn app_read_proxy_settings(
+pub async fn app_read_proxy_settings(
     input: ReadProxySettingsInput,
 ) -> Result<ReadProxySettingsOutput, String> {
-    to_result(read_proxy_settings(input))
+    run_blocking(move || read_proxy_settings(input)).await
 }
 
 #[tauri::command]
-pub fn app_write_proxy_settings(
+pub async fn app_write_proxy_settings(
     input: UpdateProxySettingsInput,
 ) -> Result<UpdateProxySettingsOutput, String> {
-    to_result(write_proxy_settings(input))
+    run_blocking(move || write_proxy_settings(input)).await
 }
 
 #[tauri::command]
-pub fn app_list_codex_providers() -> Result<CodexProviderStore, String> {
-    to_result(list_codex_providers())
+pub async fn app_list_codex_providers() -> Result<CodexProviderStore, String> {
+    run_blocking(move || list_codex_providers()).await
 }
 
 #[tauri::command]
-pub fn app_upsert_codex_provider(
+pub async fn app_upsert_codex_provider(
     input: UpsertCodexProviderInput,
 ) -> Result<CodexProviderRecord, String> {
-    to_result(upsert_codex_provider(input))
+    run_blocking(move || upsert_codex_provider(input)).await
 }
 
 #[tauri::command]
-pub fn app_delete_codex_provider(
+pub async fn app_delete_codex_provider(
     input: DeleteCodexProviderInput,
 ) -> Result<CodexProviderStore, String> {
-    to_result(delete_codex_provider(input))
+    run_blocking(move || delete_codex_provider(input)).await
 }
 
 #[tauri::command]
-pub fn app_apply_codex_provider(
+pub async fn app_apply_codex_provider(
     input: ApplyCodexProviderInput,
 ) -> Result<CodexProviderApplyResult, String> {
-    to_result(activate_codex_provider(input))
+    run_blocking(move || activate_codex_provider(input)).await
 }
 
 #[tauri::command]
-pub fn app_get_codex_auth_mode_state(
+pub async fn app_get_codex_auth_mode_state(
     input: GetCodexAuthModeStateInput,
 ) -> Result<CodexAuthModeStateOutput, String> {
-    to_result(get_codex_auth_mode_state(input))
+    run_blocking(move || get_codex_auth_mode_state(input)).await
 }
 
 #[tauri::command]
-pub fn app_activate_codex_chatgpt(
+pub async fn app_activate_codex_chatgpt(
     input: ActivateCodexChatgptInput,
 ) -> Result<CodexAuthSwitchResult, String> {
-    to_result(activate_codex_chatgpt(input))
+    run_blocking(move || activate_codex_chatgpt(input)).await
 }
 
 #[tauri::command]
-pub fn app_capture_codex_oauth_snapshot(
+pub async fn app_capture_codex_oauth_snapshot(
     input: CaptureCodexOauthSnapshotInput,
 ) -> Result<CodexAuthModeStateOutput, String> {
-    to_result(capture_codex_oauth_snapshot(input))
+    run_blocking(move || capture_codex_oauth_snapshot(input)).await
 }
 
 #[tauri::command]
-pub fn app_read_chatgpt_auth_tokens() -> Result<ChatgptAuthTokensOutput, String> {
-    to_result(read_chatgpt_auth_tokens())
+pub async fn app_read_chatgpt_auth_tokens() -> Result<ChatgptAuthTokensOutput, String> {
+    run_blocking(move || read_chatgpt_auth_tokens()).await
 }
 
 #[tauri::command]
-pub fn app_write_chatgpt_auth_tokens(
+pub async fn app_write_chatgpt_auth_tokens(
     input: UpdateChatgptAuthTokensInput,
 ) -> Result<ChatgptAuthTokensOutput, String> {
-    to_result(write_chatgpt_auth_tokens(input))
+    run_blocking(move || write_chatgpt_auth_tokens(input)).await
 }
 
 #[tauri::command]
-pub fn app_clear_chatgpt_auth_state() -> Result<(), String> {
-    to_result(clear_chatgpt_auth_state())
+pub async fn app_clear_chatgpt_auth_state() -> Result<(), String> {
+    run_blocking(move || clear_chatgpt_auth_state()).await
 }
 
 #[tauri::command]
@@ -333,33 +344,33 @@ pub fn app_show_context_menu(app: AppHandle, input: ShowContextMenuInput) -> Res
 }
 
 #[tauri::command]
-pub fn app_import_official_data(input: ImportOfficialDataInput) -> Result<(), String> {
-    to_result(import_official_data(input))
+pub async fn app_import_official_data(input: ImportOfficialDataInput) -> Result<(), String> {
+    run_blocking(move || import_official_data(input)).await
 }
 
 #[tauri::command]
-pub fn app_list_codex_sessions(
+pub async fn app_list_codex_sessions(
     app: AppHandle,
     input: ListCodexSessionsInput,
 ) -> Result<Vec<CodexSessionSummary>, String> {
-    to_result(list_codex_sessions(app, input.agent_environment))
+    run_blocking(move || list_codex_sessions(app, input.agent_environment)).await
 }
 
 #[tauri::command]
-pub fn app_read_codex_session(
+pub async fn app_read_codex_session(
     input: CodexSessionReadInput,
 ) -> Result<CodexSessionReadOutput, String> {
-    to_result(read_codex_session(input))
+    run_blocking(move || read_codex_session(input)).await
 }
 
 #[tauri::command]
-pub fn app_delete_codex_session(input: DeleteCodexSessionInput) -> Result<(), String> {
-    to_result(delete_codex_session(input))
+pub async fn app_delete_codex_session(input: DeleteCodexSessionInput) -> Result<(), String> {
+    run_blocking(move || delete_codex_session(input)).await
 }
 
 #[tauri::command]
-pub fn app_remember_command_approval_rule(
+pub async fn app_remember_command_approval_rule(
     input: RememberCommandApprovalRuleInput,
 ) -> Result<RememberCommandApprovalRuleOutput, String> {
-    to_result(remember_command_approval_rule(input))
+    run_blocking(move || remember_command_approval_rule(input)).await
 }
