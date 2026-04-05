@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo } from "react";
 import type { WorkspaceRoot } from "../../workspace/hooks/useWorkspaceRoots";
 import { collectDescendantThreadIds, createRpcThreadRuntimeCleanupTransport, forceCloseThreadRuntime, reportThreadCleanupError } from "../../conversation/service/threadRuntimeCleanup";
 import type { HostBridge, GitWorktreeEntry } from "../../../bridge/types";
-import type { AuthStatus, ThreadSummary } from "../../../domain/types";
+import type { AuthStatus, ThreadSummary, AccountSummary } from "../../../domain/types";
 import type { RateLimitSnapshot } from "../../../protocol/generated/v2/RateLimitSnapshot";
 import type { AppServerClient } from "../../../protocol/appServerClient";
 import { useAppDispatch, useAppStoreApi } from "../../../state/store";
@@ -25,6 +25,7 @@ export interface HomeSidebarProps {
   readonly authBusy: boolean;
   readonly authLoginPending: boolean;
   readonly rateLimits: RateLimitSnapshot | null;
+  readonly account: AccountSummary | null;
   readonly settingsMenuOpen: boolean;
   readonly collapsed: boolean;
   readonly onToggleSettingsMenu: () => void;
@@ -74,6 +75,7 @@ function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
     authLoginPending,
     authMode,
     authStatus,
+    account,
     codexSessions,
     codexSessionsError,
     collapsed,
@@ -181,6 +183,7 @@ function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
             authBusy={authBusy}
             authLoginPending={authLoginPending}
             rateLimits={rateLimits}
+            account={account}
             appServerClient={appServerClient}
             onOpenSettings={onOpenSettings}
             onLogin={onLogin}

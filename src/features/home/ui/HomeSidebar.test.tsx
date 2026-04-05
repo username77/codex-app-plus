@@ -114,6 +114,7 @@ function renderSidebar(thread: ThreadSummary, options?: {
           authBusy={false}
           authLoginPending={false}
           rateLimits={null}
+          account={null}
           settingsMenuOpen={false}
           collapsed={false}
           onToggleSettingsMenu={vi.fn()}
@@ -292,6 +293,7 @@ describe("HomeSidebar", () => {
             authBusy={false}
             authLoginPending={false}
             rateLimits={null}
+            account={null}
             settingsMenuOpen={false}
             collapsed={false}
             onToggleSettingsMenu={vi.fn()}

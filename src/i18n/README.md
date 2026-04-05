@@ -94,7 +94,7 @@ domain.scope.item.field
 
 - `settings.general.language.label`
 - `settings.general.language.description`
-- `settings.general.language.note`
+- `settings.general.embeddedTerminalUtf8.note`
 - `home.settingsPopover.login.action`
 - `app.alerts.openConfigFailed`
 

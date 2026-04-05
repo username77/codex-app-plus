@@ -6,6 +6,7 @@ import type { AgentEnvironment, EmbeddedTerminalShell, WorkspaceOpener } from ".
 import type { ComposerEnterBehavior, FollowUpMode } from "../../../domain/timeline";
 import { createLanguageOptions, useI18n, type MessageKey } from "../../../i18n";
 import { SettingsSelectRow, type SettingsSelectOption } from "./SettingsSelectRow";
+import { SettingsToggleButtonGroup } from "./SettingsToggleButtonGroup";
 
 type Translator = (key: MessageKey) => string;
 
@@ -55,12 +56,6 @@ function createFollowUpModeOptions(
       disabled: !steerAvailable,
     },
   ];
-}
-
-function getFollowUpModeNote(t: Translator, steerAvailable: boolean): string {
-  return steerAvailable
-    ? t("settings.general.followUpQueueMode.note")
-    : t("settings.general.followUpQueueMode.unavailableNote");
 }
 
 function createComposerEnterOptions(t: Translator): ReadonlyArray<SettingsSelectOption<ComposerEnterBehavior>> {
@@ -136,7 +131,6 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
           <div className="settings-row-copy">
             <strong>{t("settings.general.embeddedTerminalUtf8.label")}</strong>
             <p>{t("settings.general.embeddedTerminalUtf8.description")}</p>
-            <p className="settings-row-note">{t("settings.general.embeddedTerminalUtf8.note")}</p>
           </div>
           <div className="settings-row-control">
             <ToggleSwitch
@@ -152,7 +146,6 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
           value={preferences.uiLanguage}
           options={languageOptions}
           onChange={preferences.setUiLanguage}
-          statusNote={t("settings.general.language.note")}
         />
         <SettingsSelectRow
           label={t("settings.general.threadDetailLevel.label")}
@@ -160,15 +153,13 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
           value={preferences.threadDetailLevel}
           options={threadDetailOptions}
           onChange={preferences.setThreadDetailLevel}
-          statusNote={t("settings.general.threadDetailLevel.note")}
         />
-        <SettingsSelectRow
+        <SettingsToggleButtonGroup
           label={t("settings.general.followUpQueueMode.label")}
           description={t("settings.general.followUpQueueMode.description")}
           value={preferences.followUpQueueMode}
           options={followUpModeOptions}
           onChange={preferences.setFollowUpQueueMode}
-          statusNote={getFollowUpModeNote(t, props.steerAvailable)}
         />
         <SettingsSelectRow
           label={t("settings.general.composerEnterBehavior.label")}
@@ -176,7 +167,6 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
           value={preferences.composerEnterBehavior}
           options={composerEnterOptions}
           onChange={preferences.setComposerEnterBehavior}
-          statusNote={t("settings.general.composerEnterBehavior.note")}
         />
       </section>
     </div>

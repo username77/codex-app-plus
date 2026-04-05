@@ -32,6 +32,7 @@ describe("SettingsPopover", () => {
           authBusy={false}
           authLoginPending={false}
           rateLimits={null}
+          account={null}
           appServerClient={mockAppServerClient}
           onOpenSettings={vi.fn()}
           onLogin={vi.fn().mockResolvedValue(undefined)}
@@ -51,6 +52,7 @@ describe("SettingsPopover", () => {
         authBusy={false}
         authLoginPending={false}
         rateLimits={null}
+        account={null}
         appServerClient={mockAppServerClient}
         onOpenSettings={vi.fn()}
         onLogin={vi.fn().mockResolvedValue(undefined)}
@@ -75,6 +77,7 @@ describe("SettingsPopover", () => {
         authBusy={false}
         authLoginPending={false}
         rateLimits={null}
+        account={null}
         appServerClient={mockAppServerClient}
         onOpenSettings={vi.fn()}
         onLogin={onLogin}
@@ -97,6 +100,7 @@ describe("SettingsPopover", () => {
         authBusy={true}
         authLoginPending={true}
         rateLimits={null}
+        account={null}
         appServerClient={mockAppServerClient}
         onOpenSettings={vi.fn()}
         onLogin={vi.fn().mockResolvedValue(undefined)}
@@ -143,6 +147,7 @@ describe("SettingsPopover", () => {
         authBusy={false}
         authLoginPending={false}
         rateLimits={null}
+        account={null}
         appServerClient={mockAppServerClient}
         onOpenSettings={vi.fn()}
         onLogin={vi.fn().mockResolvedValue(undefined)}
@@ -153,5 +158,25 @@ describe("SettingsPopover", () => {
 
     expect(screen.getByText("● Signed out")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "→ Sign in with ChatGPT" })).toBeInTheDocument();
+  });
+
+  it("shows account email when authenticated with ChatGPT", () => {
+    render(
+      <SettingsPopover
+        authStatus="authenticated"
+        authMode="chatgpt"
+        authBusy={false}
+        authLoginPending={false}
+        rateLimits={null}
+        account={{ authMode: "chatgpt", planType: "free", email: "927751260@qq.com" }}
+        appServerClient={mockAppServerClient}
+        onOpenSettings={vi.fn()}
+        onLogin={vi.fn().mockResolvedValue(undefined)}
+        onLogout={vi.fn().mockResolvedValue(undefined)}
+      />,
+      { wrapper: createTestWrapper() }
+    );
+
+    expect(screen.getByText("● 927751260@qq.com")).toBeInTheDocument();
   });
 });

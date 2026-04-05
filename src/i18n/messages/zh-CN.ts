@@ -114,12 +114,10 @@ export const zhCN = {
       embeddedTerminalUtf8: {
         label: "强制内置终端使用 UTF-8",
         description: "在 Windows 内置终端会话里额外注入 UTF-8 locale 环境变量。",
-        note: "保留现有 shell 初始化，同时补充 LANG、LC_ALL、LC_CTYPE。",
       },
       theme: {
         label: "主题",
         description: "控制应用界面的明暗外观。",
-        note: "默认跟随系统深浅色，也可以手动固定浅色或深色界面。",
         options: {
           system: "跟随系统",
           light: "浅色",
@@ -129,7 +127,6 @@ export const zhCN = {
       language: {
         label: "界面语言",
         description: "应用界面显示语言。",
-        note: "默认跟随系统语言；手动切换后会保留你的选择，并立即作用于已接入 i18n 的界面。",
         options: {
           auto: "自动检测（跟随系统）",
           zhCN: "中文（中国）",
@@ -138,34 +135,28 @@ export const zhCN = {
       },
       display: {
         title: "字体",
-        note: "这些设置仅保存在应用本地。UI 字号主要影响基础文本与输入控件；代码字体和字号会同时作用于代码区、Diff 与内置终端。",
         uiFontFamily: {
           label: "UI 字体",
           description: "用于应用界面常规文本的字体栈。",
-          note: "留空会恢复默认的系统字体栈。",
           placeholder: "例如：Inter, \"Segoe UI\", sans-serif",
         },
         uiFontSize: {
           label: "UI 字号",
           description: "调整应用常规文本与输入控件的基础字号。",
-          note: "允许范围 {min}-{max}px，默认 {default}px。",
         },
         codeFontFamily: {
           label: "代码字体",
           description: "用于消息代码块、Diff、追踪详情以及内置终端的等宽字体栈。",
-          note: "留空会恢复默认的等宽字体栈。",
           placeholder: "例如：JetBrains Mono, Consolas, monospace",
         },
         codeFontSize: {
           label: "代码字号",
           description: "调整代码块、Diff、原始文本内容以及内置终端的字号。",
-          note: "允许范围 {min}-{max}px，默认 {default}px。",
         },
       },
       threadDetailLevel: {
         label: "线程详情级别",
         description: "控制会话内命令、工具与辅助信息的显示粒度。",
-        note: "已作用于时间线；完整输出会额外显示 raw response 与调试项。",
         options: {
           compact: "精简步骤",
           commands: "包含命令输出",
@@ -175,7 +166,6 @@ export const zhCN = {
       followUpQueueMode: {
         label: "Follow-up 模式",
         description: "会话进行中再次发送消息时的默认处理方式。",
-        note: "支持 queue、steer 两种模式；Stop 按钮仍用于终止当前响应。",
         unavailableNote: "支持 queue、steer 两种模式；Stop 按钮仍用于终止当前响应。当前 Codex 配置未启用 steer，因此运行中追发只能排队。",
         options: {
           queue: "Queue",
@@ -185,7 +175,6 @@ export const zhCN = {
       composerEnterBehavior: {
         label: "回车行为",
         description: "Composer 中 Enter 的发送规则。",
-        note: "会话响应中输入新内容时，发送会按当前 Follow-up 模式处理。",
         options: {
           enter: "Enter 发送",
           cmdIfMultiline: "多行时 Ctrl/Cmd+Enter 发送",
@@ -197,17 +186,17 @@ export const zhCN = {
       },
       approvalPolicy: {
         options: {
-          untrusted: "untrusted",
-          onFailure: "on-failure",
-          onRequest: "on-request",
-          never: "never",
+          untrusted: "不信任",
+          onFailure: "失败时询问",
+          onRequest: "按需询问",
+          never: "从不询问",
         },
       },
       sandboxMode: {
         options: {
-          readOnly: "read-only",
-          workspaceWrite: "workspace-write",
-          dangerFullAccess: "danger-full-access",
+          readOnly: "只读",
+          workspaceWrite: "工作区写入",
+          dangerFullAccess: "完全访问",
         },
       },
       composerDefaultApprovalPolicy: {
@@ -215,16 +204,16 @@ export const zhCN = {
         description: "控制底部\"默认权限\"实际使用的 approval policy。",
       },
       composerDefaultSandboxMode: {
-        label: "标准权限 · 沙箱策略",
-        description: "控制底部\"默认权限\"实际使用的 sandbox mode。",
+        label: "标准权限 · 访问模式",
+        description: "控制 Agent 的文件系统访问权限。只读：仅读取文件；工作区写入：可在工作区内写入；完全访问：无限制访问。",
       },
       composerFullApprovalPolicy: {
         label: "完全访问 · 审批策略",
         description: "控制底部\"完全访问权限\"实际使用的 approval policy。",
       },
       composerFullSandboxMode: {
-        label: "完全访问 · 沙箱策略",
-        description: "控制底部\"完全访问权限\"实际使用的 sandbox mode。",
+        label: "完全访问 · 访问模式",
+        description: "控制 Agent 的文件系统访问权限。通常设置为\"完全访问\"以匹配完全权限按钮的语义。",
       },
       appUpdate: {
         title: "应用更新",
@@ -299,7 +288,6 @@ export const zhCN = {
       title: "环境",
       workspacesTitle: "工作区",
       addProjectAction: "添加项目",
-      note: "选择要在 Codex 中使用的本地项目目录。",
       empty: "暂无项目，点击\"添加项目\"后即可在侧边栏中切换工作区。",
     },
     worktree: {
@@ -452,7 +440,6 @@ export const zhCN = {
       subtitle: "查看已归档会话，并在需要时恢复到主线程列表。",
       listTitle: "归档列表",
       refreshAction: "刷新",
-      note: "这里只展示 app-server 官方归档线程；本地 codexData 会话不在此列表中。",
       loading: "正在加载已归档线程...",
       empty: "暂无已归档线程。",
       cwdMissing: "未记录工作目录",
@@ -678,6 +665,7 @@ export const zhCN = {
         apiKey: "已通过 API Key 登录",
         needsLogin: "未登录",
         unknown: "鉴权状态未知",
+        accountLabel: "个人账户",
       },
       login: {
         action: "登录 ChatGPT",

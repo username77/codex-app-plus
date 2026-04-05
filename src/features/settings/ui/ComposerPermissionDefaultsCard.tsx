@@ -38,7 +38,6 @@ export function ComposerPermissionDefaultsCard(props: {
         <div className="settings-section-head">
           <strong>{t("settings.general.permissionSettings.title")}</strong>
         </div>
-        <p className="settings-note">{t("settings.general.permissionSettings.note")}</p>
         <SettingsSelectRow
           label={t("settings.general.composerDefaultApprovalPolicy.label")}
           description={t("settings.general.composerDefaultApprovalPolicy.description")}

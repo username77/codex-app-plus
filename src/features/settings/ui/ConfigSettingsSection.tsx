@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type {
   AgentEnvironment,
   CodexAuthModeStateOutput,
@@ -7,27 +7,18 @@ import type {
   UpdateProxySettingsInput,
   UpdateProxySettingsOutput,
 } from "../../../bridge/types";
-import type { WindowsSandboxSetupState } from "../../../domain/types";
 import { useI18n } from "../../../i18n";
 import type { ConfigBatchWriteParams } from "../../../protocol/generated/v2/ConfigBatchWriteParams";
 import type { ConfigValueWriteParams } from "../../../protocol/generated/v2/ConfigValueWriteParams";
-import { createWindowsSandboxConfigWriteParams } from "../sandbox/windowsSandboxSetup";
 import { CodexAuthModeCard } from "./CodexAuthModeCard";
 import { CodexProviderRecommendationCard } from "./CodexProviderRecommendationCard";
 import { ProxySettingsCard } from "./ProxySettingsCard";
-import { WindowsSandboxSettingsCard } from "./WindowsSandboxSettingsCard";
 import { writeForcedLoginMethod } from "./configAuthMode";
-
-const LazyOpenSourceLicensesDialog = lazy(async () => {
-  const module = await import("../../shared/ui/OpenSourceLicensesDialog");
-  return { default: module.OpenSourceLicensesDialog };
-});
 
 interface ConfigSettingsSectionProps {
   readonly agentEnvironment: AgentEnvironment;
   readonly busy: boolean;
   readonly configSnapshot: unknown;
-  readonly windowsSandboxSetup: WindowsSandboxSetupState;
   onOpenConfigToml: () => Promise<void>;
   onOpenExternal: (url: string) => Promise<void>;
   refreshConfigSnapshot: () => Promise<unknown>;
@@ -51,7 +42,6 @@ function useConfigSettingsSectionController(
   props: ConfigSettingsSectionProps,
   t: ReturnType<typeof useI18n>["t"],
 ) {
-  const [licensesOpen, setLicensesOpen] = useState(false);
   const [authModeState, setAuthModeState] = useState<CodexAuthModeStateOutput | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -120,36 +110,14 @@ function useConfigSettingsSectionController(
     }
   }, [loadAuthModeState, props.login, props.refreshAuthState, t]);
 
-  const handleWindowsSandboxToggle = useCallback(async (enabled: boolean) => {
-    setNoticeMessage(null);
-    setErrorMessage(null);
-    try {
-      await props.batchWriteConfig(createWindowsSandboxConfigWriteParams(props.configSnapshot, enabled));
-    } catch (error) {
-      setErrorMessage(toErrorMessage(error));
-    }
-  }, [props.batchWriteConfig, props.configSnapshot]);
-
-  const closeLicenses = useCallback(() => {
-    setLicensesOpen(false);
-  }, []);
-
-  const openLicenses = useCallback(() => {
-    setLicensesOpen(true);
-  }, []);
-
   return {
     authActionPending,
     authLoading,
     authModeState,
-    closeLicenses,
     errorMessage,
     handleActivateChatgpt,
     handleChatgptLogin,
-    handleWindowsSandboxToggle,
-    licensesOpen,
     noticeMessage,
-    openLicenses,
   };
 }
 
@@ -177,32 +145,12 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
             {t("settings.config.userConfig.action")}
           </button>
         </div>
-        <div className="settings-row">
-          <div className="settings-row-copy">
-            <div className="settings-row-heading">{t("settings.config.licenses.label")}</div>
-            <p className="settings-row-meta">{t("settings.config.licenses.description")}</p>
-          </div>
-          <button
-            type="button"
-            className="settings-action-btn"
-            onClick={controller.openLicenses}
-          >
-            {t("settings.config.licenses.action")}
-          </button>
-        </div>
       </section>
       <ProxySettingsCard
         agentEnvironment={props.agentEnvironment}
         busy={props.busy}
         readProxySettings={props.readProxySettings}
         writeProxySettings={props.writeProxySettings}
-      />
-      <WindowsSandboxSettingsCard
-        agentEnvironment={props.agentEnvironment}
-        busy={props.busy}
-        configSnapshot={props.configSnapshot}
-        setupState={props.windowsSandboxSetup}
-        onToggle={controller.handleWindowsSandboxToggle}
       />
       <CodexAuthModeCard
         busy={props.busy}
@@ -222,14 +170,6 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
         <div className="settings-notice settings-notice-success">
           {controller.noticeMessage}
         </div>
-      ) : null}
-      {controller.licensesOpen ? (
-        <Suspense fallback={null}>
-          <LazyOpenSourceLicensesDialog
-            open={controller.licensesOpen}
-            onClose={controller.closeLicenses}
-          />
-        </Suspense>
       ) : null}
     </div>
   );

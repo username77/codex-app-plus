@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { AuthStatus } from "../../../domain/types";
+import type { AuthStatus, AccountSummary } from "../../../domain/types";
 import type { RateLimitSnapshot } from "../../../protocol/generated/v2/RateLimitSnapshot";
 import type { AppServerClient } from "../../../protocol/appServerClient";
 import { createLanguageOptions, useI18n } from "../../../i18n";
@@ -12,14 +12,23 @@ interface SettingsPopoverProps {
   readonly authBusy: boolean;
   readonly authLoginPending: boolean;
   readonly rateLimits: RateLimitSnapshot | null;
+  readonly account: AccountSummary | null;
   readonly appServerClient: AppServerClient;
   readonly onOpenSettings: () => void;
   readonly onLogin: () => Promise<void>;
   readonly onLogout: () => Promise<void>;
 }
 
-function authStatusLabel(status: AuthStatus, mode: string | null, t: ReturnType<typeof useI18n>["t"]): string {
+function authStatusLabel(
+  status: AuthStatus,
+  mode: string | null,
+  account: AccountSummary | null,
+  t: ReturnType<typeof useI18n>["t"]
+): string {
   if (status === "authenticated") {
+    if (mode === "chatgpt" && account?.email) {
+      return account.email;
+    }
     if (mode === "chatgpt") return t("home.settingsPopover.authStatus.chatgpt");
     if (mode === "apikey") return t("home.settingsPopover.authStatus.apiKey");
     return t("home.settingsPopover.authStatus.authenticated");
@@ -48,7 +57,7 @@ export function SettingsPopover(props: SettingsPopoverProps): JSX.Element {
 
   return (
     <div className="settings-popover" role="menu" aria-label={t("home.settingsPopover.menuLabel")}>
-      <div className="settings-popover-status">{"\u25cf "}{authStatusLabel(props.authStatus, props.authMode, t)}</div>
+      <div className="settings-popover-status">● {authStatusLabel(props.authStatus, props.authMode, props.account, t)}</div>
       <button type="button" className="settings-popover-item" onClick={props.onOpenSettings}>
         <span>{"\u2699 "}{t("home.settingsPopover.settings.action")}</span>
       </button>

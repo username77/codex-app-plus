@@ -27,8 +27,8 @@ export function pushThreadNotice(
 export function mapAccountSummary(response: GetAccountResponse): AccountSummary | null {
   if (response.account === null) return null;
   return response.account.type === "apiKey"
-    ? { authMode: "apikey", planType: null }
-    : { authMode: "chatgpt", planType: response.account.planType };
+    ? { authMode: "apikey", planType: null, email: null }
+    : { authMode: "chatgpt", planType: response.account.planType, email: response.account.email };
 }
 
 export function isRealtimeActive(state: RealtimeState | null): boolean {

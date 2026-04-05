@@ -67,6 +67,7 @@ export interface ReceivedNotification {
 export interface AccountSummary {
   readonly authMode: AuthMode | null;
   readonly planType: PlanType | null;
+  readonly email: string | null;
 }
 
 export interface AuthLoginState {

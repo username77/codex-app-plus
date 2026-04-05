@@ -236,7 +236,7 @@ export function applyAppServerNotification(context: NotificationContext, method:
   }
   if (method === "account/updated") {
     const payload = params as AccountUpdatedNotification;
-    dispatch({ type: "account/updated", account: { authMode: payload.authMode, planType: payload.planType } });
+    dispatch({ type: "account/updated", account: { authMode: payload.authMode, planType: payload.planType, email: null } });
     return;
   }
   if (method === "account/rateLimits/updated") {

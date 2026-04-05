@@ -115,12 +115,10 @@ export const enUS = {
       embeddedTerminalUtf8: {
         label: "Force UTF-8 for the embedded terminal",
         description: "Inject UTF-8 locale environment variables into built-in terminal sessions on Windows.",
-        note: "Keeps the existing shell init and also sets LANG, LC_ALL, and LC_CTYPE.",
       },
       theme: {
         label: "Theme",
         description: "Controls the light and dark appearance of the app.",
-        note: "Defaults to the system color scheme, but you can lock the app to light or dark.",
         options: {
           system: "Follow system",
           light: "Light",
@@ -130,7 +128,6 @@ export const enUS = {
       language: {
         label: "Interface language",
         description: "Display language for the app UI.",
-        note: "Defaults to the system language, keeps your manual choice once changed, and updates migrated screens immediately.",
         options: {
           auto: "Automatic (System)",
           zhCN: "Chinese (China)",
@@ -139,34 +136,28 @@ export const enUS = {
       },
       display: {
         title: "Fonts",
-        note: "These settings stay local to the app. UI font size mainly affects base text and form controls, while code font settings also drive code areas, diffs, and the built-in terminal.",
         uiFontFamily: {
           label: "UI font",
           description: "Font stack used for regular app interface text.",
-          note: "Leave it blank to restore the default system stack.",
           placeholder: "For example: Inter, \"Segoe UI\", sans-serif",
         },
         uiFontSize: {
           label: "UI font size",
           description: "Adjusts the base font size for app text and form controls.",
-          note: "Allowed range: {min}-{max}px. Default: {default}px.",
         },
         codeFontFamily: {
           label: "Code font",
           description: "Font stack used for message code blocks, diffs, trace details, and the built-in terminal.",
-          note: "Leave it blank to restore the default monospace stack.",
           placeholder: "For example: JetBrains Mono, Consolas, monospace",
         },
         codeFontSize: {
           label: "Code font size",
           description: "Adjusts code blocks, diffs, raw text content, and the built-in terminal.",
-          note: "Allowed range: {min}-{max}px. Default: {default}px.",
         },
       },
       threadDetailLevel: {
         label: "Thread detail level",
         description: "Controls how much command, tool, and auxiliary information is shown in a session.",
-        note: "Already affects the timeline; full output also shows raw response and debug items.",
         options: {
           compact: "Compact steps",
           commands: "Include command output",
@@ -176,7 +167,6 @@ export const enUS = {
       followUpQueueMode: {
         label: "Follow-up mode",
         description: "Default behavior when sending another message during an active session.",
-        note: "Supports queue and steer. The Stop action still interrupts the current response.",
         unavailableNote: "Supports queue and steer. The Stop action still interrupts the current response. Steer is unavailable in the current Codex config, so active follow-ups can only queue.",
         options: {
           queue: "Queue",
@@ -186,7 +176,6 @@ export const enUS = {
       composerEnterBehavior: {
         label: "Enter behavior",
         description: "How Enter sends from the Composer.",
-        note: "While a response is streaming, new draft content is sent using the current follow-up mode.",
         options: {
           enter: "Send with Enter",
           cmdIfMultiline: "Use Ctrl/Cmd+Enter for multiline",
@@ -198,17 +187,17 @@ export const enUS = {
       },
       approvalPolicy: {
         options: {
-          untrusted: "untrusted",
-          onFailure: "on-failure",
-          onRequest: "on-request",
-          never: "never",
+          untrusted: "Untrusted",
+          onFailure: "On failure",
+          onRequest: "On request",
+          never: "Never",
         },
       },
       sandboxMode: {
         options: {
-          readOnly: "read-only",
-          workspaceWrite: "workspace-write",
-          dangerFullAccess: "danger-full-access",
+          readOnly: "Read only",
+          workspaceWrite: "Workspace write",
+          dangerFullAccess: "Full access",
         },
       },
       composerDefaultApprovalPolicy: {
@@ -216,16 +205,16 @@ export const enUS = {
         description: "Controls the approval policy used by the footer's default permission button.",
       },
       composerDefaultSandboxMode: {
-        label: "Standard permission · Sandbox mode",
-        description: "Controls the sandbox mode used by the footer's default permission button.",
+        label: "Standard permission · Access mode",
+        description: "Controls Agent's filesystem access. Read only: can only read files; Workspace write: can write within workspace; Full access: unrestricted access.",
       },
       composerFullApprovalPolicy: {
         label: "Full access · Approval policy",
         description: "Controls the approval policy used by the footer's full access button.",
       },
       composerFullSandboxMode: {
-        label: "Full access · Sandbox mode",
-        description: "Controls the sandbox mode used by the footer's full access button.",
+        label: "Full access · Access mode",
+        description: "Controls Agent's filesystem access. Typically set to 'Full access' to match the full permission button semantics.",
       },
       appUpdate: {
         title: "App updates",
@@ -300,7 +289,6 @@ export const enUS = {
       title: "Environment",
       workspacesTitle: "Workspaces",
       addProjectAction: "Add project",
-      note: "Choose the local project directories available in Codex.",
       empty: "No projects yet. Click \"Add project\" to switch workspaces from the sidebar.",
     },
     worktree: {
@@ -453,7 +441,6 @@ export const enUS = {
       subtitle: "Review archived sessions and restore them to the main thread list when needed.",
       listTitle: "Archive list",
       refreshAction: "Refresh",
-      note: "This only shows archived threads from the official app-server. Local codexData sessions are excluded.",
       loading: "Loading archived threads...",
       empty: "No archived threads.",
       cwdMissing: "Working directory not recorded",
@@ -679,6 +666,7 @@ export const enUS = {
         apiKey: "Signed in with API Key",
         needsLogin: "Signed out",
         unknown: "Authentication status unknown",
+        accountLabel: "Personal Account",
       },
       login: {
         action: "Sign in with ChatGPT",

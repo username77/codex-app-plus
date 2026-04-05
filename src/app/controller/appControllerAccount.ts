@@ -74,6 +74,7 @@ async function loadAccountSnapshot(client: AccountRequestClient, dispatch: Dispa
       account: {
         authMode: response.account.type === "apiKey" ? "apikey" : "chatgpt",
         planType: response.account.type === "chatgpt" ? response.account.planType : null,
+        email: response.account.type === "chatgpt" ? response.account.email : null,
       },
     });
   } catch {
