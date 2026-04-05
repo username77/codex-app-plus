@@ -97,12 +97,14 @@ pub(crate) fn build_provider_input_from_live(
         .and_then(|table| table.get(&key))
         .and_then(toml::Value::as_table);
     let name = provider_name(provider_table, &provider.name);
+    let model = provider_model(&live.config_table, &provider.model);
     let base_url = provider_base_url(provider_table, &provider.base_url);
     let api_key = live_api_key(&live.auth_map)?;
     Ok(UpsertCodexProviderInput {
         id: Some(provider.id.clone()),
         name,
         provider_key: key,
+        model,
         api_key,
         base_url,
         auth_json_text: serialize_auth_map(&live.auth_map)?,
@@ -250,6 +252,16 @@ fn provider_name(provider_table: Option<&Table>, fallback: &str) -> String {
 fn provider_base_url(provider_table: Option<&Table>, fallback: &str) -> String {
     provider_table
         .and_then(|table| table.get("base_url"))
+        .and_then(toml::Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string)
+        .unwrap_or_else(|| fallback.to_string())
+}
+
+fn provider_model(config_table: &Table, fallback: &str) -> String {
+    config_table
+        .get("model")
         .and_then(toml::Value::as_str)
         .map(str::trim)
         .filter(|value| !value.is_empty())

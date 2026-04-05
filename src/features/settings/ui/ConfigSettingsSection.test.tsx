@@ -10,11 +10,12 @@ function createProvider() {
     id: "provider-1",
     name: "Right Code",
     providerKey: "right_code",
+    model: "deepseek/deepseek-v3.2",
     apiKey: "secret-1",
     baseUrl: "https://right.codes/codex/v1",
     authJsonText: '{\n  "OPENAI_API_KEY": "secret-1"\n}\n',
     configTomlText:
-      'model_provider = "right_code"\n\n[model_providers.right_code]\nname = "Right Code"\nbase_url = "https://right.codes/codex/v1"\nwire_api = "responses"\nrequires_openai_auth = true\n',
+      'model_provider = "right_code"\nmodel = "deepseek/deepseek-v3.2"\n\n[model_providers.right_code]\nname = "Right Code"\nbase_url = "https://right.codes/codex/v1"\nwire_api = "responses"\nrequires_openai_auth = false\n',
     createdAt: 1,
     updatedAt: 2,
   };
@@ -35,7 +36,8 @@ function getDialogInputs(root: HTMLElement) {
     nameInput: inputs[0],
     providerKeyInput: inputs[1],
     apiKeyInput: inputs[2],
-    baseUrlInput: inputs[3],
+    modelInput: inputs[3],
+    baseUrlInput: inputs[4],
     authTextarea: textareas[0],
   };
 }
@@ -180,12 +182,12 @@ describe("ConfigSettingsSection", () => {
     expect(refreshAuthState).toHaveBeenCalled();
   });
 
-  it("does not render the model input for provider settings", async () => {
+  it("renders the model input for provider settings", async () => {
     const { container } = renderSection(createBaseProps());
 
     openAddProviderDialog(container);
 
-    expect(container.querySelectorAll(".codex-provider-form input")).toHaveLength(4);
+    expect(container.querySelectorAll(".codex-provider-form input")).toHaveLength(5);
   });
 
   it("starts providerKey empty and blocks reserved built-in ids", async () => {

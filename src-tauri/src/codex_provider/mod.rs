@@ -72,6 +72,7 @@ fn apply_codex_provider_at(
         &record.config_toml_text,
         &record.provider_key,
         &record.name,
+        &record.model,
         &record.base_url,
     )?;
     let next_auth = JsonValue::Object(merge_auth_map(read_auth_map(auth_path)?, template_auth));
@@ -207,15 +208,17 @@ fn validate_upsert_input(input: UpsertCodexProviderInput) -> AppResult<Validated
     };
     let name = require_text(input.name, "name")?;
     let provider_key = require_text(input.provider_key, "providerKey")?;
+    let model = input.model.trim().to_string();
     let api_key = require_text(input.api_key, "apiKey")?;
     let base_url = require_text(input.base_url, "baseUrl")?;
     let auth_json_text = normalize_auth_json_text(&input.auth_json_text, &api_key)?;
     let config_toml_text =
-        normalize_config_toml_text(&input.config_toml_text, &provider_key, &name, &base_url)?;
+        normalize_config_toml_text(&input.config_toml_text, &provider_key, &name, &model, &base_url)?;
     let provider = ValidatedProvider {
         id: require_text(id, "id")?,
         name,
         provider_key,
+        model,
         api_key,
         base_url,
         auth_json_text,
@@ -231,6 +234,7 @@ fn validate_provider_content(provider: &CodexProviderRecord) -> AppResult<()> {
         &provider.config_toml_text,
         &provider.provider_key,
         &provider.name,
+        &provider.model,
         &provider.base_url,
     )?;
     Ok(())
@@ -252,9 +256,10 @@ fn normalize_config_toml_text(
     text: &str,
     provider_key: &str,
     provider_name: &str,
+    model: &str,
     base_url: &str,
 ) -> AppResult<String> {
-    let patch = build_provider_patch_from_text(text, provider_key, provider_name, base_url)?;
+    let patch = build_provider_patch_from_text(text, provider_key, provider_name, model, base_url)?;
     let serialized =
         toml::to_string_pretty(&patch).map_err(|error| AppError::Protocol(error.to_string()))?;
     Ok(format!("{serialized}\n"))

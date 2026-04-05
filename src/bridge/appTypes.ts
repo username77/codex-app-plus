@@ -185,6 +185,7 @@ export interface CodexProviderDraft {
   readonly id?: string | null;
   readonly name: string;
   readonly providerKey: string;
+  readonly model: string;
   readonly apiKey: string;
   readonly baseUrl: string;
   readonly authJsonText: string;
@@ -195,6 +196,7 @@ export interface CodexProviderRecord {
   readonly id: string;
   readonly name: string;
   readonly providerKey: string;
+  readonly model: string;
   readonly apiKey: string;
   readonly baseUrl: string;
   readonly authJsonText: string;

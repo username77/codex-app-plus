@@ -27,11 +27,12 @@ fn sample_upsert_input(id: Option<&str>, provider_key: &str) -> UpsertCodexProvi
         id: id.map(ToString::to_string),
         name: "Right Code".to_string(),
         provider_key: provider_key.to_string(),
+        model: "deepseek/deepseek-v3.2".to_string(),
         api_key: "secret-1".to_string(),
         base_url: "https://right.codes/codex/v1".to_string(),
         auth_json_text: serde_json::to_string_pretty(&json!({ "OPENAI_API_KEY": "secret-1" })).unwrap(),
         config_toml_text: format!(
-            "model_provider = \"{provider_key}\"\n\n[model_providers.\"{provider_key}\"]\nname = \"Right Code\"\nbase_url = \"https://right.codes/codex/v1\"\nwire_api = \"responses\"\n"
+            "model_provider = \"{provider_key}\"\nmodel = \"deepseek/deepseek-v3.2\"\n\n[model_providers.\"{provider_key}\"]\nname = \"Right Code\"\nbase_url = \"https://right.codes/codex/v1\"\nwire_api = \"responses\"\n"
         ),
     }
 }
@@ -45,7 +46,7 @@ fn upsert_creates_and_updates_provider_records() {
 
     assert_eq!(created.provider_key, "right_code");
     assert!(created.config_toml_text.contains("name = \"Right Code\""));
-    assert!(!created.config_toml_text.contains("model ="));
+    assert!(created.config_toml_text.contains("model = \"deepseek/deepseek-v3.2\""));
 
     thread::sleep(Duration::from_millis(2));
 
@@ -143,14 +144,13 @@ fn apply_preserves_live_global_config_while_replacing_provider_table() {
     assert!(auth_text.contains("OTHER"));
     assert!(auth_text.contains("OPENAI_API_KEY"));
     assert!(config_text.contains("approval_policy = \"never\""));
-    assert!(config_text.contains("model = \"gpt-5.4\""));
+    assert!(config_text.contains("model = \"deepseek/deepseek-v3.2\""));
     assert!(config_text.contains("model_reasoning_effort = \"xhigh\""));
     assert!(config_text.contains("model_context_window = 1000000"));
     assert!(config_text.contains("model_auto_compact_token_limit = 900000"));
     assert!(config_text.contains("[model_providers.right_code]"));
     assert!(config_text.contains("name = \"Right Code\""));
     assert!(!config_text.contains("[model_providers.old]"));
-    assert!(!config_text.contains("model = \"gpt-override\""));
     assert!(!config_text.contains("disable_response_storage = true"));
 }
 

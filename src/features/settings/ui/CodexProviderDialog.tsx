@@ -59,6 +59,7 @@ function safeParseConfig(draft: CodexProviderDraft): Record<string, unknown> {
       createConfigTomlText({
         providerKey: draft.providerKey,
         providerName: draft.name.trim() || draft.providerKey,
+        model: draft.model,
         baseUrl: draft.baseUrl,
       }),
     );
@@ -107,7 +108,7 @@ export function CodexProviderDialog(props: CodexProviderDialogProps): JSX.Elemen
   };
 
   const handleBasicFieldChange = (
-    key: "name" | "providerKey" | "baseUrl",
+    key: "name" | "providerKey" | "model" | "baseUrl",
     value: string,
   ) => {
     setDraft((current) => {
@@ -122,6 +123,7 @@ export function CodexProviderDialog(props: CodexProviderDialogProps): JSX.Elemen
       const configTomlText = updateConfigTomlWithBasics(current.lastValidConfig, {
         providerKey: nextDraft.providerKey,
         providerName: nextDraft.name,
+        model: nextDraft.model,
         baseUrl: nextDraft.baseUrl,
       });
       return {
@@ -158,6 +160,7 @@ export function CodexProviderDialog(props: CodexProviderDialogProps): JSX.Elemen
             configTomlText,
             name: fields.providerName,
             providerKey: fields.providerKey,
+            model: fields.model,
             baseUrl: fields.baseUrl,
           },
           lastValidAuth: current.lastValidAuth,
@@ -179,6 +182,7 @@ export function CodexProviderDialog(props: CodexProviderDialogProps): JSX.Elemen
         configTomlText: normalizeConfigTomlText(state.draft.configTomlText, {
           providerKey: state.draft.providerKey,
           providerName: state.draft.name,
+          model: state.draft.model,
           baseUrl: state.draft.baseUrl,
         }),
       },
@@ -217,6 +221,10 @@ export function CodexProviderDialog(props: CodexProviderDialogProps): JSX.Elemen
               <span className="mcp-form-label">{t("settings.config.providerDialog.apiKeyLabel")}</span>
               <input aria-label={t("settings.config.providerDialog.apiKeyLabel")} className="mcp-form-input" value={state.draft.apiKey} onChange={(event) => handleApiKeyChange(event.target.value)} />
               {errors.apiKey ? <span className="mcp-form-error">{errors.apiKey}</span> : null}
+            </label>
+            <label className="mcp-form-field">
+              <span className="mcp-form-label">{t("settings.config.providerDialog.modelLabel")}</span>
+              <input aria-label={t("settings.config.providerDialog.modelLabel")} className="mcp-form-input" value={state.draft.model} onChange={(event) => handleBasicFieldChange("model", event.target.value)} />
             </label>
             <label className="mcp-form-field">
               <span className="mcp-form-label">{t("settings.config.providerDialog.baseUrlLabel")}</span>

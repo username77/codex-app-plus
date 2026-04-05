@@ -24,6 +24,7 @@ describe("codexProviderConfig", () => {
     const configText = createConfigTomlText({
       providerKey: "right_code",
       providerName: "Right Code",
+      model: "deepseek/deepseek-v3.2",
       baseUrl: "https://right.codes/codex/v1",
     });
 
@@ -31,9 +32,10 @@ describe("codexProviderConfig", () => {
     expect(extractCodexConfigFields(configText)).toEqual({
       providerKey: "right_code",
       providerName: "Right Code",
+      model: "deepseek/deepseek-v3.2",
       baseUrl: "https://right.codes/codex/v1",
     });
-    expect(configText).not.toContain("model =");
+    expect(configText).toContain('model = "deepseek/deepseek-v3.2"');
     expect(configText).not.toContain("model_reasoning_effort");
     expect(configText).not.toContain("disable_response_storage");
   });
@@ -56,6 +58,7 @@ describe("codexProviderConfig", () => {
       {
         providerKey: "right_code",
         providerName: "Right Code",
+        model: "deepseek/deepseek-v3.2",
         baseUrl: "https://right.codes/codex/v1",
       },
     );
@@ -66,7 +69,7 @@ describe("codexProviderConfig", () => {
     expect(nextText).toContain("env_key = \"OPENAI_API_KEY\"");
     expect(nextText).not.toContain("approval_policy = \"never\"");
     expect(nextText).not.toContain("keep_provider");
-    expect(nextText).not.toContain("model = \"gpt-5.3\"");
+    expect(nextText).toContain("model = \"deepseek/deepseek-v3.2\"");
   });
 
   it("normalizes legacy record config when opening for edit", () => {
@@ -74,6 +77,7 @@ describe("codexProviderConfig", () => {
       id: "provider-1",
       name: "Right Code",
       providerKey: "right_code",
+      model: "deepseek/deepseek-v3.2",
       apiKey: "secret-1",
       baseUrl: "https://right.codes/codex/v1",
       authJsonText: '{\n  "OPENAI_API_KEY": "secret-1"\n}\n',
@@ -85,7 +89,7 @@ describe("codexProviderConfig", () => {
 
     expect(draft.configTomlText).toContain('model_provider = "right_code"');
     expect(draft.configTomlText).toContain('name = "Right Code"');
-    expect(draft.configTomlText).not.toContain('model = "gpt-5.4"');
+    expect(draft.configTomlText).toContain('model = "deepseek/deepseek-v3.2"');
     expect(draft.configTomlText).not.toContain('model_reasoning_effort = "xhigh"');
   });
 
@@ -94,6 +98,7 @@ describe("codexProviderConfig", () => {
       ...createEmptyCodexProviderDraft(),
       name: "Right Code",
       providerKey: "right_code",
+      model: "deepseek/deepseek-v3.2",
       apiKey: "secret-1",
       baseUrl: "https://right.codes/codex/v1",
       authJsonText: "{bad json}",
@@ -110,6 +115,7 @@ describe("codexProviderConfig", () => {
       ...createEmptyCodexProviderDraft(),
       name: "Right Code",
       providerKey: "openai",
+      model: "",
       apiKey: "secret-1",
       baseUrl: "https://right.codes/codex/v1",
       authJsonText: createAuthJsonText("secret-1"),

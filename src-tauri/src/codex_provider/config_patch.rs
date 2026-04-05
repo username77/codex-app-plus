@@ -2,7 +2,8 @@ use toml::{Table, Value as TomlValue};
 
 use crate::error::{AppError, AppResult};
 
-const DEFAULT_REQUIRES_OPENAI_AUTH: bool = true;
+const DEFAULT_REQUIRES_OPENAI_AUTH: bool = false;
+const MODEL_KEY: &str = "model";
 const DEFAULT_WIRE_API: &str = "responses";
 const MODEL_PROVIDER_KEY: &str = "model_provider";
 const MODEL_PROVIDERS_KEY: &str = "model_providers";
@@ -19,10 +20,11 @@ pub(super) fn build_provider_patch_from_text(
     text: &str,
     provider_key: &str,
     provider_name: &str,
+    model: &str,
     base_url: &str,
 ) -> AppResult<Table> {
     let source = parse_config_table(text)?;
-    build_provider_patch(&source, provider_key, provider_name, base_url)
+    build_provider_patch(&source, provider_key, provider_name, model, base_url)
 }
 
 pub(super) fn merge_config_table(current: Table, template: Table) -> AppResult<Table> {
@@ -41,6 +43,7 @@ fn build_provider_patch(
     source: &Table,
     provider_key: &str,
     provider_name: &str,
+    model: &str,
     base_url: &str,
 ) -> AppResult<Table> {
     let mut provider_config = find_source_provider(source, provider_key)?;
@@ -62,6 +65,9 @@ fn build_provider_patch(
         MODEL_PROVIDER_KEY.to_string(),
         TomlValue::String(provider_key.to_string()),
     );
+    if !model.trim().is_empty() {
+        patch.insert(MODEL_KEY.to_string(), TomlValue::String(model.trim().to_string()));
+    }
     patch.insert(MODEL_PROVIDERS_KEY.to_string(), TomlValue::Table(providers));
     Ok(patch)
 }

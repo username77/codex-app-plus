@@ -6,8 +6,9 @@ import type {
 
 const DEFAULT_API_KEY = "";
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
+const DEFAULT_MODEL = "";
 const DEFAULT_PROVIDER_KEY = "";
-const DEFAULT_REQUIRES_OPENAI_AUTH = true;
+const DEFAULT_REQUIRES_OPENAI_AUTH = false;
 const DEFAULT_WIRE_API = "responses";
 const RESERVED_PROVIDER_KEYS = new Set(["openai", "ollama", "lmstudio"]);
 
@@ -17,6 +18,7 @@ type TomlObject = Record<string, unknown>;
 interface ConfigTomlBasicsInput {
   readonly providerKey: string;
   readonly providerName: string;
+  readonly model: string;
   readonly baseUrl: string;
 }
 
@@ -32,6 +34,7 @@ export interface CodexProviderValidationErrors {
 export interface CodexConfigFields {
   readonly providerKey: string;
   readonly providerName: string;
+  readonly model: string;
   readonly baseUrl: string;
 }
 
@@ -40,12 +43,14 @@ export function createEmptyCodexProviderDraft(): CodexProviderDraft {
     id: null,
     name: "",
     providerKey: DEFAULT_PROVIDER_KEY,
+    model: DEFAULT_MODEL,
     apiKey: DEFAULT_API_KEY,
     baseUrl: DEFAULT_BASE_URL,
     authJsonText: createAuthJsonText(DEFAULT_API_KEY),
     configTomlText: createConfigTomlText({
       providerKey: DEFAULT_PROVIDER_KEY,
       providerName: DEFAULT_PROVIDER_KEY,
+      model: DEFAULT_MODEL,
       baseUrl: DEFAULT_BASE_URL,
     }),
   };
@@ -56,12 +61,14 @@ export function createDraftFromRecord(record: CodexProviderRecord): CodexProvide
     id: record.id,
     name: record.name,
     providerKey: record.providerKey,
+    model: record.model,
     apiKey: record.apiKey,
     baseUrl: record.baseUrl,
     authJsonText: record.authJsonText,
     configTomlText: tryNormalizeConfigTomlText(record.configTomlText, {
       providerKey: record.providerKey,
       providerName: record.name,
+      model: record.model,
       baseUrl: record.baseUrl,
     }),
   };
@@ -88,7 +95,7 @@ export function normalizeConfigTomlText(
 export function parseAuthJsonText(authJsonText: string): JsonObject {
   const parsed = JSON.parse(authJsonText) as unknown;
   if (!isRecord(parsed)) {
-    throw new Error("auth.json 必须是 JSON 对象");
+    throw new Error("auth.json must be a JSON object");
   }
   return parsed;
 }
@@ -96,7 +103,7 @@ export function parseAuthJsonText(authJsonText: string): JsonObject {
 export function parseConfigTomlText(configTomlText: string): TomlObject {
   const parsed = parseToml(configTomlText) as unknown;
   if (!isRecord(parsed)) {
-    throw new Error("config.toml 必须是 TOML 表");
+    throw new Error("config.toml must be a TOML table");
   }
   return parsed;
 }
@@ -105,19 +112,20 @@ export function extractApiKeyFromAuthJson(authJsonText: string): string {
   const parsed = parseAuthJsonText(authJsonText);
   const apiKey = parsed.OPENAI_API_KEY;
   if (typeof apiKey !== "string") {
-    throw new Error("auth.json 缺少 OPENAI_API_KEY");
+    throw new Error("auth.json is missing OPENAI_API_KEY");
   }
   return apiKey;
 }
 
 export function extractCodexConfigFields(configTomlText: string): CodexConfigFields {
   const parsed = parseConfigTomlText(configTomlText);
-  const providerKey = readString(parsed, "model_provider", "config.toml 缺少 model_provider");
+  const providerKey = readString(parsed, "model_provider", "config.toml is missing model_provider");
   const providerConfig = readProviderConfig(parsed, providerKey);
   return {
     providerKey,
-    providerName: readString(providerConfig, "name", "config.toml 缺少当前 provider 的 name"),
-    baseUrl: readString(providerConfig, "base_url", "config.toml 缺少当前 provider 的 base_url"),
+    providerName: readString(providerConfig, "name", "config.toml is missing the current provider name"),
+    model: readOptionalString(parsed, "model"),
+    baseUrl: readString(providerConfig, "base_url", "config.toml is missing the current provider base_url"),
   };
 }
 
@@ -141,24 +149,24 @@ export function validateCodexProviderDraft(
 ): CodexProviderValidationErrors {
   const errors: CodexProviderValidationErrors = {};
   const providerKey = draft.providerKey.trim();
-  if (draft.name.trim().length === 0) errors.name = "名称不能为空";
+  if (draft.name.trim().length === 0) errors.name = "Name is required";
   if (providerKey.length === 0) {
-    errors.providerKey = "providerKey 不能为空";
+    errors.providerKey = "providerKey is required";
   } else if (isReservedProviderKey(providerKey)) {
-    errors.providerKey = `providerKey 不能使用内置提供商 ID：${providerKey}；请改用例如 openai-custom`;
+    errors.providerKey = `providerKey cannot use a built-in id like ${providerKey}; try something like openai-custom`;
   }
-  if (draft.apiKey.trim().length === 0) errors.apiKey = "API Key 不能为空";
-  if (draft.baseUrl.trim().length === 0) errors.baseUrl = "Base URL 不能为空";
+  if (draft.apiKey.trim().length === 0) errors.apiKey = "API Key is required";
+  if (draft.baseUrl.trim().length === 0) errors.baseUrl = "Base URL is required";
 
   const duplicated = errors.providerKey === undefined
     && providers.some((provider) => provider.providerKey === providerKey && provider.id !== draft.id);
   if (duplicated) {
-    errors.providerKey = "providerKey 已存在";
+    errors.providerKey = "providerKey already exists";
   }
 
   try {
     if (extractApiKeyFromAuthJson(draft.authJsonText) !== draft.apiKey.trim()) {
-      errors.authJsonText = "auth.json 与 API Key 字段不一致";
+      errors.authJsonText = "auth.json does not match the API Key field";
     }
   } catch (error) {
     errors.authJsonText = toErrorMessage(error);
@@ -168,11 +176,13 @@ export function validateCodexProviderDraft(
     try {
       const fields = extractCodexConfigFields(draft.configTomlText);
       if (fields.providerKey !== providerKey) {
-        errors.configTomlText = "config.toml 与 providerKey 字段不一致";
+        errors.configTomlText = "config.toml does not match the providerKey field";
+      } else if (fields.model !== draft.model.trim()) {
+        errors.configTomlText = "config.toml does not match the Model field";
       } else if (fields.baseUrl !== draft.baseUrl.trim()) {
-        errors.configTomlText = "config.toml 与 Base URL 字段不一致";
+        errors.configTomlText = "config.toml does not match the Base URL field";
       } else if (draft.name.trim().length > 0 && fields.providerName !== draft.name.trim()) {
-        errors.configTomlText = "config.toml 与名称字段不一致";
+        errors.configTomlText = "config.toml does not match the Name field";
       }
     } catch (error) {
       errors.configTomlText = toErrorMessage(error);
@@ -206,8 +216,9 @@ function tryNormalizeConfigTomlText(
 function buildProviderPatch(source: TomlObject, input: ConfigTomlBasicsInput): TomlObject {
   const providerKey = input.providerKey.trim();
   const providerName = input.providerName.trim() || providerKey;
+  const model = input.model.trim();
   const sourceProvider = findSourceProviderConfig(source, providerKey);
-  return {
+  const patch: TomlObject = {
     model_provider: providerKey,
     model_providers: {
       [providerKey]: {
@@ -221,6 +232,10 @@ function buildProviderPatch(source: TomlObject, input: ConfigTomlBasicsInput): T
       },
     },
   };
+  if (model.length > 0) {
+    patch.model = model;
+  }
+  return patch;
 }
 
 function shouldGenerateProviderPatch(providerKey: string): boolean {
@@ -239,15 +254,15 @@ function isReservedProviderKey(providerKey: string): boolean {
 }
 
 function findSourceProviderConfig(source: TomlObject, providerKey: string): JsonObject {
-  const providers = readOptionalObject(source.model_providers, "config.toml 的 model_providers 必须是表");
-  const direct = readOptionalObject(providers[providerKey], "provider 配置必须是表");
+  const providers = readOptionalObject(source.model_providers, "config.toml model_providers must be a table");
+  const direct = readOptionalObject(providers[providerKey], "provider config must be a table");
   if (Object.keys(direct).length > 0) {
     return direct;
   }
 
   const activeKey = typeof source.model_provider === "string" ? source.model_provider.trim() : "";
   if (activeKey.length > 0 && activeKey !== providerKey) {
-    const active = readOptionalObject(providers[activeKey], "provider 配置必须是表");
+    const active = readOptionalObject(providers[activeKey], "provider config must be a table");
     if (Object.keys(active).length > 0) {
       return active;
     }
@@ -261,12 +276,12 @@ function readFirstProviderConfig(providers: JsonObject): JsonObject {
   if (firstKey === undefined) {
     return {};
   }
-  return readOptionalObject(providers[firstKey], "provider 配置必须是表");
+  return readOptionalObject(providers[firstKey], "provider config must be a table");
 }
 
 function readProviderConfig(source: JsonObject, providerKey: string): JsonObject {
-  const providers = readOptionalObject(source.model_providers, "config.toml 缺少 model_providers");
-  return readOptionalObject(providers[providerKey], "config.toml 缺少当前 provider 配置");
+  const providers = readOptionalObject(source.model_providers, "config.toml is missing model_providers");
+  return readOptionalObject(providers[providerKey], "config.toml is missing the current provider config");
 }
 
 function readOptionalObject(value: unknown, message: string): JsonObject {
@@ -285,6 +300,11 @@ function readString(source: JsonObject, key: string, message: string): string {
     throw new Error(message);
   }
   return value.trim();
+}
+
+function readOptionalString(source: JsonObject, key: string): string {
+  const value = source[key];
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function toToml(doc: TomlObject): string {
