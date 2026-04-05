@@ -127,7 +127,6 @@ export function ArchivedThreadsSettingsSection(props: ArchivedThreadsSettingsSec
             {t("settings.archived.refreshAction")}
           </button>
         </div>
-        <p className="settings-note settings-note-pad">{t("settings.archived.note")}</p>
         {state.errorMessage ? <p className="settings-status-note settings-status-note-error">{state.errorMessage}</p> : null}
         {state.loading ? <div className="settings-empty">{t("settings.archived.loading")}</div> : null}
         {!state.loading && state.errorMessage === null && state.threads.length === 0 ? (

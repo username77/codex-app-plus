@@ -131,7 +131,6 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
           <div className="settings-row-copy">
             <strong>{t("settings.general.embeddedTerminalUtf8.label")}</strong>
             <p>{t("settings.general.embeddedTerminalUtf8.description")}</p>
-            <p className="settings-row-note">{t("settings.general.embeddedTerminalUtf8.note")}</p>
           </div>
           <div className="settings-row-control">
             <ToggleSwitch
@@ -147,7 +146,6 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
           value={preferences.uiLanguage}
           options={languageOptions}
           onChange={preferences.setUiLanguage}
-          statusNote={t("settings.general.language.note")}
         />
         <SettingsSelectRow
           label={t("settings.general.threadDetailLevel.label")}
@@ -155,7 +153,6 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
           value={preferences.threadDetailLevel}
           options={threadDetailOptions}
           onChange={preferences.setThreadDetailLevel}
-          statusNote={t("settings.general.threadDetailLevel.note")}
         />
         <SettingsToggleButtonGroup
           label={t("settings.general.followUpQueueMode.label")}
@@ -170,7 +167,6 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
           value={preferences.composerEnterBehavior}
           options={composerEnterOptions}
           onChange={preferences.setComposerEnterBehavior}
-          statusNote={t("settings.general.composerEnterBehavior.note")}
         />
       </section>
     </div>

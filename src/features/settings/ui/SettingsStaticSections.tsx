@@ -30,7 +30,6 @@ export function EnvironmentContent(props: {
             {t("settings.environment.addProjectAction")}
           </button>
         </div>
-        <p className="settings-note">{t("settings.environment.note")}</p>
         {props.roots.map((root) => (
           <div key={root.id} className="settings-env-row">
             <div className="settings-env-main">
