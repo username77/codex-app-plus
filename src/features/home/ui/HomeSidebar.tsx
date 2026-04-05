@@ -8,6 +8,7 @@ import type { AppServerClient } from "../../../protocol/appServerClient";
 import { useAppDispatch, useAppStoreApi } from "../../../state/store";
 import { SidebarIcon } from "../../shared/ui/icons";
 import { OfficialSettingsGearIcon } from "../../shared/ui/officialIcons";
+import { useI18n } from "../../../i18n/useI18n";
 import { SettingsPopover } from "./SettingsPopover";
 import { WorkspaceSidebarSection } from "../../workspace/ui/WorkspaceSidebarSection";
 
@@ -50,15 +51,17 @@ function SidebarNav(props: {
   readonly onCreateThread: () => Promise<void>;
   readonly onOpenSkills: () => void;
 }): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <nav className="sidebar-nav">
       <button type="button" className="sidebar-nav-item" onClick={() => void props.onCreateThread()}>
         <SidebarIcon kind="new-thread" />
-        <span>新会话</span>
+        <span>{t("home.sidebar.newThread")}</span>
       </button>
       <button type="button" className="sidebar-nav-item" onClick={props.onOpenSkills}>
         <SidebarIcon kind="skills" />
-        <span>技能</span>
+        <span>{t("home.sidebar.skills")}</span>
       </button>
     </nav>
   );
@@ -101,6 +104,7 @@ function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
   } = props;
   const dispatch = useAppDispatch();
   const store = useAppStoreApi();
+  const { t } = useI18n();
   const sidebarClassName = collapsed ? "replica-sidebar sidebar-collapsed" : "replica-sidebar";
   const cleanupTransport = useMemo(
     () => createRpcThreadRuntimeCleanupTransport(appServerClient),
@@ -146,7 +150,7 @@ function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
 
   return (
     <aside className={sidebarClassName}>
-      {settingsMenuOpen ? <button type="button" className="settings-backdrop" onClick={onDismissSettingsMenu} aria-label="关闭菜单" /> : null}
+      {settingsMenuOpen ? <button type="button" className="settings-backdrop" onClick={onDismissSettingsMenu} aria-label={t("home.sidebar.closeMenu")} /> : null}
       <div className="sidebar-header" aria-hidden="true" />
       <SidebarNav onCreateThread={onCreateThread} onOpenSkills={onOpenSkills} />
       <WorkspaceSidebarSection
@@ -185,7 +189,7 @@ function HomeSidebarComponent(props: HomeSidebarProps): JSX.Element {
         ) : null}
         <button type="button" className="sidebar-settings" onClick={onToggleSettingsMenu}>
           <OfficialSettingsGearIcon className="settings-gear" />
-          <span>设置</span>
+          <span>{t("home.sidebar.settings")}</span>
         </button>
       </div>
     </aside>
