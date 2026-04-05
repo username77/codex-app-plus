@@ -6,6 +6,7 @@ import type { AgentEnvironment, EmbeddedTerminalShell, WorkspaceOpener } from ".
 import type { ComposerEnterBehavior, FollowUpMode } from "../../../domain/timeline";
 import { createLanguageOptions, useI18n, type MessageKey } from "../../../i18n";
 import { SettingsSelectRow, type SettingsSelectOption } from "./SettingsSelectRow";
+import { SettingsToggleButtonGroup } from "./SettingsToggleButtonGroup";
 
 type Translator = (key: MessageKey) => string;
 
@@ -55,12 +56,6 @@ function createFollowUpModeOptions(
       disabled: !steerAvailable,
     },
   ];
-}
-
-function getFollowUpModeNote(t: Translator, steerAvailable: boolean): string {
-  return steerAvailable
-    ? t("settings.general.followUpQueueMode.note")
-    : t("settings.general.followUpQueueMode.unavailableNote");
 }
 
 function createComposerEnterOptions(t: Translator): ReadonlyArray<SettingsSelectOption<ComposerEnterBehavior>> {
@@ -162,13 +157,12 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
           onChange={preferences.setThreadDetailLevel}
           statusNote={t("settings.general.threadDetailLevel.note")}
         />
-        <SettingsSelectRow
+        <SettingsToggleButtonGroup
           label={t("settings.general.followUpQueueMode.label")}
           description={t("settings.general.followUpQueueMode.description")}
           value={preferences.followUpQueueMode}
           options={followUpModeOptions}
           onChange={preferences.setFollowUpQueueMode}
-          statusNote={getFollowUpModeNote(t, props.steerAvailable)}
         />
         <SettingsSelectRow
           label={t("settings.general.composerEnterBehavior.label")}
