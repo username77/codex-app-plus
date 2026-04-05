@@ -459,6 +459,7 @@ export const enUS = {
         apiKey: "Signed in with API Key",
         needsLogin: "Signed out",
         unknown: "Authentication status unknown",
+        accountLabel: "Personal Account",
       },
       login: {
         action: "Sign in with ChatGPT",

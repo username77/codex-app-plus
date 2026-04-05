@@ -64,6 +64,7 @@ export function createHomeSidebarProps(
     authLoginPending: props.authLoginPending,
     authMode: props.authMode,
     authStatus: props.authStatus,
+    account: props.account,
     codexSessions: props.threads,
     codexSessionsError: null,
     collapsed,

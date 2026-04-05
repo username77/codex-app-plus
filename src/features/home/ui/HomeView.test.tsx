@@ -687,7 +687,7 @@ describe("HomeView", () => {
 
   it("hides Auth/Plan pills and info banners above the conversation", () => {
     renderHomeView({
-      account: { authMode: "apikey", planType: "unknown" },
+      account: { authMode: "apikey", planType: "unknown", email: null },
       rateLimitSummary: "Rate limit: default",
       banners: [{ id: "banner-1", level: "info", title: "Skills changed", detail: null, source: "test" }],
     });

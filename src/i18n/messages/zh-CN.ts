@@ -458,6 +458,7 @@ export const zhCN = {
         apiKey: "已通过 API Key 登录",
         needsLogin: "未登录",
         unknown: "鉴权状态未知",
+        accountLabel: "个人账户",
       },
       login: {
         action: "登录 ChatGPT",
