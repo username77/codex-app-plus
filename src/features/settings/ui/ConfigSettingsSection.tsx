@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type {
   AgentEnvironment,
   CodexAuthModeStateOutput,
@@ -17,11 +17,6 @@ import { CodexProviderRecommendationCard } from "./CodexProviderRecommendationCa
 import { ProxySettingsCard } from "./ProxySettingsCard";
 import { WindowsSandboxSettingsCard } from "./WindowsSandboxSettingsCard";
 import { writeForcedLoginMethod } from "./configAuthMode";
-
-const LazyOpenSourceLicensesDialog = lazy(async () => {
-  const module = await import("../../shared/ui/OpenSourceLicensesDialog");
-  return { default: module.OpenSourceLicensesDialog };
-});
 
 interface ConfigSettingsSectionProps {
   readonly agentEnvironment: AgentEnvironment;
@@ -51,7 +46,6 @@ function useConfigSettingsSectionController(
   props: ConfigSettingsSectionProps,
   t: ReturnType<typeof useI18n>["t"],
 ) {
-  const [licensesOpen, setLicensesOpen] = useState(false);
   const [authModeState, setAuthModeState] = useState<CodexAuthModeStateOutput | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -130,26 +124,15 @@ function useConfigSettingsSectionController(
     }
   }, [props.batchWriteConfig, props.configSnapshot]);
 
-  const closeLicenses = useCallback(() => {
-    setLicensesOpen(false);
-  }, []);
-
-  const openLicenses = useCallback(() => {
-    setLicensesOpen(true);
-  }, []);
-
   return {
     authActionPending,
     authLoading,
     authModeState,
-    closeLicenses,
     errorMessage,
     handleActivateChatgpt,
     handleChatgptLogin,
     handleWindowsSandboxToggle,
-    licensesOpen,
     noticeMessage,
-    openLicenses,
   };
 }
 
@@ -175,19 +158,6 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
             onClick={() => void props.onOpenConfigToml()}
           >
             {t("settings.config.userConfig.action")}
-          </button>
-        </div>
-        <div className="settings-row">
-          <div className="settings-row-copy">
-            <div className="settings-row-heading">{t("settings.config.licenses.label")}</div>
-            <p className="settings-row-meta">{t("settings.config.licenses.description")}</p>
-          </div>
-          <button
-            type="button"
-            className="settings-action-btn"
-            onClick={controller.openLicenses}
-          >
-            {t("settings.config.licenses.action")}
           </button>
         </div>
       </section>
@@ -222,14 +192,6 @@ export function ConfigSettingsSection(props: ConfigSettingsSectionProps): JSX.El
         <div className="settings-notice settings-notice-success">
           {controller.noticeMessage}
         </div>
-      ) : null}
-      {controller.licensesOpen ? (
-        <Suspense fallback={null}>
-          <LazyOpenSourceLicensesDialog
-            open={controller.licensesOpen}
-            onClose={controller.closeLicenses}
-          />
-        </Suspense>
       ) : null}
     </div>
   );

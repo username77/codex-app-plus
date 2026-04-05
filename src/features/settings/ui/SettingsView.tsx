@@ -30,7 +30,6 @@ import { ConfigSettingsSection } from "./ConfigSettingsSection";
 import { GeneralSettingsSection } from "./GeneralSettingsSection";
 import { GitSettingsSection } from "./GitSettingsSection";
 import { PersonalizationSettingsSection } from "./PersonalizationSettingsSection";
-import { ArchivedThreadsSettingsSection } from "./ArchivedThreadsSettingsSection";
 import {
   EnvironmentContent,
   PlaceholderContent,
@@ -46,7 +45,6 @@ export type SettingsSection =
   | "git"
   | "environment"
   | "worktree"
-  | "archived"
   | "about";
 
 export interface SettingsViewProps {
@@ -115,7 +113,6 @@ const NAV_ITEM_DEFINITIONS: ReadonlyArray<{
   { key: "git", labelKey: "settings.nav.git", icon: "⑂" },
   { key: "environment", labelKey: "settings.nav.environment", icon: "◍" },
   { key: "worktree", labelKey: "settings.nav.worktree", icon: "▣" },
-  { key: "archived", labelKey: "settings.nav.archived", icon: "▥" },
   { key: "about", labelKey: "settings.nav.about", icon: "ⓘ" },
 ];
 function createNavItems(t: (key: MessageKey) => string): ReadonlyArray<NavItem> {
@@ -167,7 +164,6 @@ function SettingsSidebar(props: {
         {renderNavItem("git")}
         {renderNavItem("environment")}
         {renderNavItem("worktree")}
-        {renderNavItem("archived")}
         {renderNavItem("about")}
       </nav>
     </aside>
@@ -256,9 +252,6 @@ function SettingsContent(props: SettingsViewProps & { readonly sectionTitle: str
       />
     );
   }
-  if (props.section === "archived") {
-    return <ArchivedThreadsSettingsSection ready={props.ready} listArchivedThreads={props.listArchivedThreads} unarchiveThread={props.unarchiveThread} />;
-  }
   if (props.section === "about") {
     return (
       <AboutSettingsSection
@@ -272,7 +265,7 @@ function SettingsContent(props: SettingsViewProps & { readonly sectionTitle: str
     return <GitSettingsSection preferences={props.preferences} />;
   }
   if (props.section === "environment") {
-    return <EnvironmentContent roots={props.roots} onAddRoot={props.onAddRoot} />;
+    return <EnvironmentContent roots={props.roots} ready={props.ready} onAddRoot={props.onAddRoot} listArchivedThreads={props.listArchivedThreads} unarchiveThread={props.unarchiveThread} />;
   }
   if (props.section === "worktree") {
     return <WorktreeContent worktrees={props.worktrees ?? []} onCreateWorktree={props.onCreateWorktree} onDeleteWorktree={props.onDeleteWorktree} />;
