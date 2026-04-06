@@ -183,7 +183,7 @@ export const enUS = {
       },
       permissionSettings: {
         title: "Composer permission defaults",
-        note: "This only changes app-local defaults for future threads and sends, and does not rewrite ~/.codex-app-plus/config.toml.",
+        note: "This only changes app-local defaults for future threads and sends, and does not rewrite ~/.codex/config.toml.",
       },
       approvalPolicy: {
         options: {
@@ -311,7 +311,7 @@ export const enUS = {
       subtitle: "Manage the current live Codex config and save reusable provider templates.",
       userConfig: {
         label: "User config",
-        description: "Open ~/.codex-app-plus/config.toml.",
+        description: "Open ~/.codex/config.toml.",
         action: "Open config file",
       },
       licenses: {
@@ -376,7 +376,7 @@ export const enUS = {
         appliedMessage: "Applied provider: {name}. Restart the app for the change to take effect.",
         deletedMessage: "Deleted provider: {name}",
         deleteTitle: "Delete provider",
-        deleteDescription: "This removes {name} from the app-local config and does not clean historical entries from ~/.codex-app-plus/config.toml.",
+        deleteDescription: "This removes {name} from the app-local config and does not clean historical entries from ~/.codex/config.toml.",
         cancelAction: "Cancel",
         confirmDeleteAction: "Delete",
         deleting: "Deleting…",

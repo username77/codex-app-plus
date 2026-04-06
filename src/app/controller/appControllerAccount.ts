@@ -12,15 +12,21 @@ type Dispatch = (action: AppAction) => void;
 const CHATGPT_LOGIN_DISABLED_MESSAGE = "ChatGPT login is disabled. Use API key login instead.";
 
 async function writeForcedChatgptLoginMethod(client: AccountRequestClient): Promise<void> {
-  const snapshot = (await client.request("config/read", { includeLayers: true })) as ConfigReadResponse;
-  const writeTarget = readUserConfigWriteTarget(snapshot);
-  await client.request("config/value/write", {
-    keyPath: "forced_login_method",
-    value: "chatgpt",
-    mergeStrategy: "replace",
-    filePath: writeTarget.filePath,
-    expectedVersion: writeTarget.expectedVersion,
-  });
+  try {
+    const snapshot = (await client.request("config/read", { includeLayers: true })) as ConfigReadResponse;
+    const writeTarget = readUserConfigWriteTarget(snapshot);
+    await client.request("config/value/write", {
+      keyPath: "forced_login_method",
+      value: "chatgpt",
+      mergeStrategy: "replace",
+      filePath: writeTarget.filePath,
+      expectedVersion: writeTarget.expectedVersion,
+    });
+  } catch (error) {
+    // 如果 app-server 尚未初始化，跳过配置写入
+    // 这不是致命错误，用户可以稍后手动配置
+    console.warn("无法写入 forced_login_method 配置:", error);
+  }
 }
 
 export function isChatgptLoginDisabledError(error: unknown): boolean {

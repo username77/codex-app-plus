@@ -182,7 +182,7 @@ export const zhCN = {
       },
       permissionSettings: {
         title: "Composer 权限默认值",
-        note: "这是应用内默认行为，影响后续新建线程和后续发送，不会改写 ~/.codex-app-plus/config.toml。",
+        note: "这是应用内默认行为，影响后续新建线程和后续发送，不会改写 ~/.codex/config.toml。",
       },
       approvalPolicy: {
         options: {
@@ -310,7 +310,7 @@ export const zhCN = {
       subtitle: "管理当前 Codex live 配置，并保存可复用的提供商模板。",
       userConfig: {
         label: "用户配置",
-        description: "打开 ~/.codex-app-plus/config.toml。",
+        description: "打开 ~/.codex/config.toml。",
         action: "打开配置文件",
       },
       licenses: {
@@ -375,7 +375,7 @@ export const zhCN = {
         appliedMessage: "已应用提供商：{name}，重启软件后生效。",
         deletedMessage: "已删除提供商：{name}",
         deleteTitle: "删除提供商",
-        deleteDescription: "将从应用本地配置中删除 {name}，不会清理现有 ~/.codex-app-plus/config.toml 里的历史条目。",
+        deleteDescription: "将从应用本地配置中删除 {name}，不会清理现有 ~/.codex/config.toml 里的历史条目。",
         cancelAction: "取消",
         confirmDeleteAction: "确认删除",
         deleting: "删除中…",
