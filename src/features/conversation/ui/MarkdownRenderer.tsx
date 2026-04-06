@@ -117,7 +117,7 @@ export function MarkdownRenderer(props: MarkdownRendererProps): JSX.Element {
               <FileReferenceLink
                 href={href ?? toFileLink(path)}
                 rawPath={path}
-                showFilePath={true}
+                showFilePath={false}
                 workspacePath={workspacePath}
                 onClick={handleFileLinkClick}
                 onContextMenu={handleFileLinkContextMenu}
@@ -190,7 +190,7 @@ export function MarkdownRenderer(props: MarkdownRendererProps): JSX.Element {
             <FileReferenceLink
               href={href}
               rawPath={fileTarget}
-              showFilePath={true}
+              showFilePath={false}
               workspacePath={workspacePath}
               onClick={handleFileLinkClick}
               onContextMenu={handleFileLinkContextMenu}
