@@ -23,6 +23,9 @@ export const zhCN = {
     composer: {
       invalidSelection: "Composer 模型和思考强度不能为空。",
     },
+    conversation: {
+      thinking: "正在思考",
+    },
   },
   settings: {
     sidebar: {

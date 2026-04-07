@@ -24,6 +24,9 @@ export const enUS = {
     composer: {
       invalidSelection: "Composer model and reasoning effort are required.",
     },
+    conversation: {
+      thinking: "Thinking",
+    },
   },
   settings: {
     sidebar: {

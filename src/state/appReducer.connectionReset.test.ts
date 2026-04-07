@@ -69,4 +69,19 @@ describe("appReducer transient request resets", () => {
     expect(failed.tokenRefresh).toEqual(createInitialState().tokenRefresh);
     expect(failed.fatalError).toBe("boom");
   });
+
+  it("clears scheduled retry state when the connection recovers", () => {
+    const scheduled = appReducer(createInitialState(), {
+      type: "retry/scheduled",
+      at: 1_234,
+    });
+
+    const recovered = appReducer(scheduled, {
+      type: "connection/changed",
+      status: "connected",
+    });
+
+    expect(recovered.retryScheduledAt).toBeNull();
+    expect(recovered.connectionStatus).toBe("connected");
+  });
 });
