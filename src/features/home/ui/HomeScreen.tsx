@@ -119,6 +119,7 @@ export function HomeScreen(props: HomeScreenProps): JSX.Element {
       <HomeView
       appServerReady={appServerReady}
       appServerClient={appServerClient}
+      agentEnvironment={props.preferences.agentEnvironment}
       hostBridge={props.hostBridge}
       busy={state.bootstrapBusy}
       roots={props.workspace.roots}

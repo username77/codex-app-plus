@@ -3,6 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use super::*;
+use crate::models::AgentEnvironment;
 use crate::test_support::unique_temp_dir;
 
 fn test_locations(
@@ -93,4 +94,94 @@ fn returns_explicit_error_when_vscode_cannot_be_found() {
         .unwrap_err()
         .to_string()
         .contains("未找到 VS Code 可执行文件"));
+}
+
+#[test]
+fn builds_open_file_command_with_line_and_column_for_script_binary() {
+    let binary = PathBuf::from("code.cmd");
+    let input = OpenFileInEditorInput {
+        path: "E:/code/codex-app-plus/src/App.tsx".to_string(),
+        agent_environment: Some(AgentEnvironment::WindowsNative),
+        line: Some(42),
+        column: Some(7),
+    };
+
+    let spec = build_open_file_command_spec_with(
+        &binary,
+        &input,
+        |agent_environment, path| {
+            assert_eq!(agent_environment, AgentEnvironment::WindowsNative);
+            assert_eq!(path, "E:/code/codex-app-plus/src/App.tsx");
+            Ok(PathBuf::from(r"E:\code\codex-app-plus\src\App.tsx"))
+        },
+    )
+    .unwrap();
+
+    assert_eq!(spec.program, OsString::from("cmd.exe"));
+    assert_eq!(
+        spec.arguments,
+        vec![
+            OsString::from("/C"),
+            OsString::from("code.cmd"),
+            OsString::from("--reuse-window"),
+            OsString::from("--goto"),
+            OsString::from(r"E:\code\codex-app-plus\src\App.tsx:42:7"),
+        ]
+    );
+    assert!(spec.hide_window);
+}
+
+#[test]
+fn sanitizes_namespace_drive_paths_before_building_goto_argument() {
+    let arguments = create_vscode_editor_arguments(
+        PathBuf::from(r"\\?\E:\code\codex-app-plus\src\App.tsx").as_path(),
+        Some(33),
+        Some(5),
+    );
+
+    assert_eq!(
+        arguments,
+        vec![
+            OsString::from("--reuse-window"),
+            OsString::from("--goto"),
+            OsString::from(r"E:\code\codex-app-plus\src\App.tsx:33:5"),
+        ]
+    );
+}
+
+#[test]
+fn resolves_wsl_editor_paths_before_building_goto_argument() {
+    let binary = PathBuf::from("code.exe");
+    let input = OpenFileInEditorInput {
+        path: "/mnt/e/code/codex-app-plus/src/App.tsx".to_string(),
+        agent_environment: Some(AgentEnvironment::Wsl),
+        line: Some(12),
+        column: None,
+    };
+
+    let spec = build_open_file_command_spec_with(
+        &binary,
+        &input,
+        |agent_environment, path| {
+            assert_eq!(agent_environment, AgentEnvironment::Wsl);
+            assert_eq!(path, "/mnt/e/code/codex-app-plus/src/App.tsx");
+            Ok(PathBuf::from(
+                r"\\wsl.localhost\Ubuntu\mnt\e\code\codex-app-plus\src\App.tsx",
+            ))
+        },
+    )
+    .unwrap();
+
+    assert_eq!(spec.program, OsString::from("code.exe"));
+    assert_eq!(
+        spec.arguments,
+        vec![
+            OsString::from("--reuse-window"),
+            OsString::from("--goto"),
+            OsString::from(
+                r"\\wsl.localhost\Ubuntu\mnt\e\code\codex-app-plus\src\App.tsx:12",
+            ),
+        ]
+    );
+    assert!(!spec.hide_window);
 }

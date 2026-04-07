@@ -250,8 +250,38 @@ export interface OpenWorkspaceInput {
 
 export interface OpenFileInEditorInput {
   readonly path: string;
+  readonly agentEnvironment?: AgentEnvironment;
   readonly line?: number | null;
   readonly column?: number | null;
+}
+
+export interface WorkspaceLaunchScriptState {
+  readonly id: string;
+  readonly script: string;
+  readonly icon: string;
+  readonly label: string | null;
+}
+
+export interface WorkspaceRootState {
+  readonly id: string;
+  readonly name: string;
+  readonly path: string;
+  readonly launchScript?: string | null;
+  readonly launchScripts?: ReadonlyArray<WorkspaceLaunchScriptState> | null;
+}
+
+export interface ManagedWorktreeState {
+  readonly path: string;
+  readonly repoPath: string;
+  readonly branch: string | null;
+  readonly createdAt: string;
+}
+
+export interface WorkspacePersistenceState {
+  readonly version: number;
+  readonly roots: ReadonlyArray<WorkspaceRootState>;
+  readonly managedWorktrees: ReadonlyArray<ManagedWorktreeState>;
+  readonly selectedRootId: string | null;
 }
 
 export interface RememberCommandApprovalRuleInput {

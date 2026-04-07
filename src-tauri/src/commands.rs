@@ -35,7 +35,7 @@ use crate::models::{
     RpcRequestOutput, ServerRequestResolveInput, SetAgentsCoreInput, ShowContextMenuInput,
     ShowNotificationInput, UpdateAgentInput, UpdateChatgptAuthTokensInput,
     UpdateGlobalAgentInstructionsInput, UpdateProxySettingsInput,
-    UpdateProxySettingsOutput, CustomPromptOutput,
+    UpdateProxySettingsOutput, CustomPromptOutput, WorkspacePersistenceState,
     ListCustomPromptsInput, WriteAgentConfigInput, WriteAgentConfigOutput,
     WindowChromeAction,
 };
@@ -43,6 +43,7 @@ use crate::process_manager::ProcessManager;
 use crate::proxy_settings::{read_proxy_settings, write_proxy_settings};
 use crate::window_theme::{apply_window_theme, WindowTheme};
 use crate::workspace_launcher::{open_file_in_editor, open_workspace};
+use crate::workspace_state::{read_workspace_state, write_workspace_state};
 
 pub(crate) fn to_result<T>(result: AppResult<T>) -> Result<T, String> {
     result.map_err(|error| error.to_string())
@@ -232,6 +233,18 @@ pub fn app_open_file_in_editor(input: OpenFileInEditorInput) -> Result<(), Strin
 #[tauri::command]
 pub fn app_open_codex_config_toml(input: OpenCodexConfigTomlInput) -> Result<(), String> {
     to_result(open_codex_config_toml(input))
+}
+
+#[tauri::command]
+pub async fn app_read_workspace_state() -> Result<Option<WorkspacePersistenceState>, String> {
+    run_blocking(read_workspace_state).await
+}
+
+#[tauri::command]
+pub async fn app_write_workspace_state(
+    input: WorkspacePersistenceState,
+) -> Result<(), String> {
+    run_blocking(move || write_workspace_state(input)).await
 }
 
 #[tauri::command]

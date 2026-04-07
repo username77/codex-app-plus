@@ -8,6 +8,7 @@ import type { SendTurnOptions } from "../../conversation/hooks/useWorkspaceConve
 import type { ThreadDetailLevel } from "../../settings/hooks/useAppPreferences";
 import type { WorkspaceRoot } from "../../workspace/hooks/useWorkspaceRoots";
 import type {
+  AgentEnvironment,
   EmbeddedTerminalShell,
   HostBridge,
   WorkspaceOpener,
@@ -55,6 +56,7 @@ import {
 export interface HomeViewProps {
   readonly appServerReady?: boolean;
   readonly appServerClient: AppServerClient;
+  readonly agentEnvironment?: AgentEnvironment;
   readonly hostBridge: HostBridge;
   readonly busy: boolean;
   readonly inputText?: string;

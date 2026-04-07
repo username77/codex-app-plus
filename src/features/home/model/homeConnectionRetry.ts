@@ -7,7 +7,7 @@ export interface ConnectionRetryInfo {
   readonly text: string;
 }
 
-interface RetryLineInfo {
+export interface ConnectionRetryProgress {
   readonly attempt: number;
   readonly total: number;
   readonly text: string;
@@ -15,7 +15,7 @@ interface RetryLineInfo {
 
 interface ExtractRetryTextResult {
   readonly text: string;
-  readonly info: RetryLineInfo | null;
+  readonly info: ConnectionRetryProgress | null;
   readonly hasVisibleContentAfterRetry: boolean;
 }
 
@@ -66,9 +66,13 @@ export function stripConnectionRetryLines(text: string): string {
   return extractRetryText(text).text;
 }
 
+export function parseConnectionRetryText(text: string): ConnectionRetryProgress | null {
+  return parseRetryLine(text);
+}
+
 function extractRetryText(text: string): ExtractRetryTextResult {
   const keptLines: string[] = [];
-  let latestInfo: RetryLineInfo | null = null;
+  let latestInfo: ConnectionRetryProgress | null = null;
   let hasVisibleContentAfterRetry = false;
 
   for (const line of splitTextForRetryParsing(text)) {
@@ -113,7 +117,7 @@ function splitTextForRetryParsing(text: string): ReadonlyArray<string> {
   return lines;
 }
 
-function parseRetryLine(line: string): RetryLineInfo | null {
+function parseRetryLine(line: string): ConnectionRetryProgress | null {
   const match = line.match(RETRY_LINE_PATTERN);
   if (match === null) {
     return null;

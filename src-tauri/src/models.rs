@@ -42,6 +42,54 @@ pub struct ReadProxySettingsOutput {
     pub settings: ProxySettings,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceLaunchScriptState {
+    pub id: String,
+    pub script: String,
+    pub icon: String,
+    pub label: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceRootState {
+    pub id: String,
+    pub name: String,
+    pub path: String,
+    pub launch_script: Option<String>,
+    pub launch_scripts: Option<Vec<WorkspaceLaunchScriptState>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagedWorktreeState {
+    pub path: String,
+    pub repo_path: String,
+    pub branch: Option<String>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspacePersistenceState {
+    pub version: u32,
+    pub roots: Vec<WorkspaceRootState>,
+    pub managed_worktrees: Vec<ManagedWorktreeState>,
+    pub selected_root_id: Option<String>,
+}
+
+impl Default for WorkspacePersistenceState {
+    fn default() -> Self {
+        Self {
+            version: 1,
+            roots: Vec::new(),
+            managed_worktrees: Vec::new(),
+            selected_root_id: None,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateProxySettingsInput {
@@ -403,6 +451,7 @@ pub struct OpenWorkspaceInput {
 #[serde(rename_all = "camelCase")]
 pub struct OpenFileInEditorInput {
     pub path: String,
+    pub agent_environment: Option<AgentEnvironment>,
     pub line: Option<u32>,
     pub column: Option<u32>,
 }

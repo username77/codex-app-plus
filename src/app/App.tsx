@@ -25,7 +25,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
   const resolvedTheme = useResolvedTheme(preferences.themeMode);
   const bootstrapState = useAppBootstrapState();
   const controller = useAppController(hostBridge, preferences.agentEnvironment);
-  const workspace = useWorkspaceRoots();
+  const workspace = useWorkspaceRoots(hostBridge.app);
   const [screen, setScreen] = useState<AppScreen>("home");
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const authBusy = bootstrapState.bootstrapBusy || bootstrapState.authLoginPending;

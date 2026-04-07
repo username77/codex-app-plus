@@ -50,6 +50,7 @@ import type {
   ReadProxySettingsOutput,
   RememberCommandApprovalRuleInput,
   RememberCommandApprovalRuleOutput,
+  WorkspacePersistenceState,
   RpcCancelInput,
   RpcNotifyInput,
   RpcRequestInput,
@@ -132,6 +133,10 @@ export function createTauriHostBridge(): HostBridge {
         invokeWithInput("app_open_file_in_editor", input),
       openCodexConfigToml: (input: OpenCodexConfigTomlInput) =>
         invokeWithInput("app_open_codex_config_toml", input),
+      readWorkspaceState: () =>
+        invokeCommand<WorkspacePersistenceState | null>("app_read_workspace_state"),
+      writeWorkspaceState: (input: WorkspacePersistenceState) =>
+        invokeWithInput<WorkspacePersistenceState>("app_write_workspace_state", input),
       listCustomPrompts: (input: ReadCustomPromptsInput) =>
         invokeWithInput<ReadCustomPromptsInput, ReadonlyArray<CustomPromptOutput>>(
           "app_list_custom_prompts",

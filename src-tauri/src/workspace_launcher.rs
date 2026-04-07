@@ -2,15 +2,18 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::agent_environment::{resolve_agent_environment, resolve_host_path_for_agent_path};
 use crate::command_utils::{
     open_detached_target, spawn_background_command, spawn_hidden_background_command,
 };
 use crate::error::{AppError, AppResult};
-use crate::models::{OpenFileInEditorInput, OpenWorkspaceInput, WorkspaceOpener};
+use crate::models::{AgentEnvironment, OpenFileInEditorInput, OpenWorkspaceInput, WorkspaceOpener};
 
 const CMD_EXECUTABLE: &str = "cmd.exe";
 const CMD_RUN_ARG: &str = "/C";
 const VSCODE_NEW_WINDOW_FLAG: &str = "--new-window";
+const VSCODE_REUSE_WINDOW_FLAG: &str = "--reuse-window";
+const VSCODE_GOTO_FLAG: &str = "--goto";
 const DEFAULT_PATH_EXTENSIONS: [&str; 4] = [".COM", ".EXE", ".BAT", ".CMD"];
 const VSCODE_COMMAND_NAMES: [&str; 2] = ["code", "code-insiders"];
 const USER_INSTALL_RELATIVE_PATHS: [&str; 2] = [
@@ -241,6 +244,113 @@ fn spawn_command(spec: CommandSpec) -> AppResult<()> {
     spawn_background_command(&mut command)
 }
 
+fn normalize_open_location(line: Option<u32>, column: Option<u32>) -> Option<(u32, Option<u32>)> {
+    let line = line.filter(|value| *value > 0)?;
+    let column = column.filter(|value| *value > 0);
+    Some((line, column))
+}
+
+fn format_path_with_location(path: &str, line: u32, column: Option<u32>) -> String {
+    match column {
+        Some(column) => format!("{path}:{line}:{column}"),
+        None => format!("{path}:{line}"),
+    }
+}
+
+fn normalize_windows_namespace_path(path: &str) -> String {
+    if path.is_empty() {
+        return String::new();
+    }
+
+    fn strip_prefix_ascii_case<'a>(value: &'a str, prefix: &str) -> Option<&'a str> {
+        value
+            .get(..prefix.len())
+            .filter(|candidate| candidate.eq_ignore_ascii_case(prefix))
+            .map(|_| &value[prefix.len()..])
+    }
+
+    fn starts_with_drive_path(value: &str) -> bool {
+        let bytes = value.as_bytes();
+        bytes.len() >= 3
+            && bytes[0].is_ascii_alphabetic()
+            && bytes[1] == b':'
+            && (bytes[2] == b'\\' || bytes[2] == b'/')
+    }
+
+    if let Some(rest) = strip_prefix_ascii_case(path, r"\\?\UNC\") {
+        return format!(r"\\{rest}");
+    }
+    if let Some(rest) = strip_prefix_ascii_case(path, "//?/UNC/") {
+        return format!("//{rest}");
+    }
+    if let Some(rest) = strip_prefix_ascii_case(path, r"\\?\").filter(|rest| starts_with_drive_path(rest)) {
+        return rest.to_string();
+    }
+    if let Some(rest) = strip_prefix_ascii_case(path, "//?/").filter(|rest| starts_with_drive_path(rest)) {
+        return rest.to_string();
+    }
+    if let Some(rest) = strip_prefix_ascii_case(path, r"\\.\").filter(|rest| starts_with_drive_path(rest)) {
+        return rest.to_string();
+    }
+    if let Some(rest) = strip_prefix_ascii_case(path, "//./").filter(|rest| starts_with_drive_path(rest)) {
+        return rest.to_string();
+    }
+
+    path.to_string()
+}
+
+fn create_vscode_editor_arguments(
+    editor_path: &Path,
+    line: Option<u32>,
+    column: Option<u32>,
+) -> Vec<OsString> {
+    let mut arguments = vec![OsString::from(VSCODE_REUSE_WINDOW_FLAG)];
+    if let Some((line, column)) = normalize_open_location(line, column) {
+        let sanitized_path = normalize_windows_namespace_path(&editor_path.display().to_string());
+        let goto_target = format_path_with_location(&sanitized_path, line, column);
+        arguments.push(OsString::from(VSCODE_GOTO_FLAG));
+        arguments.push(OsString::from(goto_target));
+        return arguments;
+    }
+
+    arguments.push(editor_path.as_os_str().to_os_string());
+    arguments
+}
+
+fn build_open_file_command_spec_with<F>(
+    binary: &Path,
+    input: &OpenFileInEditorInput,
+    resolve_host_path: F,
+) -> AppResult<CommandSpec>
+where
+    F: FnOnce(AgentEnvironment, &str) -> AppResult<PathBuf>,
+{
+    let agent_environment = resolve_agent_environment(input.agent_environment);
+    let editor_path = resolve_host_path(agent_environment, &input.path)?;
+    let arguments = create_vscode_editor_arguments(&editor_path, input.line, input.column);
+
+    if is_script_binary(binary) {
+        return Ok(CommandSpec {
+            program: OsString::from(CMD_EXECUTABLE),
+            arguments: {
+                let mut args = vec![
+                    OsString::from(CMD_RUN_ARG),
+                    binary.as_os_str().to_os_string(),
+                ];
+                args.extend(arguments);
+                args
+            },
+            hide_window: true,
+        });
+    }
+
+    Ok(CommandSpec {
+        program: binary.as_os_str().to_os_string(),
+        arguments,
+        hide_window: false,
+    })
+}
+
 pub fn open_file_in_editor(input: OpenFileInEditorInput) -> AppResult<()> {
     if input.path.trim().is_empty() {
         return Err(AppError::InvalidInput("path 不能为空".to_string()));
@@ -253,42 +363,7 @@ pub fn open_file_in_editor(input: OpenFileInEditorInput) -> AppResult<()> {
                 .to_string(),
         )
     })?;
-
-    let mut arguments: Vec<OsString> = vec![OsString::from("--reuse-window")];
-
-    let line = input.line.filter(|v| *v > 0);
-    if let Some(line) = line {
-        let column = input.column.filter(|v| *v > 0);
-        let goto_target = match column {
-            Some(col) => format!("{}:{}:{}", input.path, line, col),
-            None => format!("{}:{}", input.path, line),
-        };
-        arguments.push(OsString::from("--goto"));
-        arguments.push(OsString::from(goto_target));
-    } else {
-        arguments.push(OsString::from(&input.path));
-    }
-
-    let spec = if is_script_binary(&binary) {
-        CommandSpec {
-            program: OsString::from(CMD_EXECUTABLE),
-            arguments: {
-                let mut args = vec![
-                    OsString::from(CMD_RUN_ARG),
-                    binary.as_os_str().to_os_string(),
-                ];
-                args.extend(arguments);
-                args
-            },
-            hide_window: true,
-        }
-    } else {
-        CommandSpec {
-            program: binary.as_os_str().to_os_string(),
-            arguments,
-            hide_window: false,
-        }
-    };
+    let spec = build_open_file_command_spec_with(&binary, &input, resolve_host_path_for_agent_path)?;
 
     spawn_command(spec)
 }

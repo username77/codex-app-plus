@@ -31,6 +31,7 @@ mod test_support;
 mod window_theme;
 mod windows_child_process;
 mod workspace_launcher;
+mod workspace_state;
 mod wsl_support;
 
 use commands::{
@@ -43,11 +44,12 @@ use commands::{
     app_open_external, app_open_file_in_editor, app_open_workspace, app_read_agent_config,
     app_read_chatgpt_auth_tokens, app_read_codex_session,
     app_read_global_agent_instructions, app_read_proxy_settings,
+    app_read_workspace_state,
     app_remember_command_approval_rule, app_server_restart, app_server_start, app_server_stop,
     app_set_agents_core, app_set_window_theme, app_show_context_menu,
     app_show_notification, app_start_window_dragging, app_update_agent,
     app_write_agent_config, app_write_chatgpt_auth_tokens, app_write_global_agent_instructions,
-    app_write_proxy_settings, rpc_cancel, rpc_notify, rpc_request, server_request_resolve,
+    app_write_proxy_settings, app_write_workspace_state, rpc_cancel, rpc_notify, rpc_request, server_request_resolve,
 };
 use git::commands::{
     git_add_worktree, git_checkout, git_commit, git_delete_branch, git_discard_paths, git_fetch,
@@ -96,6 +98,8 @@ fn main() {
             app_open_workspace,
             app_open_file_in_editor,
             app_open_codex_config_toml,
+            app_read_workspace_state,
+            app_write_workspace_state,
             app_get_agents_settings,
             app_set_agents_core,
             app_create_agent,

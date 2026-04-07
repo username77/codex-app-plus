@@ -1,15 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import type { HostBridge, WorkspacePersistenceState as PersistedWorkspaceState } from "../../../bridge/types";
 import { inferWorkspaceNameFromPath, normalizeWorkspacePath, trimWorkspaceText } from "../model/workspacePath";
 import {
   normalizeWorkspaceLaunchScriptConfig,
   type LaunchScriptEntry,
 } from "../model/workspaceLaunchScripts";
-import { writeStoredJson, readStoredJson } from "../../shared/utils/storageJson";
 
-const ROOTS_STORAGE_KEY = "codex-app-plus.workspace-roots";
-const MANAGED_WORKTREES_STORAGE_KEY = "codex-app-plus.managed-worktrees";
+const WORKSPACE_PERSISTENCE_VERSION = 1;
 const EMPTY_ROOTS: ReadonlyArray<WorkspaceRoot> = [];
 const EMPTY_MANAGED_WORKTREES: ReadonlyArray<ManagedWorktreeRecord> = [];
+
+interface WorkspaceState {
+  readonly roots: ReadonlyArray<WorkspaceRoot>;
+  readonly managedWorktrees: ReadonlyArray<ManagedWorktreeRecord>;
+  readonly selectedRootId: string | null;
+}
 
 export interface WorkspaceRoot {
   readonly id: string;
@@ -50,6 +55,14 @@ export interface WorkspaceRootController {
   removeManagedWorktree: (path: string) => void;
   updateWorkspaceLaunchScripts: (input: UpdateWorkspaceLaunchScriptsInput) => void;
 }
+
+type WorkspacePersistenceBridge = Pick<HostBridge["app"], "readWorkspaceState" | "writeWorkspaceState">;
+
+const EMPTY_WORKSPACE_STATE: WorkspaceState = {
+  roots: EMPTY_ROOTS,
+  managedWorktrees: EMPTY_MANAGED_WORKTREES,
+  selectedRootId: null,
+};
 
 function normalizeStoredRoot(value: unknown): WorkspaceRoot | null {
   if (typeof value !== "object" || value === null) {
@@ -117,6 +130,35 @@ function parseManagedWorktreesValue(value: unknown): ReadonlyArray<ManagedWorktr
   return value.map(normalizeManagedWorktree).filter((item): item is ManagedWorktreeRecord => item !== null);
 }
 
+function parsePersistedWorkspaceState(value: unknown): WorkspaceState {
+  if (typeof value !== "object" || value === null) {
+    return EMPTY_WORKSPACE_STATE;
+  }
+  const record = value as {
+    readonly roots?: unknown;
+    readonly managedWorktrees?: unknown;
+    readonly selectedRootId?: unknown;
+  };
+  return normalizeWorkspaceState({
+    roots: parseStoredRootsValue(record.roots),
+    managedWorktrees: parseManagedWorktreesValue(record.managedWorktrees),
+    selectedRootId: typeof record.selectedRootId === "string" ? record.selectedRootId : null,
+  });
+}
+
+function createPersistedWorkspaceState(state: WorkspaceState): PersistedWorkspaceState {
+  return {
+    version: WORKSPACE_PERSISTENCE_VERSION,
+    roots: state.roots,
+    managedWorktrees: state.managedWorktrees,
+    selectedRootId: state.selectedRootId,
+  };
+}
+
+function createWorkspaceStateSignature(state: WorkspaceState): string {
+  return JSON.stringify(createPersistedWorkspaceState(state));
+}
+
 function rootKey(root: Pick<WorkspaceRoot, "name" | "path">): string {
   const pathKey = normalizeWorkspacePath(root.path);
   return pathKey.length > 0 ? pathKey : trimWorkspaceText(root.name).toLowerCase();
@@ -134,6 +176,31 @@ function mergeRoots(
     }
   }
   return [...merged.values()];
+}
+
+function mergeManagedWorktrees(
+  first: ReadonlyArray<ManagedWorktreeRecord>,
+  second: ReadonlyArray<ManagedWorktreeRecord>,
+): ReadonlyArray<ManagedWorktreeRecord> {
+  const merged = new Map<string, ManagedWorktreeRecord>();
+  for (const item of [...first, ...second]) {
+    const key = normalizeWorkspacePath(item.path);
+    if (!merged.has(key)) {
+      merged.set(key, item);
+    }
+  }
+  return [...merged.values()];
+}
+
+function mergeWorkspaceState(
+  current: WorkspaceState,
+  loaded: WorkspaceState,
+): WorkspaceState {
+  return normalizeWorkspaceState({
+    roots: mergeRoots(current.roots, loaded.roots),
+    managedWorktrees: mergeManagedWorktrees(current.managedWorktrees, loaded.managedWorktrees),
+    selectedRootId: current.selectedRootId ?? loaded.selectedRootId,
+  });
 }
 
 function sanitizeInput(input: AddWorkspaceRootInput): WorkspaceRoot | null {
@@ -159,6 +226,16 @@ function sanitizeInput(input: AddWorkspaceRootInput): WorkspaceRoot | null {
 
 function removeRootByKey(roots: ReadonlyArray<WorkspaceRoot>, key: string): ReadonlyArray<WorkspaceRoot> {
   return roots.filter((root) => rootKey(root) !== key);
+}
+
+function normalizeWorkspaceState(state: WorkspaceState): WorkspaceState {
+  if (state.selectedRootId !== null && state.roots.some((root) => root.id === state.selectedRootId)) {
+    return state;
+  }
+  return {
+    ...state,
+    selectedRootId: state.roots[0]?.id ?? null,
+  };
 }
 
 function clampIndex(index: number, max: number): number {
@@ -203,111 +280,205 @@ function reorderRootsByIndex(
   return next;
 }
 
-export function useWorkspaceRoots(): WorkspaceRootController {
-  const [roots, setRoots] = useState<ReadonlyArray<WorkspaceRoot>>(() =>
-    readStoredJson(ROOTS_STORAGE_KEY, parseStoredRootsValue, EMPTY_ROOTS)
-  );
-  const [managedWorktrees, setManagedWorktrees] = useState<ReadonlyArray<ManagedWorktreeRecord>>(() =>
-    readStoredJson(MANAGED_WORKTREES_STORAGE_KEY, parseManagedWorktreesValue, EMPTY_MANAGED_WORKTREES)
-  );
-  const [selectedRootId, setSelectedRootId] = useState<string | null>(null);
+function markDirtyBeforeLoad(loaded: boolean, dirtyBeforeLoadRef: MutableRefObject<boolean>): void {
+  if (!loaded) {
+    dirtyBeforeLoadRef.current = true;
+  }
+}
 
-  useEffect(() => {
-    writeStoredJson(ROOTS_STORAGE_KEY, roots);
-  }, [roots]);
+export function useWorkspaceRoots(appBridge: WorkspacePersistenceBridge): WorkspaceRootController {
+  const [state, setState] = useState<WorkspaceState>(EMPTY_WORKSPACE_STATE);
+  const [loaded, setLoaded] = useState(false);
+  const dirtyBeforeLoadRef = useRef(false);
+  const persistedSignatureRef = useRef<string | null>(null);
+  const queuedSnapshotRef = useRef<PersistedWorkspaceState | null>(null);
+  const queuedSignatureRef = useRef<string | null>(null);
+  const saveInFlightRef = useRef(false);
 
-  useEffect(() => {
-    writeStoredJson(MANAGED_WORKTREES_STORAGE_KEY, managedWorktrees);
-  }, [managedWorktrees]);
-
-  useEffect(() => {
-    if (selectedRootId !== null && roots.some((root) => root.id === selectedRootId)) {
+  const flushQueuedSave = useCallback(() => {
+    if (!loaded || saveInFlightRef.current) {
       return;
     }
-    setSelectedRootId(roots[0]?.id ?? null);
-  }, [roots, selectedRootId]);
+
+    const nextSnapshot = queuedSnapshotRef.current;
+    const nextSignature = queuedSignatureRef.current;
+    if (nextSnapshot === null || nextSignature === null || nextSignature === persistedSignatureRef.current) {
+      return;
+    }
+
+    saveInFlightRef.current = true;
+    void appBridge.writeWorkspaceState(nextSnapshot)
+      .then(() => {
+        persistedSignatureRef.current = nextSignature;
+      })
+      .catch((error: unknown) => {
+        console.error("保存工作区状态失败", error);
+      })
+      .finally(() => {
+        saveInFlightRef.current = false;
+        if (queuedSignatureRef.current !== persistedSignatureRef.current) {
+          flushQueuedSave();
+        }
+      });
+  }, [appBridge, loaded]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void appBridge.readWorkspaceState()
+      .then((value) => {
+        if (cancelled) {
+          return;
+        }
+        const loadedState = value === null ? EMPTY_WORKSPACE_STATE : parsePersistedWorkspaceState(value);
+        persistedSignatureRef.current = createWorkspaceStateSignature(loadedState);
+        setState((current) => (
+          dirtyBeforeLoadRef.current ? mergeWorkspaceState(current, loadedState) : loadedState
+        ));
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          console.error("读取工作区状态失败", error);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoaded(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appBridge]);
+
+  useEffect(() => {
+    if (!loaded) {
+      return;
+    }
+    const nextSnapshot = createPersistedWorkspaceState(state);
+    queuedSnapshotRef.current = nextSnapshot;
+    queuedSignatureRef.current = JSON.stringify(nextSnapshot);
+    flushQueuedSave();
+  }, [flushQueuedSave, loaded, state]);
 
   const addRoot = useCallback(
     (input: AddWorkspaceRootInput) => {
+      markDirtyBeforeLoad(loaded, dirtyBeforeLoadRef);
       const root = sanitizeInput(input);
       if (root === null) {
         return;
       }
 
-      const key = rootKey(root);
-      const existingRoot = roots.find((item) => rootKey(item) === key);
-      setRoots((current) => mergeRoots(current, [root]));
-      setSelectedRootId(existingRoot?.id ?? root.id);
+      setState((current) => {
+        const key = rootKey(root);
+        const existingRoot = current.roots.find((item) => rootKey(item) === key);
+        return normalizeWorkspaceState({
+          ...current,
+          roots: mergeRoots(current.roots, [root]),
+          selectedRootId: existingRoot?.id ?? root.id,
+        });
+      });
     },
-    [roots]
+    [loaded],
   );
 
   const removeRoot = useCallback(
     (rootId: string) => {
-      const root = roots.find((item) => item.id === rootId);
-      if (root === undefined) {
-        return;
-      }
-      setRoots((current) => removeRootByKey(current, rootKey(root)));
+      markDirtyBeforeLoad(loaded, dirtyBeforeLoadRef);
+      setState((current) => {
+        const root = current.roots.find((item) => item.id === rootId);
+        if (root === undefined) {
+          return current;
+        }
+        return normalizeWorkspaceState({
+          ...current,
+          roots: removeRootByKey(current.roots, rootKey(root)),
+        });
+      });
     },
-    [roots]
+    [loaded],
   );
 
   const updateWorkspaceLaunchScripts = useCallback(
     (input: UpdateWorkspaceLaunchScriptsInput) => {
-      setRoots((current) => current.map((root) => {
-        if (root.id !== input.rootId) {
-          return root;
-        }
-        return {
-          ...root,
-          launchScript: input.launchScript,
-          launchScripts: input.launchScripts,
-        };
+      markDirtyBeforeLoad(loaded, dirtyBeforeLoadRef);
+      setState((current) => normalizeWorkspaceState({
+        ...current,
+        roots: current.roots.map((root) => {
+          if (root.id !== input.rootId) {
+            return root;
+          }
+          return {
+            ...root,
+            launchScript: input.launchScript,
+            launchScripts: input.launchScripts,
+          };
+        }),
       }));
     },
-    [],
+    [loaded],
   );
 
   const reorderRoots = useCallback((fromIndex: number, toIndex: number) => {
-    setRoots((current) => reorderRootsByIndex(current, fromIndex, toIndex));
-  }, []);
+    markDirtyBeforeLoad(loaded, dirtyBeforeLoadRef);
+    setState((current) => normalizeWorkspaceState({
+      ...current,
+      roots: reorderRootsByIndex(current.roots, fromIndex, toIndex),
+    }));
+  }, [loaded]);
 
   const addManagedWorktree = useCallback((input: { readonly path: string; readonly repoPath: string; readonly branch: string | null }) => {
+    markDirtyBeforeLoad(loaded, dirtyBeforeLoadRef);
     const normalizedPath = trimWorkspaceText(input.path);
     const normalizedRepoPath = trimWorkspaceText(input.repoPath);
     if (normalizedPath.length === 0 || normalizedRepoPath.length === 0) {
       return;
     }
-    setManagedWorktrees((current) => {
-      const pathKey = normalizeWorkspacePath(normalizedPath);
-      const remaining = current.filter((item) => normalizeWorkspacePath(item.path) !== pathKey);
-      return [...remaining, {
-        path: normalizedPath,
-        repoPath: normalizedRepoPath,
-        branch: input.branch,
-        createdAt: new Date().toISOString(),
-      }];
-    });
-  }, []);
+    setState((current) => normalizeWorkspaceState({
+      ...current,
+      managedWorktrees: (() => {
+        const pathKey = normalizeWorkspacePath(normalizedPath);
+        const remaining = current.managedWorktrees.filter((item) => normalizeWorkspacePath(item.path) !== pathKey);
+        return [...remaining, {
+          path: normalizedPath,
+          repoPath: normalizedRepoPath,
+          branch: input.branch,
+          createdAt: new Date().toISOString(),
+        }];
+      })(),
+    }));
+  }, [loaded]);
 
   const removeManagedWorktree = useCallback((path: string) => {
+    markDirtyBeforeLoad(loaded, dirtyBeforeLoadRef);
     const pathKey = normalizeWorkspacePath(path);
-    setManagedWorktrees((current) => current.filter((item) => normalizeWorkspacePath(item.path) !== pathKey));
-  }, []);
+    setState((current) => normalizeWorkspaceState({
+      ...current,
+      managedWorktrees: current.managedWorktrees.filter((item) => normalizeWorkspacePath(item.path) !== pathKey),
+    }));
+  }, [loaded]);
+
+  const selectRoot = useCallback((rootId: string) => {
+    markDirtyBeforeLoad(loaded, dirtyBeforeLoadRef);
+    setState((current) => normalizeWorkspaceState({
+      ...current,
+      selectedRootId: rootId,
+    }));
+  }, [loaded]);
 
   const selectedRoot = useMemo(
-    () => roots.find((root) => root.id === selectedRootId) ?? null,
-    [roots, selectedRootId],
+    () => state.roots.find((root) => root.id === state.selectedRootId) ?? null,
+    [state.roots, state.selectedRootId],
   );
 
   return useMemo(
     () => ({
-      roots,
-      managedWorktrees,
+      roots: state.roots,
+      managedWorktrees: state.managedWorktrees,
       selectedRoot,
-      selectedRootId,
-      selectRoot: setSelectedRootId,
+      selectedRootId: state.selectedRootId,
+      selectRoot,
       addRoot,
       removeRoot,
       reorderRoots,
@@ -318,14 +489,15 @@ export function useWorkspaceRoots(): WorkspaceRootController {
     [
       addManagedWorktree,
       addRoot,
-      managedWorktrees,
       removeManagedWorktree,
       removeRoot,
       reorderRoots,
-      roots,
+      selectRoot,
       selectedRoot,
-      selectedRootId,
+      state.managedWorktrees,
+      state.roots,
+      state.selectedRootId,
       updateWorkspaceLaunchScripts,
-    ]
+    ],
   );
 }

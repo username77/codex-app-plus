@@ -5,7 +5,7 @@ import type { ThreadDetailLevel } from "../../settings/hooks/useAppPreferences";
 import type { SendTurnOptions } from "../../conversation/hooks/useWorkspaceConversation";
 import { FileLinkProvider, type FileLinkActions } from "../../conversation/hooks/fileLinkContext";
 import { useFileLinkOpener } from "../../conversation/hooks/useFileLinkOpener";
-import type { HostBridge, WorkspaceOpener } from "../../../bridge/types";
+import type { AgentEnvironment, HostBridge, WorkspaceOpener } from "../../../bridge/types";
 import type {
   AccountSummary,
   AppState,
@@ -56,6 +56,7 @@ export interface HomeViewMainContentProps {
   readonly appServerReady?: boolean;
   readonly busy: boolean;
   readonly appServerClient: AppServerClient;
+  readonly agentEnvironment?: AgentEnvironment;
   readonly hostBridge: HostBridge;
   readonly gitController: WorkspaceGitController;
   readonly inputText?: string;
@@ -369,7 +370,11 @@ export function HomeViewMainContent(props: HomeViewMainContentProps): JSX.Elemen
   const [planDrawerCollapsed, setPlanDrawerCollapsed] = useState(true);
   const [dismissedPlanPromptId, setDismissedPlanPromptId] = useState<string | null>(null);
   const planSnapshotKeyRef = useRef<string | null>(null);
-  const { openFileLink } = useFileLinkOpener(props.hostBridge, props.selectedRootPath);
+  const { openFileLink } = useFileLinkOpener(
+    props.hostBridge,
+    props.selectedRootPath,
+    props.agentEnvironment ?? "windowsNative",
+  );
 
   const openExternalLink = useCallback(
     (url: string) => void props.hostBridge.app.openExternal(url),

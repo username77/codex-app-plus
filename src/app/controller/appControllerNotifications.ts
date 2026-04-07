@@ -4,6 +4,7 @@ import type { AppAction } from "../../domain/types";
 import { isPrewarmedThread } from "../../features/conversation/service/prewarmedThreadManager";
 import type { FrameTextDeltaQueue } from "../../features/conversation/model/frameTextDeltaQueue";
 import type { OutputDeltaQueue } from "../../features/conversation/model/outputDeltaQueue";
+import { parseConnectionRetryText } from "../../features/home/model/homeConnectionRetry";
 import type { FuzzyFileSearchSessionCompletedNotification } from "../../protocol/generated/FuzzyFileSearchSessionCompletedNotification";
 import type { FuzzyFileSearchSessionUpdatedNotification } from "../../protocol/generated/FuzzyFileSearchSessionUpdatedNotification";
 import type { AccountLoginCompletedNotification } from "../../protocol/generated/v2/AccountLoginCompletedNotification";
@@ -208,6 +209,9 @@ export function applyAppServerNotification(context: NotificationContext, method:
   }
   if (method === "error") {
     const payload = params as ErrorNotification;
+    if (payload.willRetry && parseConnectionRetryText(payload.error.message) !== null) {
+      return;
+    }
     dispatch({ type: "conversation/systemNoticeAdded", conversationId: payload.threadId, turnId: payload.turnId, title: payload.error.message, detail: payload.willRetry ? "The app-server will retry this turn." : null, level: "error", source: "error" });
     return;
   }

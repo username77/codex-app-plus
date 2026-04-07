@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TimelineEntry } from "../../../domain/timeline";
-import { extractConnectionRetryInfo, stripConnectionRetryLines } from "./homeConnectionRetry";
+import { extractConnectionRetryInfo, parseConnectionRetryText, stripConnectionRetryLines } from "./homeConnectionRetry";
 
 function createAgentMessage(id: string, text: string): TimelineEntry {
   return {
@@ -146,5 +146,19 @@ describe("stripConnectionRetryLines", () => {
 
   it("removes retry-only segments separated by carriage returns", () => {
     expect(stripConnectionRetryLines("line 1\rReconnecting... 1/5\rline 2")).toBe("line 1\nline 2");
+  });
+});
+
+describe("parseConnectionRetryText", () => {
+  it("parses retry progress with surrounding whitespace", () => {
+    expect(parseConnectionRetryText("  Reconnecting... 2/5  ")).toMatchObject({
+      attempt: 2,
+      total: 5,
+      text: "Reconnecting... 2/5",
+    });
+  });
+
+  it("rejects non-progress reconnect messages", () => {
+    expect(parseConnectionRetryText("Reconnecting soon")).toBeNull();
   });
 });

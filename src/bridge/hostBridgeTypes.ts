@@ -31,6 +31,7 @@ import type {
   RpcRequestOutput,
   RememberCommandApprovalRuleInput,
   RememberCommandApprovalRuleOutput,
+  WorkspacePersistenceState,
   ServerRequestResolveInput,
   SetAgentsCoreInput,
   ShowContextMenuInput,
@@ -96,6 +97,8 @@ export interface HostBridge {
     openWorkspace(input: OpenWorkspaceInput): Promise<void>;
     openFileInEditor(input: OpenFileInEditorInput): Promise<void>;
     openCodexConfigToml(input: OpenCodexConfigTomlInput): Promise<void>;
+    readWorkspaceState(): Promise<WorkspacePersistenceState | null>;
+    writeWorkspaceState(input: WorkspacePersistenceState): Promise<void>;
     listCustomPrompts(input: ReadCustomPromptsInput): Promise<ReadonlyArray<CustomPromptOutput>>;
     readGlobalAgentInstructions(input: {
       readonly agentEnvironment: AgentEnvironment;

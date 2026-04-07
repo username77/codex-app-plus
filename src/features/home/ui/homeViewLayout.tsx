@@ -110,6 +110,7 @@ export function createHomeMainContentProps(
     account: props.account,
     activeTurnId: props.activeTurnId,
     activities,
+    agentEnvironment: props.agentEnvironment,
     appServerClient: props.appServerClient,
     appServerReady: props.appServerReady,
     banners: props.banners,

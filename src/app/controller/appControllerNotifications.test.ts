@@ -154,4 +154,46 @@ describe("applyAppServerNotification", () => {
       expect(completedItem.text).toBe("完整答案");
     }
   });
+
+  it("suppresses reconnect retry notices that only carry retry progress", () => {
+    const dispatch = vi.fn<(action: AppAction) => void>();
+
+    applyAppServerNotification(createContext(dispatch), "error", {
+      threadId: "thread-1",
+      turnId: "turn-1",
+      willRetry: true,
+      error: {
+        message: "Reconnecting... 2/5",
+        codexErrorInfo: null,
+        additionalDetails: null,
+      },
+    });
+
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it("keeps non-reconnect retry errors as system notices", () => {
+    const dispatch = vi.fn<(action: AppAction) => void>();
+
+    applyAppServerNotification(createContext(dispatch), "error", {
+      threadId: "thread-1",
+      turnId: "turn-1",
+      willRetry: true,
+      error: {
+        message: "Network dropped while streaming",
+        codexErrorInfo: null,
+        additionalDetails: null,
+      },
+    });
+
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "conversation/systemNoticeAdded",
+      conversationId: "thread-1",
+      turnId: "turn-1",
+      title: "Network dropped while streaming",
+      detail: "The app-server will retry this turn.",
+      level: "error",
+      source: "error",
+    });
+  });
 });
