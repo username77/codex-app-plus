@@ -50,6 +50,7 @@ export interface ThreadSummary {
   readonly status: ThreadRuntimeStatus;
   readonly activeFlags: Array<ThreadActiveFlag>;
   readonly queuedCount: number;
+  readonly requiresUserAttention?: boolean;
 }
 interface TimelineBase {
   readonly id: string;

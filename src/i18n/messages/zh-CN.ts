@@ -498,6 +498,7 @@ export const zhCN = {
       loadFailed: "加载会话失败：{error}",
       emptyRoots: "暂无工作区，点击左上角添加",
       emptyThreads: "暂无会话",
+      awaitingReply: "等待回复",
       running: "运行中",
       queued: "队列 {count}",
       unnamedThread: "未命名会话",

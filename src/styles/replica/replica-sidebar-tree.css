@@ -173,6 +173,11 @@
   white-space: nowrap;
 }
 
+.workspace-thread-badge-awaiting-reply {
+  background: var(--success-bg);
+  color: var(--success-fg);
+}
+
 .workspace-thread-meta,
 .workspace-thread-empty {
   font-size: var(--app-ui-font-size-caption);

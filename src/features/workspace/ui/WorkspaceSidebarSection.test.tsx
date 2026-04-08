@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { describe, expect, it, vi } from "vitest";
 import type { WorkspaceRoot } from "../hooks/useWorkspaceRoots";
 import type { ThreadSummary } from "../../../domain/types";
+import { createI18nWrapper } from "../../../test/createI18nWrapper";
 import { WorkspaceSidebarSection } from "./WorkspaceSidebarSection";
 
 const ROOTS: ReadonlyArray<WorkspaceRoot> = [
@@ -13,7 +14,7 @@ const ROOTS: ReadonlyArray<WorkspaceRoot> = [
 function createThread(
   root: WorkspaceRoot,
   index: number,
-  overrides?: Partial<Pick<ThreadSummary, "source" | "status" | "queuedCount">>
+  overrides?: Partial<Pick<ThreadSummary, "source" | "status" | "queuedCount" | "activeFlags" | "requiresUserAttention">>
 ): ThreadSummary {
   return {
     id: `thread-${root.id}-${index}`,
@@ -25,8 +26,9 @@ function createThread(
     source: overrides?.source ?? "codexData",
     agentEnvironment: "windowsNative",
     status: overrides?.status ?? "notLoaded",
-    activeFlags: [],
-    queuedCount: overrides?.queuedCount ?? 0
+    activeFlags: overrides?.activeFlags ?? [],
+    queuedCount: overrides?.queuedCount ?? 0,
+    requiresUserAttention: overrides?.requiresUserAttention,
   };
 }
 
@@ -70,7 +72,7 @@ function renderSection(
     );
   }
 
-  render(<Harness />);
+  render(<Harness />, { wrapper: createI18nWrapper() });
 }
 
 describe("WorkspaceSidebarSection", () => {
@@ -152,6 +154,26 @@ describe("WorkspaceSidebarSection", () => {
     expect(within(threadButton as HTMLButtonElement).getByText("FPGA Thread 1")).toBeInTheDocument();
   });
 
+  it("shows awaiting reply when the thread is waiting on user input", () => {
+    renderSection([createThread(ROOTS[0]!, 1, { status: "active", activeFlags: ["waitingOnUserInput"] })]);
+    fireEvent.click(screen.getByText("FPGA"));
+
+    const threadButton = screen.getByRole("button", { name: /FPGA Thread 1/ });
+    const badge = within(threadButton).getByText("等待回复");
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveClass("workspace-thread-badge-awaiting-reply");
+    expect(within(threadButton).queryByText("运行中")).not.toBeInTheDocument();
+  });
+
+  it("prioritizes awaiting reply over queued state", () => {
+    renderSection([createThread(ROOTS[0]!, 1, { queuedCount: 2, requiresUserAttention: true })]);
+    fireEvent.click(screen.getByText("FPGA"));
+
+    const threadButton = screen.getByRole("button", { name: /FPGA Thread 1/ });
+    expect(within(threadButton).getByText("等待回复")).toBeInTheDocument();
+    expect(within(threadButton).queryByText("队列 2")).not.toBeInTheDocument();
+  });
+
   it("shows workspace actions and keeps them inside the row", () => {
     renderSection([createThread(ROOTS[0]!, 1)]);
 
@@ -190,7 +212,7 @@ describe("WorkspaceSidebarSection", () => {
 
     renderSection([createThread(ROOTS[0]!, 1)], { onRemoveRoot });
     fireEvent.click(screen.getByRole("button", { name: "工作区更多操作 FPGA" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "从列表移除" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Remove from list" }));
 
     await waitFor(() => expect(onRemoveRoot).toHaveBeenCalledWith(ROOTS[0]!.id));
   });
@@ -200,7 +222,7 @@ describe("WorkspaceSidebarSection", () => {
 
     renderSection([createThread(ROOTS[0]!, 1)], { onRemoveRoot });
     fireEvent.contextMenu(screen.getByText("FPGA").closest(".workspace-root-row") as HTMLElement);
-    fireEvent.click(screen.getByRole("menuitem", { name: "从列表移除" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Remove from list" }));
 
     await waitFor(() => expect(onRemoveRoot).toHaveBeenCalledWith(ROOTS[0]!.id));
   });
@@ -209,12 +231,12 @@ describe("WorkspaceSidebarSection", () => {
     renderSection([createThread(ROOTS[0]!, 1)]);
 
     fireEvent.contextMenu(screen.getByRole("button", { name: "工作区更多操作 FPGA" }));
-    expect(screen.getByRole("menuitem", { name: "从列表移除" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Remove from list" })).toBeInTheDocument();
 
     fireEvent.click(document.body);
 
     fireEvent.contextMenu(screen.getByRole("button", { name: "在工作区 FPGA 中创建新会话" }));
-    expect(screen.getByRole("menuitem", { name: "从列表移除" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Remove from list" })).toBeInTheDocument();
   });
 
   it("shows explicit errors", () => {

@@ -11,6 +11,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { memo, useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useI18n } from "../../../i18n/useI18n";
+import { threadSummaryRequiresUserAttention } from "../../conversation/model/threadAttention";
 import { listThreadsForWorkspace } from "../model/workspaceThread";
 import type { WorkspaceRoot } from "../hooks/useWorkspaceRoots";
 import type { ThreadSummary } from "../../../domain/types";
@@ -108,6 +109,22 @@ function canArchiveThread(thread: ThreadSummary): boolean {
   return thread.source !== "codexData";
 }
 
+function getThreadStatusLabel(
+  thread: ThreadSummary,
+  t: ReturnType<typeof useI18n>["t"],
+): string | null {
+  if (threadSummaryRequiresUserAttention(thread)) {
+    return t("home.workspaceSection.awaitingReply");
+  }
+  if (thread.status === "active") {
+    return t("home.workspaceSection.running");
+  }
+  if (thread.queuedCount > 0) {
+    return t("home.workspaceSection.queued", { count: thread.queuedCount });
+  }
+  return null;
+}
+
 function createThreadsByRootId(roots: ReadonlyArray<WorkspaceRoot>, codexSessions: ReadonlyArray<ThreadSummary>) {
   return new Map(roots.map((root) => [root.id, listThreadsForWorkspace(codexSessions, root.path)]));
 }
@@ -170,18 +187,18 @@ const WorkspaceThreadItem = memo(function WorkspaceThreadItem(props: {
 }): JSX.Element {
   const { t } = useI18n();
   const className = props.selected ? "workspace-thread-button workspace-thread-button-active" : "workspace-thread-button";
-  const statusLabel = props.thread.status === "active"
-    ? t("home.workspaceSection.running")
-    : props.thread.queuedCount > 0
-      ? t("home.workspaceSection.queued", { count: props.thread.queuedCount })
-      : null;
+  const isAwaitingReply = threadSummaryRequiresUserAttention(props.thread);
+  const statusLabel = getThreadStatusLabel(props.thread, t);
+  const statusClassName = isAwaitingReply
+    ? "workspace-thread-badge workspace-thread-badge-awaiting-reply"
+    : "workspace-thread-badge";
 
   return (
     <li>
       <button type="button" className={className} onClick={() => props.onSelect(props.thread.id)} onContextMenu={(event) => props.onOpenMenu(event, props.thread)}>
         <span className="workspace-thread-title-row">
           <span className="workspace-thread-title">{getThreadLabel(props.thread, t)}</span>
-          {statusLabel ? <span className="workspace-thread-badge">{statusLabel}</span> : null}
+          {statusLabel ? <span className={statusClassName}>{statusLabel}</span> : null}
           <span className="workspace-thread-meta">{formatThreadUpdatedAt(props.thread.updatedAt, t)}</span>
         </span>
       </button>

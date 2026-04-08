@@ -499,6 +499,7 @@ export const enUS = {
       loadFailed: "Failed to load sessions: {error}",
       emptyRoots: "No workspaces yet, click the add button in the top-left.",
       emptyThreads: "No threads yet",
+      awaitingReply: "Awaiting",
       running: "Running",
       queued: "Queued {count}",
       unnamedThread: "Untitled thread",

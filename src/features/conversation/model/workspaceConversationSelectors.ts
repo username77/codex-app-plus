@@ -1,13 +1,16 @@
 import type { AgentEnvironment } from "../../../bridge/types";
 import type { ConversationState } from "../../../domain/conversation";
+import type { ReceivedServerRequest } from "../../../domain/serverRequests";
 import type { AppState, FuzzySearchSessionState } from "../../../domain/types";
 import type { ThreadSummary } from "../../../domain/timeline";
 import { isComposerFuzzySessionId } from "../../composer/service/composerCommandBridge";
 import { listThreadsForWorkspace, threadBelongsToWorkspace } from "../../workspace/model/workspaceThread";
+import { conversationRequiresUserAttention } from "./threadAttention";
 import { isConversationStreaming, mapConversationToThreadSummary } from "./conversationSelectors";
 
 const EMPTY_THREADS: ReadonlyArray<ThreadSummary> = [];
 const EMPTY_FUZZY_SESSIONS: ReadonlyArray<FuzzySearchSessionState> = [];
+const EMPTY_REQUESTS: ReadonlyArray<ReceivedServerRequest> = [];
 
 function areArraysShallowEqual<T>(left: ReadonlyArray<T>, right: ReadonlyArray<T>): boolean {
   if (left === right) {
@@ -37,6 +40,7 @@ interface ThreadSummaryCacheEntry {
   readonly status: ConversationState["status"];
   readonly activeFlags: ConversationState["activeFlags"];
   readonly queuedCount: number;
+  readonly requiresUserAttention: boolean;
   readonly summary: ThreadSummary;
 }
 
@@ -68,7 +72,12 @@ export function createVisibleThreadsSelector(
   let previousThreads = EMPTY_THREADS;
 
   return (state) => {
-    const nextThreads = collectVisibleConversations(state, agentEnvironment).map(mapConversationSummary);
+    const nextThreads = collectVisibleConversations(state, agentEnvironment).map((conversation) => {
+      const pendingRequests = state.pendingRequestsByConversationId[conversation.id] ?? EMPTY_REQUESTS;
+      return mapConversationSummary(conversation, {
+        requiresUserAttention: conversationRequiresUserAttention(conversation, pendingRequests),
+      });
+    });
     if (areArraysShallowEqual(previousThreads, nextThreads)) {
       return previousThreads;
     }
@@ -77,10 +86,14 @@ export function createVisibleThreadsSelector(
   };
 }
 
-export function createThreadSummaryMemo(): (conversation: ConversationState) => ThreadSummary {
+export function createThreadSummaryMemo(): (
+  conversation: ConversationState,
+  options?: { readonly requiresUserAttention?: boolean },
+) => ThreadSummary {
   const cache = new Map<string, ThreadSummaryCacheEntry>();
 
-  return (conversation) => {
+  return (conversation, options) => {
+    const requiresUserAttention = options?.requiresUserAttention === true;
     const cached = cache.get(conversation.id);
     if (
       cached !== undefined
@@ -93,12 +106,16 @@ export function createThreadSummaryMemo(): (conversation: ConversationState) => 
       && cached.agentEnvironment === conversation.agentEnvironment
       && cached.status === conversation.status
       && cached.queuedCount === conversation.queuedFollowUps.length
+      && cached.requiresUserAttention === requiresUserAttention
       && hasSameActiveFlags(cached.activeFlags, conversation.activeFlags)
     ) {
       return cached.summary;
     }
 
-    const summary = mapConversationToThreadSummary(conversation);
+    const baseSummary = mapConversationToThreadSummary(conversation);
+    const summary = requiresUserAttention
+      ? { ...baseSummary, requiresUserAttention: true }
+      : baseSummary;
     cache.set(conversation.id, {
       title: conversation.title,
       branch: conversation.branch,
@@ -110,6 +127,7 @@ export function createThreadSummaryMemo(): (conversation: ConversationState) => 
       status: conversation.status,
       activeFlags: conversation.activeFlags,
       queuedCount: conversation.queuedFollowUps.length,
+      requiresUserAttention,
       summary,
     });
     return summary;
