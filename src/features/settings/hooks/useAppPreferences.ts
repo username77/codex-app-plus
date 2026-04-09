@@ -39,12 +39,17 @@ import {
 } from "./appPreferenceStorage";
 import { writeStoredJson } from "../../shared/utils/storageJson";
 export type ThreadDetailLevel = "compact" | "commands" | "full";
+export type NotificationDeliveryMode = "system+sound" | "system" | "sound";
+export type NotificationTriggerMode = "never" | "unfocused" | "always";
 
 export interface AppPreferences {
   readonly agentEnvironment: AgentEnvironment;
   readonly workspaceOpener: WorkspaceOpener;
   readonly embeddedTerminalShell: EmbeddedTerminalShell;
   readonly embeddedTerminalUtf8: boolean;
+  readonly notificationDeliveryMode: NotificationDeliveryMode;
+  readonly notificationTriggerMode: NotificationTriggerMode;
+  readonly subagentNotificationsEnabled: boolean;
   readonly themeMode: ThemeMode;
   readonly uiLanguage: UiLanguage;
   readonly threadDetailLevel: ThreadDetailLevel;
@@ -71,6 +76,9 @@ export interface AppPreferencesController extends AppPreferences {
   setWorkspaceOpener: (workspaceOpener: WorkspaceOpener) => void;
   setEmbeddedTerminalShell: (shell: EmbeddedTerminalShell) => void;
   setEmbeddedTerminalUtf8: (enabled: boolean) => void;
+  setNotificationDeliveryMode: (mode: NotificationDeliveryMode) => void;
+  setNotificationTriggerMode: (mode: NotificationTriggerMode) => void;
+  setSubagentNotificationsEnabled: (enabled: boolean) => void;
   setThemeMode: (themeMode: ThemeMode) => void;
   setUiLanguage: (language: UiLanguage) => void;
   setThreadDetailLevel: (detailLevel: ThreadDetailLevel) => void;
@@ -135,6 +143,9 @@ export function useAppPreferences(): AppPreferencesController {
   const setWorkspaceOpener = usePreferenceSetter(setPreferences, "workspaceOpener");
   const setEmbeddedTerminalShell = usePreferenceSetter(setPreferences, "embeddedTerminalShell");
   const setEmbeddedTerminalUtf8 = usePreferenceSetter(setPreferences, "embeddedTerminalUtf8");
+  const setNotificationDeliveryMode = usePreferenceSetter(setPreferences, "notificationDeliveryMode");
+  const setNotificationTriggerMode = usePreferenceSetter(setPreferences, "notificationTriggerMode");
+  const setSubagentNotificationsEnabled = usePreferenceSetter(setPreferences, "subagentNotificationsEnabled");
   const setThemeMode = usePreferenceSetter(setPreferences, "themeMode");
   const setUiLanguage = usePreferenceSetter(setPreferences, "uiLanguage");
   const setThreadDetailLevel = usePreferenceSetter(setPreferences, "threadDetailLevel");
@@ -183,6 +194,9 @@ export function useAppPreferences(): AppPreferencesController {
       setWorkspaceOpener,
       setEmbeddedTerminalShell,
       setEmbeddedTerminalUtf8,
+      setNotificationDeliveryMode,
+      setNotificationTriggerMode,
+      setSubagentNotificationsEnabled,
       setThemeMode,
       setUiLanguage,
       setThreadDetailLevel,
@@ -210,6 +224,9 @@ export function useAppPreferences(): AppPreferencesController {
       setComposerPermissionLevel,
       setEmbeddedTerminalShell,
       setEmbeddedTerminalUtf8,
+      setNotificationDeliveryMode,
+      setNotificationTriggerMode,
+      setSubagentNotificationsEnabled,
       setFollowUpQueueMode,
       setComposerDefaultApprovalPolicy,
       setComposerDefaultSandboxMode,

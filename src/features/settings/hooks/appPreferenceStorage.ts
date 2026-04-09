@@ -40,7 +40,12 @@ import {
   normalizeUiFontFamily,
   UI_FONT_SIZE_DEFAULT,
 } from "../model/fontPreferences";
-import type { AppPreferences, ThreadDetailLevel } from "./useAppPreferences";
+import type {
+  AppPreferences,
+  NotificationDeliveryMode,
+  NotificationTriggerMode,
+  ThreadDetailLevel,
+} from "./useAppPreferences";
 
 export const APP_PREFERENCES_STORAGE_KEY = "codex-app-plus.app-preferences";
 export const DEFAULT_GIT_BRANCH_PREFIX = "codex/";
@@ -53,6 +58,8 @@ const THREAD_DETAIL_LEVELS: ReadonlyArray<ThreadDetailLevel> = ["compact", "comm
 const FOLLOW_UP_QUEUE_MODES: ReadonlyArray<FollowUpMode> = ["queue", "steer"];
 const COMPOSER_ENTER_BEHAVIORS: ReadonlyArray<ComposerEnterBehavior> = ["enter", "cmdIfMultiline"];
 const SANDBOX_MODES: ReadonlyArray<SandboxMode> = ["read-only", "workspace-write", "danger-full-access"];
+const NOTIFICATION_DELIVERY_MODES: ReadonlyArray<NotificationDeliveryMode> = ["system+sound", "system", "sound"];
+const NOTIFICATION_TRIGGER_MODES: ReadonlyArray<NotificationTriggerMode> = ["never", "unfocused", "always"];
 
 type LegacyComposerAccessMode = "read-only" | "current" | "full-access";
 
@@ -61,6 +68,9 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   workspaceOpener: "vscode",
   embeddedTerminalShell: "powerShell",
   embeddedTerminalUtf8: true,
+  notificationDeliveryMode: "system+sound",
+  notificationTriggerMode: "unfocused",
+  subagentNotificationsEnabled: true,
   themeMode: DEFAULT_THEME_MODE,
   uiLanguage: "en-US",
   threadDetailLevel: "commands",
@@ -110,6 +120,43 @@ function readStoredUiLanguage(record: Record<string, unknown>): UiLanguage {
     return "en-US";
   }
   return DEFAULT_APP_PREFERENCES.uiLanguage;
+}
+
+function readStoredNotificationDeliveryMode(
+  record: Record<string, unknown>,
+): NotificationDeliveryMode {
+  if (isPreferenceValue(NOTIFICATION_DELIVERY_MODES, record.notificationDeliveryMode)) {
+    return record.notificationDeliveryMode;
+  }
+
+  const systemEnabled =
+    typeof record.systemNotificationsEnabled === "boolean"
+      ? record.systemNotificationsEnabled
+      : true;
+  const soundEnabled =
+    typeof record.notificationSoundsEnabled === "boolean"
+      ? record.notificationSoundsEnabled
+      : true;
+
+  if (systemEnabled && soundEnabled) {
+    return "system+sound";
+  }
+  if (systemEnabled) {
+    return "system";
+  }
+  if (soundEnabled) {
+    return "sound";
+  }
+  return DEFAULT_APP_PREFERENCES.notificationDeliveryMode;
+}
+
+function readStoredNotificationTriggerMode(
+  record: Record<string, unknown>,
+): NotificationTriggerMode {
+  if (isPreferenceValue(NOTIFICATION_TRIGGER_MODES, record.notificationTriggerMode)) {
+    return record.notificationTriggerMode;
+  }
+  return DEFAULT_APP_PREFERENCES.notificationTriggerMode;
 }
 
 function isLegacyComposerAccessMode(
@@ -211,6 +258,14 @@ function sanitizeStoredPreferences(value: unknown): AppPreferences {
       typeof record.embeddedTerminalUtf8 === "boolean"
         ? record.embeddedTerminalUtf8
         : DEFAULT_APP_PREFERENCES.embeddedTerminalUtf8,
+    notificationDeliveryMode: readStoredNotificationDeliveryMode(record),
+    notificationTriggerMode: readStoredNotificationTriggerMode(record),
+    subagentNotificationsEnabled:
+      typeof record.subagentNotificationsEnabled === "boolean"
+        ? record.subagentNotificationsEnabled
+        : typeof record.subagentSystemNotificationsEnabled === "boolean"
+          ? record.subagentSystemNotificationsEnabled
+          : DEFAULT_APP_PREFERENCES.subagentNotificationsEnabled,
     themeMode: isThemeMode(record.themeMode)
       ? record.themeMode
       : DEFAULT_APP_PREFERENCES.themeMode,

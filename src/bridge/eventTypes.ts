@@ -1,9 +1,11 @@
 import type { RequestId } from "../protocol/generated/RequestId";
+import type { ShowNotificationInput } from "./appTypes";
 import type { TerminalExitEventPayload, TerminalOutputEventPayload } from "./terminalTypes";
 
 export type BridgeEventName =
   | "connection-changed"
   | "codex-session-index-updated"
+  | "app-notification-requested"
   | "notification-received"
   | "server-request-received"
   | "fatal-error"
@@ -38,6 +40,7 @@ export interface CodexSessionIndexUpdatedPayload {
 export type BridgeEventPayloadMap = {
   "connection-changed": ConnectionChangedPayload;
   "codex-session-index-updated": CodexSessionIndexUpdatedPayload;
+  "app-notification-requested": ShowNotificationInput;
   "notification-received": NotificationEventPayload;
   "server-request-received": ServerRequestEventPayload;
   "fatal-error": FatalErrorPayload;

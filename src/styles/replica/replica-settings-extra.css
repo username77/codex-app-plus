@@ -467,6 +467,13 @@
   font-size: 13px;
 }
 
+.settings-action-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .settings-stepper {
   display: inline-flex;
   align-items: center;

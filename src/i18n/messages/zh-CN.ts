@@ -183,6 +183,39 @@ export const zhCN = {
           cmdIfMultiline: "多行时 Ctrl/Cmd+Enter 发送",
         },
       },
+      notifications: {
+        deliveryMode: {
+          label: "通知方式",
+          description: "选择通知是使用弹窗、声音，还是同时使用两者。",
+          options: {
+            systemAndSound: "弹窗 + 声音",
+            systemOnly: "仅弹窗",
+            soundOnly: "仅声音",
+          },
+        },
+        triggerMode: {
+          label: "通知触发",
+          description: "控制 Agent 通知在什么情况下触发。",
+          options: {
+            never: "从不",
+            unfocused: "应用失焦时",
+            always: "始终",
+          },
+        },
+        subagents: {
+          label: "子代理通知",
+          description: "是否把子代理线程也纳入通知范围。",
+        },
+        test: {
+          label: "测试通知",
+          description: "分别检查弹窗与声音输出。",
+          sound: "测试声音",
+          popup: "测试弹窗",
+          systemSent: "测试弹窗已通过系统通知发送。",
+          fallbackUsed: "系统通知不可用，已改为应用内弹窗。",
+          failed: "无法发送测试弹窗。",
+        },
+      },
       permissionSettings: {
         title: "Composer 权限默认值",
         note: "这是应用内默认行为，影响后续新建线程和后续发送，不会改写 ~/.codex/config.toml。",

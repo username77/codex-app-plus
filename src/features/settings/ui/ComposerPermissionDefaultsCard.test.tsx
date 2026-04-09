@@ -20,6 +20,9 @@ function createPreferencesController(
     setWorkspaceOpener: vi.fn(),
     setEmbeddedTerminalShell: vi.fn(),
     setEmbeddedTerminalUtf8: vi.fn(),
+    setNotificationDeliveryMode: vi.fn(),
+    setNotificationTriggerMode: vi.fn(),
+    setSubagentNotificationsEnabled: vi.fn(),
     setThemeMode: vi.fn(),
     setUiLanguage: vi.fn(),
     setThreadDetailLevel: vi.fn(),
@@ -63,16 +66,17 @@ describe("ComposerPermissionDefaultsCard", () => {
   it("updates the standard approval policy after selecting on-failure", () => {
     renderCard();
 
-    fireEvent.click(screen.getByRole("button", { name: "标准权限 · 审批策略：on-request" }));
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "on-failure" }));
+    fireEvent.click(screen.getByRole("button", { name: "标准权限 · 审批策略：按需询问" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "失败时询问" }));
 
-    expect(screen.getByRole("button", { name: "标准权限 · 审批策略：on-failure" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "标准权限 · 审批策略：失败时询问" })).toBeInTheDocument();
   });
 
-  it("shows the app-local note for permission defaults", () => {
+  it("renders the permission defaults title and descriptions", () => {
     renderCard();
 
-    expect(screen.getByText("这是应用内默认行为，影响后续新建线程和后续发送，不会改写 ~/.codex/config.toml。")).toBeInTheDocument();
+    expect(screen.getByText("Composer 权限默认值")).toBeInTheDocument();
+    expect(screen.getByText("控制底部\"默认权限\"实际使用的 approval policy。")).toBeInTheDocument();
   });
 
   it("renders English copy when locale is en-US", () => {
@@ -80,6 +84,6 @@ describe("ComposerPermissionDefaultsCard", () => {
 
     expect(screen.getByText("Composer permission defaults")).toBeInTheDocument();
     expect(screen.getByText("Standard permission · Approval policy")).toBeInTheDocument();
-    expect(screen.getByText("Full access · Sandbox mode")).toBeInTheDocument();
+    expect(screen.getByText("Full access · Access mode")).toBeInTheDocument();
   });
 });

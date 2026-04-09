@@ -61,6 +61,12 @@ export interface SettingsViewProps {
   readonly steerAvailable: boolean;
   readonly busy: boolean;
   readonly ready: boolean;
+  readonly onTestNotificationSound?: () => void;
+  readonly onTestSystemNotification?: () => void;
+  readonly notificationTestFeedback?: {
+    readonly tone: "success" | "error";
+    readonly message: string;
+  } | null;
   onBackHome: () => void;
   onSelectSection: (section: SettingsSection) => void;
   onAddRoot: () => void;
@@ -174,7 +180,13 @@ function SettingsContent(props: SettingsViewProps & { readonly sectionTitle: str
   if (props.section === "general") {
     return (
       <>
-        <GeneralSettingsSection preferences={props.preferences} steerAvailable={props.steerAvailable} />
+        <GeneralSettingsSection
+          preferences={props.preferences}
+          steerAvailable={props.steerAvailable}
+          onTestNotificationSound={props.onTestNotificationSound}
+          onTestSystemNotification={props.onTestSystemNotification}
+          notificationTestFeedback={props.notificationTestFeedback}
+        />
         <ComposerPermissionDefaultsCard preferences={props.preferences} />
       </>
     );

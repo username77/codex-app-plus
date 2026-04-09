@@ -21,6 +21,9 @@ describe("useAppPreferences", () => {
     expect(result.current.workspaceOpener).toBe(DEFAULT_APP_PREFERENCES.workspaceOpener);
     expect(result.current.embeddedTerminalShell).toBe(DEFAULT_APP_PREFERENCES.embeddedTerminalShell);
     expect(result.current.embeddedTerminalUtf8).toBe(DEFAULT_APP_PREFERENCES.embeddedTerminalUtf8);
+    expect(result.current.notificationDeliveryMode).toBe(DEFAULT_APP_PREFERENCES.notificationDeliveryMode);
+    expect(result.current.notificationTriggerMode).toBe(DEFAULT_APP_PREFERENCES.notificationTriggerMode);
+    expect(result.current.subagentNotificationsEnabled).toBe(DEFAULT_APP_PREFERENCES.subagentNotificationsEnabled);
     expect(result.current.themeMode).toBe(DEFAULT_APP_PREFERENCES.themeMode);
     expect(result.current.uiLanguage).toBe(DEFAULT_APP_PREFERENCES.uiLanguage);
     expect(result.current.threadDetailLevel).toBe(DEFAULT_APP_PREFERENCES.threadDetailLevel);
@@ -48,6 +51,9 @@ describe("useAppPreferences", () => {
       first.result.current.setWorkspaceOpener("explorer");
       first.result.current.setEmbeddedTerminalShell("gitBash");
       first.result.current.setEmbeddedTerminalUtf8(false);
+      first.result.current.setNotificationDeliveryMode("sound");
+      first.result.current.setNotificationTriggerMode("always");
+      first.result.current.setSubagentNotificationsEnabled(false);
       first.result.current.setThemeMode("dark");
       first.result.current.setUiLanguage("en-US");
       first.result.current.setThreadDetailLevel("full");
@@ -88,6 +94,9 @@ describe("useAppPreferences", () => {
     expect(second.result.current.workspaceOpener).toBe("explorer");
     expect(second.result.current.embeddedTerminalShell).toBe("gitBash");
     expect(second.result.current.embeddedTerminalUtf8).toBe(false);
+    expect(second.result.current.notificationDeliveryMode).toBe("sound");
+    expect(second.result.current.notificationTriggerMode).toBe("always");
+    expect(second.result.current.subagentNotificationsEnabled).toBe(false);
     expect(second.result.current.themeMode).toBe("dark");
     expect(second.result.current.uiLanguage).toBe("en-US");
     expect(second.result.current.threadDetailLevel).toBe("full");
@@ -240,5 +249,25 @@ describe("useAppPreferences", () => {
     expect(result.current.composerDefaultSandboxMode).toBe("read-only");
     expect(result.current.composerFullApprovalPolicy).toBe("on-request");
     expect(result.current.composerFullSandboxMode).toBe("workspace-write");
+  });
+
+  it("migrates legacy notification booleans into the combined notification settings", () => {
+    window.localStorage.setItem(
+      APP_PREFERENCES_STORAGE_KEY,
+      JSON.stringify({
+        ...DEFAULT_APP_PREFERENCES,
+        notificationDeliveryMode: undefined,
+        subagentNotificationsEnabled: undefined,
+        notificationSoundsEnabled: false,
+        systemNotificationsEnabled: true,
+        subagentSystemNotificationsEnabled: false,
+      }),
+    );
+
+    const { result } = renderHook(() => useAppPreferences());
+
+    expect(result.current.notificationDeliveryMode).toBe("system");
+    expect(result.current.notificationTriggerMode).toBe("unfocused");
+    expect(result.current.subagentNotificationsEnabled).toBe(false);
   });
 });

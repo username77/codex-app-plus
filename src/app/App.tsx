@@ -11,8 +11,10 @@ import { useWindowTheme } from "./useWindowTheme";
 import { useAppFontVariables } from "./useAppFontVariables";
 import { I18nProvider } from "../i18n";
 import { useAppPreferences } from "../features/settings/hooks/useAppPreferences";
+import { useAppNotificationsController } from "../features/notifications/hooks/useAppNotificationsController";
 import type { SettingsSection } from "../features/settings/ui/SettingsView";
 import { useWorkspaceRoots } from "../features/workspace/hooks/useWorkspaceRoots";
+import { useAppStoreApi } from "../state/store";
 
 const SKILLS_LEARN_MORE_URL = "https://openai.com/index/introducing-the-codex-app/";
 
@@ -21,6 +23,7 @@ interface AppProps {
 }
 
 export function App({ hostBridge }: AppProps): JSX.Element {
+  const store = useAppStoreApi();
   const preferences = useAppPreferences();
   const resolvedTheme = useResolvedTheme(preferences.themeMode);
   const bootstrapState = useAppBootstrapState();
@@ -35,6 +38,7 @@ export function App({ hostBridge }: AppProps): JSX.Element {
   useAppAppearanceVariables(preferences, resolvedTheme);
   useAppCodeStyleVariables(preferences, resolvedTheme);
   useWindowTheme(hostBridge, resolvedTheme);
+  useAppNotificationsController({ app: hostBridge.app, store, preferences });
   useDismissStartupScreen(
     bootstrapState.fatalError !== null || (bootstrapState.initialized && !bootstrapState.bootstrapBusy),
   );

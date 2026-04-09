@@ -9,8 +9,12 @@ import { useSettingsScreenState } from "../../../app/controller/appControllerSta
 import { useUiBannerNotifications } from "../../shared/hooks/useUiBannerNotifications";
 import { SettingsLoadingFallback } from "../../../app/ui/SettingsLoadingFallback";
 import type { ResolvedTheme } from "../../../domain/theme";
+import { useI18n } from "../../../i18n";
 import { selectSteerFeatureState } from "../config/experimentalFeatures";
 import type { SettingsSection, SettingsViewProps } from "./SettingsView";
+import successSoundUrl from "../../../assets/success-notification.mp3";
+import { playNotificationSound } from "../../notifications/model/notificationSounds";
+import { deliverNotification } from "../../notifications/model/systemNotifications";
 
 const LazySettingsView = lazy(async () => {
   const module = await import("./SettingsView");
@@ -30,9 +34,14 @@ interface SettingsScreenProps {
 
 export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
   const state = useSettingsScreenState();
+  const { t } = useI18n();
   const { reportError } = useUiBannerNotifications("settings-screen");
   const steerState = selectSteerFeatureState(state.experimentalFeatures, state.configSnapshot);
   const [worktrees, setWorktrees] = useState<ReadonlyArray<GitWorktreeEntry>>([]);
+  const [notificationTestFeedback, setNotificationTestFeedback] = useState<{
+    readonly tone: "success" | "error";
+    readonly message: string;
+  } | null>(null);
   const selectedRootPath = props.workspace.selectedRoot?.path ?? null;
   const managedWorktreeSet = useMemo(
     () => new Set(props.workspace.managedWorktrees.map((item) => item.path.replace(/\\/g, "/").toLowerCase())),
@@ -133,6 +142,38 @@ export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
     }
   }, [props.hostBridge.git, props.workspace, reportError, selectedRootPath, managedWorktreeMap, managedWorktreeSet]);
 
+  const testNotificationSound = useCallback(() => {
+    setNotificationTestFeedback(null);
+    playNotificationSound(successSoundUrl, "test");
+  }, []);
+
+  const testSystemNotification = useCallback(() => {
+    void (async () => {
+      const result = await deliverNotification(
+        props.hostBridge.app,
+        "Test Notification",
+        "This is a test notification from Codex App Plus.",
+      );
+
+      if (result.status === "sent") {
+        setNotificationTestFeedback({
+          tone: "success",
+          message:
+            result.via === "system"
+              ? t("settings.general.notifications.test.systemSent")
+              : t("settings.general.notifications.test.fallbackUsed"),
+        });
+        return;
+      }
+
+      setNotificationTestFeedback({
+        tone: "error",
+        message: t("settings.general.notifications.test.failed"),
+      });
+      reportError("发送测试通知失败", result.error);
+    })();
+  }, [props.hostBridge.app, reportError, t]);
+
   const settingsProps: SettingsViewProps = {
     appUpdate: state.appUpdate,
     section: props.section,
@@ -147,6 +188,9 @@ export function SettingsScreen(props: SettingsScreenProps): JSX.Element {
     steerAvailable: steerState.available,
     busy: state.bootstrapBusy,
     ready: state.initialized,
+    onTestNotificationSound: testNotificationSound,
+    onTestSystemNotification: testSystemNotification,
+    notificationTestFeedback,
     onBackHome: props.onBackHome,
     onSelectSection: props.onSelectSection,
     onAddRoot: () => void addRoot(),

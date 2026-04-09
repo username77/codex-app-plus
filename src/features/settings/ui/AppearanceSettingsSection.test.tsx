@@ -34,6 +34,12 @@ function renderSection(
         setPreferences((current) => ({ ...current, embeddedTerminalShell })),
       setEmbeddedTerminalUtf8: (embeddedTerminalUtf8) =>
         setPreferences((current) => ({ ...current, embeddedTerminalUtf8 })),
+      setNotificationDeliveryMode: (notificationDeliveryMode) =>
+        setPreferences((current) => ({ ...current, notificationDeliveryMode })),
+      setNotificationTriggerMode: (notificationTriggerMode) =>
+        setPreferences((current) => ({ ...current, notificationTriggerMode })),
+      setSubagentNotificationsEnabled: (subagentNotificationsEnabled) =>
+        setPreferences((current) => ({ ...current, subagentNotificationsEnabled })),
       setThemeMode: (themeMode) =>
         setPreferences((current) => ({ ...current, themeMode })),
       setUiLanguage: (uiLanguage) =>

@@ -1,5 +1,7 @@
 import type {
   AppPreferencesController,
+  NotificationDeliveryMode,
+  NotificationTriggerMode,
   ThreadDetailLevel,
 } from "../hooks/useAppPreferences";
 import type { AgentEnvironment, EmbeddedTerminalShell, WorkspaceOpener } from "../../../bridge/types";
@@ -65,9 +67,59 @@ function createComposerEnterOptions(t: Translator): ReadonlyArray<SettingsSelect
   ];
 }
 
+function createNotificationDeliveryOptions(
+  t: Translator,
+): ReadonlyArray<{
+  readonly value: NotificationDeliveryMode;
+  readonly label: string;
+}> {
+  return [
+    {
+      value: "system+sound",
+      label: t("settings.general.notifications.deliveryMode.options.systemAndSound"),
+    },
+    {
+      value: "system",
+      label: t("settings.general.notifications.deliveryMode.options.systemOnly"),
+    },
+    {
+      value: "sound",
+      label: t("settings.general.notifications.deliveryMode.options.soundOnly"),
+    },
+  ];
+}
+
+function createNotificationTriggerOptions(
+  t: Translator,
+): ReadonlyArray<{
+  readonly value: NotificationTriggerMode;
+  readonly label: string;
+}> {
+  return [
+    {
+      value: "never",
+      label: t("settings.general.notifications.triggerMode.options.never"),
+    },
+    {
+      value: "unfocused",
+      label: t("settings.general.notifications.triggerMode.options.unfocused"),
+    },
+    {
+      value: "always",
+      label: t("settings.general.notifications.triggerMode.options.always"),
+    },
+  ];
+}
+
 interface GeneralSettingsSectionProps {
   readonly preferences: AppPreferencesController;
   readonly steerAvailable: boolean;
+  readonly onTestNotificationSound?: () => void;
+  readonly onTestSystemNotification?: () => void;
+  readonly notificationTestFeedback?: {
+    readonly tone: "success" | "error";
+    readonly message: string;
+  } | null;
 }
 
 function ToggleSwitch(props: {
@@ -99,6 +151,8 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
   const threadDetailOptions = createThreadDetailOptions(t);
   const followUpModeOptions = createFollowUpModeOptions(t, props.steerAvailable);
   const composerEnterOptions = createComposerEnterOptions(t);
+  const notificationDeliveryOptions = createNotificationDeliveryOptions(t);
+  const notificationTriggerOptions = createNotificationTriggerOptions(t);
 
   return (
     <div className="settings-panel-group">
@@ -168,6 +222,71 @@ export function GeneralSettingsSection(props: GeneralSettingsSectionProps): JSX.
           options={composerEnterOptions}
           onChange={preferences.setComposerEnterBehavior}
         />
+        <SettingsToggleButtonGroup
+          label={t("settings.general.notifications.deliveryMode.label")}
+          description={t("settings.general.notifications.deliveryMode.description")}
+          value={preferences.notificationDeliveryMode}
+          options={notificationDeliveryOptions}
+          onChange={preferences.setNotificationDeliveryMode}
+        />
+        <SettingsToggleButtonGroup
+          label={t("settings.general.notifications.triggerMode.label")}
+          description={t("settings.general.notifications.triggerMode.description")}
+          value={preferences.notificationTriggerMode}
+          options={notificationTriggerOptions}
+          onChange={preferences.setNotificationTriggerMode}
+        />
+        <div className="settings-row">
+          <div className="settings-row-copy">
+            <strong>{t("settings.general.notifications.subagents.label")}</strong>
+            <p>{t("settings.general.notifications.subagents.description")}</p>
+          </div>
+          <div className="settings-row-control">
+            <ToggleSwitch
+              checked={preferences.subagentNotificationsEnabled}
+              label={t("settings.general.notifications.subagents.label")}
+              onToggle={() =>
+                preferences.setSubagentNotificationsEnabled(
+                  !preferences.subagentNotificationsEnabled,
+                )}
+            />
+          </div>
+        </div>
+        <div className="settings-row">
+          <div className="settings-row-copy">
+            <strong>{t("settings.general.notifications.test.label")}</strong>
+            <p>{t("settings.general.notifications.test.description")}</p>
+            {props.notificationTestFeedback ? (
+              <p
+                className={
+                  props.notificationTestFeedback.tone === "error"
+                    ? "settings-status-note settings-status-note-error"
+                    : "settings-status-note settings-status-note-success"
+                }
+              >
+                {props.notificationTestFeedback.message}
+              </p>
+            ) : null}
+          </div>
+          <div className="settings-row-control">
+            <div className="settings-action-group">
+              <button
+                type="button"
+                className="settings-action-btn settings-action-btn-sm"
+                onClick={props.onTestNotificationSound}
+              >
+                {t("settings.general.notifications.test.sound")}
+              </button>
+              <button
+                type="button"
+                className="settings-action-btn settings-action-btn-sm"
+                onClick={props.onTestSystemNotification}
+              >
+                {t("settings.general.notifications.test.popup")}
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   );

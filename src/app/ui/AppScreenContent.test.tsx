@@ -15,6 +15,10 @@ vi.mock("../../features/settings/ui/SettingsScreen", () => ({
   SettingsScreen: () => <div data-testid="settings-screen">settings</div>,
 }));
 
+vi.mock("../../features/notifications/ui/AppNotificationViewport", () => ({
+  AppNotificationViewport: () => <div data-testid="app-notification-viewport" />,
+}));
+
 vi.mock("../../features/skills/ui/SkillsScreen", () => ({
   SkillsScreen: () => <div data-testid="skills-screen">skills</div>,
 }));
@@ -46,6 +50,7 @@ function createHostBridge(): HostBridge {
     app: {
       controlWindow: vi.fn(),
     },
+    subscribe: vi.fn().mockResolvedValue(() => undefined),
   } as unknown as HostBridge;
 }
 
@@ -120,5 +125,11 @@ describe("AppScreenContent", () => {
 
     expect(screen.queryByTestId("settings-screen")).not.toBeInTheDocument();
     expect(screen.getByText("count:1")).toBeInTheDocument();
+  });
+
+  it("renders the app notification viewport", () => {
+    renderAppScreenContent("home");
+
+    expect(screen.getByTestId("app-notification-viewport")).toBeInTheDocument();
   });
 });

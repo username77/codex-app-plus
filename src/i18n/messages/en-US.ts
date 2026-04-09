@@ -184,6 +184,39 @@ export const enUS = {
           cmdIfMultiline: "Use Ctrl/Cmd+Enter for multiline",
         },
       },
+      notifications: {
+        deliveryMode: {
+          label: "Notification mode",
+          description: "Choose whether notifications use popups, sounds, or both.",
+          options: {
+            systemAndSound: "Popup + sound",
+            systemOnly: "Popup only",
+            soundOnly: "Sound only",
+          },
+        },
+        triggerMode: {
+          label: "Notification trigger",
+          description: "Control when agent notifications are allowed to fire.",
+          options: {
+            never: "Never",
+            unfocused: "When app is unfocused",
+            always: "Always",
+          },
+        },
+        subagents: {
+          label: "Sub-agent notifications",
+          description: "Include spawned sub-agent threads in notifications.",
+        },
+        test: {
+          label: "Test notifications",
+          description: "Check popup and sound output independently.",
+          sound: "Test sound",
+          popup: "Test popup",
+          systemSent: "Test popup sent through the system notification channel.",
+          fallbackUsed: "System notification unavailable. Displayed an in-app popup instead.",
+          failed: "Unable to send a test popup.",
+        },
+      },
       permissionSettings: {
         title: "Composer permission defaults",
         note: "This only changes app-local defaults for future threads and sends, and does not rewrite ~/.codex/config.toml.",

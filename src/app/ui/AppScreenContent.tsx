@@ -2,6 +2,7 @@ import type { HostBridge } from "../../bridge/types";
 import type { ResolvedTheme } from "../../domain/theme";
 import { AuthChoiceView } from "../../features/auth/ui/AuthChoiceView";
 import { HomeScreen } from "../../features/home/ui/HomeScreen";
+import { AppNotificationViewport } from "../../features/notifications/ui/AppNotificationViewport";
 import { type AppPreferencesController } from "../../features/settings/hooks/useAppPreferences";
 import { SettingsScreen } from "../../features/settings/ui/SettingsScreen";
 import type { SettingsSection } from "../../features/settings/ui/SettingsView";
@@ -38,6 +39,7 @@ export function AppScreenContent(props: AppScreenContentProps): JSX.Element {
     <div className="app-shell">
       <WindowTitlebar hostBridge={props.hostBridge} />
       <div className="app-shell-body">{renderScreen(props)}</div>
+      <AppNotificationViewport hostBridge={props.hostBridge} />
     </div>
   );
 }
