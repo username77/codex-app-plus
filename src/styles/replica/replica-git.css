@@ -463,6 +463,8 @@
 
 .workspace-diff-sidebar-header {
   flex: 0 0 auto;
+  position: relative;
+  z-index: 1;
   height: 72px;
   display: flex;
   align-items: center;
@@ -539,6 +541,10 @@
 .workspace-diff-scope {
   position: relative;
   justify-self: start;
+}
+
+.workspace-diff-scope-open {
+  z-index: 2;
 }
 
 .workspace-diff-scope-trigger {
